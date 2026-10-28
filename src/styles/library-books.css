@@ -86,7 +86,7 @@
 .book-kicker { margin-top: var(--s1); font-size: var(--t-base); color: var(--ink-muted); font-style: italic; }
 .book-num {
   flex: none;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-small);
   font-variant-numeric: tabular-nums;
   color: var(--accent-deep);
@@ -106,7 +106,7 @@
   color: var(--ink-body);
   line-height: var(--lh-body);
 }
-.book-list li::marker { color: var(--ink-muted); font-family: var(--f-mono); font-size: var(--t-tiny); }
+.book-list li::marker { color: var(--ink-muted); font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-tiny); }
 .book-list-x { list-style: none; padding-left: 0; }
 .book-list-x li { position: relative; padding-left: var(--s5); }
 .book-list-x li::before {
@@ -180,7 +180,7 @@
   border-radius: var(--sk-radius, var(--radius));
   max-width: 80ch;
 }
-.book-template p { font-family: var(--f-mono); font-size: var(--t-small); color: var(--ink); line-height: var(--lh-body); }
+.book-template p { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-small); color: var(--ink); line-height: var(--lh-body); }
 
 .book-grid {
   display: grid;
@@ -219,7 +219,7 @@
 .book-beat-body { display: grid; gap: var(--s3); min-width: 0; }
 .book-beat-body .book-p { font-size: var(--t-small); }
 .book-page {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
   font-variant-numeric: tabular-nums;
   color: var(--ink-muted);

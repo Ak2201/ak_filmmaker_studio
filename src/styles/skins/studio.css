@@ -85,12 +85,13 @@
   --sk-deck-size:       var(--t-small);
   --sk-deck-style:      normal;
   --sk-deck-measure:    72ch;
-  /* The eyebrow: Onest caps, 11px, semibold tracking. Colour stays
+  /* The eyebrow: Onest, sentence case, 12px semibold, no tracking (the
+     8B label; caps and tracking were the Swiss look). Colour stays
      --accent-deep in the rule that draws it. */
   --sk-eyebrow-face:    var(--f-body);
-  --sk-eyebrow-track:   var(--track-label);
-  --sk-eyebrow-transform: uppercase;
-  --sk-eyebrow-size:    var(--t-micro);
+  --sk-eyebrow-track:   0;
+  --sk-eyebrow-transform: none;
+  --sk-eyebrow-size:    var(--t-tiny);
   --sk-stepnum-size:    var(--t-2xl);
 
   /* ---- the slab: all six, or none ----------------------------

@@ -95,7 +95,7 @@ img { display: block; }
 
 hr { border: 0; border-top: 1px solid var(--rule); margin: var(--s6) 0; }
 
-code, kbd, samp, pre { font-family: var(--f-mono); font-size: 0.875em; }
+code, kbd, samp, pre { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: 0.875em; }
 
 /* ---- form controls ----------------------------------------
    The legacy pages styled inputs four separate times, once per

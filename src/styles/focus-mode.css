@@ -176,7 +176,7 @@ html.fm-on.fm-mk-line #wr-page .wr-text:focus { background: transparent; }
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   background: var(--surface-rail);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-nano);
   color: var(--ink-muted);
 }
@@ -186,7 +186,7 @@ html.fm-on.fm-mk-line #wr-page .wr-text:focus { background: transparent; }
   display: inline-flex;
   align-items: center;
   gap: var(--s1h);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -237,7 +237,7 @@ html.fm-on.fm-mk-line #wr-page .wr-text:focus { background: transparent; }
   border: 1px solid var(--warn-line);
   border-radius: var(--radius-sm);
   background: var(--warn-wash);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
   color: var(--warn-deep);
@@ -262,7 +262,7 @@ html.fm-on.fm-mk-line #wr-page .wr-text:focus { background: transparent; }
 .fm-goal-ctl .fm-goal-target {
   flex: 1 1 auto;
   min-width: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-variant-numeric: tabular-nums;
 }
 .fm-goal-ctl .fm-kind {
@@ -276,7 +276,7 @@ html.fm-on.fm-mk-line #wr-page .wr-text:focus { background: transparent; }
   height: 100%;
   min-width: 7rem;
   padding-left: var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
 }
 .fm-hud .fm-goal-ctl input,
@@ -314,11 +314,11 @@ html.fm-on.fm-mk-line #wr-page .wr-text:focus { background: transparent; }
   background: var(--surface-rail);
   border: 1px solid var(--border-hair);
   border-radius: var(--radius-sm);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-variant-numeric: tabular-nums;
 }
 .fm-hist li.is-today { background: var(--brand-wash); border-color: var(--border-focus); }
-.fm-hist-day { font-size: var(--t-nano); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.fm-hist-day { font-size: var(--t-nano); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 .fm-hist-num { font-size: var(--t-micro); color: var(--ink-muted); }
 .fm-hist li.has-words .fm-hist-num,
 .fm-hist li.is-today .fm-hist-num { color: var(--ink); }
@@ -379,7 +379,7 @@ html.fm-on #screenplay { width: 100%; box-sizing: border-box; }
 
 .fm-hist-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s1) var(--s3); }
 .fm-week {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
   color: var(--warn-deep);

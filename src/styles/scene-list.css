@@ -81,7 +81,7 @@ section#scenes .bd-breakdown { gap: 0; }
   font: inherit;
   font-size: var(--t-small);
 }
-.bd-sl-filter { font-family: var(--f-mono); font-size: var(--t-micro); }
+.bd-sl-filter { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); }
 .bd-sl-search:focus-visible, .bd-sl-filter:focus-visible { border-color: var(--accent); outline: none; }
 
 /* ---- header + rows -------------------------------------------- */
@@ -287,8 +287,8 @@ body.bd-sl-is-dragging .bd-sl-grip { cursor: grabbing; }
   padding: var(--s1) var(--s3);
   background: var(--panel); color: var(--panel-ink);
   border-radius: var(--sk-btn-radius, var(--sk-radius, var(--radius)));
-  font-family: var(--f-mono); font-size: var(--t-micro); font-weight: 700;
-  letter-spacing: var(--track-label); text-transform: uppercase; white-space: nowrap;
+  font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); font-weight: 700;
+  letter-spacing: 0; text-transform: none; white-space: nowrap;
   pointer-events: none;
 }
 
@@ -297,7 +297,7 @@ body.bd-sl-is-dragging .bd-sl-grip { cursor: grabbing; }
 .bd-kpis { grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); }
 .bd-stat-note {
   font-style: normal;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--ink-muted);
   overflow-wrap: anywhere;
@@ -322,7 +322,7 @@ body.bd-sl-is-dragging .bd-sl-grip { cursor: grabbing; }
   color: var(--warn-deep);
   font-size: var(--t-small);
 }
-.bd-cue-dur { margin-left: auto; font-family: var(--f-mono); font-size: var(--t-micro); }
+.bd-cue-dur { margin-left: auto; font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); }
 .bd-attach { flex: 0 0 auto; }
 
 /* ---- element chips: the kit chip + a 3px category rule ---------
@@ -385,7 +385,7 @@ button.k-chip.bd-sug:focus-visible { outline: var(--focus); outline-offset: 1px;
 .bd-card-cast { min-width: 0; font-size: var(--t-micro); color: var(--ink-muted); overflow-wrap: anywhere; }
 .bd-card-open {
   justify-self: start;
-  font: inherit; font-size: var(--t-micro); font-weight: 600; letter-spacing: var(--track-label); text-transform: uppercase;
+  font: inherit; font-size: var(--t-micro); font-weight: 600; letter-spacing: 0; text-transform: none;
   color: var(--accent-deep); background: none; border: 0; padding: var(--s1) 0; cursor: pointer;
 }
 .bd-card-open:hover { text-decoration: underline; text-underline-offset: 2px; }

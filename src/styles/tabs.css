@@ -187,9 +187,9 @@
   padding: 0 var(--s1);
   border: 1px solid currentColor;
   border-radius: var(--radius-pill);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--accent-deep);
 }
 .tabs-tab[aria-selected="true"] .tabs-flag { color: currentColor; }

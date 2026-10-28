@@ -265,17 +265,17 @@
   background-color: var(--brand-wash);
 }
 .bud-est .calc-grand .lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-body);
 }
 .bud-est .calc-grand .total {
   display: grid;
   justify-items: end;
   gap: var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-2xl);
   font-weight: 600;
   font-style: normal;
@@ -285,7 +285,7 @@
   overflow-wrap: anywhere;
 }
 .bud-est .calc-grand .total span {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
   font-weight: 500;
   letter-spacing: 0;
@@ -326,7 +326,7 @@
   border-radius: var(--sk-radius);
 }
 .bud-aside-name { font-size: var(--t-ui); font-weight: 500; color: var(--ink); overflow-wrap: anywhere; }
-.bud-aside-sub { grid-column: 1; font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); }
+.bud-aside-sub { grid-column: 1; font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); color: var(--ink-muted); }
 .bud-aside-amt { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: var(--t-ui); font-weight: 600; color: var(--ink); white-space: nowrap; }
 .bud-aside .k-empty { padding: var(--s5) var(--s3); }
 
@@ -559,7 +559,7 @@ p.cx-hint { margin: 0; }
 /* ---- documents: top sheet, settlement ------------------------------- */
 .cx-doc { display: grid; gap: var(--s3); min-width: 0; }
 .cx-doc-eyebrow { margin: 0; font-family: var(--f-body); font-size: var(--t-micro); letter-spacing: 0; text-transform: none; color: var(--brand-deep); }
-.cx-doc-title { margin: 0; font-family: var(--f-mono); font-size: var(--t-3xl); font-weight: 600; letter-spacing: -0.02em; color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.cx-doc-title { margin: 0; font-family: var(--f-body); font-size: var(--t-3xl); font-weight: 600; letter-spacing: -0.02em; color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .cx-doc-sub { margin: 0; color: var(--ink-muted); font-size: var(--t-small); }
 .cx-sign { margin-top: var(--s6); display: grid; gap: var(--s6); }
 .cx-sign p { margin: 0; }

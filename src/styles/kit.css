@@ -24,7 +24,7 @@
 
 /* ---- utilities ------------------------------------------------ */
 .k-mono, .k-num {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
 }
@@ -38,7 +38,7 @@
   font-size: var(--sk-eyebrow-size, var(--t-micro));
   font-weight: 600;
   letter-spacing: 0;
-  text-transform: var(--sk-eyebrow-transform, uppercase);
+  text-transform: var(--sk-eyebrow-transform, none);
   color: var(--accent-deep);
 }
 .k-eyebrow .k-eyebrow-sep { color: var(--ink-muted); }
@@ -119,8 +119,11 @@
   border: 1px solid var(--border-hair);
   border-radius: var(--sk-btn-radius, var(--radius));
 }
-.k-btn-group .k-btn { border-color: transparent; background: transparent; }
-.k-btn-group .k-btn:hover { background: var(--surface-hover); }
+/* Only the plain buttons go flat: a primary inside a group keeps its
+   fill (the grip used to clear it, so the view's one action read as a
+   ghost). */
+.k-btn-group .k-btn:not(.k-btn--primary):not(.k-btn--danger) { border-color: transparent; background: transparent; }
+.k-btn-group .k-btn:not(.k-btn--primary):not(.k-btn--danger):hover { background: var(--surface-hover); }
 
 /* ============================================================
    BADGE — status pills, INT/EXT, time of day, DOOD codes
@@ -153,7 +156,7 @@
 .k-badge--solid  { background: var(--brand); border-color: var(--brand); color: var(--brand-on); }
 /* A tag is rectangular: an identifier (INT / EXT, a scene number),
    not a state. */
-.k-badge--tag { border-radius: var(--radius-sm); font-family: var(--f-mono); font-size: 0.625rem; letter-spacing: .04em; text-transform: uppercase; }
+.k-badge--tag { border-radius: var(--radius-sm); font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: 0.625rem; letter-spacing: 0; text-transform: none; }
 
 /* Time of day, through the .hue-day / -night / -dusk / -dawn classes. */
 .k-badge--tod {
@@ -179,10 +182,10 @@
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--dood-empty);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: .02em;
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
 }
 .k-dood--sw { background: var(--dood-sw-bg); border-color: color-mix(in srgb, var(--dood-sw) 35%, transparent); color: var(--dood-sw-ink); }
@@ -213,7 +216,7 @@
 }
 .k-chip-dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--hue, currentColor); flex: none; }
 .k-chip-cat { font-family: var(--f-body); font-size: 0.625rem; letter-spacing: 0; text-transform: none; opacity: .9; }
-.k-chip-count { font-family: var(--f-mono); font-variant-numeric: tabular-nums; color: var(--ink-muted); }
+.k-chip-count { font-family: var(--f-body); font-variant-numeric: tabular-nums; color: var(--ink-muted); }
 .k-chip-x {
   display: inline-flex; align-items: center; justify-content: center;
   width: 16px; height: 16px; margin-right: calc(-1 * var(--s1));
@@ -261,12 +264,12 @@
    landing tagline) the editorial serif italic appears. */
 .k-project-title {
   margin: 0;
-  font-family: var(--f-editorial);
+  font-family: var(--f-display);
   font-style: normal;
   font-weight: 700;
   font-size: var(--t-2xl);
   line-height: 1.15;
-  letter-spacing: 0;
+  letter-spacing: var(--track-tight);
   color: var(--ink);
 }
 
@@ -334,7 +337,7 @@
 }
 .k-panel-head .k-eyebrow { color: var(--ink-body); }
 .k-panel-title { margin: 0; font-family: var(--f-display); font-size: var(--t-base); font-weight: 700; letter-spacing: var(--track-tight); color: var(--ink); }
-.k-panel-meta { margin-left: auto; display: flex; align-items: center; gap: var(--s2); font-family: var(--f-mono); font-size: var(--t-micro); color: var(--brand-deep); }
+.k-panel-meta { margin-left: auto; display: flex; align-items: center; gap: var(--s2); font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); color: var(--brand-deep); }
 .k-panel-body { padding: var(--sk-card-pad); }
 .k-panel--flush .k-panel-body { padding: 0; }
 .k-panel-foot { display: flex; justify-content: flex-end; gap: var(--s2); padding: var(--s3) var(--s5); border-top: 1px solid var(--border-hair); background: var(--surface-rail); }
@@ -443,7 +446,7 @@
   font-size: var(--t-ui);
 }
 .k-input::placeholder, .k-textarea::placeholder { color: var(--ink-muted); }
-.k-control--mono .k-input { font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-weight: 500; letter-spacing: .02em; }
+.k-control--mono .k-input { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-weight: 500; letter-spacing: 0; }
 .k-control--textarea { height: auto; align-items: stretch; }
 .k-textarea { min-height: 88px; padding: var(--s2) var(--s3); resize: vertical; line-height: var(--lh-body); }
 .k-addon,
@@ -578,9 +581,9 @@
   border-radius: var(--radius-sm);
   background: var(--hue-wash, transparent);
   color: var(--hue-deep, var(--ink-body));
-  font-family: var(--f-mono); font-size: var(--t-micro); font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); font-weight: 600; letter-spacing: 0; text-transform: none;
 }
-.k-strip-sc { font-family: var(--f-mono); font-size: var(--t-tiny); font-weight: 600; color: var(--ink); white-space: nowrap; }
+.k-strip-sc { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-tiny); font-weight: 600; color: var(--ink); white-space: nowrap; }
 .k-strip-slug { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-ui); font-weight: 600; color: var(--ink); }
 .k-strip-meta { display: flex; gap: var(--s4); font-family: var(--f-body); font-size: var(--t-micro); letter-spacing: 0; text-transform: none; color: var(--ink-muted); white-space: nowrap; }
 .k-strip-meta b { font-weight: 600; color: var(--hue-deep, var(--ink)); }
@@ -711,7 +714,7 @@
 a.k-stage:hover { border-color: var(--border-strong); border-top-color: var(--hue, var(--accent-primary)); box-shadow: var(--sk-card-shadow-hover, none); }
 a.k-stage:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
 .k-stage-top { display: flex; align-items: center; gap: var(--s2); }
-.k-stage-num { font-family: var(--f-mono); font-size: var(--t-micro); font-weight: 600; letter-spacing: var(--track-label); color: var(--hue-deep, var(--brand-deep)); }
+.k-stage-num { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); font-weight: 600; letter-spacing: 0; color: var(--hue-deep, var(--brand-deep)); }
 .k-stage-top .k-badge { margin-left: auto; }
 .k-stage-title { margin: 0; font-family: var(--f-display); font-size: var(--t-lg); font-weight: 700; letter-spacing: var(--track-tight); color: var(--ink); }
 .k-stage-body { margin: 0; font-size: var(--t-tiny); line-height: var(--lh-body); color: var(--ink-muted); }
@@ -823,7 +826,7 @@ a.k-stage:focus-visible { outline: var(--focus); outline-offset: var(--focus-off
   border-radius: var(--radius-sm);
   background: var(--warn-wash);
   color: var(--warn-deep);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: .92em;
 }
 .dlg.dlg.k-modal .dlg-check { margin: 0; }
@@ -856,7 +859,7 @@ a.k-stage:focus-visible { outline: var(--focus); outline-offset: var(--focus-off
   font-size: var(--t-ui);
   color: var(--ink);
 }
-.dlg.dlg.k-modal .k-confirm .dlg-field { font-family: var(--f-mono); font-weight: 600; letter-spacing: .06em; }
+.dlg.dlg.k-modal .k-confirm .dlg-field { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: .06em; }
 .dlg.dlg.k-modal .k-confirm-ok { display: none; color: var(--ok-deep); }
 .dlg.dlg.k-modal .k-confirm.is-verified .k-control { border-color: var(--ok-line); }
 .dlg.dlg.k-modal .k-confirm.is-verified .k-confirm-ok { display: inline-flex; }

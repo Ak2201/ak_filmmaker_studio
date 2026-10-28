@@ -59,7 +59,7 @@
   min-width: 2.2em;
   padding: 1px var(--s2);
   text-align: center;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
   border-radius: var(--radius-sm);
@@ -93,7 +93,7 @@
 }
 .bdx-batch-pick { display: flex; align-items: center; gap: var(--s2); min-height: var(--h-compact); padding: 0 var(--s2); font-size: var(--t-tiny); color: var(--ink-body); cursor: pointer; border-radius: var(--radius-sm); }
 .bdx-batch-pick:hover { background: var(--surface-hover); }
-.bdx-batch-num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; color: var(--ink); min-width: 2.4em; }
+.bdx-batch-num { font-family: var(--f-body); font-variant-numeric: tabular-nums; color: var(--ink); min-width: 2.4em; }
 .bdx-batch-slug { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bdx-batch-name {
   box-sizing: border-box; width: 100%; height: var(--h-field); padding: 0 var(--s3);
@@ -140,7 +140,7 @@ html.bdx-locked, html.bdx-locked body { overflow: hidden; }
   .bdx-pchip:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 1px; }
   .bdx-pchip[aria-pressed="true"] { background: var(--brand-wash); color: var(--ink); border-color: var(--border-focus); border-left-color: var(--hue, var(--border-focus)); }
   .bdx-pchip-n {
-    font-family: var(--f-mono);
+    font-family: var(--f-body);
     font-size: var(--t-micro);
     font-variant-numeric: tabular-nums;
     color: var(--hue-deep, var(--ink-muted));

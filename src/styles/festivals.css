@@ -86,10 +86,10 @@
   color: var(--ink-body);
 }
 .ft-alert-tag {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   white-space: nowrap;
   padding-top: 0.15em;
 }
@@ -124,9 +124,9 @@
   overflow-wrap: anywhere;
 }
 .ft-stat-l {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .ft-stat.urgent .ft-stat-n { color: var(--danger); }
@@ -134,7 +134,7 @@
 
 .ft-next {
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
   color: var(--ink-body);
 }
@@ -202,10 +202,10 @@
 }
 
 .ft-flag {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   padding: 0.2em 0.5em;
   white-space: nowrap;
   color: var(--warn-deep);
@@ -216,7 +216,7 @@
 
 .ft-del {
   flex: 0 0 auto;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
   line-height: 1;
   padding: var(--s2);
@@ -249,9 +249,9 @@
 }
 .ft-field.wide { grid-column: span 2; }
 .ft-field-l {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 
@@ -290,7 +290,7 @@
   gap: 0.25em;
 }
 .ft-mark {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   line-height: var(--lh-snug);
   color: var(--ink-muted);
@@ -329,10 +329,10 @@
 }
 .fest-check-tag {
   justify-self: start;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   padding: 0.15em 0.5em;
   color: var(--ink-muted);
   background: var(--paper-sunk);
@@ -356,7 +356,7 @@
   padding-left: var(--s4);
   display: grid;
   gap: 0.15em;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--ink-body);
 }
@@ -367,10 +367,10 @@
 /* ---- the catalogue card's one new control ------------------ */
 .fest-track {
   margin-top: var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   padding: var(--s2) var(--s3);
   cursor: pointer;
   color: var(--accent-deep);

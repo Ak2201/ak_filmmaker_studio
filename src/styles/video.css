@@ -2,7 +2,7 @@
 .vid-slot[hidden] { display: none; }
 .vid-block { margin: var(--s4) 0; }
 .vid-label {
-  font-family: var(--f-mono, inherit);
+  font-family: var(--f-body, inherit); font-variant-numeric: tabular-nums;
   font-size: var(--t-xs, .75rem);
   letter-spacing: 0;
   text-transform: none;

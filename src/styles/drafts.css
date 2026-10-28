@@ -60,7 +60,7 @@ main.dr-main {
 .dr-name { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: baseline; }
 .dr-name strong { font-family: var(--f-display); font-size: var(--t-lg); color: var(--ink); }
 .dr-tag, .dr-colour { font-size: var(--t-xs); color: var(--ink-muted); }
-.dr-tag { color: var(--accent-deep); font-weight: 700; text-transform: uppercase; letter-spacing: var(--track-wide, .06em); }
+.dr-tag { color: var(--accent-deep); font-weight: 700; text-transform: none; letter-spacing: 0; }
 .dr-meta { color: var(--ink-muted); font-size: var(--t-sm); }
 .dr-note { margin-top: var(--s1); color: var(--ink); overflow-wrap: anywhere; }
 /* The actions sit under the name and meta, in the text column: three

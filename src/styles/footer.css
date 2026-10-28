@@ -37,8 +37,8 @@
   content: "Legal";
   color: var(--ink-muted);
   font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .site-foot a {

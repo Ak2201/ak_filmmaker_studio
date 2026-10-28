@@ -76,7 +76,7 @@
      the fold; a skin that wants the book back sets --sk-cover-min. */
   min-height: var(--sk-cover-min);
   overflow: hidden;
-  background: linear-gradient(160deg, var(--paper) 0%, var(--paper-sunk) 100%);
+  background: var(--surface-card);
   border-bottom: 1px solid var(--rule);
 }
 .hero { justify-content: flex-start; }
@@ -102,9 +102,8 @@
   content: "";
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(var(--ink) 0.7px, transparent 0.7px);
-  background-size: var(--s6) var(--s6);
-  opacity: .04;
+  /* the dotted texture was the Swiss-era cover; the 8B card is flat */
+  display: none;
   pointer-events: none;
 }
 .master-cover > *,
@@ -145,9 +144,9 @@
   color: var(--library-deep);
   /* The only one that stays tracked caps: it is a stamp, not a
      sentence, and it is the shorter of the two. */
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
 }
 /* Left-aligned, not space-between: two pills pushed to opposite ends
    of a 1280px row read as two unrelated things. */
@@ -209,9 +208,9 @@
   display: inline-block;
   padding-top: var(--s3);
   border-top: 1px solid var(--rule);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-wide);
+  letter-spacing: 0;
   color: var(--ink);
 }
 .master-byline span,
@@ -231,9 +230,9 @@
   display: inline-block;
   padding: var(--s2) var(--s3);
   border: 1px solid var(--ink);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink);
 }
 .vol-stamp.gold,
@@ -262,9 +261,9 @@
 .meta-field label {
   display: block;
   margin-bottom: var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--accent-deep);
 }
 .meta-field input,
@@ -294,9 +293,9 @@
 }
 .toc-item:hover { transform: translateX(calc(var(--s1) * var(--motion))); }
 .toc-item .num {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--sk-slab-accent);
 }
 .toc-item .title {
@@ -355,9 +354,9 @@
 .section-head h2 em.s { color: var(--shorts-deep); }
 .section-head h2 em.g { color: var(--library-deep); }
 .section-head .right {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   text-align: right;
   color: var(--ink-muted);
 }
@@ -392,7 +391,7 @@
   position: absolute;
   left: 0;
   top: var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
   font-weight: 600;
   color: var(--accent-deep);
@@ -432,9 +431,9 @@
 }
 .interlude .arrow {
   margin-bottom: var(--s5);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
-  letter-spacing: var(--track-wide);
+  letter-spacing: 0;
   color: var(--sk-slab-accent);
 }
 
@@ -454,7 +453,7 @@
   border-bottom: 1px solid var(--rule);
 }
 .step-num {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--sk-stepnum-size);
   font-weight: 800;
   line-height: 1;
@@ -484,9 +483,9 @@
 .step-time,
 .step-time-tag,
 .step-badge {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .step-time,
@@ -494,7 +493,7 @@
   padding: var(--s1) var(--s3);
   border: 1px solid var(--rule);
   border-radius: var(--sk-radius, var(--radius));
-  text-transform: uppercase;
+  text-transform: none;
 }
 .step-badge.in-progress,
 .step-badge.partial { color: var(--warn-deep); border-color: var(--warn); background: var(--warn-wash); }
@@ -526,7 +525,7 @@
   border-radius: var(--sk-radius, var(--radius));
   color: var(--ink-body);
   text-decoration: none;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   transition: color var(--speed) var(--ease), border-color var(--speed) var(--ease);
 }
@@ -582,7 +581,7 @@
   padding: 2px var(--s2);
   background: var(--sk-slab-fill);
   border-radius: var(--sk-field-radius, var(--radius));
-  font-family: var(--f-code);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
   font-weight: 400;
   color: var(--sk-slab-accent);
@@ -636,10 +635,10 @@
 .tanglish::before {
   content: "TAMIL · ";
   margin-right: var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-style: normal;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--accent-deep);
 }
 /* The same gloss on an ink ground. */
@@ -678,9 +677,9 @@
   font-weight: 700;
 }
 .vs-card h4 {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-style: normal;
   color: var(--accent-deep);
 }
@@ -748,7 +747,7 @@ select.field-input {
   background: var(--brand);
   color: var(--brand-on);
   border-radius: var(--radius-pill);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   vertical-align: middle;
 }
@@ -808,7 +807,7 @@ select.field-input {
   background: var(--accent);
   color: var(--accent-on);
   border-radius: 50%;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
   font-weight: 800;
 }
@@ -904,9 +903,9 @@ select.field-input {
 }
 .film-card .director {
   margin-bottom: var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   /* Text on a light card takes the DEEP accent, not the base hue.
      Amber at #d99512 on white is 2.15:1 — the base hue is chosen to
      read as a fill, and a fill colour is rarely a text colour. */
@@ -917,7 +916,7 @@ select.field-input {
   padding: 3px var(--s2);
   background: var(--accent-wash);
   color: var(--accent-deep);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
 }
 .film-card .lesson,
@@ -1016,9 +1015,9 @@ select.field-input {
   font-style: var(--sk-card-h-style);
 }
 .director-card .era {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ok-deep);
 }
 .director-card .traits {
@@ -1051,7 +1050,7 @@ select.field-input {
   margin-top: var(--s2);
   padding-top: var(--s2);
   border-top: 1px dashed var(--rule-hair);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--ink-muted);
 }
@@ -1173,7 +1172,7 @@ select.field-input {
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: right;
-  font-style: italic;
+  font-style: normal;
   font-weight: 600;
   font-size: var(--t-small);
   color: var(--ink);
@@ -1187,12 +1186,11 @@ select.field-input {
 }
 .progress-fill-bar {
   height: 100%;
-  background: var(--feature);
+  /* ONE FILL: progress is the brand; the door's hue is its top rule */
+  background: var(--brand);
   border-radius: inherit;
   transition: width var(--speed-slow) var(--ease);
 }
-.door.shorts .progress-fill-bar  { background: var(--shorts); }
-.door.library .progress-fill-bar { background: var(--library); }
 
 .door-quicklinks {
   display: flex;
@@ -1211,7 +1209,7 @@ select.field-input {
   border-radius: var(--sk-radius, var(--radius));
   color: var(--ink-muted);
   text-decoration: none;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 600;
   transition: color var(--speed) var(--ease), border-color var(--speed) var(--ease);
@@ -1226,25 +1224,21 @@ select.field-input {
   align-items: center;
   margin-top: auto;
   padding: var(--s3) var(--s4);
-  background: var(--feature);
-  /* The fill's own on-colour, not the accent's. Same reason as the
-     door numerals: five hues take near-white, amber does not, and in
-     Desk this button was white on #d99512 at 2.4:1. */
-  color: var(--feature-on);
-  border-radius: var(--sk-radius, var(--radius));
-  font-family: var(--f-mono);
+  /* ONE FILL (28 Oct 2026): the door's action is the brand button on
+     every door; the hue stays a mark (the door's top rule, the dashes).
+     A phase hue as a control fill was the Swiss-era look. */
+  background: var(--brand);
+  color: var(--brand-on);
+  border-radius: var(--radius-pill);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 700;
   transition: background var(--speed-slow) var(--ease);
 }
 .door-cta .arrow { transition: transform var(--speed-slow) var(--ease); }
-.door:hover .door-cta { background: var(--feature-deep); }
+.door:hover .door-cta { background: var(--brand-hover); }
 .door:hover .door-cta .arrow { transform: translateX(calc(var(--s1) * var(--motion))); }
-.door.shorts .door-cta { background: var(--shorts); color: var(--shorts-on); }
-.door.shorts:hover .door-cta { background: var(--shorts-deep); }
-.door.library .door-cta { background: var(--library); color: var(--library-on); }
-.door.library:hover .door-cta { background: var(--library-deep); }
 
 /* ------------------------------------------------------------
    START CARDS & TOOL CARDS
@@ -1263,9 +1257,9 @@ select.field-input {
 /* The hue rule and its three colours: modules.css §3. */
 .start-card .question,
 .start-card .arrow {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 700;
   color: var(--library-deep);
 }
@@ -1284,7 +1278,7 @@ select.field-input {
   background: var(--library-wash);
   border-radius: var(--sk-radius, var(--radius));
   text-align: center;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-lg);
   font-weight: 800;
   color: var(--library-deep);
@@ -1308,9 +1302,9 @@ select.field-input {
 .resume-card .lab,
 .data-card .lab {
   margin-bottom: var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 700;
   color: var(--sk-slab-accent);
 }
@@ -1341,9 +1335,9 @@ select.field-input {
   color: var(--accent-on);
   border-radius: var(--sk-radius, var(--radius));
   text-decoration: none;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 700;
   transition: transform var(--speed) var(--ease), background var(--speed) var(--ease);
 }
@@ -1375,9 +1369,9 @@ select.field-input {
   color: var(--sk-slab-ink);
   border: 1px solid var(--sk-slab-hair);
   border-radius: var(--sk-btn-radius, var(--radius));
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   cursor: pointer;
   transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
@@ -1417,7 +1411,7 @@ select.field-input {
 .index-col.library .toc-list a:hover { color: var(--library-deep); border-left-color: var(--library); }
 .toc-list .num {
   min-width: 22px;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 600;
   color: var(--ink-muted);
@@ -1425,7 +1419,7 @@ select.field-input {
 }
 .toc-list .check {
   margin-left: auto;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
   color: var(--feature-deep);
@@ -1456,12 +1450,12 @@ select.field-input {
 .activity-row:hover { background: var(--paper-sunk); }
 .activity-row .when,
 .activity-row .where {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
-.activity-row .where { text-transform: uppercase; font-weight: 700; }
+.activity-row .where { text-transform: none; font-weight: 700; }
 .activity-row .where.feat   { color: var(--feature-deep); }
 .activity-row .where.short  { color: var(--shorts-deep); }
 .activity-row .where.lib,
@@ -1501,14 +1495,14 @@ select.field-input {
   margin-top: var(--s4);
   padding-bottom: var(--s2);
   border-bottom: 1px solid var(--accent);
-  letter-spacing: var(--track-wide);
+  letter-spacing: 0;
 }
 .gloss-cat:first-child { margin-top: 0; }
 .gloss-item dt {
   margin-bottom: var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   color: var(--accent-deep);
 }
@@ -1535,18 +1529,18 @@ select.field-input {
 .final-page .quote .library { color: var(--library-deep); font-weight: 600; }
 .final-page .signature {
   margin-top: var(--s6);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-wide);
+  letter-spacing: 0;
   font-weight: 700;
   color: var(--sk-slab-accent);
 }
 .final-page .signature span { color: var(--sk-slab-ink); }
 .final-page .vol {
   margin-top: var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-wide);
+  letter-spacing: 0;
   color: var(--accent-deep);
 }
 .file-list {
@@ -1555,7 +1549,7 @@ select.field-input {
   padding-top: var(--s6);
   border-top: 1px solid var(--sk-slab-hair);
   text-align: left;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   line-height: 1.8;
   color: var(--sk-slab-muted);

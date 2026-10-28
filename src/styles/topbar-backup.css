@@ -2,7 +2,7 @@
    is CORE (src/ui/topbar-backup.js), so it ships on every page. */
 .tb-note {
   padding: var(--s2) var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--panel-muted);
   border-bottom: 1px solid var(--panel-hair);

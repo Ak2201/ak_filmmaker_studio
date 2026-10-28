@@ -24,7 +24,7 @@
 .st-heat-act { stroke: var(--rule); stroke-width: 1px; vector-effect: non-scaling-stroke; }
 .st-heat-slack { fill: var(--warn-wash); }
 .st-heat-acts { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: var(--s1); }
-.st-heat-acts span { font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--ink-muted); text-align: center; }
+.st-heat-acts span { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-tiny); color: var(--ink-muted); text-align: center; }
 .st-heat-cap { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); margin-top: var(--s2); font-size: var(--t-small); color: var(--ink-body); }
 .st-key { display: inline-flex; align-items: center; gap: var(--s1); }
 .st-key::before { content: ''; display: inline-block; width: 20px; height: 0; }

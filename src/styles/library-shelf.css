@@ -258,7 +258,7 @@ main:has(> .lib-sec) > .tabs { margin-inline: var(--gutter); }
 .lib-split > .lib-terms { padding-inline: 0; border-bottom: 0; }
 .lib-terms-filter { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s3); margin-bottom: var(--s5); }
 .lib-terms-label { font-family: var(--f-body); font-size: var(--t-micro); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
-.lib-terms-count { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.lib-terms-count { font-family: var(--f-body); font-size: var(--t-micro); letter-spacing: 0; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
 .lib-terms-wait, .lib-terms-none { margin: var(--s4) 0 0; color: var(--ink-muted); font-size: var(--t-small); }
 .lib-stage + .lib-stage { margin-top: var(--s7); }
 .lib-stage-title {
@@ -292,9 +292,9 @@ main:has(> .lib-sec) > .tabs { margin-inline: var(--gutter); }
 .lib-term:has(> details[open]) { grid-column: 1 / -1; }
 .lib-term-name {
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 700;
   color: var(--accent-deep);
   overflow-wrap: anywhere;
@@ -390,10 +390,10 @@ main:has(> .lib-sec) > .tabs { margin-inline: var(--gutter); }
   border-radius: var(--radius-pill);
   border: var(--sk-card-line-w) solid var(--sk-card-line);
   background: var(--paper-raised);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink);
 }
 .cover-pill-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--library); }
@@ -419,12 +419,12 @@ main:has(> .lib-sec) > .tabs { margin-inline: var(--gutter); }
   }
 }
 .cover .toc-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-bottom: var(--s2); }
-.cover .toc-item .num { font-weight: 600; color: var(--library-deep); text-transform: uppercase; }
+.cover .toc-item .num { font-weight: 600; color: var(--library-deep); text-transform: none; }
 .cover .toc-go { font-size: var(--t-lg); line-height: 1; color: var(--ink-muted); }
 .cover .toc-item:hover .toc-go { color: var(--library-deep); }
 .cover .toc-item .title { margin-top: 0; font-size: var(--t-xl); font-weight: 600; color: var(--ink); }
 .cover .toc-item .desc { margin-top: 0; font-size: var(--t-small); line-height: var(--lh-body); color: var(--ink-body); display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.cover .toc-foot { margin-top: auto; padding-top: var(--s4); border-top: var(--sk-card-line-w) solid var(--sk-card-line); font-family: var(--f-mono); font-size: var(--t-micro); font-weight: 600; letter-spacing: 0.04em; color: var(--library-deep); }
+.cover .toc-foot { margin-top: auto; padding-top: var(--s4); border-top: var(--sk-card-line-w) solid var(--sk-card-line); font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); font-weight: 600; letter-spacing: 0; color: var(--library-deep); }
 @media (max-width: 719px) { .cover .toc-item { padding: var(--s4); } }
 /* the ring behind the old cover title would sit under the shelf cards */
 .cover::after { display: none; }

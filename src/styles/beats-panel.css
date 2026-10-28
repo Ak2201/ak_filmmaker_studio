@@ -131,7 +131,7 @@
 .bp-marks { color: var(--ink-muted); font-size: .8em; }
 .bp-page {
   flex: none;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
   color: var(--ink-muted);

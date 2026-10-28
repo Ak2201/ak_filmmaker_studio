@@ -93,7 +93,7 @@
   flex-wrap: wrap;
   gap: var(--s2);
   align-items: center;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--ink-muted);
 }
@@ -106,8 +106,8 @@
   border-radius: var(--radius-pill);
   font-size: var(--t-nano);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .sn-badge.is-open { background: var(--brand-wash); border-color: var(--info-line); color: var(--brand-deep); }
 .sn-badge.is-private { color: var(--ink-muted); }

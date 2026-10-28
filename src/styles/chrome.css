@@ -227,7 +227,7 @@ a:focus-visible { outline-offset: 3px; }
 .btn.danger:focus-visible {
   background: var(--danger);
   border-color: var(--danger);
-  color: var(--chrome);
+  color: var(--danger-on);
 }
 
 /* `.gold` is the chrome's emphatic link. The name is older than the

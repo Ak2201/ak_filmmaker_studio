@@ -216,7 +216,7 @@
 }
 .wr-imp-mode.is-danger { border-color: var(--danger); color: var(--danger); }
 .wr-imp-mode.is-on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
-.wr-imp-mode.is-on.is-danger { background: var(--danger); border-color: var(--danger); color: var(--on-fill); }
+.wr-imp-mode.is-on.is-danger { background: var(--danger); border-color: var(--danger); color: var(--danger-on); }
 
 .wr-imp-note { margin: 0; }
 .wr-imp-safe {

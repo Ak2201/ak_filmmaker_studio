@@ -19,7 +19,7 @@ import { h, delegate } from '../lib/dom.js';
 import * as K from '../ui/kit/index.js';
 
 try { document.fonts.ready.then(() => document.documentElement.classList.add('sym-ready')); } catch (e) { document.documentElement.classList.add('sym-ready'); }
-document.documentElement.setAttribute('data-theme', 'dark');
+document.documentElement.setAttribute('data-theme', 'studio');
 
 const app = document.getElementById('app');
 const sec = (n, title, meta, ...body) => h('section.kit-sec', { id: 's' + n }, [

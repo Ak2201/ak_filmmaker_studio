@@ -283,40 +283,39 @@ StudioUI.notify = StudioUI.toastInfo;
 // ============================================================
 // THEME — ONE, dark (owner, 14 Oct 2026)
 // ============================================================
-/* The studio is DARK-ONLY. paper (light) and the Dark/Light toggle are
-   gone; bare :root in tokens.css carries the one palette.
+/* ONE PALETTE, TWO SURFACES (owner, 28 Oct 2026; was dark-only from
+   14 Oct). Bare :root in tokens.css carries the light work surface and
+   a class-scoped dark block carries the chrome; there is no toggle.
 
    THE STORAGE KEY STAYS READABLE AND IS NEVER DELETED OR WRITTEN.
    `fms_studio_theme_v1` is part of the storage contract and lives in
-   people's browsers and backups; a stored 'paper' simply renders dark
-   now. Nothing here writes it any more, so the verify idle-write check
-   has one less writer to think about.
+   people's browsers and backups; a stored 'paper' or 'ink' simply
+   renders the one palette. Nothing here writes it, so the verify
+   idle-write check has one less writer to think about.
 
    The "four places" rule (THEME_ORDER's first entry, currentTheme()'s
-   fallback, loadTheme()'s fallback, applyTheme()'s `|| 'dark'`) has
-   collapsed to one value, and it still has to name the palette bare
-   :root carries. The API keeps its shape (themeOrder, currentTheme,
-   applyTheme, cycleTheme) so verify, the palette and the four legacy
-   pages keep working; with one theme, cycling is a no-op. */
+   fallback, loadTheme()'s fallback, applyTheme()'s stamp) is one value,
+   and it names the [data-theme] block tokens.css declares ('studio').
+   The API keeps its shape (themeOrder, currentTheme, applyTheme,
+   cycleTheme) so verify, the palette and the four legacy pages keep
+   working; with one theme, cycling is a no-op. */
 /* fms_studio_theme_v1 is read (never written) by chrome-prefs.js. */
-const THEME_ORDER = ['ink'];
-const THEME_LABEL = { ink: 'Dark' };
-const themeLabel = (t) => THEME_LABEL[t] || 'Dark';
+const THEME_ORDER = ['studio'];
+const THEME_LABEL = { studio: 'Studio' };
+const themeLabel = (t) => THEME_LABEL[t] || 'Studio';
 
-function currentTheme() { return 'ink'; }
+function currentTheme() { return 'studio'; }
 
 function applyTheme() {
   // Stamp the root FIRST; documentElement exists before <body>.
-  document.documentElement.setAttribute('data-theme', 'dark');
+  document.documentElement.setAttribute('data-theme', 'studio');
   if (!document.body) {
     document.addEventListener('DOMContentLoaded', () => applyTheme());
     return;
   }
-  /* hub.js, library.js, feature.js and short.js still read body.dark as
-     state; it is always set now. 'sepia' is removed for anyone carrying
-     it from a long-gone session. */
-  document.body.classList.remove('sepia');
-  document.body.classList.add('dark');
+  /* body.dark / body.sepia were theme state for four legacy pages; no
+     rule matches either, and neither is true any more. */
+  document.body.classList.remove('sepia', 'dark');
   // A legacy #darkBtn has nothing to switch to: remove it.
   const darkBtn = document.getElementById('darkBtn');
   if (darkBtn) darkBtn.remove();

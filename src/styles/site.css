@@ -1,0 +1,88 @@
+/* ============================================================
+   THE PUBLIC SITE'S UTILITIES — Tailwind v4, the public site ONLY
+   ------------------------------------------------------------
+   Compiled by @tailwindcss/vite (vite.config.js). Imported by the
+   public pages' entries (src/pages/marketing, start, pricing, company,
+   legal) and by NOTHING in the studio: the studio is styled through
+   tokens.css, skins/studio.css and the kit, and its ~41k lines of
+   unlayered CSS would beat layered utilities in every tie anyway.
+
+   source(none) switches automatic detection off, so the class scan
+   reads exactly the files named below and never a studio page. A new
+   public page whose markup uses utilities must be listed here.
+
+   Colours are TOKENS: @theme inline maps each utility colour to a
+   var(--token) from tokens.css, so a utility never carries a literal
+   and the palette is still edited in one file. Tailwind's own default
+   palette is switched off (--color-*: initial) so `bg-blue-500` is not
+   available to drift into the site.
+   ============================================================ */
+@import "tailwindcss" source(none);
+
+@source "../../start.html";
+@source "../../pricing.html";
+@source "../../product-*.html";
+@source "../../contact.html";
+@source "../../about.html";
+@source "../../guides.html";
+@source "../../guide-*.html";
+@source "../../compare-*.html";
+@source "../../trust.html";
+@source "../../404.html";
+@source "../../privacy.html";
+@source "../../terms.html";
+@source "../../refund.html";
+@source "../../scripts/make-marketing-pages.mjs";
+@source "../pages/marketing.js";
+@source "../pages/start.js";
+@source "../pages/pricing.js";
+@source "../pages/company.js";
+@source "../pages/legal.js";
+
+@theme inline {
+  --color-*: initial;
+  --color-ink: var(--ink);
+  --color-ink-body: var(--ink-body);
+  --color-ink-muted: var(--ink-muted);
+  --color-canvas: var(--surface-canvas);
+  --color-card: var(--surface-card);
+  --color-pale: var(--surface-rail);
+  --color-hover: var(--surface-hover);
+  --color-line: var(--border-default);
+  --color-line-strong: var(--border-strong);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-wash: var(--brand-wash);
+  --color-on-brand: var(--brand-on);
+  --color-night: var(--chrome);
+  --color-night-ink: var(--chrome-ink);
+  --color-night-muted: var(--chrome-muted);
+  --color-white: var(--surface-card);
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --font-*: initial;
+  --font-display: var(--face-display);
+  --font-sans: var(--face-sans);
+  --font-mono: var(--f-mono);
+
+  --radius-*: initial;
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --radius-full: var(--radius-pill);
+
+  --shadow-*: initial;
+  --shadow-card: var(--shadow-card-rest);
+  --shadow-lift: var(--shadow-card-hover);
+  --shadow-modal: var(--shadow-modal);
+
+  --tracking-tight: var(--track-tight);
+  --tracking-display: var(--track-display);
+  --tracking-label: var(--track-label);
+
+  --ease-out: var(--ease-out);
+}

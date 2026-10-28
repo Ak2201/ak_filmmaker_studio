@@ -222,6 +222,19 @@ try {
     /* NO FREE CARD (owner, 11 Oct 2026): a free TRIAL, not a free plan.
        The table's 'free' row is the no-plan state and is never drawn. */
     ok(p.length === 3 && p.map((x) => x[0]).join() === 'starter,indie,pro', 'three cards, the paid tiers in order, and no Free card: ' + p.map((x) => x[0]).join(', '));
+    /* INTERMEDIATE IS PROMOTED (owner, 28 Oct 2026): the badge, and its
+       button the only filled one; "Your plan" says plainly nothing is held. */
+    { const r = await page.evaluate(() => ({
+        rec: [...document.querySelectorAll('#plan .pl-card.is-recommended')].map((c) => c.dataset.plan),
+        badge: ((document.querySelector('#plan .pl-card[data-plan="indie"] .pl-tag') || {}).textContent || '').trim(),
+        primary: [...document.querySelectorAll('#plan .pl-card [data-plan-action="buy"].k-btn--primary')].map((b) => b.dataset.plan),
+        bullets: [...document.querySelectorAll('#plan .pl-card')].map((c) => c.querySelectorAll('.pl-check li').length),
+        summary: ((document.querySelector('#plan .pu-current') || {}).textContent || '')
+      }));
+      ok(r.rec.join() === 'indie' && r.badge === 'Recommended', 'Intermediate wears the "Recommended" badge: ' + JSON.stringify(r.rec));
+      ok(r.primary.join() === 'indie', 'and its button is the only filled primary in the row: ' + JSON.stringify(r.primary));
+      ok(r.bullets.every((n) => n > 0 && n <= 5), 'every card lists at most five bullets: ' + r.bullets.join('/'));
+      ok(/No plan yet/.test(r.summary), '"Your plan" says plainly that nothing is bought yet'); }
     ok(p.find((x) => x[0] === 'indie')[1] === '₹7,999', 'the card shows the table’s ONE price (₹7,999)');
     { const t = await page.textContent('#plan');
       ok(/a year/.test(t) && /≈ ₹21\.92 a day/.test(t) && /₹7,999 for a year · one payment, nothing renews/.test(t), 'and says it is a year, priced by the day (₹7,999 ÷ 365 ≈ ₹21.92), one payment that does not renew (§62 one-time)'); }
@@ -246,11 +259,13 @@ try {
     ok(pay && pay.period === 'year' && pay.ends_at === acc.plan_until && Date.parse(pay.ends_at) - Date.parse(pay.starts_at) === 365 * 86400e3, 'the payment records the year it bought');
     await page.waitForFunction(() => /Valid until/.test((document.querySelector('#plan .is-current') || {}).textContent || ''), null, { timeout: 8000 })
       .then(() => ok(true, 'the current card says until when it is valid'), () => ok(false, 'the current card says until when it is valid'));
-    await page.waitForFunction(() => /RENEW INTERMEDIATE — ADD A YEAR/.test((document.querySelector('#plan .is-current') || {}).textContent || ''), null, { timeout: 8000 })
+    { const t = (await page.textContent('#plan .pu-current .pu-facts').catch(() => '')) || '';
+      ok(/Active/.test(t) && /Valid from/.test(t) && /Valid until/.test(t) && /Days left\s*36[45] days/.test(t), '"Your plan" states status, valid from, valid until and days left: ' + t.replace(/\s+/g, ' ').slice(0, 160)); }
+    await page.waitForFunction(() => /Renew Intermediate — add a year/.test((document.querySelector('#plan .is-current') || {}).textContent || ''), null, { timeout: 8000 })
       .then(() => ok(true, 'and offers to renew: another year, bought by hand'), () => ok(false, 'and offers to renew: another year, bought by hand'));
     /* §52: renewing early stacks the new year onto the end of the one running */
     await page.click('#plan .is-current [data-plan-action="buy"]');
-    await page.waitForFunction(() => /RENEW INTERMEDIATE/.test((document.querySelector('#plan .is-current') || {}).textContent || ''), null, { timeout: 15000 }).catch(() => {});
+    await page.waitForFunction(() => /Renew Intermediate/.test((document.querySelector('#plan .is-current') || {}).textContent || ''), null, { timeout: 15000 }).catch(() => {});
     await page.waitForTimeout(500);
     { const paid = F.db.payments.filter((x) => x.plan_id === 'indie' && x.status === 'paid');
       const left = (Date.parse(acc.plan_until) - Date.now()) / 86400e3;
@@ -307,7 +322,7 @@ try {
        billing read before it (it did, and a second press charged a
        second year). The card holds on "confirming" until billing moves;
        a reload is a fresh look, and is how this proof buys again. */
-    ok(await page.$eval('.pl-card[data-plan="pro"] [data-plan-action="buy"]', (b) => b.disabled && /CONFIRMING/.test(b.textContent)).catch(() => false),
+    ok(await page.$eval('.pl-card[data-plan="pro"] [data-plan-action="buy"]', (b) => b.disabled && /confirming/i.test(b.textContent)).catch(() => false),
       'after an unconfirmed payment the Pro BUY stays held on "confirming"');
     await page.reload();
     await page.waitForSelector('.pl-card[data-plan="pro"] [data-plan-action="buy"]:not([disabled])', { timeout: 15000 }).catch(() => {});
@@ -619,7 +634,7 @@ try {
     const p = await prices(page);
     ok(p.find((x) => x[0] === 'indie')[1] === '₹5,000' && p.find((x) => x[0] === 'pro')[1] === '₹17,000', 'the cards price the DIFFERENCE from quote_order (Indie ₹5,000, Pro ₹17,000)');
     ok((await page.textContent('#plan .pl-card[data-plan="indie"] .pl-list')) === '₹7,999', 'with the list price struck beside it');
-    ok(/RENEW BASIC — ADD A YEAR/.test(await page.textContent('#plan .pl-card[data-plan="starter"]')), 'the plan already held offers a renewal, not a purchase of what you have');
+    ok(/Renew Basic — add a year/.test(await page.textContent('#plan .pl-card[data-plan="starter"]')), 'the plan already held offers a renewal, not a purchase of what you have');
     await page.click('.pl-card[data-plan="indie"] [data-plan-action="buy"]');
     await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'indie', null, { timeout: 15000 })
       .then(() => ok(true, 'the upgrade goes through and Indie is the current plan'), () => ok(false, 'the upgrade goes through and Indie is the current plan'));
@@ -1619,8 +1634,11 @@ try {
       ok(id === 'plPromoCode', 'after ' + code + ' focus stays in the code field (' + id + ')');
     }
     {
-      const fine = await page.textContent('.pl-promise');
-      ok(/where Indian law requires it/.test(fine), 'the fine print names all three refund exceptions');
+      /* purchase.html draws the fine print once, in its numbered "Read this
+         before you purchase" card (planCards({fine:false}), 28 Oct 2026);
+         invite.html keeps plan-cards.js's .pl-promise (test:billing). */
+      const fine = await page.textContent('#plan .pu-terms').catch(() => '');
+      ok(/Read this before you purchase/.test(fine) && /duplicate or erroneous charge/i.test(fine) && /Charged but not delivered/.test(fine) && /Where the law requires it/.test(fine) && !(await page.$('#plan .pl-fine')), 'the terms card names all three refund exceptions, and the fine print is not said a second time');
     }
     /* invite.html: the trial is offered, and the deck does not say "You are in". */
     await page.goto(BASE + 'invite.html');
@@ -1760,7 +1778,7 @@ try {
     await passWait(page, '#pass', /Try the whole studio for ₹49/, 'signed out, invite.html leads with the pass: "Try the whole studio for ₹49"');
     await passWait(page, '#pass [data-pass-timer]', /^3d \d\d:\d\d:\d\d$/, 'the countdown runs to the server deadline (3d hh:mm:ss)');
     await passWait(page, '#pass [data-pass-left]', /^500 of 500 left$/, 'and the cap line reads the real count: 500 of 500 left');
-    ok(/TRY IT FOR ₹49/.test(await page.textContent('#pass button').catch(() => '')) && (await page.getAttribute('#pass button', 'data-auth-action')) === 'google', 'TRY IT FOR ₹49 signs in first (Google)');
+    ok(/Try it for ₹49/.test(await page.textContent('#pass button').catch(() => '')) && (await page.getAttribute('#pass button', 'data-auth-action')) === 'google', 'Try it for ₹49 signs in first (Google)');
     ok(!(await page.$('#trial')), 'and no free trial is offered to the public');
     allErrors.push(...errors); await ctx.close();
   }
@@ -1911,7 +1929,8 @@ try {
     await waitRe(page, '#pass .pu-pass-terms', /^₹49 every 7 days · renews until you cancel · cancel anytime$/, 'auto-renew: the pass card reads "₹49 every 7 days · renews until you cancel · cancel anytime"');
     await shot(page, 'purchase-pass-renew');
     ok((await page.getAttribute('#pass .pu-pass-terms', 'data-offer-mode')) === 'renew', 'the mode on the card is the server\'s (renew)');
-    ok(/Cancel in Settings/.test(await page.textContent('#pass .pu-pass-p').catch(() => '')), 'and says where it is cancelled');
+    /* auto-pay is cancelled with the payment service, not in Settings (owner, 28 Oct 2026) */
+    ok(/Cancel it any time with Razorpay/.test(await page.textContent('#pass .pu-pass-p').catch(() => '')), 'and says where it is cancelled: with the payment service');
     await page.click('#pass [data-pu-action="buy-pass"]');
     await page.waitForFunction(() => /pass is on/i.test((document.querySelector('#pass .pl-status, #plan .pl-status') || {}).textContent || '') || /7-day pass/.test((document.querySelector('#plan .pu-current') || {}).textContent || ''), null, { timeout: 20000 })
       .then(() => ok(true, 'the pass is on after the charge lands'), () => ok(false, 'the pass is on after the charge lands'));
@@ -1959,7 +1978,7 @@ try {
     await waitRe(page, '.pl-card[data-plan="indie"] .pl-terms', /^₹7,999 every year · renews until you cancel · cancel anytime$/, 'auto-renew: the Intermediate card reads "₹7,999 every year · renews until you cancel · cancel anytime"');
     await shot(page, 'purchase-year-renew');
     ok(!(await page.$('#plan [data-plan-promo]')), 'no code box on auto-renew (a code has nowhere to ride on a subscription)');
-    ok(/BUY INTERMEDIATE$/.test((await page.textContent('.pl-card[data-plan="indie"] [data-plan-action="buy"]').catch(() => '')).trim()), 'the button does not promise "1 YEAR"');
+    ok(/Buy Intermediate$/.test((await page.textContent('.pl-card[data-plan="indie"] [data-plan-action="buy"]').catch(() => '')).trim()), 'the button does not promise "1 YEAR"');
     await page.click('.pl-card[data-plan="indie"] [data-plan-action="buy"]');
     await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'indie', null, { timeout: 20000 })
       .then(() => ok(true, 'Intermediate becomes the current plan once the first charge lands'), () => ok(false, 'Intermediate becomes the current plan once the first charge lands'));
@@ -1971,7 +1990,7 @@ try {
     await waitRe(page, '#plan .is-current', /Renews .* · ₹7,999/, 'the current card says when it renews and at what amount');
     await shot(page, 'purchase-year-renewing');
     ok(!(await page.$('#plan [data-plan-action="buy"]')), 'and nothing more is bought while auto-pay runs');
-    ok(/Auto-pay is on/.test(await page.textContent('#plan').catch(() => '')), 'the row says auto-pay is on and links to Settings');
+    ok(/Auto-pay is on/.test(await page.textContent('#plan').catch(() => '')), 'the row says auto-pay is on (no Settings link: auto-pay is managed with the payment service)');
     chargeSubscription(sub.id);
     ok(left() > 729.9 && left() <= 730, 'a yearly renewal stacks a year (' + left().toFixed(2) + ' days left)');
     allErrors.push(...errors); await ctx.close();

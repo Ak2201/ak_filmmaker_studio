@@ -440,7 +440,14 @@ const EXPECTED = /* every earlier row was emptied by the 27 Oct 2026 re-baseline
   invite: /* emptied by the 27 Oct 2026 re-baseline after merging the full-app QA with auto-renew */ {},
   admin: {},
   vault: /* emptied by the 27 Oct 2026 re-baseline after merging the full-app QA with auto-renew */ {},
-  purchase: /* emptied by the 27 Oct 2026 re-baseline after merging the full-app QA with auto-renew */ {}
+  purchase: /* emptied by the 27 Oct 2026 re-baseline after merging the full-app QA with auto-renew */ {
+    /* Purchase redesign (28 Oct 2026): the page deck said "Choose a plan for
+       a year, and find your invoices and refund requests in the same place",
+       which the plans heading and the section names repeat; it is one short
+       line now ("Your plan, the plans you can buy, and your invoices"). */
+    find: 'purchase redesign: the deck no longer repeats what the sections say',
+    requests: 'purchase redesign: the deck no longer repeats what the sections say'
+  }
 };
 /* The 26 Oct 2026 `currency` / `rupee` allowance (budget rail icon) was absorbed by the 27 Oct 2026 re-baseline. */
 

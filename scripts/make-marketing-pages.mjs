@@ -570,7 +570,11 @@ export function renderPricing({ site, pages, compare, faq }) {
 
   const card = (id, i) => {
     const pick = id === c.plans.pick;
-    const buy = `<a class="mk-btn mk-btn--primary mk-btn--block pr-buy" href="purchase.html?plan=${id}" data-start-buy="${id}" data-plan="${id}" data-off-text="${esc(c.plans.buySignIn)}" data-open-text="${buyText(id)}">${buyText(id)}</a>`;
+    /* ONE filled button in the row: the recommended plan's (owner,
+       28 Oct 2026: promote Intermediate). The others are outlined. The
+       li order stays the matrix order; pricing.css moves the pick first
+       on a phone. */
+    const buy = `<a class="mk-btn ${pick ? 'mk-btn--primary' : 'mk-btn--outline'} mk-btn--block pr-buy" href="purchase.html?plan=${id}" data-start-buy="${id}" data-plan="${id}" data-off-text="${esc(c.plans.buySignIn)}" data-open-text="${buyText(id)}">${buyText(id)}</a>`;
     return `      <li class="pr-tier${pick ? ' pr-pick' : ''}" data-tier="${id}">${pick ? `<p class="pr-pick-flag">${esc(c.plans.pickFlag)}</p>` : ''}<span class="pr-tier-tag">${esc(c.plans.tags[id])}</span><strong class="pr-tier-name">${stamp('plan', id)}</strong><p class="pr-tier-line">${stamp('tier.line', id)}</p><b class="pr-price">${priceSpans(stamp('price', id))}</b><span class="pr-once">${esc(c.plans.once)}<span class="pr-keep"> &middot; ${priceSpans(esc(c.plans.keep).replace('{{day}}', '{{fms:price.' + id + '.day}}'))}</span></span><span class="pr-charge" data-price-charge="${id}" hidden></span>${termsChip('year', 'pr-charge pr-terms', false)}<ul class="pr-inc">${stamp('tier.list', id)}</ul>${buy}<a class="pr-alt" href="invite.html" data-start-auth="google" data-pass-only hidden data-open-text="${esc(c.plans.altOpen)}">${passSlots(c.plans.alt)}</a></li>`;
   };
 

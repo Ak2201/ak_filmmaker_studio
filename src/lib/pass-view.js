@@ -106,8 +106,8 @@ export function passRefusal(hint, fallback) {
   }[hint] || fallback || 'The pass could not be bought just now. Please try again.';
 }
 
-/** "TRY IT FOR ₹49" — the one label for the pass's buy button. */
-export const passCta = (facts) => (facts && facts.price ? 'TRY IT FOR ' + facts.price : 'TRY THE WHOLE STUDIO');
+/** "Try it for ₹49" — the one label for the pass's buy button. */
+export const passCta = (facts) => (facts && facts.price ? 'Try it for ' + facts.price : 'Try the whole studio');
 
 /** The length of the pass this account bought, in days, from its own
  *  paid payment's span (§52's starts_at / ends_at), or null. */

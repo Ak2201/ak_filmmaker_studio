@@ -13,27 +13,22 @@
     "pro": "Run the shoot — a call sheet for every day, AI tools on your own key and exports without our branding."
   },
   "card": {
-    "_about": "Which of each plan's OWN additions its card on start.html lists first, in order (keys from features). The rest are counted and left to the comparison table. A key the plan does not add fails the build.",
+    "_about": "Which of each plan's OWN additions its card lists, in order (keys from features): start.html, pricing.html and the plan cards on purchase.html and invite.html. At most FIVE bullets a card (owner, 28 Oct 2026): Basic names four, the others three under 'Everything in X'; the rest are counted ('N more in the comparison') and left to the table. A key the plan does not add fails the build.",
     "starter": [
       "screenplay",
       "story-beats",
-      "revisions",
-      "docs",
       "import-script",
       "exports"
     ],
     "indie": [
       "breakdowns",
-      "elements",
-      "shot-list",
-      "storyboard",
       "stripboard",
       "budget"
     ],
     "pro": [
       "call-sheets",
-      "ai_tools",
-      "remove_branding"
+      "shoot-day",
+      "deliverables"
     ]
   },
   "features": [

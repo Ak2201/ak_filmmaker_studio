@@ -158,11 +158,17 @@ if (prod && item) {
     if (e.key === ' ') { e.preventDefault(); prod.click(); }
     if (e.key === 'ArrowDown') { e.preventDefault(); setMega(true); const first = $('.mk-mega a', item); if (first) first.focus(); }
   });
-  item.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse' && wide.matches && !item.hasAttribute('data-open')) { setMega(true); hoverOpened = true; } });
+  /* Re-entering (trigger -> gap -> panel is a leave and an enter) must CANCEL the pending close;
+     it used to run only when the panel was closed, so the 160ms timer from the leave always won. */
+  item.addEventListener('pointerenter', (e) => {
+    if (e.pointerType !== 'mouse' || !wide.matches) return;
+    clearTimeout(closeTimer);
+    if (!item.hasAttribute('data-open')) { setMega(true); hoverOpened = true; }
+  });
   item.addEventListener('pointerleave', (e) => {
     if (e.pointerType !== 'mouse' || !wide.matches) return;
     clearTimeout(closeTimer);
-    closeTimer = setTimeout(() => setMega(false), 160);
+    closeTimer = setTimeout(() => setMega(false), 260);
   });
   item.addEventListener('focusout', (e) => {
     if (wide.matches && !item.contains(e.relatedTarget) && item.hasAttribute('data-open')) setMega(false);

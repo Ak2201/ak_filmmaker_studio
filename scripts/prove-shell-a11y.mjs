@@ -301,6 +301,31 @@ async function ctxAt(width, height, extra = {}) {
 }
 ok(/href="about\.html"[^>]*>About /.test(fs.readFileSync(path.join(DIST, '404.html'), 'utf8')), "the 404 page's About button opens about.html");
 
+/* 7. the Product menu is reachable by a real mouse path (hover gap + re-enter cancelled nothing) */
+for (const w of [1440, 1100]) {
+  const { ctx, page } = await ctxAt(w, 900);
+  await page.goto(BASE + 'start.html', { waitUntil: 'networkidle' });
+  const tb = await page.locator('#mkProd').boundingBox();
+  await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2);
+  await page.waitForSelector('.mk-nav-item[data-open]', { timeout: 2000 }).catch(() => {});
+  const links = page.locator('.mk-mega a[href]');
+  const n = await links.count();
+  const target = links.nth(n > 3 ? 3 : n - 1);
+  const lb = await target.boundingBox();
+  await page.mouse.move(lb.x + lb.width / 2, lb.y + lb.height / 2, { steps: 25 });
+  await page.waitForTimeout(500);
+  ok(await page.locator('.mk-nav-item[data-open]').count() === 1, `${w}: Product panel stays open while the pointer travels to an item`);
+  const href = await target.getAttribute('href');
+  await Promise.all([page.waitForURL((u) => u.pathname !== '/start' && u.pathname !== '/start.html', { timeout: 5000 }).catch(() => {}), page.mouse.click(lb.x + lb.width / 2, lb.y + lb.height / 2)]);
+  ok(!/start(\.html)?$/.test(new URL(page.url()).pathname) || /#/.test(href || ''), `${w}: clicking the item navigates (${href})`);
+  await page.goto(BASE + 'start.html', { waitUntil: 'networkidle' });
+  await page.focus('#mkProd'); await page.keyboard.press('ArrowDown');
+  ok(await page.evaluate(() => !!document.activeElement.closest('.mk-mega')), `${w}: ArrowDown moves focus into the panel`);
+  await page.keyboard.press('Escape');
+  ok(await page.evaluate(() => document.activeElement.id === 'mkProd') && await page.locator('.mk-nav-item[data-open]').count() === 0, `${w}: Escape closes and returns focus`);
+  await ctx.close();
+}
+
 await browser.close();
 server.close();
 ok(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''));

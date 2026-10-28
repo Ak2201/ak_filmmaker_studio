@@ -11,34 +11,41 @@
    ============================================================ */
 
 /* ---- the tab strip ------------------------------------------ */
+/* The same shape as the strip tabs.js draws on every other page
+   (tabs.css): a quiet group of pill rows, the open one filled. */
 .dv-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s1);
+  width: fit-content;
+  max-width: 100%;
   margin: 0 0 var(--s5);
-  border-bottom: var(--sk-card-line-w, 1px) solid var(--rule);
+  padding: var(--s1);
+  background: var(--paper-raised);
+  border: var(--sk-card-line-w, 1px) solid var(--border-hair);
+  border-radius: var(--sk-radius, var(--radius));
 }
 .dv-tab {
   appearance: none;
-  margin: 0 0 -1px;
-  padding: var(--s2) var(--s4);
-  min-height: 44px;
-  border: var(--sk-card-line-w, 1px) solid transparent;
-  border-bottom: 0;
-  border-radius: var(--sk-radius, var(--radius)) var(--sk-radius, var(--radius)) 0 0;
+  margin: 0;
+  padding: var(--s1) var(--s4);
+  min-height: 2.25rem;
+  border: 0;
+  border-radius: var(--radius-pill);
   background: none;
   font: inherit;
+  font-family: var(--f-body);
   font-size: var(--t-small);
-  font-weight: 600;
-  color: var(--ink-muted);
+  font-weight: 500;
+  color: var(--ink-body);
   cursor: pointer;
+  transition: color var(--speed) var(--ease), background-color var(--speed) var(--ease);
 }
-.dv-tab:hover { color: var(--ink); }
+@media (hover: hover) { .dv-tab:not(.is-on):hover { color: var(--ink); background: var(--accent-wash); } }
 .dv-tab.is-on {
-  color: var(--ink);
-  background: var(--paper-raised);
-  border-color: var(--rule);
-  box-shadow: inset 0 3px 0 var(--accent);
+  color: var(--accent-on);
+  background: var(--accent);
+  font-weight: 600;
 }
 .dv-tab:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: var(--focus-offset); }
 /* Three tabs are 378px at the desk padding, so at 390 "Dialogue list"

@@ -484,14 +484,17 @@ function renderCalculator() {
          'feature' / 'short' scopes, which a screening pass does open,
          so the sentence says they are not covered. Said here because a budget is the one module people assume is
          private and is not. */
-      h('p.hint.bud-who', {
+      /* Behind a disclosure since 28 Oct 2026 (one sentence of
+         essentials on screen); the summary names the question so a
+         reader who wants it finds it, and the words are unchanged. */
+      h('details.bud-who', {}, [h('summary', { text: 'Who can see this budget?' }), h('p.hint', {
         text: 'Once it syncs, anyone you share this project with can see the budget, '
             + 'a view-only link included, and only an edit link lets them change it, '
             + 'unless you keep the budget private: then only you and people with an '
             + 'edit link can see it. A screening pass does not show it. Figures typed '
             + 'into the blueprint\u2019s budget questions are not part of this page '
             + 'and stay visible to anyone you share the film with, a screening pass included.'
-      }),
+      })]),
       currencyNote(),
       // Column captions for the desk layout. Each field carries its
       // own <label> too, so this strip is decoration to a screen

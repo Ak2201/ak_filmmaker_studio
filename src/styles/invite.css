@@ -27,10 +27,9 @@
 .ir-meta { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
 .ir-label {
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .ir-form { display: grid; gap: var(--s2); }

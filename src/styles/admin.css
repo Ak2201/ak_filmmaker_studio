@@ -116,10 +116,9 @@ a.ad-stat:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); o
 .ad-console :is(.ba-field, .gr-fields > div, .gt-field) { display: grid; gap: var(--s1); min-width: 0; align-content: end; }
 .ad-console :is(.ba-field, .gr-fields > div, .gt-field) > label {
   margin: 0;
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .ad-console .ba-field.is-wide { grid-column: 1 / -1; }
@@ -453,7 +452,7 @@ a.ad-check-l { color: var(--accent-deep); }
 
 .ad-audit-f { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: var(--s3); align-items: end; }
 .ad-fld { display: grid; gap: var(--s1); min-width: 0; }
-.ad-fld > label { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.ad-fld > label { font-family: var(--f-body); font-size: var(--t-tiny); letter-spacing: 0; color: var(--ink-muted); }
 .ad-fld-b { display: flex; flex-wrap: wrap; gap: var(--s2); }
 .ad-audit-t { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); }
 .ad-audit-tt { display: inline-flex; flex-wrap: wrap; gap: var(--s2); }
@@ -654,8 +653,7 @@ html.ad-drawer-on { overflow: hidden; }
 .ad-drawer .cu-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: var(--s2) var(--s3); }
 .ad-drawer .cu-fields > div { display: grid; gap: var(--s1); min-width: 0; align-content: end; }
 .ad-drawer .cu-fields label {
-  font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label);
-  text-transform: uppercase; color: var(--ink-muted);
+  font-family: var(--f-body); font-size: var(--t-tiny); letter-spacing: 0; color: var(--ink-muted);
 }
 .ad-drawer :is(input:not([type="checkbox"], [type="radio"]), select, textarea) { padding: var(--s2); font-size: var(--t-small); min-width: 0; max-width: 100%; width: 100%; box-sizing: border-box; }
 .ad-drawer .cu-form > .btn { justify-self: start; }
@@ -780,7 +778,7 @@ a.k-stat.ad-stat:focus-visible { outline: var(--focus); outline-offset: var(--fo
 
 /* cards: a kit panel's frame; the title is the header band */
 .ad-card { display: grid; align-content: start; gap: var(--s3); min-width: 0; padding: var(--sk-card-pad); background: var(--sk-card-bg); border: var(--sk-card-line-w, 1px) solid var(--sk-card-line); border-radius: var(--sk-radius); }
-.ad-card-h { margin: 0; padding-bottom: var(--s2); border-bottom: 1px solid var(--border-hair); font-family: var(--f-mono); font-size: var(--t-micro); font-weight: 600; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-body); }
+.ad-card-h { margin: 0; padding-bottom: var(--s2); border-bottom: 1px solid var(--border-hair); font-family: var(--f-display); font-size: var(--t-base); font-weight: 700; letter-spacing: 0; color: var(--ink); }
 .ad-card-f { padding-top: var(--s2); border-top: 1px solid var(--border-hair); }
 .ad-cols { gap: var(--s4); }
 .ad-att-list { gap: 0; }

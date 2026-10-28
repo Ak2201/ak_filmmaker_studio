@@ -39,10 +39,9 @@
 }
 .dv-bp-lab {
   margin: var(--s3) 0 var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .dv-bp-q {
@@ -170,7 +169,7 @@
   gap: var(--s2);
   align-items: stretch;
 }
-.dv-state { flex: 0 0 auto; }
+.dv-state { flex: 0 0 auto; font-family: var(--f-body); font-size: var(--t-small); letter-spacing: 0; }
 .dv-note { flex: 1 1 12rem; min-width: 0; font-size: var(--t-small); }
 
 /* ---- add your own ------------------------------------------- */

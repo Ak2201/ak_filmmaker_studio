@@ -209,10 +209,9 @@
   border-radius: var(--sk-radius, var(--radius));
 }
 .sd-sun-cell dt {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .sd-sun-cell dd {
@@ -247,10 +246,9 @@
    for the title only. Nothing here states a theme.
    ============================================================ */
 .sd-k {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 
@@ -392,7 +390,7 @@
   border-radius: var(--sk-radius, var(--radius));
 }
 .sd-solar-h { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s1) var(--s4); }
-.sd-panel-t { font-family: var(--f-mono); font-size: var(--t-small); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink); }
+.sd-panel-t { font-family: var(--f-display); font-size: var(--t-base); letter-spacing: 0; color: var(--ink); font-weight: 700;}
 .sd-solar-loc { font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); overflow-wrap: anywhere; }
 .sd-sun-cell.is-gold dd { color: var(--warn-deep); }
 .sd-tl-wrap { position: relative; padding-bottom: var(--s6); }
@@ -429,7 +427,7 @@
   border: 1px solid var(--rule);
   border-radius: var(--sk-radius, var(--radius));
 }
-.sd-time dt { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.sd-time dt { font-family: var(--f-body); font-size: var(--t-tiny); letter-spacing: 0; color: var(--ink-muted); }
 .sd-time dd { margin: var(--s1) 0 0; font-family: var(--f-mono); font-size: var(--t-base); font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
 .sd-time dd.is-none { color: var(--ink-muted); font-weight: 400; }
 .sd-flag strong { color: var(--warn-deep); }

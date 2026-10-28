@@ -216,10 +216,9 @@
 /* The same mono label as .st-group-label and .st-conflict-side: it
    is the same object — the name of the thing beside its value. */
 .st-meter-label {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .st-meter-figure {
@@ -383,10 +382,9 @@
 
 .acct-label {
   display: block;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--ink-muted);
   margin: var(--s4) 0 var(--s2);
 }
@@ -514,10 +512,9 @@
   min-inline-size: 0;
 }
 .st-restore-label {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .st-restore-figure {
@@ -709,10 +706,9 @@ main.k-page > .st-body { max-width: none; margin-inline: 0; padding-inline: 0; }
 }
 .st-fact { min-width: 0; display: grid; gap: var(--s-half); }
 .st-fact dt {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .st-fact dd { margin: 0; font-family: var(--f-mono); font-size: var(--t-small); color: var(--ink); overflow-wrap: anywhere; }

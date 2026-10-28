@@ -74,6 +74,9 @@
 
 /* ---- refunds and invoices, each its own section ------------------- */
 .pu-aside > * { margin: 0; }
+#yourwork.pu-sec { gap: var(--s3); }
+/* a section's one button sits at its own width, never the column's */
+.pu-aside > .k-btn { justify-self: start; }
 
 /* ---- the referral panel (growth-panels.js) -----------------
    Drawn under the plan cards. growth.css owns the panel's own shape
@@ -97,10 +100,9 @@
   min-inline-size: 0;
 }
 .gr-stat-label {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .gr-stat-figure { font-size: var(--t-lg); color: var(--ink); overflow-wrap: anywhere; }

@@ -46,6 +46,14 @@ or silently broken a page.
 > not bump a VERSION or CHANGELOG this repo does not keep. Where gstack and
 > this file disagree, this file wins.
 
+> **Revamp (owner, 28 Oct 2026) reverses "dark only".** The 8b template mix: light work
+> surfaces and cards, a dark rail (224px, labelled) and dark top band, near-black and white
+> bands on the public site, ONE violet. Gabarito + Onest (self-hosted); Courier Prime stays for
+> screenplay text, Tamil last in `--f-script`. The scripts-off probe now expects the light
+> canvas (`#f4f3f8`) under both OS preferences. Rail flyouts list modules only; sections live
+> in the page's tab strip (`prove:nav` compares exactly that). The dashboard is one screen.
+> Tailwind v4 is the public site only (`site.css`). Template credit: `docs/CREDITS.md`.
+
 ## What this is
 
 Browser-based tools for filmmakers — a hub, two step-by-step blueprints, a

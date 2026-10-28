@@ -505,6 +505,15 @@ function render() {
     : 'Choose a plan for a year, and find your invoices and refund requests in the same place.' }));
   body.append(planSection());
   for (const x of afterSections()) body.append(x);
+  /* The terms promise your work can be downloaded on any plan or none, and an
+     unpaid account is sent to this page and nowhere else, so the download lives
+     here too. It reads the device only (backup.js), never the server. */
+  body.append(h('section#yourwork.pu-sec.pu-aside', {}, [
+    h('h2.bd-h2', { text: 'Your work' }),
+    h('p.bd-sub', { text: 'Everything you wrote is saved on this device. Download a copy any time, with or without a plan.' }),
+    h('button.k-btn.k-btn--secondary', { type: 'button', 'data-pu-action': 'download-work', text: 'DOWNLOAD MY WORK' }),
+    h('p.bd-sub', { id: 'puWorkMsg', role: 'status', 'aria-live': 'polite', text: '' })
+  ]));
   main.append(body);
   if (!commitMain(app, main, mountShell)) return;
   if (passOfferNow && document.querySelector('[data-pass-timer]')) bindPassTimers(passOfferNow, { onEnd: render });
@@ -517,6 +526,17 @@ document.addEventListener('click', (e) => {
   if (bp && !bp.disabled) { buyPassHere(bp); return; }
   /* Before the Google hop: the landing page's per-tab plan stash, which
      invite.html spends by leading with the pass (start-model.js). */
+  if (e.target.closest('[data-pu-action="download-work"]')) {
+    import('../lib/backup.js').then((m) => {
+      const n = m.downloadBackup();
+      const msg = document.getElementById('puWorkMsg');
+      if (msg) msg.textContent = n ? 'Downloaded ' + n + (n === 1 ? ' project.' : ' projects.') : 'Downloaded. There were no projects yet.';
+    }).catch(() => {
+      const msg = document.getElementById('puWorkMsg');
+      if (msg) msg.textContent = 'The download could not start. Try again.';
+    });
+    return;
+  }
   if (e.target.closest('[data-pu-action="pass-intent"]')) stashPlan('pass');
   const el = e.target.closest('[data-pu-action="retry"]');
   if (el) { el.disabled = true; el.textContent = 'LOADING…'; refreshBilling(); }

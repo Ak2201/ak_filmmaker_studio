@@ -693,7 +693,8 @@ try {
     F.db.sessions.delete(USERS['tok-amy'].id);
     await B.page.evaluate(() => {}); // B keeps beating on the real 30s timer; force one through the clock-less page
     await B.page.waitForFunction(() => /invite\.html/.test(location.pathname) || window.StudioCloud.getGateState().state === 'closed', null, { timeout: 40000 }).then(() => ok(true, "a revoked member's heartbeat closes the gate"), () => ok(false, "a revoked member's heartbeat closes the gate"));
-    ok(await urlBecomes(B.page, /purchase\.html/), 'and the site gate walks them out to purchase.html');
+    /* Two owners can fire first (cloud.js landOnInvite for a 'revoked' close, sitegate.js deny for a non-member); both leave the studio for a doorway page, never the studio. */
+    ok(await urlBecomes(B.page, /(purchase|invite)\.html/), 'and the site gate walks them out to a doorway page (purchase or invite)');
     await A.ctx.close(); await B.ctx.close();
   }
 

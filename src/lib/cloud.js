@@ -667,8 +667,11 @@ function takeGateLanding() {
   try { const v = sessionStorage.getItem(GATE_LANDING_KEY); if (v) sessionStorage.removeItem(GATE_LANDING_KEY); return !!v; }
   catch (e) { return false; }
 }
-function onInvitePage() { return /(^|\/)invite(\.html)?$/.test(location.pathname); }
-function landOnInvite() {
+function onInvitePage() { return /(^|\/)(invite|purchase)(\.html)?$/.test(location.pathname); }
+/* OWNER, 28 Oct 2026: ONE page for somebody signed in who has not paid, the
+   purchase page. The doorway keeps the cases that are not "go and buy"
+   (the same list as sitegate.js's deny()). */
+function landOnInvite(reason) {
   if (inExtension() || onInvitePage()) return;
   /* The screening room is a guest's page; never pull a guest into the
      members' doorway. */
@@ -690,7 +693,7 @@ function landOnInvite() {
     const sg = window.StudioSiteGate;
     if (sg && sg.evaluate && sg.evaluate().verdict === 'allow') return;
   } catch (e) { /* no answer: carry on as before */ }
-  location.assign('invite.html');
+  location.assign(/^(nocloud|timeout|unreachable|revoked|notdeployed)$/.test(reason || '') ? 'invite.html' : 'purchase.html');
 }
 
 async function askTakeover(info) {
@@ -777,7 +780,7 @@ async function runGate() {
   const landing = takeGateLanding();
   const closed = (reason) => {
     setGate('closed', reason);
-    if (landing) landOnInvite();
+    if (landing) landOnInvite(reason);
     return false;
   };
   let st;

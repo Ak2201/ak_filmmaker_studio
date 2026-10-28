@@ -124,3 +124,17 @@
 .pu-terms-list strong { color: var(--ink); font-weight: 600; }
 .pu-terms a { overflow-wrap: anywhere; }
 @media (max-width: 719px) { .pu-terms { padding: var(--s4); } }
+
+/* THE REFUND ANNOUNCEMENT (owner, 28 Oct 2026): large, first in the plan card,
+   on the one page an unpaid person can reach, until they buy again. */
+.pu-refund-banner {
+  margin: 0 0 var(--s4);
+  padding: var(--s4) var(--s5);
+  border: 1px solid var(--brand);
+  border-left-width: 6px;
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--surface-elevated);
+}
+.pu-refund-eyebrow { margin: 0 0 var(--s1); font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--accent-deep); }
+.pu-refund-h { margin: 0 0 var(--s2); font-size: var(--t-h2, 1.75rem); line-height: 1.15; color: var(--ink); }
+.pu-refund-p { margin: 0; font-size: var(--t-lead, 1.125rem); color: var(--ink-body); line-height: var(--lh-body); max-width: var(--measure-text); }

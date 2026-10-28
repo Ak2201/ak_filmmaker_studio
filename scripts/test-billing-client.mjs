@@ -83,6 +83,25 @@ globalThis.Event = DomEvent;   // plan-cards dispatches a submit when it re-quot
   const dated = PM.lapsedLine({ bought_plan: 'indie', plan_until: '2026-03-04T10:00:00Z', payments: [] });
   ok(/plan ended on /.test(dated) && /2026/.test(dated), 'a real date is still said — ' + dated);
   ok(!/1970|Invalid/.test(PM.lapsedLine({ bought_plan: 'starter', plan_until: 'not a date' })), 'an unparseable date is not printed');
+  // a launch pass is not a plan: no "Renew it", no plan name (the live bug: a refunded pass read "Your Pro plan ended ... Renew it")
+  const pass = PM.lapsedLine({ plan: 'free', bought_plan: 'pro', plan_period: 'pass', lapsed: true, plan_until: '2026-10-28T04:14:03Z',
+    payments: [{ status: 'refunded', plan_id: 'pro', period: 'pass', starts_at: '2026-10-28T04:10:47Z', ends_at: '2026-11-04T04:10:47Z' }] });
+  ok(/^Your .*pass ended on .*2026.* \(refunded\)\./.test(pass) && !/Renew it|Pro plan/.test(pass) && /once per account/.test(pass), 'a refunded pass says pass, not plan, and does not offer to renew it — ' + pass);
+  const passEnded = PM.lapsedLine({ bought_plan: 'pro', plan_period: 'pass', plan_until: '2026-11-04T04:10:47Z', payments: [] });
+  ok(/pass ended on /.test(passEnded) && !/refunded|Renew it/.test(passEnded), 'a pass that simply ended says so, with no refund and no renewal — ' + passEnded);
+  ok(/^Your Pro plan ended on /.test(PM.lapsedLine({ bought_plan: 'pro', plan_period: 'year', plan_until: '2026-03-04T10:00:00Z', payments: [] })), 'a yearly plan is worded exactly as before');
+}
+
+/* ---- the refund announcement (owner, 28 Oct 2026) ---- */
+{
+  const lapsedRefund = { lapsed: true, plan: 'free', payments: [
+    { status: 'refunded', amount_paise: 4900, created_at: '2026-10-28T04:10:00Z', plan_id: 'pro', period: 'pass' },
+    { status: 'refunded', amount_paise: 59900, created_at: '2026-10-20T04:10:00Z', plan_id: 'starter', period: 'year' }] };
+  const n = PM.refundNotice(lapsedRefund);
+  ok(n && /49/.test(n.title) && /refunded/i.test(n.title) && /purchase again/i.test(n.text), 'a lapsed account with a refund gets the announcement, with the latest amount — ' + (n && n.title));
+  ok(PM.refundNotice({ lapsed: false, payments: lapsedRefund.payments }) === null, 'no announcement while a paid plan is running');
+  ok(PM.refundNotice({ lapsed: true, payments: [{ status: 'paid', amount_paise: 4900 }] }) === null, 'no announcement for a lapse that was not a refund');
+  ok(PM.refundNotice(null) === null && PM.refundNotice({ lapsed: true }) === null, 'unreadable status says nothing');
 }
 
 /* ---- bug 6: money moved, the studio has not confirmed ---- */

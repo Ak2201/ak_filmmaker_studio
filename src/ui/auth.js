@@ -761,6 +761,11 @@ delegate(document, 'click', '[data-auth-action]', async (e, el) => {
       if (u && u.toastInfo) {
         u.toastInfo('Signed out. Every project is still on this device.');
       }
+      /* The purchase page is exempt from the site gate (it is where an
+         unpaid account is sent, 28 Oct 2026), so no gate walks a signed-out
+         visitor off it; and signed out it has nothing to say. Go to the
+         landing page, as every gated page does. */
+      try { if (/(^|\/)(purchase|purchases)(\.html)?$/.test(location.pathname)) location.assign('start.html'); } catch (err) { /* stay */ }
       break;
     }
     default: break;

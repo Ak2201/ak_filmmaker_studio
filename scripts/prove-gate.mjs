@@ -234,7 +234,11 @@ try {
     ok(closedB && closedB.reason === 'noinvite', "reason 'noinvite'");
     const writesBefore = writes();
     ok(closedB && /free trial or a plan/i.test(closedB.detail || '') && !/awaiting an invite/i.test(closedB.detail || ''), 'the sync status says why it is paused, and the way in — not an invite that is not coming: ' + (closedB && closedB.detail));
-    ok(await urlBecomes(page, /invite\.html/), 'settings.html became invite.html — the site gate');
+    /* OWNER, 28 Oct 2026: ONE page for somebody signed in who has not paid.
+       The site gate now sends them to the purchase page; the doorway (code
+       box, trial, request) is still there and is visited on purpose below. */
+    ok(await urlBecomes(page, /purchase\.html/), 'settings.html became purchase.html — the one page for an unpaid account');
+    await page.goto(BASE + 'invite.html');
     /* THE DOOR LEADS WITH THE TRIAL NOW (owner, 12 Oct 2026), not with
        the request form. The form is off the public door: this waits for
        the trial button instead, and the two assertions after it are the
@@ -264,7 +268,9 @@ try {
     const callMark = F.db.calls.length;
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-cal', landing: true });
     await page.goto(BASE + 'story.html');
-    ok(await urlBecomes(page, /invite\.html/), 'the first load after a closed sign-in lands on invite.html');
+    ok(await urlBecomes(page, /purchase\.html/), 'the first load after a closed sign-in lands on purchase.html, the one page for an unpaid account');
+    /* the doorway (trial, code box, request) is still there, visited on purpose */
+    await page.goto(BASE + 'invite.html');
     await page.waitForSelector('#trial [data-iv-action="start-trial"]', { timeout: 8000 });
     ok(!(await page.$('#request [data-ir-form]')), 'a fresh sign-in is offered the trial, not an application form');
     ok(!F.db.calls.slice(callMark).includes('start_trial'), 'and NOTHING started by itself — the trial waits for the press');
@@ -275,7 +281,7 @@ try {
     ok(who.includes('cal@example.com') && who.includes('Cal Fernandes'), 'the form shows the attested Google account and name, read-only');
     ok(!(await page.evaluate(() => sessionStorage.getItem('fms_gate_landing'))), 'the landing marker was consumed');
     await page.goto(BASE + 'story.html');
-    ok(await urlBecomes(page, /invite\.html/), 'the NEXT page is bounced too — the whole website is behind the gate now');
+    ok(await urlBecomes(page, /purchase\.html/), 'the NEXT page is bounced too — the whole website is behind the gate now (to the one purchase page)');
     ok((await page.evaluate(() => document.documentElement.dataset.sitegate || '')) === '', 'invite.html itself is exempt (no data-sitegate)');
 
     console.log('(j) the request, and the approval');
@@ -292,7 +298,7 @@ try {
     ok(/Requested/.test(await page.textContent('#request')), 'the page now says Requested instead of offering the form');
     ok(!!(await page.$('#invite #gtCode')), 'the code box stays available — a code from a friend still works while the request waits');
     await page.goto(BASE + 'index.html');
-    ok(await urlBecomes(page, /invite\.html/), 'while pending, the hub still sends Cal to invite.html');
+    ok(await urlBecomes(page, /purchase\.html/), 'while pending, the hub still sends Cal to purchase.html, the one page for an unpaid account');
     ok(writes() === 0, 'still nothing uploaded');
     allErrors.push(...errors);
 
@@ -687,7 +693,7 @@ try {
     F.db.sessions.delete(USERS['tok-amy'].id);
     await B.page.evaluate(() => {}); // B keeps beating on the real 30s timer; force one through the clock-less page
     await B.page.waitForFunction(() => /invite\.html/.test(location.pathname) || window.StudioCloud.getGateState().state === 'closed', null, { timeout: 40000 }).then(() => ok(true, "a revoked member's heartbeat closes the gate"), () => ok(false, "a revoked member's heartbeat closes the gate"));
-    ok(await urlBecomes(B.page, /invite\.html/), 'and the site gate walks them out to invite.html');
+    ok(await urlBecomes(B.page, /purchase\.html/), 'and the site gate walks them out to purchase.html');
     await A.ctx.close(); await B.ctx.close();
   }
 
@@ -1055,7 +1061,7 @@ try {
     await D.page.waitForTimeout(250);
     const td = await times(D.page);
     ok(td.sg === '' && /breakdown\.html/.test(D.page.url()), 'a passed tab with a stored session is admitted before the verdict');
-    ok(await urlBecomes(D.page, /invite\.html|start\.html/, 15000), 'and the verdict, a deny, still redirects it: ' + D.page.url());
+    ok(await urlBecomes(D.page, /purchase\.html|invite\.html|start\.html/, 15000), 'and the verdict, a deny, still redirects it: ' + D.page.url());
     ok(await D.page.evaluate(() => sessionStorage.getItem('fms_sitegate_pass')) == null, 'and the pass is cleared');
     await D.ctx.close();
   }
@@ -1078,9 +1084,10 @@ try {
     const n1 = navs(A.page);
     await A.page.goto(BASE + 'dashboard.html');
     await A.page.waitForTimeout(10000);
-    ok(n1.length <= 1 && !!(await A.page.$('.pg-wall')), 'a fresh load after expiry: ' + n1.length + ' navigation in ten seconds and a wall that stays (no loop)');
-    const out = await A.page.$('.pg-wall [data-auth-action="signout"]');
-    ok(!!out && await out.isVisible(), 'at 390px, with the phone bar hidden under the wall, the wall itself offers SIGN OUT');
+    /* OWNER, 28 Oct 2026: a lapsed account is SENT to the purchase page (one page, no wall drawn in place): one hop, then it stays. */
+    ok(n1.length <= 2 && /purchase\.html/.test(A.page.url()), 'a fresh load after expiry: ' + n1.length + ' navigations in ten seconds, landing on the purchase page and staying (no loop): ' + A.page.url());
+    const out = await A.page.$('[data-auth-action="signout"]');
+    ok(!!out && await out.isVisible(), 'at 390px, the purchase page itself offers SIGN OUT');
     if (out) {
       await out.click();
       ok(await urlBecomes(A.page, /start\.html/, 15000), 'SIGN OUT lands on start.html');
@@ -1125,7 +1132,8 @@ try {
     F.db.settings.purchase_required = true;
     const N = await newContext(browser, { tok: 'tok-dan' });
     await N.page.goto(BASE + 'index.html');
-    ok(await urlBecomes(N.page, /invite\.html/), 'purchases ON: a fresh sign-in is sent to the offer page');
+    ok(await urlBecomes(N.page, /purchase\.html/), 'purchases ON: a fresh sign-in is sent to the one purchase page');
+    await N.page.goto(BASE + 'invite.html');   // the doorway (trial, code) is visited on purpose
     await N.page.waitForSelector('#trial [data-iv-action="start-trial"]', { timeout: 12000 });
     const label = await N.page.textContent('#trial [data-iv-action="start-trial"]');
     ok(/START MY/i.test(label || ''), 'the trial is offered by name: ' + JSON.stringify(label));
@@ -1242,7 +1250,7 @@ try {
     const N = await newContext(browser, { tok: 'tok-amy' });
     await N.page.addInitScript((v) => localStorage.setItem('fms_sitegate_verified_v1', JSON.stringify(v)), { at: Date.now(), uid: USERS['tok-amy'].id });
     await N.page.goto(BASE + 'dashboard.html').catch(() => {});
-    ok(await urlBecomes(N.page, /invite\.html/), '(s) a non-member with a fresh stamp is still sent to the door when the server answers: ' + N.page.url());
+    ok(await urlBecomes(N.page, /purchase\.html|invite\.html/), '(s) a non-member with a fresh stamp is still sent off the studio (to the purchase page) when the server answers: ' + N.page.url());
     allErrors.push(...N.errors); await N.ctx.close();
 
     /* Signed out for real (no session on the device): the stamp goes. */

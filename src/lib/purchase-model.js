@@ -122,7 +122,34 @@ export function lapsedLine(st) {
   const refunded = Array.isArray(st.payments) && st.payments.some((p) => p && p.status === 'refunded' && p.plan_id === st.bought_plan);
   const ends = st.plan_until ? Date.parse(st.plan_until) : NaN;
   const when = Number.isFinite(ends) ? ' on ' + new Date(ends).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '';
+  /* A launch pass (§61) is not a plan: it is a week, bought once per
+     account, and a refunded one is not given back or followed by a trial.
+     Telling its buyer "Your Pro plan ended. Renew it" named a product they
+     never bought and offered a renewal that does not exist. billing_status()
+     keeps plan_period = 'pass' on a lapsed pass account. */
+  if (st.plan_period === 'pass') {
+    return `Your ${passName(passDays(st))} ${when ? 'ended' + when : 'has ended'}${refunded ? ' (refunded)' : ''}. The launch pass can be bought once per account, so choose a plan to keep using the studio.`;
+  }
   return `Your ${Billing.planName(st.bought_plan)} plan ${when ? 'ended' + when : 'has ended'}${refunded ? ' (refunded)' : ''}. Renew it, or choose a plan, to keep using the studio.`;
+}
+
+/** The big announcement for a signed-in person whose payment was refunded and
+ *  who has not bought again: { title, text }, else null. It is shown on the
+ *  purchase page (the one page an unpaid person can reach) until a paid plan
+ *  is running, i.e. for as long as billing_status() says `lapsed`.
+ *  The amount is the most recent refunded payment's, in rupees (the
+ *  billing_status() payload carries no currency, and rupee checkout is the
+ *  only one on sale; dollar checkout is off until Razorpay approves it). */
+export function refundNotice(st) {
+  if (!st || st.lapsed !== true || !Array.isArray(st.payments)) return null;
+  const refunded = st.payments.filter((p) => p && p.status === 'refunded' && Number(p.amount_paise) > 0);
+  if (!refunded.length) return null;
+  const last = refunded.reduce((a, b) => (Date.parse(b.created_at) > Date.parse(a.created_at) ? b : a), refunded[0]);
+  const amount = Billing.fmtPaise(Number(last.amount_paise));
+  return {
+    title: `${amount} has been refunded.`,
+    text: `Your payment was refunded to the way you paid. Please purchase again to keep using the studio. Everything you wrote is still saved on this device.`
+  };
 }
 
 /** §33 — WHERE THE TRIAL STANDS, or null when there is nothing to say.
@@ -158,5 +185,5 @@ export function trialStatus(st, now, canStart = false) {
 
 export default {
   wantedPlan, clearPlanStash, stashPlanFromAddress, linkCode, visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, DECK,
-  planHeading, passHeading, plansPendingHeading, lapsedLine, trialStatus
+  planHeading, passHeading, plansPendingHeading, lapsedLine, refundNotice, trialStatus
 };

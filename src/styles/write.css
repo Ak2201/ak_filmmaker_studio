@@ -55,10 +55,10 @@
   color: var(--ink);
 }
 .wr-gauge-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   /* --ink-muted, not --ink-faint. Faint is the token for a label beside
      a number you have already read; these are the readout itself, and at
      11px uppercase the faint ink measures 2.5:1 in Desk. */
@@ -120,10 +120,10 @@
 }
 .wr-imp-h3 {
   margin: var(--s3) 0 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   /* --accent-deep, not --accent. An accent is a fill; as text on a
      light card it runs under 4.5:1 in the brighter themes, which is
      the one mistake CLAUDE.md says was made in fourteen places. */
@@ -176,10 +176,10 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .wr-imp-counts strong { color: var(--ink); }
@@ -216,7 +216,7 @@
 }
 .wr-imp-mode.is-danger { border-color: var(--danger); color: var(--danger); }
 .wr-imp-mode.is-on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
-.wr-imp-mode.is-on.is-danger { background: var(--danger); border-color: var(--danger); color: var(--on-fill); }
+.wr-imp-mode.is-on.is-danger { background: var(--danger); border-color: var(--danger); color: var(--danger-on); }
 
 .wr-imp-note { margin: 0; }
 .wr-imp-safe {
@@ -407,7 +407,7 @@ body.wr-dropping .bd-empty {
   cursor: pointer;
 }
 .wr-contd[hidden] { display: none; }
-.wr-contd:hover { background: var(--accent); color: var(--accent-on); }
+.wr-contd:hover { background: var(--brand); color: var(--brand-on); }
 .bd-icon.wr-dual-btn.is-on {
   background: var(--accent-wash);
   border-color: var(--accent);
@@ -444,10 +444,10 @@ body.wr-dropping .bd-empty {
 /* ---- the page view's own furniture -------------------------------- */
 .wr-pv-status {
   margin: 0 0 var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .wr-pv-status [data-pv="where"] { color: var(--ink); font-weight: 700; }
@@ -649,10 +649,10 @@ body.wr-dropping .bd-empty {
   color: var(--ink);
 }
 .wr-tp-state {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .wr-tp-grid {
@@ -720,11 +720,11 @@ body.wr-dropping .bd-empty {
 .wr-rev-body { display: grid; gap: 2px; min-width: 0; }
 .wr-rev-colour {
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .wr-rev-name { font-family: var(--f-display); font-size: var(--t-lg); color: var(--ink); }
@@ -770,10 +770,10 @@ body.wr-dropping .bd-empty {
 .wr-doc:hover { border-left-color: var(--accent); }
 .wr-doc.is-open { border-left-color: var(--accent); background: var(--accent-wash); }
 .wr-doc-kind {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 .wr-doc-title { font-family: var(--f-display); font-size: var(--t-small); }
@@ -801,10 +801,10 @@ body.wr-dropping .bd-empty {
 }
 .wr-field { display: grid; gap: var(--s1); min-width: 0; }
 .wr-field > span {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .wr-body {
@@ -820,10 +820,10 @@ body.wr-dropping .bd-empty {
   gap: var(--s3);
 }
 .wr-words {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .wr-words strong {
@@ -848,9 +848,9 @@ body.wr-dropping .bd-empty {
 }
 #main .btn:hover:not(:disabled) { background: var(--ink); color: var(--paper-raised); }
 #main .btn.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-on);
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-on);
 }
 #main .btn.primary:hover:not(:disabled) {
   background: var(--accent-hover);
@@ -1182,7 +1182,7 @@ body.wr-dropping .bd-empty {
 .wr-gen-bar-fill {
   display: block;
   height: 100%;
-  background: var(--accent);
+  background: var(--brand);
   transition: width var(--speed-slow) var(--ease);
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1328,10 +1328,10 @@ body.wr-dropping .bd-empty {
 }
 .wr-tr-table th:first-child { text-align: left; color: var(--ink); font-family: var(--f-script); }
 .wr-tr-table thead th {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .wr-tr-note { margin: 0; color: var(--ink-muted); font-size: var(--t-small); }

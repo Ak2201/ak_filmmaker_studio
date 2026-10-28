@@ -1,31 +1,48 @@
 /* ============================================================
-   THE PUBLIC MARKETING PAGES — product-*.html (and pricing.html)
+   THE PUBLIC SITE — every generated public page, and the legal frame
    ------------------------------------------------------------
-   Written against tokens.css and the studio skin only. Like start.html
-   these pages run no app code, so skin.js never executes here: the skin
-   is imported directly (its --sk-* values sit on bare :root as well, which
-   is what makes it correct before any script runs).
+   THE 8B TEMPLATE (28 Oct 2026). One template for the whole public
+   site: a near-black header, hero, closing band and footer around white
+   and pale bands; pale cards; big Gabarito headings that end in ONE
+   violet dot; a violet pill for the action. Shapes and the palette come
+   from the 8B design-studio template (MIT, notice in docs/CREDITS.md);
+   the section rhythm (a wrap, generous vertical space, a heading then a
+   grid) is the usual SaaS-template rhythm. No code is taken from any
+   other template.
+
+   TWO LAYERS, ON PURPOSE.
+     - site.css (Tailwind v4, imported first) gives the generator its
+       LAYOUT utilities (grid, columns, gaps, spans). They live in
+       @layer utilities.
+     - this sheet is the COMPONENT layer, unlayered: type, colour,
+       buttons, cards, bands, the header and footer, the modal. base.css
+       is unlayered too and styles p, ul, h1-h6 directly, so anything
+       that touches an element's margin, padding or type is written HERE
+       (an unlayered rule beats a layered utility in every tie), and the
+       utilities are used only on containers base.css never styles.
 
    RULES THIS SHEET FOLLOWS, because breaking them has been paid for:
-     - No colour literal anywhere. Every colour is a token, or a
-       color-mix() of tokens (the hero's glow is the stage hue mixed into
-       the ground; there is no photograph).
-     - Shapes are --sk-radius / --sk-modal-radius; a pill is
-       --radius-pill and means a call to action or a status.
-     - Every transform is multiplied by --motion, so reduced motion
-       removes the travel and not only the duration.
-     - A fill is not a text colour: hue as TEXT is --hue-lift, hue as a
-       fill or a mark is --hue.
-     - Alternating bands come from the surface ladder: ground, rail, card.
+     - No colour literal anywhere: every colour is a token, or a
+       color-mix() of tokens. The dark bands are [data-surface="dark"]
+       in the markup, and tokens.css restates the same token names
+       there, so `color: var(--ink)` is right on either side.
+     - No typed radius: the radii are tokens.
+     - Every translate is multiplied by --motion.
+     - A fill is not a text colour: the brand as TEXT is --brand-deep.
+     - Text meets AA 4.5:1 on its band.
    ============================================================ */
+@import './site.css';
 @import './skins/studio.css';
 
 [hidden] { display: none !important; }
 
-:root { --mk-top-h: 72px; --mk-wrap: 1200px; }
+/* The header's height: it is sticky (in the flow), so nothing is padded
+   down to clear it; the value feeds the sticky offsets and scroll
+   padding only. */
+:root { --mk-top-h: 64px; --mk-wrap: 1200px; --mk-sec: clamp(var(--s8), 9vw, 7.5rem); }
 
 html { scroll-padding-top: calc(var(--mk-top-h) + var(--s4)); scroll-behavior: smooth; }
-body { margin: 0; background: var(--surface-canvas); color: var(--ink-body); font-family: var(--f-body); }
+body { margin: 0; background: var(--surface-card); color: var(--ink-body); font-family: var(--face-sans); }
 html.mk-modal-open { overflow: hidden; }
 
 .mk-vh {
@@ -39,102 +56,109 @@ html.mk-modal-open { overflow: hidden; }
 }
 .mk-skip:focus { top: var(--s3); }
 
-:where(.mk, .mk-top, .mk-foot, .mk-modal) a:focus-visible,
-:where(.mk, .mk-top, .mk-foot, .mk-modal) button:focus-visible,
+:where(.mk, .mk-top, .mk-foot, .mk-modal, .legal-page) :is(a, button, summary):focus-visible,
 .mk-skip:focus-visible {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 2px;
+  outline: 3px solid var(--accent-primary);
+  outline-offset: 3px;
 }
 
 .mk-wrap { width: 100%; max-width: var(--mk-wrap); margin-inline: auto; padding-inline: var(--gutter); box-sizing: border-box; }
 
-/* ---- type ----------------------------------------------------- */
-.mk-eyebrow {
-  margin: 0 0 var(--s3);
-  font-family: var(--sk-eyebrow-face, var(--f-body));
-  font-size: var(--t-small); font-weight: 700; letter-spacing: .02em;
-  color: var(--hue-lift, var(--brand-deep));
-}
+/* ---- type -----------------------------------------------------------
+   Gabarito for headings, Onest for everything else. A hero or section
+   heading ends in the violet dot (8B), drawn here so the words in the
+   markup stay exactly the words. */
+.mk-h1, .mk-h2, .mk-h3 { font-family: var(--face-display); color: var(--ink); text-wrap: balance; font-style: normal; }
 .mk-h1 {
-  margin: 0 0 var(--s4); max-width: 18ch;
-  font-family: var(--sk-display, var(--f-display));
-  font-size: clamp(2.25rem, 7vw, 4.25rem); font-weight: 700; line-height: 1.04;
-  letter-spacing: var(--track-tight, -0.02em); color: var(--ink); text-wrap: balance;
+  margin: 0 0 var(--s5); max-width: 18ch;
+  font-size: clamp(2.5rem, 6.2vw, 4.75rem); font-weight: 800; line-height: .98;
+  letter-spacing: -0.045em;
 }
-.mk-sub { margin: 0 0 var(--s6); max-width: 46ch; font-size: clamp(var(--t-base), 2.4vw, var(--t-xl)); line-height: 1.5; color: var(--ink-body); }
 .mk-h2 {
-  margin: 0 0 var(--s5);
-  font-family: var(--sk-display, var(--f-display));
-  font-size: clamp(var(--t-2xl), 4.4vw, var(--t-3xl)); font-weight: 700; line-height: 1.12;
-  letter-spacing: var(--track-tight, -0.02em); color: var(--ink); text-wrap: balance;
+  margin: 0 0 var(--s6); max-width: 22ch;
+  font-size: clamp(2rem, 4.2vw, 3.25rem); font-weight: 700; line-height: 1.02;
+  letter-spacing: -0.035em;
 }
-.mk-h3 { margin: 0 0 var(--s2); font-family: var(--sk-display, var(--f-display)); font-size: var(--t-xl); font-weight: 600; color: var(--ink); }
-.mk-body { margin: 0 0 var(--s4); max-width: 52ch; font-size: var(--t-lg); line-height: 1.6; color: var(--ink-body); }
+.mk-h3 { display: block; margin: 0 0 var(--s2); font-size: var(--t-xl); font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; }
+.mk-h1::after, .mk-h2::after {
+  content: ''; display: inline-block; width: .17em; height: .17em; margin-left: .06em;
+  border-radius: var(--radius-pill); background: var(--accent-primary); vertical-align: baseline;
+}
+/* reading pages: headings inside the prose are plain */
+.mk-prose .mk-h2::after, .pr-faq-head .mk-h2::after { content: none; }
+.mk-sub { margin: 0 0 var(--s6); max-width: 44ch; font-size: clamp(var(--t-lg), 2vw, var(--t-xl)); line-height: 1.45; color: var(--ink-body); }
+.mk-body { margin: 0 0 var(--s4); max-width: 56ch; font-size: var(--t-lg); line-height: 1.6; color: var(--ink-body); }
+.mk-small { margin: 0; max-width: 64ch; font-size: var(--t-small); line-height: 1.55; color: var(--ink-muted); }
+.mk-caption { margin: var(--s3) 0 0; max-width: none; font-size: var(--t-small); line-height: 1.5; color: var(--ink-muted); }
+.mk-kicker {
+  display: inline-flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s5); max-width: none;
+  font-size: var(--t-small); font-weight: 600; color: var(--ink-muted);
+}
+.mk-kicker .sym { font-size: 20px; color: var(--brand-deep); }
+.mk-more { margin: var(--s6) 0 0; max-width: none; }
 
-/* ---- buttons and links ----------------------------------------- */
+/* ---- buttons and links ----------------------------------------------- */
 .mk-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
-  min-height: 44px; padding: 0 var(--s5); box-sizing: border-box;
-  border: 1px solid transparent; border-radius: var(--radius-pill);
-  font-family: var(--f-body); font-size: var(--t-small); font-weight: 600; line-height: 1;
+  min-height: 48px; padding: 0 var(--s5); box-sizing: border-box;
+  border: 1.5px solid transparent; border-radius: var(--radius-pill);
+  font-family: var(--face-sans); font-size: var(--t-base); font-weight: 600; line-height: 1; letter-spacing: -0.01em;
   text-decoration: none; cursor: pointer; white-space: nowrap;
-  transition: background .18s var(--ease), border-color .18s var(--ease), box-shadow .18s var(--ease);
+  transition: background-color var(--speed) var(--ease), border-color var(--speed) var(--ease), color var(--speed) var(--ease), transform var(--speed) var(--ease);
 }
-.mk-btn--sm { min-height: 40px; padding: 0 var(--s4); }
-.mk-btn--lg { min-height: 52px; padding: 0 var(--s6); font-size: var(--t-base); }
+.mk-btn:active { transform: scale(calc(1 - .03 * var(--motion))); }
+.mk-btn--sm { min-height: 40px; padding: 0 var(--s4); font-size: var(--t-small); }
+.mk-btn--lg { min-height: 52px; padding: 0 var(--s6); }
 .mk-btn--block { display: flex; width: 100%; }
 .mk-btn--primary { background: var(--brand); color: var(--brand-on); }
-.mk-btn--primary:hover { background: var(--brand-hover); box-shadow: var(--shadow-cta-hover); }
-.mk-btn--outline { border-color: var(--border-strong); color: var(--ink); background: transparent; }
-.mk-btn--outline:hover { background: var(--surface-hover); border-color: var(--border-grip); }
-.mk-btn--ghost { color: var(--ink); background: color-mix(in srgb, var(--ink) 8%, transparent); }
-.mk-btn--ghost:hover { background: color-mix(in srgb, var(--ink) 14%, transparent); }
+.mk-btn--primary:hover { background: var(--brand-hover); color: var(--brand-on); }
+.mk-btn--outline { border-color: var(--ink); color: var(--ink); background: transparent; }
+.mk-btn--outline:hover { background: var(--ink); color: var(--surface-canvas); }
+.mk-btn--ghost { color: var(--ink); background: var(--surface-hover); }
+.mk-btn--ghost:hover { background: var(--surface-active); }
 .mk-btn .sym { font-size: 1.25em; }
 
 .mk-link {
   display: inline-flex; align-items: center; gap: var(--s1);
-  min-height: 32px;   /* a target of at least 24px (WCAG 2.5.8): bare text measured 22 */
-  color: var(--hue-lift, var(--brand-deep)); font-weight: 600; text-decoration: none;
+  min-height: 32px;   /* a target of at least 24px (WCAG 2.5.8) */
+  color: var(--brand-deep); font-weight: 600; text-decoration: none;
 }
 .mk-link:hover { text-decoration: underline; text-underline-offset: 3px; }
-.mk-link .sym { font-size: 1.2em; transition: transform .18s var(--ease); }
+.mk-link .sym { font-size: 1.2em; transition: transform var(--speed) var(--ease); }
 .mk-link:hover .sym { transform: translateX(calc(3px * var(--motion))); }
-.mk-link--lg { font-size: var(--t-lg); margin-top: var(--s5); }
-/* a link inside running text: underlined at rest, because colour alone
-   (1.06-1.41:1 against the body ink) cannot tell it apart (WCAG 1.4.1),
-   and inline rather than an inline-flex box, which broke the sentence and
-   left a lone comma on its own line at 390px. Doubled class so it outranks
-   any later single-class .mk-link rule. */
+/* a link inside running text: underlined at rest (WCAG 1.4.1), inline.
+   Doubled class so it outranks any later single-class .mk-link rule. */
 .mk-link.mk-link--inline { display: inline; min-height: 0; text-decoration: underline; text-underline-offset: 3px; }
 
-/* ---- the header ------------------------------------------------ */
+/* ---- the header: one near-black bar, sticky ------------------------- */
 .mk-sentinel { position: absolute; top: 0; left: 0; width: 1px; height: 24px; pointer-events: none; }
 .mk-top {
-  position: fixed; inset: 0 0 auto 0; z-index: 50; height: var(--mk-top-h);
+  position: sticky; top: 0; z-index: 50; height: var(--mk-top-h);
   background: var(--surface-canvas); border-bottom: 1px solid transparent;
-  transition: background .2s var(--ease), border-color .2s var(--ease);
+  transition: border-color var(--speed) var(--ease);
 }
-html.mk-js .mk-top { background: transparent; }
-html.mk-js .mk-top.is-solid,
-html.mk-js .mk-top[data-menu],
-html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom-color: var(--border-hair); }
+.mk-top.is-solid, .mk-top[data-menu] { border-bottom-color: var(--border-hair); }
 .mk-top-in {
   height: 100%; max-width: var(--mk-wrap); margin-inline: auto; padding-inline: var(--gutter); box-sizing: border-box;
   display: flex; align-items: center; gap: var(--s5);
 }
 .mk-brand {
   display: inline-flex; align-items: center; gap: var(--s2); flex: none;
-  font-family: var(--sk-display, var(--f-display)); font-size: var(--t-lg); font-weight: 700;
-  color: var(--ink); text-decoration: none; letter-spacing: var(--track-tight, -0.02em);
+  font-family: var(--face-display); font-size: var(--t-xl); font-weight: 800; letter-spacing: -0.04em;
+  color: var(--ink); text-decoration: none;
 }
-.mk-logo { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: var(--sk-radius, var(--radius-lg)); background: var(--brand); color: var(--brand-on); font-size: var(--t-tiny); }
-.mk-nav { display: flex; align-items: center; gap: var(--s2); flex: 1; min-width: 0; }
+.mk-logo {
+  display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: var(--radius-pill);
+  background: var(--brand); color: var(--brand-on); font-size: var(--t-tiny); letter-spacing: 0;
+}
+.mk-nav { display: flex; align-items: center; gap: var(--s1); flex: 1; min-width: 0; }
 .mk-nav-link {
-  display: inline-flex; align-items: center; gap: var(--s1); min-height: 44px; padding: 0 var(--s3);
+  display: inline-flex; align-items: center; gap: var(--s1); min-height: 40px; padding: 0 var(--s3);
   color: var(--ink-body); font-size: var(--t-small); font-weight: 600; text-decoration: none; border-radius: var(--radius-pill);
+  transition: background-color var(--speed) var(--ease), color var(--speed) var(--ease);
 }
-.mk-nav-link:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 8%, transparent); }
-.mk-nav-prod .sym { font-size: 1.25em; transition: transform .18s var(--ease); }
+.mk-nav-link:hover, .mk-nav-link[aria-current="page"] { color: var(--ink); background: var(--surface-hover); }
+.mk-nav-prod .sym { font-size: 1.25em; transition: transform var(--speed) var(--ease); }
 .mk-nav-item[data-open] .mk-nav-prod .sym { transform: rotate(180deg); }
 .mk-nav-login { display: none; }
 .mk-top-end { display: flex; align-items: center; gap: var(--s2); margin-left: auto; flex: none; }
@@ -145,228 +169,188 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
   display: none; place-items: center; width: 44px; height: 44px; border-radius: var(--radius-pill);
   color: var(--ink); text-decoration: none;
 }
-.mk-burger:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.mk-burger:hover { background: var(--surface-hover); }
 .mk-burger .sym { font-size: 26px; }
 
-/* the mega-menu: four columns, one per stage */
+/* the Product menu: one column per stage, then Learn */
 .mk-mega {
-  display: none; position: absolute; top: calc(100% - var(--s2)); left: var(--gutter); right: var(--gutter);
-  max-width: 980px; margin-inline: auto; box-sizing: border-box; padding: var(--s5);
-  grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s5);
+  display: none; position: absolute; top: calc(100% + var(--s1)); left: var(--gutter); right: var(--gutter);
+  max-width: 1080px; margin-inline: auto; box-sizing: border-box; padding: var(--s5);
+  grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--s5);
   background: var(--surface-elevated); border: 1px solid var(--border-default);
-  border-radius: var(--sk-modal-radius, var(--radius-xl)); box-shadow: var(--shadow-modal);
+  border-radius: var(--radius-xl); box-shadow: var(--shadow-modal);
 }
-.mk-nav-item[data-open] .mk-mega { display: grid; animation: mk-drop .18s var(--ease-out); }
+.mk-nav-item[data-open] .mk-mega { display: grid; animation: mk-drop var(--speed-slow) var(--ease-out); }
 @keyframes mk-drop { from { opacity: 0; transform: translateY(calc(-6px * var(--motion))); } to { opacity: 1; transform: none; } }
-.mk-mega-h, .mk-foot-h, .mk-stage-h {
-  display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s3);
-  font-size: var(--t-tiny); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--hue-lift, var(--ink-muted));
+.mk-mega-h, .mk-foot-h {
+  margin: 0 0 var(--s3); max-width: none;
+  font-size: var(--t-tiny); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted);
 }
-.mk-mega ul, .mk-foot ul, .mk-stage ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); }
-.mk-mega a, .mk-stage a {
-  display: flex; align-items: center; gap: var(--s3); min-height: 40px; padding: 0 var(--s2);
-  color: var(--ink-body); font-size: var(--t-small); font-weight: 500; text-decoration: none; border-radius: var(--sk-radius, var(--radius-lg));
+.mk-mega ul, .mk-foot ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); }
+.mk-mega a {
+  display: flex; align-items: center; gap: var(--s2); min-height: 40px; padding: 0 var(--s2);
+  color: var(--ink-body); font-size: var(--t-small); font-weight: 500; text-decoration: none; border-radius: var(--radius);
 }
-.mk-mega a:hover, .mk-stage a:hover { background: var(--surface-hover); color: var(--ink); }
-.mk-mega a[aria-current="page"], .mk-stage a[aria-current="page"] { color: var(--ink); background: var(--hue-wash, var(--surface-hover)); }
-.mk-mega a .sym, .mk-stage a .sym { color: var(--hue-lift, var(--brand-deep)); font-size: 20px; }
+.mk-mega a:hover { background: var(--surface-hover); color: var(--ink); }
+.mk-mega a[aria-current="page"] { color: var(--ink); background: var(--surface-active); }
+.mk-mega a .sym { color: var(--brand-deep); font-size: 20px; }
 
-/* ---- sections and bands ---------------------------------------- */
+/* ---- bands ---------------------------------------------------------------
+   a: white. b: the pale canvas. The dark ones carry data-surface="dark". */
 .mk { display: block; }
-.mk-sec { padding-block: clamp(var(--s8), 9vw, var(--s9)); }
-.mk-band-a { background: var(--surface-canvas); }
-.mk-band-b { background: var(--surface-rail); }
-.mk-band-c { background: var(--surface-card); }
+.mk-sec { padding-block: var(--mk-sec); }
+.mk-band-a { background: var(--surface-card); }
+.mk-band-b { background: var(--surface-canvas); }
 .mk-center { text-align: center; display: flex; flex-direction: column; align-items: center; }
-.mk-center .mk-h2 { max-width: 24ch; }
-
-/* hero: obsidian ground, a soft glow from the stage hue (no photograph) */
-.mk-hero {
-  position: relative; display: flex; align-items: center; box-sizing: border-box;
-  min-height: min(800px, 92vh);
-  padding-top: calc(var(--mk-top-h) + var(--s8)); padding-bottom: var(--s8);
-  background:
-    radial-gradient(70% 90% at 50% -10%, color-mix(in srgb, var(--hue) 34%, transparent), transparent 70%),
-    radial-gradient(45% 60% at 88% 35%, color-mix(in srgb, var(--hue) 16%, transparent), transparent 72%),
-    var(--surface-canvas);
-}
-.mk-hero-in { position: relative; }
-.mk-cta-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s5); }
+.mk-center .mk-h2, .mk-center .mk-sub { margin-inline: auto; }
+.mk-cta-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s4); }
 .mk-cta-row--center { justify-content: center; }
-.mk-cta-row .mk-link--lg { margin-top: 0; }
 
-/* the product hero: the headline across the wrap (two lines at most at
-   every width), the sub and the one action on a row under it, then the
-   demo loop at full width, so the first screen is mostly the tool */
-.mk-hero.mk-hero--media { min-height: 0; padding-top: calc(var(--mk-top-h) + var(--s7)); padding-bottom: clamp(var(--s7), 7vw, var(--s9)); }
-.mk-hero-grid {
-  display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-  column-gap: clamp(var(--s6), 5vw, var(--s8)); align-items: end;
+/* the hero: near-black, the headline, one sentence, one action, then the
+   product working at full width */
+.mk-hero {
+  position: relative; box-sizing: border-box;
+  padding-block: clamp(var(--s8), 8vw, var(--s10)) clamp(var(--s7), 6vw, var(--s9));
+  background: var(--surface-canvas); color: var(--ink-body);
 }
-.mk-hero-grid .mk-h1 { grid-column: 1 / -1; font-size: clamp(var(--t-2xl), 4vw, var(--t-4xl)); max-width: 32ch; margin-bottom: var(--s5); }
-.mk-hero-grid .mk-sub { grid-column: 1; margin: 0; }
-/* the one action sits directly under the sentence it belongs to */
-.mk-hero-grid .mk-cta-row { grid-column: 1; justify-content: flex-start; margin-top: var(--s5); }
-/* doubled class: .mk-player's own margin and max-width come later in this sheet */
-.mk-player.mk-hero-media { grid-column: 1 / -1; max-width: none; margin-top: clamp(var(--s6), 4vw, var(--s7)); }
+.mk-hero .mk-sub { color: var(--ink-body); }
+.mk-player.mk-hero-media { margin-top: clamp(var(--s7), 6vw, var(--s9)); max-width: none; }
 
-/* the label bar: 64px, translucent, tinted by the stage */
-.mk-label {
-  background: color-mix(in srgb, var(--hue) 14%, var(--surface-canvas));
-  border-block: 1px solid color-mix(in srgb, var(--hue) 28%, transparent);
-}
-.mk-label-in { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: var(--s4); flex-wrap: wrap; }
-.mk-label-path { display: flex; align-items: center; gap: var(--s2); margin: 0; font-size: var(--t-small); color: var(--ink-body); max-width: none; }
-.mk-label-path .sym { color: var(--hue-lift); font-size: 22px; }
-.mk-label-path strong { color: var(--ink); }
-.mk-label-sep { color: var(--ink-muted); }
-.mk-label-nav { display: flex; align-items: center; gap: var(--s4); }
-.mk-label-nav a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink-body); font-size: var(--t-small); font-weight: 600; text-decoration: none; }
-.mk-label-nav a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+/* the closing band: near-black, centred, one action */
+.mk-close { background: var(--surface-canvas); }
+.mk-close .mk-h2 { max-width: 20ch; }
+.mk-close .mk-sub { margin-bottom: var(--s6); }
+.mk-close-note { margin-top: var(--s4); }
 
-/* ---- the launch band (27 Oct 2026) ------------------------------
+/* ---- the launch band (27 Oct 2026) --------------------------------------
    The first thing in <main> on start, pricing and every product, guide,
    switching and trust page; HIDDEN in the markup and shown by
-   marketing.js only while trial_offer().pass is open. It sits under the
-   fixed header (its own top padding is the header's height), so the
-   hero after it gives that height back. Text only: no animation, so
-   reduced motion has nothing to stop. */
-.mk-pass { padding-top: var(--mk-top-h); background: var(--surface-canvas); }
+   marketing.js only while trial_offer().pass is open. Text only: no
+   animation, so reduced motion has nothing to stop. */
+.mk-pass { background: var(--brand-wash); border-bottom: 1px solid var(--border-hair); }
 .mk-pass-in {
   display: flex; align-items: center; justify-content: space-between; gap: var(--s3) var(--s5); flex-wrap: wrap;
-  padding: var(--s3) var(--s5); box-sizing: border-box;
-  background: color-mix(in srgb, var(--accent-primary) 12%, var(--surface-card));
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 40%, transparent);
-  border-radius: var(--sk-radius, var(--radius-lg));
+  padding-block: var(--s3); box-sizing: border-box;
 }
 .mk-pass-line, .mk-pass-ended { margin: 0; max-width: none; min-width: 0; flex: 1 1 24rem; font-size: var(--t-small); line-height: 1.5; color: var(--ink-body); }
-.mk-pass-tag { margin-right: var(--s2); color: var(--brand-lift); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: var(--t-tiny); }
+.mk-pass-tag { margin-right: var(--s2); color: var(--brand-deep); font-weight: 700; text-transform: uppercase; letter-spacing: var(--track-label); font-size: var(--t-tiny); }
 .mk-pass-what { color: var(--ink); font-weight: 600; }
 .mk-pass-timer { font-family: var(--f-mono); font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
 .mk-pass-sep { color: var(--ink-muted); }
 .mk-pass-left { white-space: nowrap; }
 .mk-pass-cta { flex: none; }
-.mk-pass:not([hidden]) + .mk-hero { padding-top: var(--s7); }
-@media (max-width: 560px) {
-  .mk-pass-in { padding: var(--s3) var(--s4); }
-  .mk-pass-cta { flex: 1 1 100%; }
+@media (max-width: 560px) { .mk-pass-cta { flex: 1 1 100%; } }
+
+/* ---- pictures: a soft frame, no shadow on the dark bands ------------- */
+.mk-slot, .mk-player {
+  margin: 0; border: 1px solid var(--border-default); border-radius: var(--radius-xl);
+  background: var(--surface-rail); overflow: hidden;
 }
+.mk-still img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.mk-player { width: 100%; aspect-ratio: 16 / 9; }
+.mk-player video { display: block; width: 100%; height: 100%; background: var(--surface-rail); }
+/* the video's own focus ring is clipped by the frame, so the ring goes on the frame */
+.mk-player:has(video:focus-visible) { outline: 3px solid var(--accent-primary); outline-offset: 3px; }
 
-/* value: text left, a still right */
-.mk-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: clamp(var(--s6), 6vw, var(--s9)); align-items: center; }
-.mk-frame, .mk-slot, .mk-player {
-  margin: 0; border: 1px solid var(--border-default); border-radius: var(--sk-radius, var(--radius-lg));
-  background: var(--surface-card); box-shadow: var(--shadow-md); overflow: hidden;
+/* ---- the facts -------------------------------------------------------- */
+.mk-intro .mk-body:last-child { margin-bottom: 0; }
+.mk-facts { list-style: none; margin: 0; padding: 0; }
+.mk-facts li {
+  display: flex; flex-direction: column; gap: var(--s2); max-width: none; margin: 0;
+  padding: var(--s5) var(--s6); background: var(--surface-rail); border-radius: var(--radius-xl);
 }
-.mk-frame { aspect-ratio: 16 / 9; }
-.mk-frame img, .mk-still img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.mk-fact-n { font-family: var(--face-display); font-size: clamp(var(--t-2xl), 3vw, var(--t-3xl)); font-weight: 800; line-height: 1.05; letter-spacing: -0.03em; color: var(--ink); font-variant-numeric: tabular-nums; text-wrap: balance; }
+.mk-fact-l { font-size: var(--t-base); line-height: 1.5; color: var(--ink-body); max-width: 40ch; }
 
-/* demo: one centred 16:9 player */
-.mk-player { width: 100%; max-width: 1040px; aspect-ratio: 16 / 9; }
-.mk-player video { display: block; width: 100%; height: 100%; background: var(--surface-card); }
-/* The player clips (overflow: hidden) and the video fills it, so the
-   video's own focus outline was drawn entirely inside the clipped band:
-   a keyboard user saw no ring at all. The ring goes on the player. */
-.mk-player:has(video:focus-visible) { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
-
-/* how it works: the steps beside ONE shared slot */
+/* ---- how it works: the steps beside ONE shared picture ---------------- */
 .mk-how { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(var(--s5), 5vw, var(--s8)); align-items: start; }
 .mk-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.mk-steps li { margin: 0; max-width: none; }
 .mk-step {
   display: grid; grid-template-columns: 36px 1fr; column-gap: var(--s3); row-gap: var(--s1);
   width: 100%; padding: var(--s4); box-sizing: border-box; text-align: left; cursor: pointer;
   background: transparent; color: var(--ink-body); font: inherit;
-  border: 1px solid transparent; border-radius: var(--sk-radius, var(--radius-lg));
-  transition: background .18s var(--ease), border-color .18s var(--ease);
+  border: 1px solid transparent; border-radius: var(--radius-lg);
+  transition: background-color var(--speed) var(--ease), border-color var(--speed) var(--ease);
 }
-.mk-step:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
-.mk-step[aria-selected="true"] { background: var(--surface-elevated); border-color: var(--border-default); box-shadow: inset 3px 0 0 var(--hue); }
+.mk-step:hover { background: var(--surface-hover); }
+.mk-step[aria-selected="true"] { background: var(--surface-card); border-color: var(--border-default); }
 .mk-step-n {
   grid-row: 1 / span 2; display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-pill);
-  border: 1px solid var(--border-strong); color: var(--ink-muted); font-size: var(--t-small); font-weight: 700;
+  border: 1.5px solid var(--border-strong); color: var(--ink-muted); font-size: var(--t-small); font-weight: 700;
 }
-.mk-step[aria-selected="true"] .mk-step-n { background: var(--hue); border-color: var(--hue); color: var(--hue-on); }
-.mk-step-t { font-family: var(--sk-display, var(--f-display)); font-size: var(--t-lg); font-weight: 600; color: var(--ink); }
+.mk-step[aria-selected="true"] .mk-step-n { background: var(--brand); border-color: var(--brand); color: var(--brand-on); }
+.mk-step-t { font-family: var(--face-display); font-size: var(--t-lg); font-weight: 700; letter-spacing: -0.015em; color: var(--ink); }
 .mk-step-b { font-size: var(--t-small); line-height: 1.55; color: var(--ink-muted); }
 .mk-step[aria-selected="true"] .mk-step-b { color: var(--ink-body); }
 .mk-slot { display: grid; aspect-ratio: 16 / 9; position: sticky; top: calc(var(--mk-top-h) + var(--s4)); }
-.mk-still { grid-area: 1 / 1; margin: 0; opacity: 0; transition: opacity .35s var(--ease); pointer-events: none; }
+.mk-still { grid-area: 1 / 1; margin: 0; opacity: 0; transition: opacity var(--speed-lazy) var(--ease); pointer-events: none; }
 .mk-still.is-on { opacity: 1; }
 
-/* related tools */
+/* ---- cards ------------------------------------------------------------
+   Pale on a white band, white on a pale band; no shadow at rest. */
 .mk-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s5); }
-.mk-card {
-  position: relative; display: flex; flex-direction: column; align-items: flex-start; padding: var(--s5);
-  background: var(--surface-card); border: 1px solid var(--border-default); border-radius: var(--sk-radius, var(--radius-lg));
-  box-shadow: var(--shadow-card-rest); transition: border-color .18s var(--ease), transform .18s var(--ease);
+.mk-stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s5); }
+.mk-card, .mk-point {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; margin: 0; max-width: none;
+  padding: var(--s6); box-sizing: border-box;
+  background: var(--surface-rail); border: 1px solid transparent; border-radius: var(--radius-xl);
+  transition: border-color var(--speed) var(--ease), transform var(--speed-slow) var(--ease-out), box-shadow var(--speed-slow) var(--ease-out);
 }
-.mk-card:hover { border-color: var(--border-strong); transform: translateY(calc(-2px * var(--motion))); }
+.mk-band-b :is(.mk-card, .mk-point) { background: var(--surface-card); border-color: var(--border-hair); }
+.mk-card:hover { border-color: var(--border-strong); transform: translateY(calc(-3px * var(--motion))); box-shadow: var(--shadow-card-hover); }
 .mk-card-icon {
   display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: var(--s4);
-  border-radius: var(--sk-radius, var(--radius-lg)); background: var(--hue-wash); color: var(--hue-lift);
+  border-radius: var(--radius-pill); background: var(--brand-wash); color: var(--brand-deep);
 }
-.mk-card-icon .sym { font-size: 26px; }
-.mk-card-p { margin: 0 0 var(--s4); flex: 1; max-width: none; font-size: var(--t-small); line-height: 1.55; color: var(--ink-muted); }
-.mk-card .mk-link::after { content: ''; position: absolute; inset: 0; }
+.mk-card-icon .sym { font-size: 24px; }
+.mk-card-p { display: block; margin: 0 0 var(--s4); flex: 1; max-width: none; font-size: var(--t-base); line-height: 1.55; color: var(--ink-body); }
+.mk-point .mk-card-p { margin-bottom: 0; }
+.mk-card .mk-link::after { content: ''; position: absolute; inset: 0; border-radius: inherit; }
 
-/* tools for every stage */
-.mk-stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s6) var(--s5); }
-.mk-dot { width: 10px; height: 10px; border-radius: var(--radius-pill); background: var(--hue); flex: none; }
-
-/* mid CTA and the closing facts */
-.mk-mid {
-  background:
-    radial-gradient(60% 120% at 50% 120%, color-mix(in srgb, var(--hue) 24%, transparent), transparent 70%),
-    var(--surface-card);
+/* ---- the footer: near-black, three columns and the legal row --------- */
+.mk-foot { background: var(--surface-canvas); padding-block: var(--s9) var(--s6); }
+.mk-foot-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--s7) var(--s6); }
+.mk-foot-brand .mk-brand { margin-bottom: var(--s4); }
+.mk-foot-note { margin: 0; max-width: 32ch; font-size: var(--t-small); line-height: 1.55; color: var(--ink-muted); }
+.mk-foot-col--tools ul { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--s5); }
+.mk-foot li { margin: 0; max-width: none; }
+.mk-foot a:not(.mk-brand) { display: inline-flex; align-items: center; min-height: 32px; color: var(--ink-body); font-size: var(--t-small); text-decoration: none; }
+.mk-foot a:not(.mk-brand):hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.mk-foot-base {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--s3) var(--s5); flex-wrap: wrap;
+  margin-top: var(--s8); padding-top: var(--s5); border-top: 1px solid var(--border-hair);
 }
-.mk-mid .mk-h2 { margin-bottom: var(--s5); }
-.mk-facts { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s5); }
-.mk-facts li { display: flex; flex-direction: column; align-items: center; gap: var(--s2); max-width: none; padding: var(--s5); }
-.mk-fact-n { font-family: var(--sk-display, var(--f-display)); font-size: clamp(var(--t-2xl), 3vw, var(--t-4xl)); font-weight: 700; line-height: 1.05; color: var(--ink); font-variant-numeric: tabular-nums; text-wrap: balance; overflow-wrap: normal; }
-.mk-fact-l { font-size: var(--t-small); color: var(--ink-muted); max-width: 26ch; }
+.mk-foot-copy { margin: 0; max-width: none; font-size: var(--t-small); color: var(--ink-muted); }
+.mk-foot ul.mk-foot-legal { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s5); }
 
-/* the facts beside the value copy: a typographic stack, the number large
-   and the line under it; no tiles, no rules, space does the grouping */
-.mk-facts--side { grid-template-columns: 1fr; gap: var(--s6); }
-.mk-facts--side li { align-items: flex-start; padding: 0; }
-.mk-facts--side .mk-fact-n { font-size: clamp(var(--t-2xl), 2.6vw, var(--t-4xl)); }
-.mk-facts--side .mk-fact-l { font-size: var(--t-base); color: var(--ink-body); max-width: 40ch; }
-
-/* ---- the footer ------------------------------------------------ */
-.mk-foot { background: var(--surface-rail); border-top: 1px solid var(--border-hair); padding-block: var(--s8) var(--s6); }
-.mk-foot-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--s6) var(--s5); }
-.mk-foot a { color: var(--ink-body); font-size: var(--t-small); text-decoration: none; display: inline-flex; align-items: center; min-height: 28px; }
-.mk-foot a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
-.mk-foot-base { display: flex; justify-content: space-between; gap: var(--s4); flex-wrap: wrap; margin-top: var(--s7); padding-top: var(--s5); border-top: 1px solid var(--border-hair); }
-.mk-foot-note, .mk-foot-copy { margin: 0; max-width: none; font-size: var(--t-tiny); color: var(--ink-muted); }
-
-/* ---- the sign-up modal ----------------------------------------- */
+/* ---- the sign-up modal ----------------------------------------------- */
 .mk-modal { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: var(--s4); }
 .mk-modal-scrim { position: absolute; inset: 0; background: var(--scrim); }
 .mk-modal-card {
-  position: relative; width: min(440px, 100%); box-sizing: border-box; padding: var(--s6);
-  background: var(--surface-elevated); border: 1px solid var(--border-default);
-  border-radius: var(--sk-modal-radius, var(--radius-xl)); box-shadow: var(--shadow-modal);
-  animation: mk-pop .2s var(--ease-out);
+  position: relative; width: min(460px, 100%); box-sizing: border-box; padding: var(--s7) var(--s6) var(--s6);
+  background: var(--surface-elevated); border-radius: var(--radius-2xl); box-shadow: var(--shadow-modal);
+  animation: mk-pop var(--speed-slow) var(--ease-out);
 }
-@keyframes mk-pop { from { opacity: 0; transform: translateY(calc(10px * var(--motion))); } to { opacity: 1; transform: none; } }
+@keyframes mk-pop { from { opacity: 0; transform: translateY(calc(10px * var(--motion))) scale(calc(1 - .02 * var(--motion))); } to { opacity: 1; transform: none; } }
 .mk-modal-card:focus { outline: none; }
 .mk-modal-x {
   position: absolute; top: var(--s3); right: var(--s3); display: grid; place-items: center; width: 44px; height: 44px;
   border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--ink-muted); cursor: pointer;
 }
 .mk-modal-x:hover { background: var(--surface-hover); color: var(--ink); }
-.mk-modal-h { margin: 0 var(--s7) var(--s3) 0; font-family: var(--sk-display, var(--f-display)); font-size: var(--t-2xl); font-weight: 700; line-height: 1.15; color: var(--ink); }
+.mk-modal-h { margin: 0 var(--s7) var(--s3) 0; font-family: var(--face-display); font-size: var(--t-2xl); font-weight: 800; line-height: 1.1; letter-spacing: -0.03em; color: var(--ink); }
 .mk-modal-offer { margin: 0 0 var(--s5); max-width: none; font-size: var(--t-base); line-height: 1.5; color: var(--ink-body); }
 .mk-msg { min-height: 1.4em; margin: var(--s3) 0 0; max-width: none; font-size: var(--t-small); color: var(--ink-body); }
-.mk-msg.mk-bad { color: var(--danger-lift, var(--danger)); }
+.mk-msg.mk-bad { color: var(--danger); }
 .mk-modal-terms, .mk-modal-have { margin: var(--s3) 0 0; max-width: none; font-size: var(--t-small); color: var(--ink-muted); line-height: 1.5; }
 .mk-modal-card a:not(.mk-btn) { color: var(--brand-deep); text-underline-offset: 3px; }
 
-/* ---- narrow ---------------------------------------------------- */
+/* ---- narrow ---------------------------------------------------------- */
 @media (max-width: 1000px) {
-  .mk-foot-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .mk-stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mk-foot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mk-mega { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 899px) {
   .mk-burger.mk-burger { display: grid; }
@@ -381,84 +365,69 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
   }
   .mk-top[data-menu] .mk-nav { display: flex; }
   html:has(.mk-top[data-menu]) { overflow: hidden; }   /* the page behind the open sheet stays put */
+  .mk-nav-link { min-height: 48px; font-size: var(--t-base); }
   /* doubled: marketing.js gives it role="button", and base.css's touch
      rule `[role="button"] { display: inline-flex }` ties with a single
-     class and wins on order, so on a real phone the dead Product toggle
-     showed at the top of the menu sheet */
+     class and wins on order */
   .mk-nav-prod.mk-nav-prod { display: none; }
   .mk-mega {
-    display: grid; position: static; max-width: none; margin: 0 0 var(--s3); padding: 0;
-    grid-template-columns: 1fr; gap: var(--s4); background: transparent; border: 0; box-shadow: none;
+    display: grid; position: static; max-width: none; margin: var(--s3) 0; padding: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s5); background: transparent; border: 0; box-shadow: none;
   }
   .mk-nav-item[data-open] .mk-mega { animation: none; }
-  .mk-split, .mk-how, .mk-hero-grid { grid-template-columns: 1fr; }
+  .mk-how { grid-template-columns: 1fr; }
   .mk-slot { position: static; order: -1; }
   .mk-cards { grid-template-columns: 1fr; }
-  .mk-facts { grid-template-columns: 1fr; }
-  .mk-foot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 560px) {
-  .mk-stages { grid-template-columns: 1fr; }
-  .mk-hero { min-height: 0; }
-  .mk-label-nav { gap: var(--s3); }
-  /* one row on a phone: the icon and the tool name stay, the stage goes */
-  .mk-label-in { flex-wrap: nowrap; gap: var(--s3); }
-  .mk-label-path > span:not(.sym) { display: none; }
-  .mk-label-path strong { white-space: nowrap; }
+  .mk-top-in { gap: var(--s2); }
+  .mk-top .mk-brand { font-size: var(--t-lg); min-width: 0; }
+  .mk-top-end { gap: var(--s1); }
+  .mk-top-end .mk-btn--sm { padding: 0 var(--s3); }
+  .mk-stages, .mk-mega, .mk-foot-grid { grid-template-columns: 1fr; }
   .mk-cta-row .mk-btn { flex: 1 1 100%; }
+  .mk-card, .mk-point { padding: var(--s5); }
+  .mk-facts li { padding: var(--s4) var(--s5); }
 }
 
-/* ---- entrances: each section's parts rise as it enters ------------
-   Scroll-driven, so nothing waits on a script and nothing starts hidden
-   where the timeline is unsupported; anything already in view at load is
-   past its range and renders complete. The body and the picture start a
-   step later than the heading. The distance is times --motion.
-   A FRAGMENT TARGET NEVER TRAVELS: anything with an id (every h2, the
-   facts list) only fades. A target still offset by its entrance when the
-   browser scrolls to it is measured where it WAS, and lands 24px under
-   the header once the offset ends (prove:scroll caught exactly that). */
-@supports (animation-timeline: view()) {
-  .mk-sec :is(.mk-h2, .mk-body, .mk-facts, .mk-steps, .mk-cards, .mk-stages, .st-glyph, .st-media) {
-    animation: mk-rise linear both;
-    animation-timeline: view();
-    animation-range: entry 0% entry 40%;
+/* the hero's entrance: CSS, so it needs no script and is done before a
+   reader could start reading. The heading and anything with an id (a
+   fragment target) only fade; the rest rises a short way, times --motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .mk-hero :is(.mk-kicker, .mk-crumbs, .mk-h1, .mk-sub, .mk-cta-row, .mk-player, .mk-caption, .mk-updated, .mk-toc--row) {
+    animation: mk-rise var(--speed-lazy) var(--ease-out) both; animation-duration: .8s;
   }
-  .mk-sec :is(.mk-h2, .mk-body, .mk-facts, .mk-steps, .mk-cards, .mk-stages, .st-glyph, .st-media)[id] { animation-name: mk-fade; }
-  .mk-sec :is(.mk-body, .st-media, .mk-facts, .mk-steps, .mk-cards, .mk-stages) { animation-range: entry 8% entry 48%; }
+  .mk-hero :is(.mk-h1, [id]) { animation-name: mk-fade; }
+  .mk-hero .mk-sub { animation-delay: .06s; }
+  .mk-hero .mk-cta-row { animation-delay: .12s; }
+  .mk-hero :is(.mk-player, .mk-caption, .mk-updated, .mk-toc--row) { animation-delay: .2s; }
 }
-@keyframes mk-rise { from { opacity: 0; transform: translateY(calc(24px * var(--motion))); } }
+@keyframes mk-rise { from { opacity: 0; transform: translateY(calc(18px * var(--motion))); } }
 @keyframes mk-fade { from { opacity: 0; } }
 
-/* print: nothing is caught part-way through its entrance */
+/* print: the bands print as paper */
 @media print {
-  .mk-sec :is(.mk-h2, .mk-body, .mk-facts, .mk-steps, .mk-cards, .mk-stages, .st-glyph, .st-media) { animation: none; }
+  .mk-top, .mk-foot, .mk-pass, .mk-modal { display: none !important; }
+  .mk-hero * { animation: none !important; }
+  .mk-hero, .mk-close { background: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .mk-sec :is(.mk-h2, .mk-body, .mk-facts, .mk-steps, .mk-cards, .mk-stages, .st-glyph, .st-media) { animation: none; }
-  .mk-still, .mk-top, .mk-btn, .mk-card, .mk-step, .mk-link .sym, .mk-nav-prod .sym { transition: none; }
+  .mk-still, .mk-top, .mk-btn, .mk-card, .mk-step, .mk-link .sym, .mk-nav-prod .sym, .mk-nav-link { transition: none; }
   .mk-mega, .mk-modal-card { animation: none; }
 }
 
 /* ============================================================
-   GUIDES, COMPARISONS, TRUST, AND THE E-MAIL CAPTURE (26 Oct 2026)
-   ------------------------------------------------------------
-   guide-*.html, guides.html, compare-*.html and trust.html are reading
-   pages: a short hero, then prose at a reading measure. Same rules as
-   above: tokens only, the skin's radii, travel times --motion.
+   READING PAGES — guides, switching guides, trust, and the e-mail
+   capture. A short dark hero, then prose at a reading measure.
    ============================================================ */
-.mk:not([class*="hue-"]) .mk-hero--article { --hue: var(--accent-primary); }
-.mk-hero.mk-hero--article {
-  min-height: 0; align-items: flex-end;
-  padding-top: calc(var(--mk-top-h) + var(--s7)); padding-bottom: var(--s7);
-}
-.mk-hero--article .mk-h1 { font-size: clamp(var(--t-2xl), 5vw, var(--t-4xl)); max-width: 24ch; }
+.mk-hero.mk-hero--article { padding-block: clamp(var(--s7), 6vw, var(--s9)); }
+.mk-hero--article .mk-h1 { font-size: clamp(2.25rem, 5vw, 3.75rem); max-width: 22ch; }
 .mk-hero--article .mk-sub { margin-bottom: var(--s4); max-width: 60ch; }
-.mk-small { margin: 0; max-width: 64ch; font-size: var(--t-small); line-height: 1.55; color: var(--ink-muted); }
 .mk-updated { margin-top: var(--s2); }
 
-.mk-crumbs ol { list-style: none; margin: 0 0 var(--s4); padding: 0; display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); font-size: var(--t-small); }
-.mk-crumbs li { display: inline-flex; align-items: center; gap: var(--s2); color: var(--ink-muted); }
+.mk-crumbs ol { list-style: none; margin: 0 0 var(--s5); padding: 0; display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); font-size: var(--t-small); }
+.mk-crumbs li { display: inline-flex; align-items: center; gap: var(--s2); margin: 0; color: var(--ink-muted); }
 .mk-crumbs li + li::before { content: '/'; color: var(--ink-muted); }
 .mk-crumbs a { display: inline-flex; align-items: center; min-height: 32px; color: var(--ink-body); text-decoration: underline; text-underline-offset: 3px; }
 .mk-crumbs a:hover { color: var(--ink); }
@@ -467,68 +436,67 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
 /* the article: a sticky contents list beside the prose on a desk */
 .mk-article-grid { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: clamp(var(--s6), 5vw, var(--s8)); align-items: start; }
 .mk-toc { position: sticky; top: calc(var(--mk-top-h) + var(--s4)); }
-.mk-toc-h { margin: 0 0 var(--s3); font-size: var(--t-tiny); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-muted); }
+.mk-toc-h { margin: 0 0 var(--s3); font-size: var(--t-tiny); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
 .mk-toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); }
+.mk-toc li { margin: 0; }
 .mk-toc a {
   display: flex; align-items: center; min-height: 36px; padding: 0 var(--s3);
   border-left: 2px solid var(--border-default);
   color: var(--ink-body); font-size: var(--t-small); text-decoration: none;
 }
-.mk-toc a:hover { color: var(--ink); border-left-color: var(--hue, var(--accent-primary)); }
-.mk-toc--row { position: static; margin-top: var(--s4); }
+.mk-toc a:hover { color: var(--ink); border-left-color: var(--accent-primary); }
+.mk-toc--row { position: static; margin-top: var(--s5); }
 .mk-toc--row ol { display: flex; flex-wrap: wrap; gap: var(--s2); }
-.mk-toc--row a { border: 1px solid var(--border-default); border-radius: var(--radius-pill); }
+.mk-toc--row a { border: 1.5px solid var(--border-strong); border-radius: var(--radius-pill); }
 
 .mk-prose { max-width: 46rem; }
 .mk-wrap.mk-prose { margin-inline: auto; max-width: calc(46rem + 2 * var(--gutter)); }
-.mk-prose .mk-h2 { font-size: clamp(var(--t-xl), 3vw, var(--t-2xl)); margin-top: var(--s7); }
+.mk-prose .mk-h2 { font-size: clamp(var(--t-xl), 3vw, var(--t-2xl)); margin: var(--s7) 0 var(--s4); max-width: none; letter-spacing: -0.025em; }
 .mk-prose .mk-h2:first-child, .mk-prose .mk-card-icon + .mk-h2 { margin-top: 0; }
 .mk-prose .mk-body { max-width: none; }
-.mk-list { margin: 0 0 var(--s5); padding-left: 1.25em; display: grid; gap: var(--s2); font-size: var(--t-lg); line-height: 1.6; color: var(--ink-body); }
-.mk-list li::marker { color: var(--hue-lift, var(--brand-deep)); }
+.mk-list { margin: 0 0 var(--s5); padding-left: 1.25em; display: grid; gap: var(--s2); font-size: var(--t-lg); line-height: 1.6; color: var(--ink-body); max-width: none; }
+.mk-list li { max-width: none; }
+.mk-list li::marker { color: var(--brand-deep); }
 .mk-list b { color: var(--ink); }
 .mk-list--steps { padding-left: 1.6em; }
 .mk-src-list { font-size: var(--t-small); }
 
 .mk-plan-note {
   display: flex; align-items: flex-start; gap: var(--s2); margin: 0 0 var(--s4); max-width: none;
-  padding: var(--s3) var(--s4); background: var(--hue-wash, var(--surface-card));
-  border: 1px solid var(--border-default); border-radius: var(--sk-radius, var(--radius-lg));
+  padding: var(--s3) var(--s4); background: var(--brand-wash); border-radius: var(--radius-lg);
   font-size: var(--t-small); line-height: 1.5; color: var(--ink-body);
 }
-.mk-plan-note .sym { color: var(--hue-lift, var(--brand-deep)); font-size: 20px; flex: none; }
-.mk-close-note { margin-top: var(--s4); }
+.mk-plan-note .sym { color: var(--brand-deep); font-size: 20px; flex: none; }
 
 /* the comparison table: scrolls inside its own box on a phone, never the page */
-.mk-table-wrap { overflow-x: auto; border: 1px solid var(--border-default); border-radius: var(--sk-radius, var(--radius-lg)); background: var(--surface-card); }
-.mk-table-wrap:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.mk-table-wrap { overflow-x: auto; border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--surface-card); }
+.mk-table-wrap:focus-visible { outline: 3px solid var(--accent-primary); outline-offset: 3px; }
 .mk-table { width: 100%; min-width: 40rem; border-collapse: collapse; font-size: var(--t-small); line-height: 1.55; }
 .mk-table th, .mk-table td { padding: var(--s4); text-align: left; vertical-align: top; border-bottom: 1px solid var(--border-hair); color: var(--ink-body); }
-.mk-table thead th { color: var(--ink); font-weight: 700; background: var(--surface-elevated); }
+.mk-table thead th { color: var(--ink); font-weight: 700; background: var(--surface-rail); }
 .mk-table tbody th { color: var(--ink); font-weight: 600; width: 22%; }
 .mk-table tbody tr:last-child > * { border-bottom: 0; }
 .mk-checked { margin-top: var(--s4); }
 .mk-tm { margin-top: var(--s5); }
 .mk-also-links { margin-top: var(--s5); }
 
-/* the e-mail capture */
+/* the e-mail capture (hidden until site.lead.live) */
 .mk-lead { padding-block: var(--s7); border-top: 1px solid var(--border-hair); }
 .mk-lead-in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: var(--s5) var(--s7); align-items: start; }
 .mk-lead-form { display: grid; gap: var(--s3); }
 .mk-lead-label { font-size: var(--t-small); font-weight: 600; color: var(--ink); }
 .mk-lead-row { display: flex; gap: var(--s3); flex-wrap: wrap; }
 .mk-lead-input {
-  flex: 1 1 16rem; min-width: 0; min-height: 44px; box-sizing: border-box; padding: 0 var(--s4);
+  flex: 1 1 16rem; min-width: 0; min-height: 48px; box-sizing: border-box; padding: 0 var(--s4);
   background: var(--surface-card); color: var(--ink); font: inherit; font-size: var(--t-base);
-  border: 1px solid var(--border-strong); border-radius: var(--sk-field-radius, var(--radius));
+  border: 1.5px solid var(--border-strong); border-radius: var(--radius-pill);
 }
-.mk-lead-input:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.mk-lead-input:focus-visible { outline: 3px solid var(--accent-primary); outline-offset: 2px; }
 .mk-lead-consent { display: flex; align-items: flex-start; gap: var(--s3); font-size: var(--t-small); line-height: 1.5; color: var(--ink-body); }
 .mk-lead-consent input { width: 20px; height: 20px; margin: 2px 0 0; flex: none; accent-color: var(--brand); }
 .mk-lead-status { min-height: 1.4em; }
 
-/* a phone reads the comparison as one card per fact: the row heading,
-   then each product's cell under its own name (data-col) */
+/* a phone reads the comparison as one card per fact */
 @media (max-width: 640px) {
   .mk-table { min-width: 0; }
   .mk-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
@@ -537,9 +505,32 @@ html.mk-js .mk-top[data-mega] { background: var(--surface-canvas); border-bottom
   .mk-table tbody tr:last-child { border-bottom: 0; }
   .mk-table tbody th, .mk-table td { border-bottom: 0; padding-block: var(--s2); }
   .mk-table tbody th { width: auto; font-size: var(--t-base); }
-  .mk-table td::before { content: attr(data-col); display: block; margin-bottom: var(--s1); font-size: var(--t-tiny); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-muted); }
+  .mk-table td::before { content: attr(data-col); display: block; margin-bottom: var(--s1); font-size: var(--t-tiny); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
 }
 @media (max-width: 899px) {
   .mk-article-grid, .mk-lead-in { grid-template-columns: 1fr; }
   .mk-toc { position: static; }
 }
+
+/* TOUCH TARGETS (28 Oct 2026): the studio floors a tap target at 44px
+   under a coarse pointer (base.css); the public site now does the same
+   for its footer links, its text links and the opt-out. */
+@media (pointer: coarse) {
+  .mk-foot a:not(.mk-brand), .mk-link, .mk-foot .st-optout-btn { min-height: 44px; display: inline-flex; align-items: center; }
+}
+
+/* REFLOW AT 320px (WCAG 1.4.10; 400% zoom of 1280): the brand gives way
+   before the burger is pushed off the edge. */
+@media (max-width: 380px) {
+  .mk-top-in { padding-inline: var(--s3); gap: var(--s1); }
+  .mk-top .mk-brand { font-size: var(--t-base); gap: var(--s1h); min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mk-top-end .mk-btn--sm { padding: 0 var(--s2); }
+}
+
+/* The device's "Reduce motion" switch (marketing.js sets html.ma-off). */
+html.ma-off *, html.ma-off ::before, html.ma-off ::after { animation: none !important; transition: none !important; }
+
+/* TWO H1 TIERS (28 Oct 2026; docs/DESIGN-KIT.md): DISPLAY (.mk-h1, 76px
+   at 1440) for the home page and the product pages, PAGE TITLE (60px)
+   for every other marketing page, pricing included; legal pages 48px. */
+.mk-hero.pr-hero .mk-h1, .mk-hero.co-hero .mk-h1 { font-size: clamp(2.25rem, 5vw, 3.75rem); }

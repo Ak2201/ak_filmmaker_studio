@@ -38,8 +38,10 @@
    guide takes that padding and the steps give theirs back, so the
    heading and every step start on one line. And the line-type chips
    are for writing a line, not reading the guide. */
-.sc-main > #guide { padding-inline: var(--s4); }
-.sc-main > #guide .sg-steps > .step { margin-inline: calc(-1 * var(--s4)); }
+/* --sg-gutter is the skin's band inline padding (var(--s5) since the
+   28 Oct 2026 skin; it was var(--s4)), so the two cannot drift again. */
+.sc-main > #guide { --sg-gutter: var(--s5); padding-inline: var(--sg-gutter); }
+.sc-main > #guide .sg-steps > .step { margin-inline: calc(-1 * var(--sg-gutter)); }
 .sc-main:has(> #guide:not([hidden])) > #scChips { display: none; }
 
 /* ============================================================
@@ -71,10 +73,10 @@
   padding: var(--s1) var(--s4);
   border-bottom: 1px solid var(--border-hair);
   background: var(--surface-canvas);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .sc-draftline {
   display: flex;
@@ -136,10 +138,10 @@
   background: var(--surface-card);
   border: 1px solid var(--border-default);
   border-radius: var(--sk-field-radius, var(--radius));
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink);
 }
 .sc-typepill:hover { border-color: var(--border-strong); background: var(--surface-hover); }
@@ -320,11 +322,11 @@
     position: absolute;
     top: 0;
     right: calc(100% + 1.5em);
-    font-family: var(--f-mono);
+    font-family: var(--f-body);
     font-size: 0.6em;
     line-height: 2;
-    letter-spacing: var(--track-label);
-    text-transform: uppercase;
+    letter-spacing: 0;
+    text-transform: none;
     white-space: nowrap;
     color: var(--ink-muted);
   }
@@ -354,10 +356,10 @@
   padding-top: 0.5em;
   padding-right: 10em;
   border-top: 1px dashed var(--rule);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: 0.6em;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   text-align: right;
   color: var(--ink-muted);
 }
@@ -561,10 +563,10 @@
   margin: 0;
   padding: var(--s4) var(--s4) var(--s7);
   text-align: center;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .sc-done a { color: var(--brand-deep); text-decoration: none; }
@@ -687,11 +689,11 @@
 .sc-chips { display: none; }
 .sc-chip {
   flex: 0 0 auto;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 500;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   background: transparent;
   border: 1px solid transparent;
@@ -889,11 +891,11 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
 .sc-sheet-group { display: grid; gap: var(--s-half); }
 .sc-sheet-h {
   margin: 0 0 var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .sc-sheet-row {
@@ -1198,3 +1200,25 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
 @media (max-width: 719px) {
   .sc-views { padding: var(--s1) var(--s3) 0; }
 }
+
+/* ---- 8B PASS (28 Oct 2026, lane C): labels in the body face ---------
+   The template sets every label in the body face, sentence case, with no
+   tracking; mono capitals stay for DATA (figures, codes, the breakdown
+   sheet, the printed shot list) and the script page. These rules came
+   last on purpose (the ordering trap in CLAUDE.md): the same selectors,
+   later in the file, so they win on order and nothing else. */
+.sc-meta,
+.sc-typepill,
+.sc-done,
+.sc-chip,
+.sc-sheet-h {
+  font-family: var(--f-body);
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 600;
+}
+
+/* 8B pass (28 Oct 2026): the resting tip is a sentence, so it is set in
+   the body face; the element type it names keeps its capitals. */
+.sc-tip { font-family: var(--f-body); font-size: var(--t-tiny); }
+.sc-tip-keys { font-family: var(--f-mono); }

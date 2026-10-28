@@ -83,7 +83,7 @@
   font-family: var(--sk-eyebrow-face, var(--f-mono));
   font-size: var(--sk-eyebrow-size, var(--t-micro));
   font-weight: 600;
-  letter-spacing: var(--sk-eyebrow-track);
+  letter-spacing: 0;
   text-transform: var(--sk-eyebrow-transform, uppercase);
   /* An eyebrow is TEXT on a page ground, so it takes the deep accent,
      not the fill. At --accent it measured 3.35-3.69:1 in desk, where
@@ -236,10 +236,10 @@
 .bd-stat span,
 .hero-stat .lab,
 .hub-stat-strip .hss-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 
@@ -380,10 +380,10 @@
   color: var(--ink-body);
 }
 .bd-example-film {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 
@@ -452,10 +452,10 @@
   font-size: var(--t-tiny);
 }
 .bd-chip-cat {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep);
 }
 .bd-chip-name { color: var(--ink); }
@@ -552,10 +552,10 @@
   transition-duration: var(--speed-tap);
 }
 .job-eyebrow {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep, var(--accent-deep));
 }
 .job-label {
@@ -572,10 +572,10 @@
 }
 .job-go {
   margin-top: var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep, var(--accent-deep));
 }
 
@@ -619,10 +619,10 @@
 .lx-phase-blurb { font-size: var(--t-tiny); line-height: var(--lh-snug); opacity: .85; }
 .lx-phase-count {
   margin-top: auto;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   opacity: .8;
 }
 
@@ -648,11 +648,11 @@
 .lx-groups .lx-mods { padding: 0; background: none; }
 .lx-group-head {
   margin: 0 0 var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .lx-mod {
@@ -768,8 +768,8 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   min-width: 30px; height: 30px;
   padding-inline: var(--s2);
   border-radius: var(--sk-radius);
-  background: var(--accent);
-  color: var(--accent-on);
+  background: var(--brand);
+  color: var(--brand-on);
   font-family: var(--f-mono);
   font-size: var(--t-tiny);
 }
@@ -823,7 +823,7 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   letter-spacing: var(--track-label);
 }
 .bd-reader-note { margin: var(--s2) 0 0; font-size: var(--fs-sm, 0.9rem); color: var(--ink); }
-.bd-reader-lab { font-family: var(--f-mono); font-size: 0.75em; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-deep); }
+.bd-reader-lab { font-family: var(--f-body); font-size: 0.75em; letter-spacing: 0; text-transform: none; color: var(--accent-deep); }
 .bd-scene-songlink select { text-transform: none; letter-spacing: normal; }
 /* min-width: 0 because the card is a grid item of .bd-list, and a grid
    item's floor is its min-content: once the bar's controls stopped
@@ -845,8 +845,8 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   min-width: 30px; height: 30px;
   padding-inline: var(--s2);
   border-radius: var(--sk-radius, var(--radius));
-  background: var(--accent);
-  color: var(--accent-on);
+  background: var(--brand);
+  color: var(--brand-on);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   font-weight: 700;
@@ -860,8 +860,8 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   width: 3.5rem;
   height: 30px;
   padding: 0 var(--s2);
-  background: var(--accent);
-  color: var(--accent-on);
+  background: var(--brand);
+  color: var(--brand-on);
   border-color: transparent;
   text-align: center;
   font-family: var(--f-mono);
@@ -970,10 +970,10 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   line-height: var(--lh-snug);
 }
 .bd-sug-guess {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .bd-add { justify-self: start; }
@@ -993,10 +993,10 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
    grounds. .bd-chip-cat — the same category label in chip form, eight
    rules up — already does this; the two had simply drifted apart. */
 .bd-el-cat {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep);
 }
 .bd-el-name { font-family: var(--f-display); font-size: var(--t-small); }

@@ -24,6 +24,7 @@
     "skip": "Skip to content",
     "product": "Product",
     "pricing": "Pricing",
+    "resources": "Learn",
     "guides": "Guides",
     "compare": "Switching",
     "login": "Sign in",
@@ -34,14 +35,11 @@
     "getStarted": "Get started",
     "explore": "Explore",
     "labelNav": "On this page",
-    "labelHow": "How it works",
     "demoFallback": "Your browser cannot play this video.",
     "howLabel": "How it works",
     "howHeading": "How it works",
-    "relatedHeading": "Browse more tools",
-    "toolsHeading": "Tools for every stage",
-    "factsHeading": "The plain facts",
-    "viewPricing": "View plans & pricing"
+    "relatedHeading": "More tools",
+    "factsHeading": "The plain facts"
   },
   "signup": {
     "heading": "Sign in to get started",
@@ -90,12 +88,14 @@
     "privacy": "How we keep your address"
   },
   "footer": {
+    "productHeading": "Product",
     "legalHeading": "Company",
+    "readHeading": "Learn",
     "pricing": "Pricing",
     "about": "About us",
     "trust": "Your work stays yours",
     "guides": "Guides",
-    "compare": "Switching to the studio",
+    "compare": "Switching guides",
     "contact": "Contact us",
     "privacy": "Privacy",
     "terms": "Terms",

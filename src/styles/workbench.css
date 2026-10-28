@@ -55,10 +55,10 @@
   align-items: baseline;
   gap: var(--s2);
   margin: 0 0 var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   /* --ink-muted rather than --ink-faint: this is the readout itself,
      not a label beside a number already read, and faint at 11px
      uppercase does not clear contrast on the lighter skins. */
@@ -196,10 +196,10 @@
    every theme. These labels are the only thing naming the prose under
    them. */
 .wb-row-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .wb-row-val {
@@ -259,10 +259,10 @@
   padding: 2px var(--s2);
   background: var(--paper-sunk);
   border-radius: var(--sk-btn-radius);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
   color: var(--ink-muted);
 }
@@ -331,11 +331,11 @@
 }
 
 .wb-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink);
 }
 .wb-lab.wb-beat-name {
@@ -372,10 +372,10 @@
   overflow-wrap: anywhere;
 }
 .wb-model-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep, var(--accent));
 }
 
@@ -417,10 +417,10 @@
   border-radius: var(--sk-radius);
 }
 .wb-preview-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep, var(--accent));
 }
 /* A blank is an instruction, not a ghost: it says which part of the

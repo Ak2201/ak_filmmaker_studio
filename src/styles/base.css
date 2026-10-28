@@ -393,3 +393,7 @@ p, .deck, .step-deck, .hint, li { text-wrap: pretty; }
    name, not its glyph: keep it an invisible glyph-sized box so a
    blocked font never prints "auto_stories" over a label. */
 html:not(.sym-ready) .sym.sym.sym { visibility: hidden; max-width: 1em; overflow: hidden; }
+
+/* A section focused by script (a skip link, an in-page jump: see
+   src/ui/fragments.js moveFocus) shows no ring for a pointer user. */
+[tabindex="-1"]:focus:not(:focus-visible) { outline: none; }

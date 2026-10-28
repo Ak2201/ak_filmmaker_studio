@@ -13,8 +13,8 @@
 
 .gt-code { display: grid; gap: var(--s2); max-width: 28rem; margin-top: var(--s3); }
 .gt-code .btn { justify-self: start; }
-.gt-label { font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
-.gt-input { font-family: var(--f-mono); font-size: var(--t-lg); letter-spacing: .08em; text-transform: uppercase; min-width: 0; }
+.gt-label { font-family: var(--f-body); font-size: var(--t-tiny); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
+.gt-input { font-family: var(--f-body); font-size: var(--t-lg); letter-spacing: 0; text-transform: none; min-width: 0; }
 
 .gt-h3 { font-family: var(--f-display); font-size: var(--t-lg); margin: var(--s5) 0 var(--s2); color: var(--ink); }
 .gt-create { display: grid; gap: var(--s3); }

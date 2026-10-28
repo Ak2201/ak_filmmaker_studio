@@ -102,7 +102,6 @@ export const BUILT_MODULE_COUNT = moduleGroups().reduce(
    blueprint-era blobs they read — is src/lib/launcher-model.js. Reads only:
    the launcher must never write during a render. */
 const ROWS = ROWS_JSON.rows;
-const NUMBER_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
 
 /* ------------------------------------------------------------
    WHERE AM I
@@ -229,27 +228,17 @@ export function renderLauncher() {
     return s && s.kind === 'work';
   }).length, 0);
 
-  const head = h('div.section-head');
+  /* A plain heading and one count (owner, 28 Oct 2026: fewer words per
+     screen). The count is of what the grid DRAWS, and what varies for
+     this project only is how many of them hold work. */
+  const head = h('div.section-head.lx-head');
   head.append(
     h('div.left', {}, [
-      h('div.label', { text: 'THE MAP · EVERY MODULE BY STAGE OF WORK' }),
-      h('h2#lxHeading', {}, [
-        document.createTextNode(`${NUMBER_WORDS[live.length] || live.length} rows, `),
-        // Emphasis by weight, not an italic accent.
-        h('strong.lx-count', { text: `${shown} ${shown === 1 ? 'module' : 'modules'}.` })
-      ]),
-      /* "Usually": the hero above says the stages go in any order and
-         nothing is mandatory; this line must not contradict it. */
-      h('p.deck', {
-        text: 'A film usually moves through these in this order. '
-            + 'Open any module directly.'
-      })
+      h('h2#lxHeading', { text: 'Your tools' }),
+      h('p.deck', { text: 'Grouped by the work they do. Open any of them, in any order.' })
     ]),
-    /* What varies for this project only: how many modules hold work.
-       "N of N built" never varied for anyone, and "you are here" on the
-       dashboard said the page you were already reading. */
     h('div.right', {}, [
-      h('div.lx-worked', { text: `${worked} with work` })
+      h('p.lx-worked', { text: `${shown} ${shown === 1 ? 'module' : 'modules'} · ${worked} with work` })
     ])
   );
 

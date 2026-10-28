@@ -1112,10 +1112,20 @@ function renderAI(s) {
    reason would live only in a tooltip. */
 function exportMenu(s) {
   const opts = [
-    { label: 'Synopsis', hint: '.txt', st: 'export-txt', can: IO.canExportSynopsis(s) },
-    { label: 'Outline', hint: '.md', st: 'export-md', can: IO.canExportOutline(s) }
+    { label: 'Export synopsis', hint: '.txt', st: 'export-txt', can: IO.canExportSynopsis(s) },
+    { label: 'Export outline', hint: '.md', st: 'export-md', can: IO.canExportOutline(s) }
   ].filter((o) => o.can);
-  return actionMenu('Export', opts.map(({ label, hint, st }) => ({ label, hint, data: { st } })), { align: 'right', kit: 'secondary' });
+  const items = opts.map(({ label, hint, st }) => ({ label, hint, data: { st } }));
+  /* 8B pass (28 Oct 2026): the destructive "Clear synopsis…" left the
+     header row (a red button beside the page's title was the loudest
+     thing on it) and is the last row of this menu, after a rule. Same
+     data-st="clear", same confirm. */
+  if (s.source.trim() || s.marks.length) {
+    if (items.length) items.push('---');
+    items.push({ label: 'Clear synopsis…', danger: true, data: { st: 'clear' } });
+  }
+  if (!items.length) return null;
+  return actionMenu('More', items, { align: 'right', kit: 'secondary' });
 }
 
 function renderPitch() {
@@ -1219,18 +1229,13 @@ function draw() {
   /* The two exports are one named menu, so the row is three controls
      that wrap on a phone instead of five that scroll off its edge (a
      menu inside a sideways-scrolling row is clipped to nothing). */
-  if (IO.canExportSynopsis(s) || IO.canExportOutline(s)) bar.append(exportMenu(s));   // nothing to export: no menu of two dead rows
-  /* Destructive, so last and quiet: never weighted like the exports. */
-  if (s.source.trim() || s.marks.length) {
-    bar.append(button({ label: 'Clear synopsis…', variant: 'danger', size: 'sm', class: 'st-start-over', attrs: { 'data-st': 'clear' } }));
-  }
+  const more = exportMenu(s);   // nothing to export or clear: no menu of dead rows
+  if (more) bar.append(more);
   main.insertBefore(pageHeader({
     class: 'bd-head',
     eyebrow: ['Story'],
     title: 'Story',
-    sub: fmt() === 'short'
-      ? 'Four steps from a seed to a synopsis: the idea, the character and the world, the beat sheet, the synopsis. Then the Screenplay Writer.'
-      : 'Four steps from an idea to a synopsis: the idea, the characters and the world, the beat sheet of your choice, the synopsis. Then the Screenplay Writer.',
+    sub: 'Four steps from an idea to a synopsis. Then the Screenplay Writer.',
     actions: [bar]
   }), main.firstChild);
 

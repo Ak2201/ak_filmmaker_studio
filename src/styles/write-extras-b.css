@@ -129,10 +129,10 @@
 }
 .wx-take-now { margin: 0; display: grid; gap: var(--s1); }
 .wx-label {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .wx-take-text {

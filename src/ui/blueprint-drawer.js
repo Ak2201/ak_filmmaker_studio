@@ -320,7 +320,7 @@ function buildDrawer() {
           h('p.bpd-eyebrow', { id: 'bpdEyebrow' }),
           h('h2.bpd-title', { id: 'bpdTitle' })
         ]),
-        h('button.btn.bpd-close', { type: 'button', 'data-bpd': 'close', 'aria-label': 'Close the blueprint step', text: '✕' })
+        h('button.btn.bpd-close', { type: 'button', 'data-bpd': 'close', 'aria-label': 'Close the blueprint step', }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })])
       ]),
       h('div.bpd-tabs', { role: 'tablist', 'aria-label': 'Blueprint steps for this tool' }),
       h('div.bpd-body', { role: 'tabpanel', 'aria-labelledby': 'bpdTitle' }),

@@ -203,16 +203,16 @@ const SPACES = {
       await d.pause(500);
       await d.scroll(300, 1400);
       await d.scrollTop();
-      await d.click(d.t('Synopsis & Tagging'), 1400);
+      await d.click(d.t('Synopsis'), 1400);
       await d.scroll(300, 1200);
       await d.pause(600);
       await d.scrollTop();
-      await d.click(d.t('Pacing & Story Notes'), 1500);
+      await d.click(d.t('Beat Sheet'), 1500);
     },
     stills: [
       async () => {},                                                                                 // 1 beat sheet
       async (d) => { await d.scroll(520, 500); },                                                     // 2 the beats, scrolled
-      async (d) => { await d.scrollTop(); await d.click(d.t('Synopsis & Tagging'), 900); }                       // 3 synopsis and tagging
+      async (d) => { await d.scrollTop(); await d.click(d.t('Synopsis'), 900); }                       // 3 synopsis and tagging
     ]
   },
 

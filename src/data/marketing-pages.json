@@ -20,14 +20,13 @@
     "metaTitle": "Screenplay writer for Tamil, Tanglish and English",
     "metaDescription": "Write a formatted screenplay in Tamil, Tanglish or English. Slug lines, action and dialogue format as you type, with numbered drafts, and export to PDF, Word, Final Draft and Fountain.",
     "hero": {
-      "h1": "Write the screenplay. The format takes care of itself.",
+      "h1": "Write the screenplay. The format takes care of itself",
       "sub": "A screenplay writer for Tamil, Tanglish and English. Slug lines, action and dialogue set themselves as you type, and every scene feeds the rest of the studio.",
       "subElsewhere": "A screenplay writer in the standard format. Slug lines, action and dialogue set themselves as you type, and every scene feeds the rest of the studio."
     },
     "value": {
       "h2": "Stay in the scene, not in the margins",
       "body": [
-        "Press Return and the next element is guessed from the line you just wrote. Tab and Shift+Tab walk from character to parenthetical to dialogue, so your hands stay on the keys and your head stays in the story.",
         "Every scene heading you write becomes a scene in the studio. The breakdown, schedule and call sheet read from your script, so a rewrite shows up everywhere without being typed twice."
       ]
     },
@@ -59,8 +58,7 @@
     "value": {
       "h2": "Structure you can see, not just read about",
       "body": [
-        "Pick a framework such as Three-Act, Save the Cat, Story Circle or the Short Film Five-Beat, and place your synopsis against its beats. Switch frameworks and your marked passages move to the nearest beat.",
-        "Tension is plotted against the shape each structure expects. Pacing flags point at the stretch of story they mean, so you fix the sag in the outline, not in the third draft."
+        "Pick a framework such as Three-Act, Save the Cat, Story Circle or the Short Film Five-Beat, and place your synopsis against its beats. Switch frameworks and your marked passages move to the nearest beat."
       ]
     },
     "demo": { "h2": "See the beat board in action" },
@@ -90,8 +88,7 @@
     "value": {
       "h2": "One shot, one frame, always in step",
       "body": [
-        "A frame belongs to a shot, and a shot belongs to a scene. Rename a location in the breakdown and the storyboard says the new name, because it was never typed here.",
-        "Frames hold a link to a picture or a written description, not the picture itself. That keeps your studio light and your work saved in your own browser."
+        "A frame belongs to a shot, and a shot belongs to a scene. Rename a location in the breakdown and the storyboard says the new name, because it was never typed here."
       ]
     },
     "demo": { "h2": "See the storyboard in action" },
@@ -122,8 +119,7 @@
     "value": {
       "h2": "A breakdown you check, not one you type",
       "body": [
-        "Auto-tag reads each scene and suggests what it needs. Nothing is added until you accept it, so the breakdown stays your decision and the first pass takes minutes.",
-        "Every tag you accept feeds the element list, the schedule, the day out of days and the budget. Change the script and the scenes update, so the paperwork never drifts from the film."
+        "Auto-tag reads each scene and suggests what it needs. Nothing is added until you accept it, so the breakdown stays your decision and the first pass takes minutes."
       ]
     },
     "demo": { "h2": "See the breakdown in action" },
@@ -155,8 +151,7 @@
     "value": {
       "h2": "Never buy the same prop twice",
       "body": [
-        "The same lanyard turns up in six scenes. The catalog lists it once and shows all six, so art and costume plan one purchase and a continuity note, not six separate asks.",
-        "The catalog is a view of your breakdown, not a second list to maintain. Tag a scene and the catalog updates; remove the tag and the element goes with it."
+        "The same lanyard turns up in six scenes. The catalog lists it once and shows all six, so art and costume plan one purchase and a continuity note, not six separate asks."
       ]
     },
     "demo": { "h2": "See the catalog in action" },
@@ -186,8 +181,7 @@
     "value": {
       "h2": "The list your AD and DOP both read",
       "body": [
-        "Each shot belongs to a scene and carries its number, size, angle, movement, lens and one line of what we see. Totals at the foot show setups, scenes and pages.",
-        "Slug lines and page lengths are read from the scene at print time, so a renamed location is renamed on the sheet without anyone editing it."
+        "Each shot belongs to a scene and carries its number, size, angle, movement, lens and one line of what we see. Totals at the foot show setups, scenes and pages."
       ]
     },
     "demo": { "h2": "See the shot list in action" },
@@ -217,8 +211,7 @@
     "value": {
       "h2": "A schedule that follows the script",
       "body": [
-        "Each scene is a strip. Group the strips by script order, location, day or night, or shoot day, and move them between days. The board is a view of your scenes, so nothing is typed twice.",
-        "The day out of days shows which actor works on which day, so nobody is called in for nothing."
+        "Each scene is a strip. Group the strips by script order, location, day or night, or shoot day, and move them between days. The board is a view of your scenes, so nothing is typed twice."
       ]
     },
     "demo": { "h2": "See the stripboard in action" },
@@ -251,12 +244,10 @@
     "value": {
       "h2": "Honest rates, honestly dated",
       "body": [
-        "The estimator starts from Chennai rate bands and a FEFSI bata table. Each rate says when it was last checked and is never inflated to look current, so you know how old your starting point is.",
-        "Budget days follow your schedule. After the shoot starts, log expenses and petty cash against the plan and see what is left, with the contingency you chose."
+        "The estimator starts from Chennai rate bands and a FEFSI bata table. Each rate says when it was last checked and is never inflated to look current, so you know how old your starting point is."
       ],
       "bodyElsewhere": [
-        "Build the estimate line by line, in your own figures. The studio does not invent rates for places it has not checked, so every number on the page is one you typed.",
-        null
+        "Build the estimate line by line, in your own figures. The studio does not invent rates for places it has not checked, so every number on the page is one you typed."
       ]
     },
     "demo": { "h2": "See the budget in action" },
@@ -287,7 +278,6 @@
     "value": {
       "h2": "Built for the way a unit actually reads",
       "body": [
-        "A call sheet holds scene numbers and people, not copies of them. Rename a person or move a scene and every sheet says the new thing.",
         "A unit often reads the production group on WhatsApp at five in the morning, not a PDF. So each sheet also becomes a plain-text message, for everyone or for one person with their own call time first."
       ]
     },
@@ -318,8 +308,7 @@
     "value": {
       "h2": "Change a name once",
       "body": [
-        "People are stored once. A call sheet points at a person, so correcting a phone number or a name fixes every sheet that person is on.",
-        "The directory is grouped into nine departments, from Cast and Direction to Post, so the person you need at the end of a long shoot day is easy to find."
+        "People are stored once. A call sheet points at a person, so correcting a phone number or a name fixes every sheet that person is on."
       ]
     },
     "demo": { "h2": "See the directory in action" },
@@ -349,8 +338,7 @@
     "value": {
       "h2": "Only what the day needs",
       "body": [
-        "Actors and department heads do not need the whole script for one shoot day. Sides give them the scenes being shot and what each scene involves.",
-        "Sides are worked out from your scenes every time, so they match the script on the day you print them. Each scene prints as its own block that does not split across a page."
+        "Actors and department heads do not need the whole script for one shoot day. Sides give them the scenes being shot and what each scene involves."
       ]
     },
     "demo": { "h2": "See sides in action" },

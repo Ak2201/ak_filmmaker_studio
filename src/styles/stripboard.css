@@ -73,11 +73,10 @@
 .sb-seg-lab,
 .sb-legend-lab,
 .sb-day-lab {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  font-weight: 500;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  font-weight: 600;
+  letter-spacing: 0;
   color: var(--ink-muted);
   white-space: nowrap;
 }
@@ -154,10 +153,10 @@
 .sb-group-facts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 .sb-group-meta.k-badge { border-radius: var(--radius-sm); }
 .sb-group-hours {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   color: var(--ink-muted);
@@ -270,8 +269,8 @@
 .sb-shot.is-dropped { border-style: dashed; }
 .sb-cast-lab { margin-right: var(--s1); }
 .sb-cast-lab,
-.sb-cast-none { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
-.sb-cast-none { text-transform: none; letter-spacing: 0; font-family: var(--f-sans); font-size: var(--t-tiny); }
+.sb-cast-none { font-family: var(--f-body); font-size: var(--t-tiny); font-weight: 600; letter-spacing: 0; color: var(--ink-muted); }
+.sb-cast-none { font-weight: 400; }
 
 /* ------------------------------------------------------------
    4b. BANNERS — the AD's (editable) and the implied move (derived)
@@ -306,11 +305,11 @@
   display: inline-flex;
   align-items: center;
   gap: var(--s1h);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink);
   white-space: nowrap;
 }
@@ -388,10 +387,10 @@ body.sb-is-dragging .sb-strip .sb-grip-btn { cursor: grabbing; }
   border: 1px dashed var(--border-strong);
   border-radius: var(--sk-radius);
   color: var(--ink-muted);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   text-align: center;
   transition: border-color var(--speed) var(--ease), background var(--speed) var(--ease);
 }

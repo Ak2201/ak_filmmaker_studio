@@ -103,6 +103,8 @@ function head(card, opts, defaults) {
   const id = 'dlg-t-' + Math.random().toString(36).slice(2, 8);
   card.setAttribute('aria-labelledby', id);
   const tone = opts.tone || (opts.danger ? 'danger' : defaults.tone || '');
+  /* role stays "dialog" for every tone: the proofs and two page guards
+     select dialogs by it; aria-describedby below carries the warning. */
   if (tone === 'danger') card.classList.add('is-danger');
   if (tone === 'warn') card.classList.add('is-warn');
   const icon = opts.icon === false ? null : (opts.icon || defaults.icon || null);
@@ -120,6 +122,9 @@ function head(card, opts, defaults) {
   if (text) {
     const paras = Array.isArray(text) ? text : String(text).split(/\n{2,}/);
     for (const t of paras) if (t) body.append(h('p.deck', { text: t }));
+    /* The explanation is announced with the title on open. */
+    const first = body.querySelector('p.deck');
+    if (first) { first.id = id + '-d'; card.setAttribute('aria-describedby', first.id); }
   }
   if (opts.notice) {
     const n = typeof opts.notice === 'string' ? { body: opts.notice } : opts.notice;

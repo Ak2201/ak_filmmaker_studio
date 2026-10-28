@@ -510,10 +510,10 @@
   margin: calc(var(--s4) * -1) 0 var(--s5);
 }
 .related-chips .label {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .related-chip {
@@ -733,10 +733,10 @@ select.field-input {
 .word-counter {
   display: inline-block;
   margin-left: var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .word-counter.over { color: var(--danger); }
@@ -745,8 +745,8 @@ select.field-input {
   display: inline-block;
   margin-left: var(--s3);
   padding: 3px var(--s2);
-  background: var(--accent);
-  color: var(--accent-on);
+  background: var(--brand);
+  color: var(--brand-on);
   border-radius: var(--radius-pill);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -895,11 +895,11 @@ select.field-input {
 .status-label,
 .toc-group-label,
 .door-tag {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .film-card .director {

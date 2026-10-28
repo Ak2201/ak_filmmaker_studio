@@ -201,9 +201,9 @@ function projectsMarkup() {
                  placeholder="Search projects by name…" data-action="filter-projects"
                  aria-label="Search projects by name">
           <div class="projects-filter" id="projectsFilter" role="group" aria-label="Filter projects by format">
-            <button data-fmt="all" class="active" data-action="set-filter">ALL</button>
-            <button data-fmt="feature" data-action="set-filter">FEATURE</button>
-            <button data-fmt="short" data-action="set-filter">SHORT</button>
+            <button data-fmt="all" class="active" data-action="set-filter">All</button>
+            <button data-fmt="feature" data-action="set-filter">Feature</button>
+            <button data-fmt="short" data-action="set-filter">Short</button>
             <!-- DOC / MV / AD buttons are added by renderProjects() only when such projects exist. -->
           </div>
           <div class="projects-sort-wrap">
@@ -228,7 +228,8 @@ function projectsMarkup() {
     eyebrow: 'Projects · one per film',
     title: 'Home',
     sub: 'A working desk for the working filmmaker.',
-    actions: [button({ label: 'New project', variant: 'primary', pill: true, icon: 'add', attrs: { 'data-action': 'new-project' } })]
+    /* Secondary: with films on the desk, Open project is the main action. */
+    actions: [button({ label: 'New project', variant: 'secondary', pill: true, icon: 'add', attrs: { 'data-action': 'new-project' } })]
   });
   const hh = head.querySelector('.k-page-title');
   hh.id = 'projectsHeading';
@@ -262,18 +263,18 @@ function modalMarkup() {
         <h3 id="pmHeading">New <em>project.</em></h3>
         <p class="deck">A project is the home for one film. Title and format. You can change the title later — format stays.</p>
 
-        <label for="pmTitle">PROJECT TITLE</label>
+        <label for="pmTitle">Project title</label>
         <input type="text" id="pmTitle" placeholder="e.g. Por Thozhil, Untitled Thriller…" maxlength="120" required>
 
-        <label for="pmFormat">FORMAT</label>
+        <label for="pmFormat">Format</label>
         <select id="pmFormat">
           <option value="feature">Feature film</option>
           <option value="short">Short film</option>
         </select>
 
         <div class="modal-actions">
-          <button type="button" class="mbtn" data-action="close-project-modal">CANCEL</button>
-          <button type="submit" class="mbtn primary" id="pmSubmit">CREATE</button>
+          <button type="button" class="mbtn" data-action="close-project-modal">Cancel</button>
+          <button type="submit" class="mbtn primary" id="pmSubmit">Create</button>
         </div>
       </form>`
   });
@@ -566,7 +567,7 @@ function renderProjectSwitcher() {
         h('div.sd-meta', { text: (FORMAT_LABELS[p.format] || p.format) + ' · edited ' + fmtRelDate(p.updatedAt) })
       ]));
     });
-  if (PlanGate.allowed('new_projects')) dd.append(h('div.sd-new', { 'data-action': 'new-project', role: 'button', tabindex: '0', text: '+ NEW PROJECT' }));
+  if (PlanGate.allowed('new_projects')) dd.append(h('div.sd-new', { 'data-action': 'new-project', role: 'button', tabindex: '0', text: '+ New project' }));
 }
 
 function toggleProjectSwitcher() {

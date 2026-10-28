@@ -463,8 +463,7 @@ function renderTrackerRow(s) {
         'data-action': 'fest-remove',
         title: 'Stop tracking this festival',
         'aria-label': `Stop tracking ${s.festival || 'this festival'}`,
-        text: '✕'
-      })
+        }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })])
     ]),
     h('div.ft-row-fields', {}, [
       field('Status', h('select', {

@@ -572,7 +572,7 @@ function renderPresets() {
     const active = on && presetOn(p);
     return h('span.bd-sl-preset' + (active ? '.is-on' : ''), { 'data-preset': p.id }, [
       h('button.bd-sl-preset-apply', { type: 'button', 'data-action': 'sl-preset', 'aria-pressed': String(active), title: 'Show: ' + describeFilter(p), text: p.name }),
-      h('button.bd-sl-preset-x', { type: 'button', 'data-action': 'sl-preset-x', 'aria-label': 'Remove the saved filter ' + p.name, title: 'Remove this saved filter', text: '\u2715' })
+      h('button.bd-sl-preset-x', { type: 'button', 'data-action': 'sl-preset-x', 'aria-label': 'Remove the saved filter ' + p.name, title: 'Remove this saved filter', }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })])
     ]);
   })));
 }

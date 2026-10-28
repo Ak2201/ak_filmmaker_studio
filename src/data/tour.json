@@ -145,9 +145,9 @@
     "skip": "Skip"
   },
   "checklist": {
-    "label": "YOUR FIRST WEEK",
-    "title": "Find your way round.",
-    "deck": "A few things to try. Start or open a film and these tick themselves off: the ticks are read from the film you have open every time this page draws — nothing here is stored.",
+    "label": "First week",
+    "title": "Find your way round",
+    "deck": "A few things to try. Each one ticks itself off as you work on your film.",
     "_during": "An item with `during: trial` is listed only while a trial that ends within the week runs, while a launch pass runs (it is not a plan chosen), or once a plan is bought (plan-gate.js entitlement() and currentPlan(); a year-long grandfathered trial, a grant or an ended trial list nothing), and ticks only when a plan is actually bought: derived, like the rest.",
     "items": [
       {

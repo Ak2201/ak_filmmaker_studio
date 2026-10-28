@@ -54,10 +54,10 @@
   justify-items: start;
 }
 .st-group-label {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .st-choices {
@@ -74,9 +74,9 @@
    `.st-choice.is-on` lost the tie and the chosen theme and region were
    drawn exactly like the unchosen ones. */
 .st-choice.st-choice.is-on {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-on);
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-on);
 }
 /* Declared because `.btn:hover` in chrome.css paints ink-on-paper,
    which on the chosen button would read as "not chosen" for as long
@@ -84,9 +84,9 @@
    primary button says on hover. */
 .st-choice.st-choice.is-on:hover,
 .st-choice.st-choice.is-on:focus-visible {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
-  color: var(--accent-on);
+  background: var(--brand-hover);
+  border-color: var(--brand-hover);
+  color: var(--brand-on);
 }
 
 /* ---- Drive -------------------------------------------------
@@ -104,10 +104,10 @@
   align-items: center;
   gap: var(--s2);
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .st-dot {
@@ -141,10 +141,10 @@
 }
 .st-conflict-h {
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--warn-deep);
 }
 .st-conflict-p {
@@ -172,10 +172,10 @@
   color: var(--ink-body);
 }
 .st-conflict-side {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink);
 }
 .st-conflict-at,
@@ -216,10 +216,9 @@
 /* The same mono label as .st-group-label and .st-conflict-side: it
    is the same object — the name of the thing beside its value. */
 .st-meter-label {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .st-meter-figure {
@@ -249,7 +248,7 @@
   display: block;
   block-size: 100%;
   inline-size: var(--st-fill, 0%);
-  background: var(--accent);
+  background: var(--brand);
   border-radius: var(--radius-pill);
 }
 .st-bar-fill.is-warn { background: var(--warn); }
@@ -288,10 +287,10 @@
 }
 .st-alarm-h {
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink);
 }
 .st-alarm-p {
@@ -372,10 +371,10 @@
 
 .acct-state {
   display: block;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 
@@ -383,10 +382,9 @@
 
 .acct-label {
   display: block;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--ink-muted);
   margin: var(--s4) 0 var(--s2);
 }
@@ -461,7 +459,7 @@
 .st-tab > * { min-width: 0; }
 .st-plan-line { margin: 0; font-size: var(--t-base); color: var(--ink); }
 .st-plan-note { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
-.st-plan-sub { margin: var(--s2) 0 0; font-size: var(--t-small); font-family: var(--f-mono); letter-spacing: var(--track-wide); text-transform: uppercase; color: var(--ink-muted); }
+.st-plan-sub { margin: var(--s2) 0 0; font-size: var(--t-small); font-family: var(--f-body); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 .st-tab .pl-usage { margin: 0; }
 @media (pointer: coarse) {
   .st-plan-link .k-btn { min-height: 44px; display: inline-flex; align-items: center; }
@@ -514,10 +512,9 @@
   min-inline-size: 0;
 }
 .st-restore-label {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .st-restore-figure {
@@ -549,10 +546,10 @@
 .st-restore-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s1) var(--s2); color: var(--ink); }
 .st-restore-name strong { overflow-wrap: anywhere; }
 .st-restore-fmt {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .st-restore-counts { color: var(--ink-body); }
@@ -574,10 +571,10 @@
 }
 .st-restore-warn-h {
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--warn-deep);
 }
 .st-restore-warn-p {
@@ -676,11 +673,11 @@ main.k-page > .st-body { max-width: none; margin-inline: 0; padding-inline: 0; }
   padding: 0 var(--s2);
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-default);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: 0.625rem;
   font-weight: 600;
-  letter-spacing: .04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   background: var(--surface-hover);
   color: var(--ink-body);
 }
@@ -709,10 +706,9 @@ main.k-page > .st-body { max-width: none; margin-inline: 0; padding-inline: 0; }
 }
 .st-fact { min-width: 0; display: grid; gap: var(--s-half); }
 .st-fact dt {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .st-fact dd { margin: 0; font-family: var(--f-mono); font-size: var(--t-small); color: var(--ink); overflow-wrap: anywhere; }
@@ -749,15 +745,15 @@ main.k-page > .st-body { max-width: none; margin-inline: 0; padding-inline: 0; }
   border: 1px solid var(--ok-line);
   background: var(--ok-wash);
   color: var(--ok-deep);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-nano);
   font-weight: 600;
-  letter-spacing: .04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
-.st-build { margin: 0; font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.st-build { margin: 0; font-family: var(--f-body); font-size: var(--t-micro); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 .st-rate { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); align-items: baseline; margin: var(--s3) 0 0; padding: var(--s2) var(--s3); background: var(--surface-canvas); border: 1px solid var(--border-hair); border-radius: var(--sk-radius); }
-.st-rate-k { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.st-rate-k { font-family: var(--f-body); font-size: var(--t-micro); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 .st-rate-v { font-family: var(--f-mono); font-size: var(--t-small); color: var(--ink); }
 
 /* What's in my plan (settings.js renderPlanContents): two short lists in

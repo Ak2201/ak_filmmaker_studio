@@ -24,10 +24,10 @@
   min-width: 0;
 }
 .fg-level-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .fg-level {
@@ -80,10 +80,10 @@
 .fg-why > summary {
   cursor: pointer;
   width: fit-content;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 .fg-why > p { margin: var(--s1) 0 0; color: var(--ink-body); max-width: var(--sk-deck-measure, 60ch); }
@@ -151,18 +151,18 @@
 }
 .fg-jump:hover { background: var(--paper-sunk); border-color: var(--rule-hair); }
 .fg-where {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   white-space: nowrap;
 }
 .fg-sev {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   padding: 0 var(--s1);
   border-radius: var(--radius-pill);
 }
@@ -190,10 +190,10 @@
 }
 .fg-tour-eyebrow {
   margin: 0 0 var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 .fg-tour-title { margin: 0 0 var(--s2); font-size: var(--t-lg); color: var(--ink); }

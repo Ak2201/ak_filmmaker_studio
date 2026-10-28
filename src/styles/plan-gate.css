@@ -37,10 +37,10 @@
    the lock panel can say why rather than a dead click. */
 [data-module-id].is-locked { opacity: .55; }
 .pg-flag {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
   border: 1px solid currentColor;
   border-radius: var(--radius-pill);
@@ -52,7 +52,7 @@
 .pf-table th[scope="row"] { font-weight: 500; color: var(--ink); white-space: normal; }
 .pf-table td { text-align: center; }
 .pf-table input[type="checkbox"] { width: 1.1rem; height: 1.1rem; }
-.pf-group th { padding-top: var(--s3); font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); border-bottom: none; }
+.pf-group th { padding-top: var(--s3); font-family: var(--f-body); font-size: var(--t-tiny); letter-spacing: 0; text-transform: none; color: var(--ink-muted); border-bottom: none; }
 .pc-plan-note { margin: 0; align-self: center; color: var(--ink-muted); font-size: var(--t-small); max-width: var(--measure); }
 
 /* ---- the tab lock: one tab of a bigger page, not the page ----
@@ -73,7 +73,7 @@
 .pg-lock-mod { display: grid; gap: 2px; padding: var(--s2) var(--s3); border-left: var(--sk-hue-rule-w) solid var(--accent); background: var(--paper-sunk); border-radius: var(--sk-radius, var(--radius)); }
 .pg-lock-mod-label { font-family: var(--f-display); font-weight: 700; color: var(--ink); }
 .pg-lock-mod-purpose { font-size: var(--t-small); line-height: var(--lh-snug); color: var(--ink-muted); }
-.pg-lock-plan { margin: 0; font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--accent-deep); }
+.pg-lock-plan { margin: 0; font-family: var(--f-body); font-size: var(--t-tiny); letter-spacing: 0; text-transform: none; color: var(--accent-deep); }
 
 /* ---- the wall (§30): the trial ended, nothing was bought ----
    A VARIANT of .pg-lock, not a second overlay. Everything that

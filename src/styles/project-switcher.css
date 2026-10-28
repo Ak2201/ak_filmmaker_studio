@@ -27,7 +27,6 @@
   border: 1px solid var(--chrome-hair-strong);
   border-radius: var(--radius-pill);
   color: var(--chrome-muted);
-  text-transform: uppercase;
 }
 .ps-fmt[hidden] { display: none; }
 .ps-caret { color: var(--chrome-muted); }
@@ -49,10 +48,10 @@
 .ps-head {
   padding: var(--s1) var(--s2) var(--s2);
   color: var(--chrome-muted);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .ps-item, .ps-link {
   display: flex;

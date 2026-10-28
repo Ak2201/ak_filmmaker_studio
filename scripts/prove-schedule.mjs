@@ -363,7 +363,8 @@ await settle(page);
 const planDated = await page.$eval('.bd-head [data-pl-dated] .k-stat-value', (v) => v.textContent.trim());
 await page.goto(url('dashboard.html'), { waitUntil: 'networkidle' });
 await settle(page, 800);
-const dashDated = await page.evaluate(() => { const m = document.body.innerText.match(/(\d+) days? dated/); return m ? m[1] : ''; });
+/* textContent: the launcher's state lines sit in the dashboard's closed "All tools" disclosure since 28 Oct 2026 */
+const dashDated = await page.evaluate(() => { const m = document.body.textContent.match(/(\d+) days? dated/); return m ? m[1] : ''; });
 ok(planDated !== '' && dashDated === planDated, '13 the dashboard\'s "days dated" is the Plan\'s count (an orphan date is not counted)', [planDated, dashDated]);
 await page.goto(url('plan.html#calendar'), { waitUntil: 'networkidle' });
 await settle(page);
@@ -379,6 +380,9 @@ ok(await page.$('.pl-orphan[data-day="40"]') !== null, '13 …and Undo puts the 
 /* print: the recce, the DOOD, the cast matrix */
 await page.goto(url('plan.html#locations'), { waitUntil: 'networkidle' });
 await settle(page);
+/* Power sits behind the card's "More details" since 28 Oct 2026 (the
+   essentials-first recce card); open it as a person would. */
+await page.click('.pl-loc [data-action="recce-more"]');
 await page.fill('.pl-input[data-recce-field="power"]', 'Mains on site, thirty metres from the van, and a generator on standby for the dusk window');
 await settle(page, 200);
 await page.emulateMedia({ media: 'print' });

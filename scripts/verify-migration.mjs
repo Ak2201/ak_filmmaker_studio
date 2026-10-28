@@ -2256,7 +2256,12 @@ let scriptsOff = { checked: false };
     return '';
   };
   const decl = (block, prop) => ((block.match(new RegExp('(?:^|[;\\s])' + prop.replace(/[-]/g, '\\-') + '\\s*:\\s*([^;]+);')) || [])[1] || '').trim();
-  const bare = blockAfter(css.search(/^:root\s*\{/m));
+  /* "Bare :root" is every block whose selector list STARTS with :root:
+     the palette block itself, and (since 28 Oct 2026) the alias blocks
+     whose selector is `:root, .sh-rail, …` so the same aliases are
+     re-evaluated inside the dark chrome scope. --paper lives in an
+     alias block now (var(--surface-canvas)), so read them together. */
+  const bare = [...css.matchAll(/^:root\s*[,{]/gm)].map((m) => blockAfter(m.index)).join('\n');
   const themed = {};
   for (const m of css.matchAll(/^:root\[data-theme="([a-z]+)"\]\s*\{/gm)) themed[m[1]] = blockAfter(m.index);
   const media = {};
@@ -2278,7 +2283,12 @@ let scriptsOff = { checked: false };
   };
   const defaultPaper = resolveIn(bare, decl(bare, '--paper'));
   const defaultScheme = decl(bare, 'color-scheme');
-  /* ONE THEME SINCE 14 OCT 2026. With no second palette, the default
+  /* ONE PALETTE SINCE 14 OCT 2026 — dark-only until 28 Oct 2026, the
+     8B mix since: bare :root is the LIGHT work surface (color-scheme
+     light) and a class-scoped block restates the same names dark for
+     the chrome. That scope is not a theme: nothing toggles it, it is
+     not on :root, and it is not a prefers-color-scheme fork, so this
+     probe still sees exactly one palette. With no second palette, the default
      theme is whichever [data-theme] block does NOT restate --paper (it
      only restates the scheme), and BOTH OS preferences must paint the
      bare :root ground — there is no prefers-color-scheme block any more,

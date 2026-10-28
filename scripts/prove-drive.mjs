@@ -651,7 +651,7 @@ for (const theme of ['ink']) {
       };
     });
     check(`settings/${theme}/${width}: the page is really in that theme`,
-      r.cssTheme, theme === 'ink' ? 'dark' : 'light');
+      r.cssTheme, 'studio');   // one palette (the 8B mix, 28 Oct 2026), whatever was stored
     check(`settings/${theme}/${width}: the Drive section renders`, r.present, true);
     check(`settings/${theme}/${width}: it offers backup, restore, versions, disconnect`,
       r.buttons, ['drive-backup', 'drive-restore', 'drive-versions', 'drive-disconnect']);

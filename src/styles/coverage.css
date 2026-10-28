@@ -98,10 +98,10 @@
 }
 .cv-h {
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-body);
 }
 .cv-sub {
@@ -147,10 +147,10 @@
   flex-wrap: wrap;
   gap: var(--s2);
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .cv-label { color: var(--ink-body); }
@@ -224,10 +224,10 @@
   line-height: var(--lh-snug);
 }
 .st-lw-k {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-body);
 }
 .st-lw-part.is-on .st-lw-k { color: var(--ok-deep); }

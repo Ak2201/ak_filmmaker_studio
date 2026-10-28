@@ -67,10 +67,10 @@
 }
 .rp-spacer { margin-left: auto; }
 .rp-count {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -163,6 +163,26 @@
   text-align: right;
 }
 .rp-table th { white-space: nowrap; }
+/* Quiet table heads (28 Oct 2026): a pale header row in the body face,
+   and a ROW header (tbody th — an act, a beat) reads as a name in ink,
+   not as a second header column painted in the slab's wash. */
+.rp-table thead th {
+  background: var(--paper-sunk);
+  color: var(--ink-muted);
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
+  border-bottom: 1px solid var(--rule-hair);
+}
+.rp-table tbody th {
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  letter-spacing: 0;
+  font-weight: 600;
+  border-top: 1px solid var(--rule-hair);
+}
 .rp-table td.mono,
 .rp-table td.scenes-in {
   font-family: var(--f-mono);
@@ -249,10 +269,10 @@
   letter-spacing: var(--track-tight);
 }
 .rp-sides-meta {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -279,8 +299,8 @@
   place-items: center;
   min-width: 28px;
   padding: 2px var(--s2);
-  background: var(--accent);
-  color: var(--accent-on);
+  background: var(--brand);
+  color: var(--brand-on);
   border-radius: var(--sk-radius);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -317,10 +337,10 @@
   align-items: baseline;
 }
 .rp-side-el-cat {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep);
 }
 .rp-side-el-names {
@@ -443,10 +463,9 @@
 .rp-day { display: inline-flex; align-items: center; gap: var(--s2); }
 .rp-day-lab,
 .rp-label {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .rp-in {
@@ -465,11 +484,10 @@
 .rp-in:focus-visible { border-color: var(--accent); outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 1px; }
 .rp-h4 {
   margin: var(--s5) 0 var(--s2);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
+  font-family: var(--f-display);
+  font-size: var(--t-base);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--ink);
 }
 .rp-dpr-title {
@@ -494,11 +512,11 @@
   background: var(--paper-sunk);
   border-top: 2px solid var(--ink);
   text-align: left;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink);
 }
 .rp-ol .rp-ol-banner td {
@@ -509,10 +527,10 @@
   border-left: 3px solid var(--ink);
 }
 .rp-ol .rp-ol-total td {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   border-bottom: 1px solid var(--rule);
 }
@@ -541,11 +559,11 @@
 .rp-in-num { width: 100%; }
 .rp-notes { width: 100%; resize: vertical; line-height: var(--lh-snug); }
 .rp-mark {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   padding: 0 var(--s2);
   border: 1px solid var(--ink-faint);
   border-left-width: 3px;
@@ -587,10 +605,13 @@
 .rp-kit-table th {
   padding: var(--s1) var(--s1);
   text-align: left;
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  /* sentence case in the body face, like every other table head; the
+     mono capitals were also what pushed the table 2px past a 390px
+     phone's card (prove:schedule 19.8) */
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  font-weight: 600;
+  letter-spacing: 0;
   color: var(--ink-muted);
   border-bottom: 1px solid var(--rule-hair);
 }

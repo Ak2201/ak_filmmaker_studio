@@ -315,11 +315,11 @@
 }
 .hub-shelves-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin: 0; font-weight: 400; }
 .hub-shelves-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .hub-shelves-dot { color: var(--ink-muted); }
@@ -413,4 +413,42 @@
 @media (max-width: 719px) {
   #main > .hero > .hero-inner,
   #main > .section > .section-inner { padding-inline: var(--s4); }
+}
+
+/* ---- 8B PASS (28 Oct 2026, lane C) ---------------------------------
+   One page, one ground: Home was a white hero band over a grey
+   first-week band, two grounds for one page. The hero now sits on the
+   canvas like every studio page, the project card's eyebrow is the body
+   face in sentence case (the strings are sentence case in util.js /
+   project-cards.js), and the first-week list is a card in the same
+   column (tour.css). Tokens and --sk-* only. */
+#main > .hero { background: transparent; border-bottom: 0; min-height: 0; }
+#main > .hero::before { content: none; }
+/* the band's own gutter put Home's title 25px right of every other
+   page's: the column's gutter (hero-inner, above) is the only one */
+#main .projects-section { padding-inline: 0; padding-bottom: var(--s5); background: transparent; border-bottom: 0; }
+#main .projects-section .projects-inner { max-width: none; }
+.projects-section .project-card .pc-format {
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-muted);
+}
+.projects-section .project-card .pc-meta { font-family: var(--f-body); color: var(--ink-muted); }
+.projects-section .project-card.active { box-shadow: 0 0 0 1px var(--accent); }
+.projects-section .project-card.new-card { border: 1px dashed var(--border-strong); }
+.projects-section .project-card.new-card .pc-cta {
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.projects-section .projects-filter button { font-family: var(--f-body); }
+/* On a phone the header's full-width "New project" sits right above the
+   grid; the dashed tile under the cards would be the same action twice. */
+@media (max-width: 719px) {
+  .projects-section .project-card.new-card { display: none; }
 }

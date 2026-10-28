@@ -1,19 +1,52 @@
-/* The signed-out price list (src/ui/list-prices.js). Tokens only. */
-.pl-list-wrap { margin: var(--s3) 0; }
-.pl-list-prices { list-style: none; margin: 0 0 var(--s2); padding: 0; display: grid; gap: var(--s2); }
-.pl-list-prices > li {
+/* The signed-out price list (src/ui/list-prices.js). Tokens only.
+   Since 28 Oct 2026 it is drawn as a row of plan cards — the same shape
+   as the signed-in .pl-card row (plans.css) and the public pricing
+   cards: name, what it is for, then the price at the foot of each card,
+   equal height, side by side, stacked on a phone. Still a list in the
+   markup, so a screen reader hears "list, 3 items". */
+.pl-list-wrap { display: grid; gap: var(--s3); margin: 0; }
+.pl-list-prices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: grid;
-  /* The NAME keeps its one line and the price wraps beside it. `1fr auto`
-     let a long dollar caption ("… · Charged as ₹2,999 at checkout") take
-     the whole row at 390px and print the name one letter per line. */
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: var(--s1) var(--s3);
-  padding: var(--s3);
-  border: var(--sk-card-line-w, 1px) solid var(--sk-card-line, var(--rule));
-  border-radius: var(--sk-radius, var(--radius));
-  background: var(--paper-raised);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--s4);
+  align-items: stretch;
 }
-.pl-list-prices strong { color: var(--ink); }
-.pl-list-price { font-weight: 700; color: var(--accent-deep); text-align: end; }
-.pl-list-line { grid-column: 1 / -1; color: var(--ink-muted); font-size: var(--t-small); }
+.pl-list-prices > li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s5);
+  min-width: 0;
+  background: var(--paper-raised);
+  border: var(--sk-card-line-w, 1px) solid var(--border-hair);
+  border-radius: var(--sk-radius, var(--radius));
+}
+/* The NAME keeps its one line (prove:billing measures it at 390). */
+.pl-list-prices strong {
+  order: 1;
+  font-family: var(--f-display);
+  font-size: var(--t-xl);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  color: var(--ink);
+  white-space: nowrap;
+}
+.pl-list-line { order: 2; color: var(--ink-body); font-size: var(--t-small); line-height: var(--lh-body); }
 .pl-list-line:empty { display: none; }
+.pl-list-price {
+  order: 3;
+  margin-top: auto;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border-hair);
+  font-family: var(--f-display);
+  font-size: var(--t-base);
+  font-weight: 700;
+  line-height: var(--lh-snug);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.pl-list-wrap > .pl-note { margin: 0; }
+@media (max-width: 719px) { .pl-list-prices > li { padding: var(--s4); } }

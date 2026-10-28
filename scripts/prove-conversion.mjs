@@ -100,8 +100,14 @@ function proHolder() {
   F.db.payments[0].plan_id = 'pro';
 }
 
-async function newContext({ tok = null, width = 1280 } = {}) {
+async function newContext({ tok = null, width = 1280, keepWall = false } = {}) {
   const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width, height: 900 }, timezoneId: 'Asia/Kolkata', locale: 'en-IN' });
+  /* Since "one payment page" (0c92506, 28 Oct 2026) a walled member is
+     SENT to purchase.html; plan-gate.js keeps the in-page wall as the
+     fallback and names window.__fmsKeepWall as the proof hook that holds
+     it in place. The checks below that are about the wall's or Settings'
+     own wording use it; the redirect itself is asserted in (h2). */
+  if (keepWall) await ctx.addInitScript(() => { window.__fmsKeepWall = true; });
   await ctx.route(SB + '/**', handle);
   await ctx.route(new RegExp('https://' + BRAND.host.replace(/\./g, '\\.') + '/.*'), (r) => r.fulfill({ status: 200, body: '' }));
   await ctx.addInitScript(() => { try { localStorage.setItem('fms_region_v1', 'IN'); } catch (e) { /* */ } });
@@ -424,7 +430,7 @@ try {
   /* An ENDED trial (purchases required): no module list, the way back. */
   let planShots = 0;
   const planContents = async () => {
-    const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy', keepWall: true });
     await page.goto(BASE + 'settings.html#plan-contents');
     await page.waitForTimeout(4000);
     await page.evaluate(() => { const s = document.getElementById('plan-contents'); if (s) s.scrollIntoView(); });
@@ -625,7 +631,15 @@ try {
   F.db.members.set(AMY, { role: 'user', disabled_at: null, trial_started_at: null });
   Object.assign(F.db.settings, { pass_enabled: true, pass_ends_at: new Date(Date.now() + 86400e3).toISOString() });
   {
+    /* the one payment page: the walled member lands on purchase.html, and its pass card is there */
     const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
+    await page.goto(BASE + 'dashboard.html');
+    ok(await page.waitForURL(/purchase(\.html)?/, { timeout: 12000 }).then(() => true, () => false), 'a walled member is sent to the purchase page');
+    ok(await page.waitForSelector('#pass [data-pu-action="buy-pass"]', { timeout: 12000 }).then(() => true, () => false), 'and the purchase page offers the pass');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy', keepWall: true });
     await page.goto(BASE + 'dashboard.html');
     await page.waitForSelector('.pg-wall [data-action="pg-buy-pass"]', { timeout: 12000 }).then(() => ok(true, 'the wall offers the pass'), () => ok(false, 'the wall offers the pass'));
     ok(/TRY THE WHOLE STUDIO FOR ₹49 · 7 DAYS/.test(await page.textContent('.pg-wall').catch(() => '')), 'TRY THE WHOLE STUDIO FOR ₹49 · 7 DAYS');

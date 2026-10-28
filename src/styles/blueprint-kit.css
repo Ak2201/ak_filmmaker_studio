@@ -42,11 +42,11 @@
   border-radius: var(--radius-pill);
   background: var(--surface-hover);
   color: var(--ink-body);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: 0.625rem;
   font-weight: 600;
-  letter-spacing: .04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
 }
 :root .step-badge.complete { background: var(--ok-wash); border-color: var(--ok-line); color: var(--ok-deep); }
@@ -60,10 +60,10 @@
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
   background: var(--surface-card);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 :root .st-tool { border-radius: var(--sk-btn-radius, var(--radius)); }
 :root .st-why { font-size: var(--t-small); color: var(--ink-muted); }
@@ -92,11 +92,11 @@
 :root .step :is(.formula-box, .formula, .por-thozil, .why-this, .disclaimer, .example, .ex-card) :is(.label, .lab, .ex-label, .meta) {
   display: block;
   margin: 0 0 var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-body);
 }
 :root .step .example.alt .ex-label { color: var(--brand-deep); }
@@ -121,11 +121,11 @@
   align-items: baseline;
   gap: var(--s2);
   margin-bottom: var(--s1h);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-body);
 }
 :root .step .ask-label::before { content: none; }
@@ -195,11 +195,11 @@
 :root .step table thead th,
 :root .step table th[scope="col"] {
   background: var(--surface-rail);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 :root .step .btn {

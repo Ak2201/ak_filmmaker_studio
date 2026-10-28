@@ -12,7 +12,8 @@
     },
     "hero": {
       "h1": "Contact us",
-      "sub": "A question, a bug, an idea or a payment that went wrong: write to the team and a person reads it. Payment and refund questions are answered within two working days."
+      "sub": "A question, a bug, an idea or a payment that went wrong: write to the team and a person reads it. Payment and refund questions are answered within two working days.",
+      "cta": "Write to us"
     },
     "form": {
       "h2": "Send us a message",
@@ -56,7 +57,7 @@
       "faqLink": "Read the questions and answers"
     },
     "close": {
-      "h2": "Ready to write scene one?"
+      "h2": "Start with scene one"
     }
   },
   "about": {

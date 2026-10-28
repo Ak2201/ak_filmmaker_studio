@@ -16,11 +16,11 @@
   max-width: 100%;
   margin: 0 0 var(--s3);
   padding: var(--s1) var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   text-align: left;
   line-height: var(--lh-snug);
   color: var(--brand-deep);

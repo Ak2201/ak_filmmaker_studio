@@ -1,11 +1,12 @@
 /* ============================================================
    SKIN: STUDIO — the default, and the defaults.
    ------------------------------------------------------------
-   SWISS PRECISION (owner, 14 Oct 2026): tight radii (4 / 6 / 8),
-   hairline-bordered cards on an obsidian ground, Space Grotesk display
-   over an Inter interface, mono caps eyebrows, compact padding. Pills
-   only for status badges and the one primary CTA (.btn-pill in
-   kit.css), never for every button.
+   THE 8B LOOK (owner, 28 Oct 2026; shapes after the 8B template, MIT —
+   docs/CREDITS.md): soft 16px cards and 10px controls on a pale
+   canvas, generous padding, Gabarito headings with tight tracking over
+   an Onest interface. Pills only for status badges and the one primary
+   CTA of a view (.k-btn--primary, .k-btn--pill), never for every
+   button.
 
    The bare `:root` block is load-bearing, not a convenience: the
    stylesheets key off `:root[data-skin]`, so a page that has not run
@@ -23,21 +24,20 @@
   --sk-name: "Studio";
 
   /* ---- geometry --------------------------------------------- */
-  /* Cards and panels 8px, fields 6px, buttons 6px (the spec's control
-     radius). Was 16px / pill. */
+  /* Cards 16px, fields and buttons 10px, dialogs 24px. */
   --sk-radius:          var(--radius-lg);
   --sk-btn-radius:      var(--radius);
   --sk-field-radius:    var(--radius);
   /* Top-level dialogs (kit.css .dlg.k-modal): one step rounder than a card. */
   --sk-modal-radius:    var(--radius-xl);
-  --sk-card-pad:        var(--s3) var(--s4);
-  --sk-band-pad:        var(--s7) var(--s4);
-  --sk-grid-gap:        var(--s3);
-  --sk-cover-pad:       var(--s6) 0 var(--s5);
+  --sk-card-pad:        var(--s4) var(--s5);
+  --sk-band-pad:        var(--s8) var(--s5);
+  --sk-grid-gap:        var(--s4);
+  --sk-cover-pad:       var(--s7) 0 var(--s6);
   --sk-cover-min:       0;
 
-  /* ---- surfaces: level-2 card on the level-0 canvas ----------
-     Depth by luminance and a hairline; no shadow at rest. */
+  /* ---- surfaces: a white card on the pale canvas --------------
+     Depth by a hairline and a whisper of shadow; never a glow. */
   --sk-card-bg:         var(--surface-card);
   --sk-card-ink:        var(--ink-body);
   --sk-card-line:       var(--border-hair);
@@ -66,7 +66,7 @@
   --sk-deco-rule-c:     var(--border-hair);
 
   /* ---- type -------------------------------------------------- */
-  /* Space Grotesk for display and headings, Inter for the interface.
+  /* Gabarito for display and headings, Onest for the interface.
      Page titles are UPRIGHT: the serif italic belongs to the project
      title / cover and the landing tagline only (--face-editorial). */
   --sk-display:         var(--face-display);
@@ -74,8 +74,8 @@
   /* The faces are self-hosted in fonts.css; no stylesheet to fetch. */
   --sk-font-url:        none;
   --sk-body-size:       var(--t-small);
-  --sk-title-size:      clamp(1.75rem, 3.2vw, 2.25rem);
-  --sk-title-lh:        1.12;
+  --sk-title-size:      clamp(1.75rem, 3.2vw, 2.5rem);
+  --sk-title-lh:        1.08;
   --sk-title-style:     normal;
   --sk-title-transform: none;
   --sk-h2-size:         var(--t-xl);
@@ -85,25 +85,26 @@
   --sk-deck-size:       var(--t-small);
   --sk-deck-style:      normal;
   --sk-deck-measure:    72ch;
-  /* The eyebrow: JetBrains Mono caps, 11px, .08em. Colour stays
+  /* The eyebrow: Onest caps, 11px, semibold tracking. Colour stays
      --accent-deep in the rule that draws it. */
-  --sk-eyebrow-face:    var(--f-mono);
+  --sk-eyebrow-face:    var(--f-body);
   --sk-eyebrow-track:   var(--track-label);
   --sk-eyebrow-transform: uppercase;
   --sk-eyebrow-size:    var(--t-micro);
   --sk-stepnum-size:    var(--t-2xl);
 
   /* ---- the slab: all six, or none ----------------------------
-     An in-page emphasis band: the accent's wash, page inks. All six
-     move together (_contract.css rule 2). */
+     An in-page emphasis band: the accent's (light) wash, page inks.
+     All six move together (_contract.css rule 2): the slab is LIGHT
+     now, so its inset fill is the white card and a button on its
+     -deep accent carries white. */
   --sk-slab-bg:         var(--accent-wash);
   --sk-slab-ink:        var(--ink);
   --sk-slab-muted:      var(--ink-muted);
   --sk-slab-accent:     var(--accent-deep);
-  /* near-black: the slab accent is a -deep (light) hue on every page,
-     studio included, where --accent-on is white for the brand fill. */
-  --sk-slab-accent-on:  var(--on-fill);
-  --sk-slab-fill:       var(--surface-rail);
+  /* white: the slab accent is a -deep (dark) hue on every page. */
+  --sk-slab-accent-on:  var(--brand-on);
+  --sk-slab-fill:       var(--surface-card);
   --sk-slab-hair:       var(--border-strong);
   --sk-slab-rule-w:     0;
   --sk-slab-rule-c:     var(--accent-deep);

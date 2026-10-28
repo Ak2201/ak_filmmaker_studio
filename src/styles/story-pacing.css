@@ -31,7 +31,7 @@
 .pc-acts { position: absolute; left: 0; right: 0; top: calc(-1 * var(--s5)); height: var(--s5); pointer-events: none; }
 .pc-acts span {
   position: absolute; top: 0; padding-left: var(--s1h);
-  font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: .06em; text-transform: uppercase;
+  font-family: var(--f-body); font-size: var(--t-micro); letter-spacing: 0; text-transform: none;
   color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .pc-dots { position: absolute; inset: 0; }
@@ -98,7 +98,7 @@
 .pc-cell.is-est { background-image: repeating-linear-gradient(135deg, transparent 0 4px, var(--border-hair) 4px 6px); }
 .pc-cell:hover { outline: 1px solid var(--border-strong); }
 .pc-cell:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 1px; }
-.pc-heat-ends { display: flex; justify-content: space-between; margin-top: var(--s1); font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); text-transform: uppercase; letter-spacing: .06em; }
+.pc-heat-ends { display: flex; justify-content: space-between; margin-top: var(--s1); font-family: var(--f-body); font-size: var(--t-micro); color: var(--ink-muted); text-transform: none; letter-spacing: 0; }
 .pc-dist { display: flex; height: 8px; margin-top: var(--s4); border-radius: var(--radius-pill); overflow: hidden; background: var(--surface-hover); gap: 2px; }
 .pc-dist-seg { flex: 1 1 0; min-width: 2px; }
 .pc-dist-seg.is-low, .pc-dist-keys .is-low .pc-swatch { background: var(--status-warning); }

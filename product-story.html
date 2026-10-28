@@ -20,7 +20,7 @@
 <meta name="twitter:image" content="https://{{brand:host}}/og.png">
 <meta name="twitter:image:alt" content="{{brand:name}}: {{brand:tagline}}">
 <meta property="og:locale" content="en_IN">
-<meta name="theme-color" content="#0d0e13">
+<meta name="theme-color" content="#0d0c11">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -36,7 +36,7 @@
      sign-up modal and the step slot, and nothing else. -->
 <a class="mk-skip" href="#main">Skip to content</a>
 <div class="mk-sentinel" id="mkSentinel" aria-hidden="true"></div>
-<header class="mk-top" id="mkTop">
+<header class="mk-top" id="mkTop" data-surface="dark">
   <div class="mk-top-in">
     <a class="mk-brand" href="start.html"><span class="mk-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
     <nav class="mk-nav" id="mkNav" aria-label="Main">
@@ -74,16 +74,22 @@
               <li><a href="product-call-sheets.html"><span class="sym" aria-hidden="true" translate="no">assignment</span><span>Call sheets</span></a></li>
             </ul>
           </div>
+          <div class="mk-mega-col mk-mega-col--more">
+            <p class="mk-mega-h">Learn</p>
+            <ul>
+              <li><a href="guides.html"><span class="sym" aria-hidden="true" translate="no">menu_book</span><span>Guides</span></a></li>
+              <li><a href="guides.html#compare"><span class="sym" aria-hidden="true" translate="no">swap_horiz</span><span>Switching</span></a></li>
+              <li><a href="trust.html"><span class="sym" aria-hidden="true" translate="no">lock</span><span>Your work stays yours</span></a></li>
+            </ul>
+          </div>
         </div>
       </div>
       <a class="mk-nav-link mk-nav-pricing" href="pricing.html">Pricing</a>
-      <a class="mk-nav-link" href="guides.html">Guides</a>
-      <a class="mk-nav-link" href="guides.html#compare">Switching</a>
       <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">Sign in</a>
     </nav>
     <div class="mk-top-end">
       <a class="mk-nav-link mk-end-login" href="invite.html" data-start-auth="google">Sign in</a>
-      <a class="mk-btn mk-btn--outline mk-btn--sm" href="invite.html" data-open-signup>Sign up</a>
+      <a class="mk-btn mk-btn--primary mk-btn--sm" href="invite.html" data-open-signup>Get started</a>
       <a class="mk-burger" id="mkBurger" href="#mkFoot" aria-controls="mkNav" aria-expanded="false" aria-label="Menu"><span class="sym" aria-hidden="true" translate="no">menu</span></a>
     </div>
   </div>
@@ -96,45 +102,36 @@
     <a class="mk-btn mk-btn--primary mk-btn--sm mk-pass-cta" href="invite.html" data-open-signup data-pass-cta><span>Try it for <span data-pass-price></span></span></a>
   </div>
 </aside>
-<section class="mk-hero mk-hero--media hue-feature" id="top" aria-labelledby="mkH1">
-  <div class="mk-wrap mk-hero-in mk-hero-grid">
+<section class="mk-hero mk-hero--media hue-feature" id="top" aria-labelledby="mkH1" data-surface="dark">
+  <div class="mk-wrap mk-hero-in">
+    <p class="mk-kicker"><span class="sym" aria-hidden="true" translate="no">timeline</span><span>Story development</span></p>
     <h1 class="mk-h1" id="mkH1">Find your story's shape before you write it</h1>
     <p class="mk-sub">A beat board with eleven story structures and a pacing check that shows where the film rises, where it sags and where a beat is missing.</p>
     <div class="mk-cta-row">
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
     </div>
     <figure class="mk-player mk-hero-media" id="demo" aria-label="See the beat board in action">
-      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/story.webp">
+      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/story.webp" aria-label="See the beat board in action">
         <source src="/marketing/story.webm" type="video/webm">
         Your browser cannot play this video.
       </video>
     </figure>
   </div>
 </section>
-<div class="mk-label hue-feature">
-  <div class="mk-wrap mk-label-in">
-    <p class="mk-label-path"><span class="sym" aria-hidden="true" translate="no">timeline</span><span>Story development</span><span class="mk-label-sep" aria-hidden="true">/</span><strong>Story</strong></p>
-    <nav class="mk-label-nav" aria-label="On this page">
-      <a href="#how">How it works</a>
-      <a href="pricing.html">Pricing</a>
-    </nav>
-  </div>
-</div>
-<section class="mk-sec mk-band-b" id="value" aria-labelledby="mkValueH">
-  <div class="mk-wrap mk-split">
-    <div class="mk-split-text">
+<section class="mk-sec mk-band-a" id="value" aria-labelledby="mkValueH">
+  <div class="mk-wrap grid gap-10 lg:grid-cols-12 lg:gap-16">
+    <div class="mk-intro lg:col-span-5">
       <h2 class="mk-h2" id="mkValueH">Structure you can see, not just read about</h2>
       <p class="mk-body">Pick a framework such as Three-Act, Save the Cat, Story Circle or the Short Film Five-Beat, and place your synopsis against its beats. Switch frameworks and your marked passages move to the nearest beat.</p>
-      <p class="mk-body">Tension is plotted against the shape each structure expects. Pacing flags point at the stretch of story they mean, so you fix the sag in the outline, not in the third draft.</p>
     </div>
-    <ul class="mk-facts mk-facts--side" id="facts" aria-label="The plain facts">
+    <ul class="mk-facts grid gap-4 sm:grid-cols-3 lg:col-span-7 lg:grid-cols-1" id="facts" aria-label="The plain facts">
       <li><b class="mk-fact-n">11</b><span class="mk-fact-l">Story structures to place your beats on</span></li>
       <li><b class="mk-fact-n">4 to 15</b><span class="mk-fact-l">Beats per structure, Kishotenketsu to Save the Cat</span></li>
       <li><b class="mk-fact-n">Derived</b><span class="mk-fact-l">Pacing flags are computed, never typed in</span></li>
     </ul>
   </div>
 </section>
-<section class="mk-sec mk-band-c" id="how" aria-labelledby="mkHowH">
+<section class="mk-sec mk-band-b" id="how" aria-labelledby="mkHowH">
   <div class="mk-wrap">
     <h2 class="mk-h2" id="mkHowH">How it works</h2>
     <div class="mk-how hue-feature" data-steps="3">
@@ -153,8 +150,8 @@
 </section>
 <section class="mk-sec mk-band-a" id="related" aria-labelledby="mkRelH">
   <div class="mk-wrap">
-    <h2 class="mk-h2" id="mkRelH">Browse more tools</h2>
-    <div class="mk-cards">
+    <h2 class="mk-h2" id="mkRelH">More tools</h2>
+    <div class="mk-cards grid gap-5 md:grid-cols-3">
       <article class="mk-card hue-library">
         <span class="mk-card-icon"><span class="sym" aria-hidden="true" translate="no">edit_note</span></span>
         <h3 class="mk-h3">Writing</h3>
@@ -176,85 +173,35 @@
     </div>
   </div>
 </section>
-<section class="mk-sec mk-band-b" id="tools" aria-labelledby="mkToolsH">
-  <div class="mk-wrap">
-    <h2 class="mk-h2" id="mkToolsH">Tools for every stage</h2>
-    <div class="mk-stages">
-      <div class="mk-stage hue-library">
-        <p class="mk-stage-h"><span class="mk-dot" aria-hidden="true"></span>Writing</p>
-        <ul>
-          <li><a href="product-writing.html"><span class="sym" aria-hidden="true" translate="no">edit_note</span><span>Writing</span></a></li>
-        </ul>
-      </div>
-      <div class="mk-stage hue-feature">
-        <p class="mk-stage-h"><span class="mk-dot" aria-hidden="true"></span>Story development</p>
-        <ul>
-          <li><a href="product-story.html" aria-current="page"><span class="sym" aria-hidden="true" translate="no">timeline</span><span>Story</span></a></li>
-          <li><a href="product-storyboard.html"><span class="sym" aria-hidden="true" translate="no">view_carousel</span><span>Storyboard</span></a></li>
-        </ul>
-      </div>
-      <div class="mk-stage hue-plan">
-        <p class="mk-stage-h"><span class="mk-dot" aria-hidden="true"></span>Pre-production</p>
-        <ul>
-          <li><a href="product-breakdown.html"><span class="sym" aria-hidden="true" translate="no">fact_check</span><span>Breakdown</span></a></li>
-          <li><a href="product-catalog.html"><span class="sym" aria-hidden="true" translate="no">category</span><span>Elements</span></a></li>
-          <li><a href="product-shot-list.html"><span class="sym" aria-hidden="true" translate="no">videocam</span><span>Shot list</span></a></li>
-          <li><a href="product-schedule.html"><span class="sym" aria-hidden="true" translate="no">calendar_month</span><span>Schedule</span></a></li>
-          <li><a href="product-cast-crew.html"><span class="sym" aria-hidden="true" translate="no">groups</span><span>Cast and crew</span></a></li>
-          <li><a href="product-sides.html"><span class="sym" aria-hidden="true" translate="no">description</span><span>Sides</span></a></li>
-        </ul>
-      </div>
-      <div class="mk-stage hue-shoot">
-        <p class="mk-stage-h"><span class="mk-dot" aria-hidden="true"></span>Production</p>
-        <ul>
-          <li><a href="product-budget.html"><span class="sym" aria-hidden="true" translate="no">payments</span><span>Budget</span></a></li>
-          <li><a href="product-call-sheets.html"><span class="sym" aria-hidden="true" translate="no">assignment</span><span>Call sheets</span></a></li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</section>
-<section class="mk-sec mk-band-c mk-mid hue-feature" id="start" aria-labelledby="mkMidH">
+<section class="mk-sec mk-close hue-feature" id="start" aria-labelledby="mkMidH" data-surface="dark">
   <div class="mk-wrap mk-center">
     <h2 class="mk-h2" id="mkMidH">Put your first beat on the board</h2>
     <div class="mk-cta-row mk-cta-row--center">
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-off>Get started</a>
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden><span>Try the whole studio for <span data-pass-price></span></span></a>
-      <a class="mk-link mk-link--lg" href="pricing.html">View plans &amp; pricing<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a>
     </div>
   </div>
 </section>
 </main>
-<footer class="mk-foot" id="mkFoot">
+<footer class="mk-foot" id="mkFoot" data-surface="dark">
   <div class="mk-wrap">
     <div class="mk-foot-grid">
-      <div class="mk-foot-col hue-library">
-        <p class="mk-foot-h">Writing</p>
+      <div class="mk-foot-brand">
+        <a class="mk-brand" href="start.html"><span class="mk-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
+        <p class="mk-foot-note">Your work is saved in your browser first. Syncing to the cloud is optional.</p>
+      </div>
+      <div class="mk-foot-col mk-foot-col--tools">
+        <p class="mk-foot-h">Product</p>
         <ul>
           <li><a href="product-writing.html">Writing</a></li>
-        </ul>
-      </div>
-      <div class="mk-foot-col hue-feature">
-        <p class="mk-foot-h">Story development</p>
-        <ul>
           <li><a href="product-story.html">Story</a></li>
           <li><a href="product-storyboard.html">Storyboard</a></li>
-        </ul>
-      </div>
-      <div class="mk-foot-col hue-plan">
-        <p class="mk-foot-h">Pre-production</p>
-        <ul>
           <li><a href="product-breakdown.html">Breakdown</a></li>
           <li><a href="product-catalog.html">Elements</a></li>
           <li><a href="product-shot-list.html">Shot list</a></li>
           <li><a href="product-schedule.html">Schedule</a></li>
           <li><a href="product-cast-crew.html">Cast and crew</a></li>
           <li><a href="product-sides.html">Sides</a></li>
-        </ul>
-      </div>
-      <div class="mk-foot-col hue-shoot">
-        <p class="mk-foot-h">Production</p>
-        <ul>
           <li><a href="product-budget.html">Budget</a></li>
           <li><a href="product-call-sheets.html">Call sheets</a></li>
         </ul>
@@ -264,20 +211,26 @@
         <ul>
           <li><a href="pricing.html">Pricing</a></li>
           <li><a href="about.html">About us</a></li>
-          <li><a href="trust.html">Your work stays yours</a></li>
-          <li><a href="guides.html">Guides</a></li>
-          <li><a href="guides.html#compare">Switching to the studio</a></li>
           <li><a href="contact.html">Contact us</a></li>
-          <li><a href="privacy.html">Privacy</a></li>
-          <li><a href="terms.html">Terms</a></li>
-          <li><a href="refund.html">Refunds</a></li>
+          <li><a href="trust.html">Your work stays yours</a></li>
+        </ul>
+      </div>
+      <div class="mk-foot-col">
+        <p class="mk-foot-h">Learn</p>
+        <ul>
+          <li><a href="guides.html">Guides</a></li>
+          <li><a href="guides.html#compare">Switching guides</a></li>
           <li><a href="mailto:{{brand:email}}">Support</a></li>
         </ul>
       </div>
     </div>
     <div class="mk-foot-base">
-      <p class="mk-foot-note">Your work is saved in your browser first. Syncing to the cloud is optional.</p>
       <p class="mk-foot-copy">© {{brand:name}}</p>
+      <ul class="mk-foot-legal">
+        <li><a href="privacy.html">Privacy</a></li>
+        <li><a href="terms.html">Terms</a></li>
+        <li><a href="refund.html">Refunds</a></li>
+      </ul>
     </div>
   </div>
 </footer>

@@ -122,11 +122,11 @@
   position: sticky;
   top: 0;
   background: var(--surface-rail);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   border-bottom: 1px solid var(--border-default);
 }
@@ -138,7 +138,7 @@
   font-family: var(--sk-eyebrow-face, var(--f-mono));
   font-size: var(--sk-eyebrow-size, var(--t-micro));
   font-weight: 600;
-  letter-spacing: var(--sk-eyebrow-track, var(--track-label));
+  letter-spacing: 0;
   text-transform: var(--sk-eyebrow-transform, uppercase);
   color: var(--ink-body);
 }

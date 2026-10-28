@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { VitePWA } from 'vite-plugin-pwa';
+import tailwindcss from '@tailwindcss/vite';
 import { sampleFigures } from './src/lib/sample-figures.js';
 import { PLAN_ORDER, planName, LIST_PRICE, EDU_PRICE, inr, perDay } from './src/lib/plans.js';
 import { loadMatrixModule } from './scripts/make-plan-features-sql.mjs';
@@ -109,7 +110,7 @@ function materialSymbols() {
    src/styles/fonts.css declares the faces; a declared face is only
    fetched once layout finds text in it, which is AFTER the CSS has
    downloaded and parsed. For the three that every page paints at once —
-   Inter (body), Space Grotesk (headings), JetBrains Mono (labels and
+   Onest 400 (body), Gabarito 700 (headings), JetBrains Mono (labels and
    figures), latin subset — that is a visible swap on every load, so
    they are preloaded. Nothing else is: Courier Prime, Playfair italic
    and the Tamil subsets stay on demand.
@@ -118,7 +119,7 @@ function materialSymbols() {
    of the build rather than naming them. Dev serves the CSS unhashed
    and gets no preload, which is fine.
    ============================================================ */
-const PRELOAD_FACES = ['inter-latin-wght-normal', 'space-grotesk-latin-wght-normal', 'jetbrains-mono-latin-wght-normal'];
+const PRELOAD_FACES = ['onest-latin-400-normal', 'gabarito-latin-700-normal', 'jetbrains-mono-latin-wght-normal'];
 function fontPreloads() {
   return {
     name: 'fms-font-preloads',
@@ -730,6 +731,12 @@ export default defineConfig({
      plugin to generate or inject.
      ------------------------------------------------------------ */
   plugins: [
+    /* Tailwind v4 for the PUBLIC SITE ONLY: it compiles the one sheet
+       that imports it (src/styles/site.css), whose @source list names
+       the public pages alone. No studio page imports site.css — the
+       studio is styled through tokens.css, the skin and the kit, and
+       ~41k lines of unlayered CSS would beat layered utilities anyway. */
+    tailwindcss(),
     materialSymbols(),
     fontPreloads(),
     themeColor(),

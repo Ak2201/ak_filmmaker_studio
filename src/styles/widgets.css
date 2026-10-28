@@ -98,11 +98,11 @@
 .ai-prompt-block h4,
 .sync-warning .lab {
   margin-bottom: var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--sk-slab-accent);
 }
 .budget-summary .label::before { content: "\03A3  "; }
@@ -355,11 +355,11 @@
 .palette-picker .pp-label,
 .beat-visualizer-head {
   margin-bottom: var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--accent-deep);
 }
 .beat-visualizer-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--s3); }
@@ -583,11 +583,11 @@
    it. */
 .beat-eg-steal {
   margin-right: var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: var(--track-label);
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--accent-deep);
 }
 
@@ -646,10 +646,10 @@
 
 .bp-entry-eyebrow {
   margin: 0 0 var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--sk-eyebrow-track);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 
@@ -1193,10 +1193,10 @@
 .scene-block .action-label {
   display: block;
   margin: var(--s3) 0 var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .dialogue-block {
@@ -1228,8 +1228,8 @@
 .script-editor .add-scene-btn {
   margin-top: var(--s3);
   padding: var(--s2) var(--s3);
-  background: var(--accent);
-  color: var(--accent-on);
+  background: var(--brand);
+  color: var(--brand-on);
   border: none;
   border-radius: var(--sk-radius, var(--radius));
   font-family: var(--f-mono);
@@ -1414,10 +1414,10 @@
 .dept-fields label {
   display: block;
   margin-bottom: var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .dept-fields input,
@@ -1475,11 +1475,11 @@
 }
 .hod-signoff h4 {
   margin-bottom: var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--ok-deep);
 }
 .hod-signoff .deck {
@@ -1498,10 +1498,10 @@
 }
 .hod-row:first-of-type { border-top: none; }
 .hod-row .role {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ok-deep);
 }
 .hod-row input {
@@ -1531,7 +1531,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent-on);
+  color: var(--brand-on);
   font-weight: 800;
   font-size: var(--t-base);
 }
@@ -1640,10 +1640,10 @@
 .sync-fields label {
   display: block;
   margin-bottom: var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 .sync-fields input {
@@ -1773,10 +1773,10 @@
     margin: 0;
     overflow: visible;
     clip-path: none;
-    font-family: var(--f-mono);
+    font-family: var(--f-body);
     font-size: var(--t-micro);
-    letter-spacing: var(--track-label);
-    text-transform: uppercase;
+    letter-spacing: 0;
+    text-transform: none;
     /* Still on the slab, so still the slab's accent. This one only
        exists below 820px, which is why it outlived the others. */
     color: var(--sk-slab-accent);
@@ -1861,8 +1861,8 @@
 /* --accent is a fill, so the label on top of it takes --on-fill and
    never --ink, which would vanish in the dark themes. */
 .lang-btn.is-on {
-  background: var(--accent);
-  color: var(--on-fill);
+  background: var(--brand);
+  color: var(--brand-on);
 }
 /* Says what the switch does and does not do, so nobody waits for the
    headings to change. */

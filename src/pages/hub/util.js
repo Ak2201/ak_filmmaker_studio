@@ -15,11 +15,11 @@ import {
 import { readStoredObject } from '../../lib/hub-activity.js';
 
 const FORMAT_LABELS = {
-  feature: 'FEATURE FILM',
-  short: 'SHORT FILM',
-  documentary: 'DOCUMENTARY',
-  musicvideo: 'MUSIC VIDEO',
-  adfilm: 'AD FILM'
+  feature: 'Feature film',
+  short: 'Short film',
+  documentary: 'Documentary',
+  musicvideo: 'Music video',
+  adfilm: 'Ad film'
 };
 
 /** Strip authored markup so data HTML can be used as plain text —

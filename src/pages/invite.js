@@ -324,7 +324,8 @@ function render() {
        Plans and the code box stay either way. */
     const phase = passPhaseNow();
     if (phase === 'open') { const ps = passSection(false); if (ps) body.append(ps); }
-    if (!trialsOff() && phase === 'off') {
+    const trialShown = !trialsOff() && phase === 'off';
+    if (trialShown) {
       const len = anonTrial && anonTrial.enabled ? trialLength(anonTrial.minutes) : '';
       /* The LENGTH belongs in the deck, not in the heading: "Start your
          30 minutes free trial" is not a sentence anybody says. */
@@ -347,7 +348,9 @@ function render() {
       /* The prices on this page (src/ui/list-prices.js), not a link away. */
       buy.append(prices());
       buy.append(h('div.iv-actions', {}, [
-        h('a.k-btn.k-btn--primary', { href: buyHref(), text: 'See plans and buy' }),
+        /* One primary per view: when the trial or the pass card above
+           already carries it, buying is the second choice (28 Oct 2026). */
+        h('a.k-btn' + (trialShown || phase === 'open' ? '.k-btn--secondary' : '.k-btn--primary'), { href: buyHref(), text: 'See plans and buy' }),
         h('a.k-btn.k-btn--secondary', { href: 'pricing.html#compare', text: 'Compare every feature' })
       ]));
       { const held = heldCodeLine(); if (held) buy.append(held); }

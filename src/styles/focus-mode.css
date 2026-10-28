@@ -249,11 +249,11 @@ html.fm-on.fm-mk-line #wr-page .wr-text:focus { background: transparent; }
 }
 .fm-opts-col { display: grid; gap: var(--s2); align-content: start; min-width: 0; }
 .fm-sec {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-body);
 }
 .fm-opts-col .fm-sec + .fm-sec,
@@ -365,10 +365,10 @@ html.fm-on #screenplay { width: 100%; box-sizing: border-box; }
   padding-top: calc(var(--s2) + env(safe-area-inset-top, 0px));
   background: color-mix(in srgb, var(--surface-canvas) 88%, transparent);
   border-bottom: 1px solid var(--border-hair);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   pointer-events: none;
 }

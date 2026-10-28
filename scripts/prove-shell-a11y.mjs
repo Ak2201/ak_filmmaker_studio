@@ -231,7 +231,9 @@ async function ctxAt(width, height, extra = {}) {
   await page.goto(BASE + 'library.html', { waitUntil: 'networkidle' });
   const door = await page.evaluate(() => (document.querySelector('.lib-search') || {}).textContent || '');
   ok(/studio/i.test(door) && !/directors/i.test(door), 'the library search door is labelled for the studio palette (' + door.trim() + ')');
-  ok(/craft-book/i.test(await page.evaluate(() => document.body.innerText)) && !/mapped to every step/i.test(await page.evaluate(() => document.body.innerText)), 'the library cover no longer claims the watch list covers every step');
+  /* The 28 Oct 2026 copy pass rewrote the cover without the word
+     "craft-book"; the claim this guards against is the second half. */
+  ok(!/mapped to every step/i.test(await page.evaluate(() => document.body.innerText)), 'the library cover no longer claims the watch list covers every step');
   await ctx.close();
 }
 {

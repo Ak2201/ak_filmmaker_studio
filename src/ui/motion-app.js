@@ -158,6 +158,75 @@ function scan(root) {
      pointer is a target that moves. */
 }
 
+/* ---- PANELS: the motion package (owner, 28 Oct 2026) -------------
+   The studio's larger surfaces — the launcher's row cards, the
+   dashboard's Continue, readiness and title-page cards — rise in as
+   they scroll into view, a few at a time, with `animate` from the
+   bundled `motion` package (motion/mini: the WAAPI driver, ~2.5 KB,
+   fetched only when motion is wanted, so it is in no page's first
+   paint and verify, under webdriver, never loads it).
+
+   Calm by construction: 10px × --motion over 320ms, a 40ms stagger
+   capped at five, once per element per page load. A panel already on
+   screen at load is left alone unless the visitor arrived from outside
+   the studio (the same rule as the cards above), a panel that holds
+   the fragment target is never veiled (a rising target is a jump that
+   lands in the wrong place), and after the first WINDOW ms nothing new
+   is veiled, so a re-render never replays. The veil is opacity only
+   (motion-app.css .ma-pveil, under html.ma-on), lifted by the 8s
+   backstop and by printing whatever happens to the import. */
+const PANELS = '.lx-row, .db-continue, .db-main > .db-sec, .db-main > .db-title-page';
+let miniAnimate = null;
+const loadMini = () => (miniAnimate || (miniAnimate = import('motion/mini').then((m) => m.animate, () => null)));
+const pveiled = new Set();
+let panelIO = null;
+let panelQueue = 0;
+const hashTarget = () => {
+  try { return location.hash.length > 1 ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null; }
+  catch (e) { return null; }
+};
+function liftPanel(n) {
+  pveiled.delete(n);
+  n.classList.remove('ma-pveil');
+}
+function playPanel(n, i) {
+  loadMini().then((animate) => {
+    if (!n.isConnected) { pveiled.delete(n); return; }
+    const m = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--motion'));
+    const dist = 10 * (Number.isFinite(m) ? m : 1);
+    /* the veil comes off and the animation starts in the same task, so
+       no frame paints the panel at full opacity first */
+    liftPanel(n);
+    if (!animate) return;
+    try {
+      animate(n, { opacity: [0, 1], transform: ['translateY(' + dist + 'px)', 'none'] },
+        { duration: 0.32, delay: Math.min(i, 5) * 0.04, ease: [0.22, 1, 0.36, 1] });
+    } catch (e) { /* an engine without WAAPI: the panel is simply there */ }
+  });
+}
+function panels(root) {
+  if (!fresh()) return;
+  panelIO = panelIO || new IntersectionObserver((entries) => {
+    for (const en of entries) {
+      if (!en.isIntersecting) continue;
+      panelIO.unobserve(en.target);
+      playPanel(en.target, panelQueue++);
+      setTimeout(() => { panelQueue = 0; }, 200);
+    }
+  }, { rootMargin: '0px 0px -6% 0px', threshold: 0.04 });
+  const t = hashTarget();
+  pick(root, PANELS).forEach((n) => {
+    if (seen.has(n)) return;
+    seen.add(n);
+    if (!replay(n)) return;
+    if (t && (n === t || n.contains(t) || t.contains(n))) return;
+    if (inView(n) && !entering()) return;
+    n.classList.add('ma-pveil');
+    pveiled.add(n);
+    panelIO.observe(n);
+  });
+}
+
 /* The sliding tab underline (span.tabs-ink) is gone: the selected row's
    own fill is the marker, and in the side menu `bottom: 0` put the line
    under the last row. See tabs.css. */
@@ -201,7 +270,7 @@ function boot() {
   let added = new Set();
   const tick = () => {
     queued = 0;
-    if (fresh()) scan(document.body);
+    if (fresh()) { scan(document.body); panels(document.body); }
     else for (const n of added) if (n.isConnected) scan(n);
     if (fresh()) pauseOffscreen(document.body); else for (const n of added) if (n.isConnected && n.querySelectorAll) pauseOffscreen(n);
     added = new Set();
@@ -216,10 +285,12 @@ function boot() {
     if (!queued) queued = requestAnimationFrame(tick);
   }).observe(document.body, { childList: true, subtree: true });
   wireEvents();
-  setTimeout(() => { pending.forEach((n) => { if (inView(n)) show(n); }); }, BACKSTOP);
+  setTimeout(() => { pending.forEach((n) => { if (inView(n)) show(n); }); pveiled.forEach((n) => { if (inView(n)) liftPanel(n); }); }, BACKSTOP);
+  /* a link to a section further down (#readiness) must not land on a veil */
+  addEventListener('hashchange', () => { const t = hashTarget(); if (t) pveiled.forEach((n) => { if (n === t || n.contains(t) || t.contains(n)) liftPanel(n); }); });
   /* Printing reveals everything still waiting (motion-app.css also
      overrides the veils under print media). */
-  addEventListener('beforeprint', () => { Array.from(pending).forEach(show); });
+  addEventListener('beforeprint', () => { Array.from(pending).forEach(show); Array.from(pveiled).forEach(liftPanel); });
   /* Whatever is still veiled and NOT on screen at the backstop keeps
      waiting for its scroll; the veil never outlives a reveal. */
 }

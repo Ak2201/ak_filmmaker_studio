@@ -3,7 +3,7 @@
    says how often and "cancel anytime"; a one-time line says it does not
    renew; an unknown mode says neither. */
 import fs from 'node:fs';
-import { readMode, offerTerms, everyText, forText, cancelledText, renewsText } from '../src/lib/offer-terms.js';
+import { readMode, offerTerms, everyText, forText, cancelledText, renewsText, CANCEL_AT_MANDATE } from '../src/lib/offer-terms.js';
 
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) pass++; else { fail++; console.log('  ✗ ' + m); } };
@@ -34,6 +34,7 @@ ok(everyText('pass', 1) === 'every day' && forText('pass', 1) === 'for 1 day', '
 ok(offerTerms('renew', '₹1', 'pass', 0).renews === null, 'no length, no renewal claim');
 ok(cancelledText('3 Nov 2026') === 'Auto-pay off · access until 3 Nov 2026', 'cancelled text');
 ok(renewsText('3 Nov 2026', '₹99') === 'Renews 3 Nov 2026 · ₹99', 'renews text');
+ok(/Razorpay mandate e-mail/.test(CANCEL_AT_MANDATE) && /bank \/ UPI app/.test(CANCEL_AT_MANDATE) && !/Settings/.test(CANCEL_AT_MANDATE), 'cancel is at the mandate, never in the app');
 
 const src = fs.readFileSync(new URL('../src/lib/offer-terms.js', import.meta.url), 'utf8');
 ok(!/^\s*import\s/m.test(src), 'offer-terms.js imports nothing (startlib)');

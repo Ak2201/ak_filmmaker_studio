@@ -1937,14 +1937,16 @@ try {
     await waitRe(page, '#autopay', /Auto-pay on/, 'Settings has an Auto-pay card: Auto-pay on');
     await waitRe(page, '#autopay', /7-day pass · Renews .* · ₹49/, 'with the next charge date and the amount');
     await shot(page, 'settings-autopay-on');
-    ok(!!(await page.$('section#purchases[data-tab-label="Plan & purchases"] #autopay')), 'the card sits in Settings → Plan & purchases (tap 1 is its button, tap 2 the confirm)');
-    await page.click('#autopay [data-action="autopay-cancel"]');
-    await page.waitForSelector('button.mbtn.primary', { timeout: 5000 }).catch(() => {});
-    ok(/You keep access until .*\. Nothing more will be charged\./.test(await page.textContent('.dlg[role="dialog"]').catch(() => '')), 'the dialog says "You keep access until <date>. Nothing more will be charged."');
-    await page.click('button.mbtn.primary');
-    await waitRe(page, '#autopay', /Auto-pay off · access until /, 'after cancelling: "Auto-pay off · access until <date>"');
+    ok(!!(await page.$('section#purchases[data-tab-label="Plan & purchases"] #autopay')), 'the card sits in Settings → Plan & purchases');
+    /* No cancel button and no rail box (owner, 28 Oct 2026): cancelling is at the mandate. */
+    ok(!(await page.$('#autopay button')), 'Settings has NO cancel button for auto-pay');
+    ok(/To cancel, use the link in your Razorpay mandate e-mail or your bank \/ UPI app\./.test(await page.textContent('#autopay')), 'it says to cancel from the Razorpay mandate e-mail or the bank / UPI app');
+    ok(await page.evaluate(() => { const b = document.querySelector('#studioRail .sh-rail-trial'); return !b || b.hidden || !/AUTO-PAY|MANAGE/.test(b.textContent); }), 'the rail carries no AUTO-PAY box and no MANAGE link');
+    /* the mandate is cancelled outside the app (Razorpay / the bank): the same state rzp-cancel leaves */
+    Object.assign(benSub, { cancel_at_period_end: true, cancelled_at: new Date().toISOString() });
+    await page.reload();
+    await waitRe(page, '#autopay', /Auto-pay off · access until /, 'after the mandate is cancelled elsewhere: "Auto-pay off · access until <date>"');
     await shot(page, 'settings-autopay-off');
-    ok(benSub.cancel_at_period_end === true && F.db.calls.includes('fn:rzp-cancel ' + benSub.id), 'rzp-cancel cancelled it at the end of the period');
     { const before = acc().plan_until; ok(chargeSubscription(benSub.id) === null && acc().plan_until === before, 'after a cancel no new charge is applied, and the days paid for are kept'); }
     allErrors.push(...errors); await ctx.close();
   }

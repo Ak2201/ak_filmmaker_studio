@@ -97,10 +97,9 @@
 
 .ct-fieldset { display: grid; gap: var(--s1); min-width: 0; }
 .ct-flabel {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 
@@ -496,10 +495,9 @@
   border-radius: var(--sk-radius, var(--radius));
 }
 .ct-light-cell dt {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .ct-light-cell dd {

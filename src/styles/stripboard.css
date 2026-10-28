@@ -73,11 +73,10 @@
 .sb-seg-lab,
 .sb-legend-lab,
 .sb-day-lab {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  font-weight: 500;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  font-weight: 600;
+  letter-spacing: 0;
   color: var(--ink-muted);
   white-space: nowrap;
 }
@@ -270,8 +269,8 @@
 .sb-shot.is-dropped { border-style: dashed; }
 .sb-cast-lab { margin-right: var(--s1); }
 .sb-cast-lab,
-.sb-cast-none { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
-.sb-cast-none { text-transform: none; letter-spacing: 0; font-family: var(--f-sans); font-size: var(--t-tiny); }
+.sb-cast-none { font-family: var(--f-body); font-size: var(--t-tiny); font-weight: 600; letter-spacing: 0; color: var(--ink-muted); }
+.sb-cast-none { font-weight: 400; }
 
 /* ------------------------------------------------------------
    4b. BANNERS — the AD's (editable) and the implied move (derived)

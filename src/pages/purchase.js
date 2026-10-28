@@ -354,7 +354,7 @@ function planSection() {
   }
   if (!signedIn) {
     const sec = section('plan', 'Plan', 'Sign in to buy a plan.',
-      deck() + ' A plan belongs to an account, so you sign in with Google first — you come straight back to this page.');
+      deck() + ' A plan belongs to an account, so sign in with Google first and you come straight back to this page.');
     /* The prices HERE, not one page away (start.html#pricing), which
        took a buyer off the buying path to learn the one fact they came
        for. The link stays for the full comparison. */
@@ -511,7 +511,7 @@ function render() {
   body.append(h('section#yourwork.pu-sec.pu-aside', {}, [
     h('h2.bd-h2', { text: 'Your work' }),
     h('p.bd-sub', { text: 'Everything you wrote is saved on this device. Download a copy any time, with or without a plan.' }),
-    h('button.k-btn.k-btn--secondary', { type: 'button', 'data-pu-action': 'download-work', text: 'DOWNLOAD MY WORK' }),
+    h('button.k-btn.k-btn--secondary', { type: 'button', 'data-pu-action': 'download-work', text: 'Download my work' }),
     h('p.bd-sub', { id: 'puWorkMsg', role: 'status', 'aria-live': 'polite', text: '' })
   ]));
   main.append(body);

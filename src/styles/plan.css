@@ -64,14 +64,14 @@
   gap: var(--s3);
 }
 
-/* Shared small type: the mono label that names a row or a field. */
+/* Shared small type: the label that names a row or a field — sentence
+   case in the body face, like the kit's .k-field-label. */
 .pl-rowlab,
 .pl-flabel {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 
@@ -288,6 +288,37 @@
 .pl-sel:focus-visible,
 .pl-notes:focus-visible { border-color: var(--accent); outline: none; }
 
+.pl-recce-more { display: none; }
+.pl-loc.is-more .pl-recce-more { display: grid; }
+.pl-more-toggle {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 2.25rem;
+  padding: var(--s1) var(--s3);
+  background: transparent;
+  color: var(--accent-deep);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--radius-pill);
+  font: inherit;
+  font-size: var(--t-tiny);
+  font-weight: 600;
+  cursor: pointer;
+}
+.pl-more-toggle::after {
+  content: '';
+  width: .45em; height: .45em;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--speed) var(--ease);
+}
+.pl-more-toggle[aria-expanded="true"]::after { transform: translateY(1px) rotate(-135deg); }
+.pl-more-toggle:hover { border-color: var(--accent); }
+.pl-more-toggle:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-primary); outline-offset: 2px; }
+.pl-more-count { font-weight: 500; color: var(--ink-muted); }
+
 .pl-loc-scenes {
   display: flex;
   flex-wrap: wrap;
@@ -479,6 +510,9 @@
   /* A one-line input clips and prints its placeholder; the mirror wraps
      and prints only what was written. */
   .pl-input { display: none !important; }
+  /* "More details" is a screen convenience: paper gets every answer. */
+  .pl-recce-more { display: grid !important; }
+  .pl-more-toggle { display: none !important; }
   .pl-print { display: block; min-height: 1.3em; white-space: pre-wrap; overflow-wrap: anywhere;
     color: var(--print-ink); border-bottom: 1px solid var(--print-rule); }
   .pl-day-no { background: var(--print-paper); color: var(--print-ink); border: 1px solid var(--print-ink); }
@@ -557,3 +591,14 @@
   .pl-loc { background-image: var(--surface-card-sheen); }
 }
 .pl-back-sb { white-space: nowrap; }
+
+/* The day card's scene table: a quiet header row in the body face
+   (28 Oct 2026), the same as the Reports tables. */
+.pl-table thead th {
+  background: var(--paper-sunk);
+  color: var(--ink-muted);
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
+  border-bottom: 1px solid var(--rule-hair);
+}

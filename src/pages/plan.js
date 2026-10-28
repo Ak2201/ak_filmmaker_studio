@@ -340,6 +340,19 @@ function renderLocations(scenes) {
   return wrap;
 }
 
+/* Which recce cards have "More details" open: in memory for the visit
+   only, so a re-render keeps them open and nothing is stored. */
+const openMore = new Set();
+let moreSeq = 0;
+delegate(document, 'click', '[data-action="recce-more"]', (e, el) => {
+  const card = el.closest('.pl-loc');
+  if (!card) return;
+  const open = !card.classList.contains('is-more');
+  card.classList.toggle('is-more', open);
+  el.setAttribute('aria-expanded', String(open));
+  if (open) openMore.add(card.dataset.loc); else openMore.delete(card.dataset.loc);
+});
+
 function renderLocation(loc) {
   const perm = permOf(loc.recce.permission);
   const card = h('article.pl-loc.hue-plan.perm-' + perm.tone, {
@@ -370,19 +383,16 @@ function renderLocation(loc) {
 
   card.append(renderLight(loc));
 
+  /* Essentials first (owner, 28 Oct 2026): the four answers a unit
+     needs to turn up, and the notes. The seven others sit behind "More
+     details" — still in the DOM, still saved the same way, printed in
+     full (plan.css section 6), and opened by a press, never by data. */
   const grid = h('div.pl-recce');
   grid.append(
     labelled('Address', textField('address', loc.recce.address, 'Where the van goes — a pin, a landmark, a street')),
     labelled('Who to ask', textField('contact', loc.recce.contact, 'Owner, caretaker, office — and a number')),
     labelled('Permission', permSelect(loc.recce.permission)),
-    labelled('Best time of day', textField('bestTime', loc.recce.bestTime, 'Before 9am · after the market closes · golden hour')),
-    labelled('Power', textField('power', loc.recce.power, 'Mains on site? How far is the point? Genny needed?')),
-    labelled('Parking', textField('parking', loc.recce.parking, 'Where the unit parks, and how far the carry is')),
-    labelled('Toilets', textField('toilets', loc.recce.toilets, 'On site, next door, or bring one')),
-    labelled('Map pin', pinField(loc.recce)),
-    labelled('Nearest hospital', textField('hospital', loc.recce.hospital, 'Name, distance, casualty phone')),
-    labelled('Nearest police station', textField('police', loc.recce.police, 'Station, and its number')),
-    labelled('Cost', textField('cost', loc.recce.cost, 'Per day, plus whatever they actually meant'))
+    labelled('Best time of day', textField('bestTime', loc.recce.bestTime, 'Before 9am · after the market closes · golden hour'))
   );
   card.append(grid);
 
@@ -394,6 +404,29 @@ function renderLocation(loc) {
   });
   notes.value = loc.recce.notes;
   card.append(labelled('Notes', notes));
+
+  const MORE = ['power', 'parking', 'toilets', 'hospital', 'police', 'cost'];
+  const filled = MORE.filter((k) => String(loc.recce[k] || '').trim()).length + (Geo.coordsOf(loc.recce) ? 1 : 0);
+  const moreId = 'pl-more-' + (++moreSeq);
+  const open = openMore.has(loc.key);
+  if (open) card.classList.add('is-more');
+  card.append(h('button.pl-more-toggle', {
+    type: 'button', 'data-action': 'recce-more', 'aria-expanded': String(open), 'aria-controls': moreId
+  }, [
+    h('span', { text: 'More details' }),
+    h('span.pl-more-count', { text: filled + ' of 7 filled' })
+  ]));
+  const more = h('div.pl-recce.pl-recce-more', { id: moreId });
+  more.append(
+    labelled('Power', textField('power', loc.recce.power, 'Mains on site? How far is the point? Genny needed?')),
+    labelled('Parking', textField('parking', loc.recce.parking, 'Where the unit parks, and how far the carry is')),
+    labelled('Toilets', textField('toilets', loc.recce.toilets, 'On site, next door, or bring one')),
+    labelled('Map pin', pinField(loc.recce)),
+    labelled('Nearest hospital', textField('hospital', loc.recce.hospital, 'Name, distance, casualty phone')),
+    labelled('Nearest police station', textField('police', loc.recce.police, 'Station, and its number')),
+    labelled('Cost', textField('cost', loc.recce.cost, 'Per day, plus whatever they actually meant'))
+  );
+  card.append(more);
 
   card.append(h('div.pl-loc-scenes', {}, [
     h('span.pl-rowlab', { text: 'Scenes here' }),
@@ -415,7 +448,7 @@ function renderLight(loc) {
   if (!days.length) return wrap;
   const anyDate = days.some((d) => d.date);
   if (!out.pinned) {
-    if (anyDate) wrap.append(h('p.pl-light-note', { text: 'Add a map pin below to see sunrise and sunset on this location’s shoot days.' }));
+    if (anyDate) wrap.append(h('p.pl-light-note', { text: 'Add a map pin below, under More details, to see sunrise and sunset on this location’s shoot days.' }));
     return wrap;
   }
   if (!out.rows.length) {

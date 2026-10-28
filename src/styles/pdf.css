@@ -55,33 +55,33 @@
      so a mono printer still prints it clean. */
   body.pdf-invoice > *:not(.inv-doc) { display: none !important; }
   body.pdf-invoice > .inv-doc { display: block; color: var(--print-ink); background: var(--print-paper); font: 10pt/1.4 var(--f-body, sans-serif); }
-  .inv-doc .inv-brand { display: flex; align-items: center; gap: 8pt; padding-bottom: 8pt; margin-bottom: 12pt; border-bottom: 2pt solid var(--print-accent); }
-  .inv-doc .inv-mark { display: grid; place-items: center; width: 24pt; height: 24pt; border: 1pt solid var(--print-accent); border-radius: 4pt; color: var(--print-accent); font: 700 10pt/1 var(--f-display, sans-serif); letter-spacing: -0.02em; }
-  .inv-doc .inv-brand-name { display: block; font: 700 13pt/1.1 var(--f-display, sans-serif); }
+  .inv-doc .inv-brand { display: flex; align-items: center; gap: 10pt; padding-bottom: 12pt; margin-bottom: 18pt; border-bottom: 3pt solid var(--print-accent); }
+  .inv-doc .inv-mark { display: grid; place-items: center; width: 30pt; height: 30pt; border: 1.5pt solid var(--print-accent); border-radius: 6pt; color: var(--print-accent); font: 700 10pt/1 var(--f-display, sans-serif); letter-spacing: -0.02em; }
+  .inv-doc .inv-brand-name { display: block; font: 700 15pt/1.1 var(--f-display, sans-serif); letter-spacing: -0.01em; }
   .inv-doc .inv-tag { display: block; font-size: 8.5pt; color: var(--print-muted); }
   /* the page's own heading and paragraph rules (a light h1 ink, a
      reading-measure max-width on p) must not reach the receipt */
-  .inv-doc h1 { font: 700 16pt/1.15 var(--f-display, sans-serif); margin: 0 0 2pt; color: var(--print-ink); }
+  .inv-doc h1 { font: 700 22pt/1.1 var(--f-display, sans-serif); letter-spacing: -0.02em; margin: 0 0 3pt; color: var(--print-ink); }
   .inv-doc p, .inv-doc h2 { max-width: none; }
-  .inv-doc .inv-no { font-size: 10.5pt; margin: 0 0 12pt; color: var(--print-muted); }
+  .inv-doc .inv-no { font-size: 10.5pt; margin: 0 0 18pt; color: var(--print-muted); }
   .inv-doc .inv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12pt; }
-  .inv-doc .inv-paid { border: 1.5pt solid var(--print-accent); color: var(--print-accent); border-radius: 3pt; padding: 2pt 8pt; font-size: 10pt; font-weight: 700; letter-spacing: .12em; }
-  .inv-doc .inv-cols { display: flex; gap: 16pt; margin-bottom: 10pt; break-inside: avoid; }
+  .inv-doc .inv-paid { border: 2pt solid var(--print-accent); color: var(--print-accent); border-radius: 4pt; padding: 3pt 12pt; font-size: 11pt; font-weight: 700; letter-spacing: .18em; transform: rotate(-3deg); }
+  .inv-doc .inv-cols { display: flex; gap: 20pt; margin-bottom: 14pt; padding: 12pt 0; border-top: 1px solid var(--print-rule); border-bottom: 1px solid var(--print-rule); break-inside: avoid; }
   .inv-doc .inv-cols > div { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; }
   .inv-doc .inv-cols > .inv-cols-facts { flex: 1.6 1 0; }
-  .inv-doc h2 { font-size: 8pt; letter-spacing: .08em; text-transform: uppercase; color: var(--print-muted); margin: 0 0 3pt; }
+  .inv-doc h2 { font-size: 7.5pt; letter-spacing: .14em; text-transform: uppercase; color: var(--print-muted); margin: 0 0 3pt; }
   .inv-doc table { width: 100%; border-collapse: collapse; margin: 4pt 0 8pt; break-inside: avoid; }
-  .inv-doc th, .inv-doc td { text-align: left; padding: 4pt; border-bottom: 1px solid var(--print-rule); vertical-align: top; }
+  .inv-doc th, .inv-doc td { text-align: left; padding: 7pt 4pt; border-bottom: 1px solid var(--print-rule); vertical-align: top; }
   .inv-doc thead th { font-size: 8pt; letter-spacing: .06em; text-transform: uppercase; color: var(--print-muted); font-weight: 600; border-bottom-color: var(--print-ink); }
   .inv-doc td.inv-amt, .inv-doc th.inv-amt { text-align: right; white-space: nowrap; }
-  .inv-doc tfoot th { border-top: 1.5pt solid var(--print-accent); border-bottom: 0; font-size: 11pt; }
+  .inv-doc tfoot th { border-top: 2pt solid var(--print-accent); border-bottom: 0; font-size: 13pt; padding-top: 9pt; }
   .inv-doc .inv-facts { margin: 0; }
   .inv-doc .inv-facts th, .inv-doc .inv-facts td { padding: 2pt 0; font-size: 9pt; border-bottom: 0; }
   .inv-doc .inv-facts th { width: 42%; padding-right: 6pt; font-weight: 400; color: var(--print-muted); }
   .inv-doc .inv-sub { font-size: 8.5pt; color: var(--print-muted); }
-  .inv-doc .inv-words { font-size: 9pt; font-style: italic; margin: 0 0 6pt; }
+  .inv-doc .inv-words { font-size: 9pt; font-style: italic; margin: 0 0 14pt; color: var(--print-muted); }
   .inv-doc .inv-note { font-size: 8.5pt; margin: 6pt 0 0; color: var(--print-muted); }
-  .inv-doc .inv-terms { font-size: 8.5pt; margin: 8pt 0 0; padding-top: 6pt; border-top: 1px solid var(--print-rule); break-inside: avoid; }
+  .inv-doc .inv-terms { font-size: 8.5pt; margin: 16pt 0 0; padding-top: 8pt; border-top: 1px solid var(--print-rule); break-inside: avoid; }
 
   /* ----------------------------------------------------------
      THE MASTHEAD

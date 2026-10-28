@@ -1069,6 +1069,12 @@ for (const spec of PAGES) {
     viewport: { width: 1280, height: 900 }
   });
   await PIN_REGION(ctx);
+  /* The baseline is captured with no server answering (the note above), but the
+     committed .env names the LIVE Supabase project, so a run reached it and drew
+     whatever the owner had switched on that day: the 28 Oct launch pass changed
+     the invite and purchase pages and failed both with no copy edited. Refuse the
+     project's host so every run sees the same offline page. */
+  await ctx.route(/\.supabase\.co\//, (route) => route.abort());
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));

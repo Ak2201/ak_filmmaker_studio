@@ -845,6 +845,10 @@ switch ON so every older proof still asserts the wall.
 
 ### Option B: send through your own mailbox (Hostinger SMTP), no Resend
 
+LIVE 28 Oct 2026: the three secrets are set and all four functions are deployed with it; the first real send is still untested.
+The password is a Hostinger APP PASSWORD (hPanel → Emails → the mailbox → ⋮ → App passwords → Generate; shown once, revocable without touching the mailbox login), not the mailbox's own password. The mailbox has 2FA on.
+Set it WITHOUT typing it on a command line: `read -rs "P?App password: "` needs a real terminal (the app's one-line input box is not interactive and silently stores an EMPTY value). Check a secret without seeing it: `supabase secrets list` shows SHA-256 digests; the digest of the empty string is `e3b0c442…b855`.
+
 Added 28 Oct 2026. If `RESEND_API_KEY` is NOT set, `_shared/mail.js` sends
 through a mailbox over SMTP instead (`_shared/smtp.js`, denomailer). With both
 set, Resend wins. Nothing else changes: the same claim-then-send, the same
@@ -1530,7 +1534,7 @@ pages that show and take a dollar price are PRICING-CLIENT's.
    `charged_currency: 'USD'`. Make one USD test-mode purchase and one refund
    before taking a live dollar payment.
 
-## 25. The launch week pass (schema §61, 27 Oct 2026). RUN LIVE 28 Oct 2026; functions NOT yet redeployed.
+## 25. The launch week pass (schema §61, 27 Oct 2026). RUN LIVE 28 Oct 2026; functions redeployed the same day.
 
 The owner's decision: the public free trial is retired, and in its place a
 **launch offer** — a short paid pass of the whole studio (₹49 for 7 days

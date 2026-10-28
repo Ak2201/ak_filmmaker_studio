@@ -95,21 +95,35 @@ function message(to, subject, rows, paras, extra = {}) {
   const shown = rows.filter(([, v]) => v);
   const { kicker, hero, cta } = extra;
   const detail = shown.map(([k, v], i) =>
-    `<tr><td style="padding:10px 16px 10px 0;color:${MUTED};font-size:13px;vertical-align:top;${i ? `border-top:1px solid ${HAIR};` : ''}">${esc(k)}</td>`
-    + `<td align="right" style="padding:10px 0;font-size:14px;font-weight:600;color:${INK};vertical-align:top;word-break:break-word;${i ? `border-top:1px solid ${HAIR};` : ''}">${esc(v)}</td></tr>`).join('');
-  const body = paras.map((p, i) => `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${i ? '#2B2D36' : INK}">${p.html ?? esc(p)}</p>`).join('');
+    `<tr><td class="mail-sub-text mail-border" style="padding:10px 16px 10px 0;color:${MUTED};font-size:13px;vertical-align:top;${i ? `border-top:1px solid ${HAIR};` : ''}">${esc(k)}</td>`
+    + `<td align="right" class="mail-text mail-border" style="padding:10px 0;font-size:14px;font-weight:600;color:${INK};vertical-align:top;word-break:break-word;font-variant-numeric:tabular-nums;${i ? `border-top:1px solid ${HAIR};` : ''}">${esc(v)}</td></tr>`).join('');
+  const body = paras.map((p, i) => `<p class="${i ? 'mail-body-text' : 'mail-text'}" style="margin:0 0 14px;font-size:15px;line-height:1.6;color:${i ? '#2B2D36' : INK}">${p.html ?? esc(p)}</p>`).join('');
   const heroBlock = hero && hero[1]
-    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 22px"><tr><td style="background:#F6F2FE;border:1px solid #E4D9FB;border-radius:12px;padding:20px 22px">`
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 22px"><tr><td class="mail-hero-box" style="background:#F6F2FE;border:1px solid #E4D9FB;border-radius:12px;padding:20px 22px">`
       + `<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:${VIOLET};font-weight:700">${esc(hero[0])}</div>`
-      + `<div style="font-size:34px;line-height:1.15;font-weight:700;color:${INK};margin-top:4px;letter-spacing:-.01em">${esc(hero[1])}</div></td></tr></table>`
+      + `<div class="mail-hero-val" style="font-size:34px;line-height:1.15;font-weight:700;color:${INK};margin-top:4px;letter-spacing:-.01em;font-variant-numeric:tabular-nums">${esc(hero[1])}</div></td></tr></table>`
     : '';
   const button = cta
     ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:6px 0 22px"><tr><td style="background:${VIOLET};border-radius:8px"><a href="${esc(cta[1])}" style="display:inline-block;padding:13px 26px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none">${esc(cta[0])}</a></td></tr></table>`
     : '';
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${esc(subject)}</title></head>`
-    + `<body style="margin:0;padding:0;background:${PAGE};font-family:${FONT};color:${INK}">`
+  const styleBlock = `<style>
+    :root { color-scheme: light dark; supported-color-schemes: light dark; }
+    @media (prefers-color-scheme: dark) {
+      body, .mail-page { background: #0D0E13 !important; color: #EDEDF2 !important; }
+      .mail-card { background: #1A1B21 !important; color: #EDEDF2 !important; }
+      .mail-detail-box { background: #121318 !important; border-color: rgba(255,255,255,0.08) !important; }
+      .mail-border { border-color: rgba(255,255,255,0.08) !important; }
+      .mail-text { color: #EDEDF2 !important; }
+      .mail-body-text { color: #C7C4D7 !important; }
+      .mail-sub-text { color: #94A3B8 !important; }
+      .mail-hero-box { background: #1D1832 !important; border-color: rgba(139,92,246,0.3) !important; }
+      .mail-hero-val { color: #EDEDF2 !important; }
+    }
+  </style>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark">${styleBlock}<title>${esc(subject)}</title></head>`
+    + `<body class="mail-page" style="margin:0;padding:0;background:${PAGE};font-family:${FONT};color:${INK}">`
     + `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(subject)}</div>`
-    + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAGE}"><tr><td align="center" style="padding:28px 12px">`
+    + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="mail-page" style="background:${PAGE}"><tr><td align="center" style="padding:28px 12px">`
     + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px">`
     // the brand band
     + `<tr><td style="background:${BAND};border-radius:14px 14px 0 0;padding:22px 28px"><table role="presentation" cellpadding="0" cellspacing="0"><tr>`
@@ -119,16 +133,16 @@ function message(to, subject, rows, paras, extra = {}) {
     + `</td></tr></table></td></tr>`
     + `<tr><td style="height:3px;background:${VIOLET};font-size:0;line-height:0">&nbsp;</td></tr>`
     // the card
-    + `<tr><td style="background:#ffffff;padding:30px 28px 10px">`
-    + (kicker ? `<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:${MUTED};font-weight:600;margin-bottom:6px">${esc(kicker)}</div>` : '')
-    + `<h1 style="margin:0 0 18px;font-size:22px;line-height:1.3;color:${INK};font-weight:700">${esc(subject)}</h1>`
+    + `<tr><td class="mail-card" style="background:#ffffff;padding:30px 28px 10px">`
+    + (kicker ? `<div class="mail-sub-text" style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:${MUTED};font-weight:600;margin-bottom:6px">${esc(kicker)}</div>` : '')
+    + `<h1 class="mail-text" style="margin:0 0 18px;font-size:22px;line-height:1.3;color:${INK};font-weight:700">${esc(subject)}</h1>`
     + heroBlock + body + button
-    + (detail ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 20px;border:1px solid ${HAIR};border-radius:12px"><tr><td style="padding:6px 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${detail}</table></td></tr></table>` : '')
+    + (detail ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="mail-detail-box" style="margin:6px 0 20px;border:1px solid ${HAIR};border-radius:12px"><tr><td style="padding:6px 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${detail}</table></td></tr></table>` : '')
     + `</td></tr>`
     // the footer
-    + `<tr><td style="background:#ffffff;border-radius:0 0 14px 14px;padding:4px 28px 26px"><div style="border-top:1px solid ${HAIR};padding-top:16px">`
-    + `<p style="margin:0 0 8px;color:${MUTED};font-size:12.5px;line-height:1.55">${esc(REFUND_TERMS)} Full policy: <a href="${site('refund')}" style="color:${VIOLET}">${site('refund')}</a></p>`
-    + `<p style="margin:0;color:${MUTED};font-size:12.5px;line-height:1.55">Questions? Reply to this e-mail or write to <a href="mailto:${esc(BRAND.supportEmail)}" style="color:${VIOLET}">${esc(BRAND.supportEmail)}</a>.</p>`
+    + `<tr><td class="mail-card" style="background:#ffffff;border-radius:0 0 14px 14px;padding:4px 28px 26px"><div class="mail-border" style="border-top:1px solid ${HAIR};padding-top:16px">`
+    + `<p class="mail-sub-text" style="margin:0 0 8px;color:${MUTED};font-size:12.5px;line-height:1.55">${esc(REFUND_TERMS)} Full policy: <a href="${site('refund')}" style="color:${VIOLET}">${site('refund')}</a></p>`
+    + `<p class="mail-sub-text" style="margin:0;color:${MUTED};font-size:12.5px;line-height:1.55">Questions? Reply to this e-mail or write to <a href="mailto:${esc(BRAND.supportEmail)}" style="color:${VIOLET}">${esc(BRAND.supportEmail)}</a>.</p>`
     + `</div></td></tr></table>`
     + `<p style="margin:16px 0 0;color:#8A8D9B;font-size:12px">${esc(BRAND.name)} &middot; <a href="${site()}" style="color:#8A8D9B">${esc(BRAND.host)}</a></p>`
     + `</td></tr></table></body></html>`;

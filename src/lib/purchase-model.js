@@ -110,7 +110,7 @@ export const passHeading = (st) => passName(passDays(st)) + (st && st.account_na
 
 /** The heading while the plans have not arrived. */
 export function plansPendingHeading({ missing, error }) {
-  return missing ? 'Plans are not set up on this project yet.' : error ? 'The plans did not load.' : 'Loading the plans…';
+  return missing ? 'Plans are temporarily unavailable.' : error ? 'The plans did not load.' : 'Loading the plans…';
 }
 
 /** The line for a plan that has lapsed (its year ran out, or a refund).
@@ -127,10 +127,10 @@ export function lapsedLine(st) {
      Telling its buyer "Your Pro plan ended. Renew it" named a product they
      never bought and offered a renewal that does not exist. billing_status()
      keeps plan_period = 'pass' on a lapsed pass account. */
-  if (st.plan_period === 'pass') {
+  if (st.plan_period === 'pass' || (st.bought_plan === 'pro' && Array.isArray(st.payments) && st.payments.some((p) => p && p.period === 'pass'))) {
     return `Your ${passName(passDays(st))} ${when ? 'ended' + when : 'has ended'}${refunded ? ' (refunded)' : ''}. The launch pass can be bought once per account, so choose a plan to keep using the studio.`;
   }
-  return `Your ${Billing.planName(st.bought_plan)} plan ${when ? 'ended' + when : 'has ended'}${refunded ? ' (refunded)' : ''}. Renew it, or choose a plan, to keep using the studio.`;
+  return `Your ${Billing.planName(st.bought_plan)} plan ${when ? 'ended' + when : 'has ended'}${refunded ? ' (refunded)' : ''}.${refunded ? ' Choose a plan to keep using the studio.' : ' Renew it, or choose a plan, to keep using the studio.'}`;
 }
 
 /** The big announcement for a signed-in person whose payment was refunded and

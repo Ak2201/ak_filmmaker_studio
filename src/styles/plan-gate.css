@@ -116,9 +116,25 @@
   border-radius: var(--sk-radius, var(--radius));
   color: var(--ink);
   text-decoration: none;
+  transition: border-color var(--motion-fast) ease, background var(--motion-fast) ease;
 }
-.pg-wall-plan:hover, .pg-wall-plan:focus-visible { border-color: var(--brand); }
-.pg-wall-price { font-weight: 700; color: var(--accent-deep); text-align: right; min-width: 0; overflow-wrap: anywhere; }
+.pg-wall-plan:hover, .pg-wall-plan:focus-visible {
+  border-color: var(--brand);
+  background: var(--surface-hover);
+}
+.pg-wall-plan strong {
+  white-space: nowrap;
+  font-weight: 700;
+  color: var(--ink);
+}
+.pg-wall-price {
+  font-weight: 600;
+  color: var(--accent-deep);
+  text-align: right;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
 /* a phone: the name above the price, both full width */
 @media (max-width: 640px) {
   .pg-wall-plan { grid-template-columns: minmax(0, 1fr); }

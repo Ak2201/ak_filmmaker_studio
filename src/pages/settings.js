@@ -125,7 +125,7 @@ import { renderActivityLog } from '../ui/activity-log.js';
 import { ALL_KEYS } from './hub/all-keys.js';
 import { usageOptedOut } from '../lib/usage.js';
 import { movedAnchor, plural, formatWhen, fmtQuota, storageReadout, bigTierFigure, roleLine, seatsKey, planSummary, cloudDeleteReport, setUsageCounting, autopaySummary } from '../lib/settings-model.js';
-import { cancelledText } from '../lib/offer-terms.js';
+import { CANCEL_AT_MANDATE } from '../lib/offer-terms.js';
 import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
 import { mountMotionChoice } from '../ui/motion-choice.js';
 import { renderFilmPicker, onFavChange, hasOpenProject } from '../ui/fav-film.js';
@@ -1032,56 +1032,26 @@ function renderPlanCard() {
 }
 
 /* ---- Auto-pay (§62) -------------------------------------------------
-   Only while there is one: what it charges and when, and the way to stop
-   it. CANCEL is cancel-at-period-end (rzp-cancel): nothing more is
-   charged, the time already paid for is kept, and a cancel is not a
-   refund. The words are offer-terms.js's, through settings-model.js. */
-const autopayState = { busy: false, msg: '', bad: false };
+   Only while there is one: a status line (what it charges and when) and
+   where to cancel. There is NO cancel button here (owner, 28 Oct 2026):
+   cancelling is done at the mandate, from the Razorpay e-mail link or the
+   bank / UPI app. The console's admin cancel (billing.js) is untouched.
+   The words are offer-terms.js's, through settings-model.js. */
 function renderAutopay() {
   const cp = PlanGate.currentPlan();
   const nameOf = (p) => (p === 'pass' ? passName(cp.passDays) : Billing.planName(p));
   const sum = autopaySummary(cp.autopay, nameOf);
-  if (!sum && !autopayState.msg) return null;
+  if (!sum) return null;
   const sec = section('autopay', 'Plan & purchases', 'Auto-pay.',
-    'The payment that repeats by itself, and the way to stop it. Stopping keeps the time already paid for.');
+    'The payment that repeats by itself, and how to stop it.');
   const card = h('div.st-plan-card.st-autopay');
-  if (sum) {
-    card.append(h('p.st-plan-pills', {}, [h('span.st-led.is-' + sum.led[1], {}, [h('span.st-dot.is-' + sum.led[1], { 'aria-hidden': 'true' }), sum.led[0]])]));
-    card.append(h('p.st-plan-line', { text: sum.name + ' · ' + sum.line }));
-    if (sum.note) card.append(h('p.st-plan-note', { text: sum.note }));
-    if (sum.canCancel) {
-      card.append(h('p.st-plan-link', {}, [h('button.k-btn.k-btn--secondary', {
-        type: 'button', 'data-action': 'autopay-cancel', 'data-until': sum.until, disabled: autopayState.busy ? true : null,
-        text: autopayState.busy ? 'CANCELLING…' : 'CANCEL AUTO-PAY' })]));
-    }
-  }
-  if (autopayState.msg) card.append(h('p.st-plan-note' + (autopayState.bad ? '.gt-error' : ''), { role: autopayState.bad ? 'alert' : 'status', text: autopayState.msg }));
+  card.append(h('p.st-plan-pills', {}, [h('span.st-led.is-' + sum.led[1], {}, [h('span.st-dot.is-' + sum.led[1], { 'aria-hidden': 'true' }), sum.led[0]])]));
+  card.append(h('p.st-plan-line', { text: sum.name + ' · ' + sum.line }));
+  if (sum.note) card.append(h('p.st-plan-note', { text: sum.note }));
+  if (sum.canCancel) card.append(h('p.st-plan-note', { text: CANCEL_AT_MANDATE }));
   sec.append(card);
   return sec;
 }
-delegate(document, 'click', '[data-action="autopay-cancel"]', async (e, btn) => {
-  if (autopayState.busy) return;
-  const until = btn.dataset.until || '';
-  const ok = await ask({
-    title: 'Cancel auto-pay?',
-    body: 'You keep access until ' + (until || 'the end of the period already paid for') + '. Nothing more will be charged.',
-    confirm: 'CANCEL AUTO-PAY', cancel: 'Keep auto-pay'
-  });
-  if (!ok) return;
-  autopayState.busy = true; autopayState.msg = ''; autopayState.bad = false;
-  render();
-  try {
-    const out = await Billing.cancelAutopay();
-    const end = out && out.current_end ? new Date(out.current_end).toLocaleDateString(undefined, { dateStyle: 'medium' }) : until;
-    autopayState.msg = cancelledText(end) + '.';
-  } catch (err) {
-    autopayState.msg = (err && err.message) || 'Auto-pay could not be cancelled just now. Please try again.';
-    autopayState.bad = true;
-  } finally {
-    autopayState.busy = false;
-    render();
-  }
-});
 
 /* ---- What's in my plan ---------------------------------------------
    The current plan's modules and tools, and what the NEXT plan adds with
@@ -1326,9 +1296,8 @@ function render() {
   const panes = [
     tabPane('account', 'Account', 'You', [renderAccountMine(), renderActivitySection(), inviteSection(section, gateStatus), renderBuild()], { icon: 'person', hint: 'Your sign-in, your activity and invites.' }),
     /* PLAN & PURCHASES (27 Oct 2026): its own tab, because the public
-       copy and the legal draft name the cancel path as Settings → Plan &
-       purchases → Cancel auto-pay: the button is tap one, the dialog.js
-       confirm tap two. Id 'purchases', not 'plan' (#plan is an old
+       copy points here for the auto-pay status. Cancelling is at the
+       mandate (Razorpay e-mail, bank / UPI app), never a button here. Id 'purchases', not 'plan' (#plan is an old
        billing anchor that redirects to purchase.html). */
     tabPane('purchases', 'Plan & purchases', 'You', [renderPlanCard(), renderAutopay(), renderPlanContents()], { icon: 'payments', hint: 'Your plan, auto-pay and what the plan opens.' }),
     tabPane('preferences', 'Preferences', 'This device', [renderRegion(), renderMotion(), renderFavourite(), renderKey(), renderPrivacySection(), renderTourSection()], { icon: 'tune', hint: 'Region, motion, favourite film, your AI key and privacy.' }),

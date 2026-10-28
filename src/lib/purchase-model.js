@@ -122,6 +122,14 @@ export function lapsedLine(st) {
   const refunded = Array.isArray(st.payments) && st.payments.some((p) => p && p.status === 'refunded' && p.plan_id === st.bought_plan);
   const ends = st.plan_until ? Date.parse(st.plan_until) : NaN;
   const when = Number.isFinite(ends) ? ' on ' + new Date(ends).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '';
+  /* A launch pass (§61) is not a plan: it is a week, bought once per
+     account, and a refunded one is not given back or followed by a trial.
+     Telling its buyer "Your Pro plan ended. Renew it" named a product they
+     never bought and offered a renewal that does not exist. billing_status()
+     keeps plan_period = 'pass' on a lapsed pass account. */
+  if (st.plan_period === 'pass') {
+    return `Your ${passName(passDays(st))} ${when ? 'ended' + when : 'has ended'}${refunded ? ' (refunded)' : ''}. The launch pass can be bought once per account, so choose a plan to keep using the studio.`;
+  }
   return `Your ${Billing.planName(st.bought_plan)} plan ${when ? 'ended' + when : 'has ended'}${refunded ? ' (refunded)' : ''}. Renew it, or choose a plan, to keep using the studio.`;
 }
 

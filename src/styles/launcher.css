@@ -205,7 +205,7 @@
 
 /* ---- you are here --------------------------------------------------- */
 .lx-grid .lx-mod.is-here { border-color: var(--hue); background: var(--hue-wash); }
-.lx-grid .lx-mod-here { color: var(--hue-deep); letter-spacing: var(--track-label); }
+.lx-grid .lx-mod-here { color: var(--hue-deep); letter-spacing: 0; }
 
 /* A focused tile can sit at a row's edge; raise it so its ring is whole. */
 .lx-grid .lx-mod:focus-visible { position: relative; z-index: 1; }

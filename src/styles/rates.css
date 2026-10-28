@@ -39,10 +39,10 @@
 .rate-check-tag,
 .rate-section-check .rate-check-tag {
   justify-self: start;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   padding: 0.1em 0.45em;
   color: var(--ink-muted);
   background: var(--paper-sunk);
@@ -71,7 +71,7 @@
 }
 
 .rate-check-val {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
   font-weight: 700;
   color: var(--ink);

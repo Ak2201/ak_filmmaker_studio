@@ -103,7 +103,7 @@
 }
 .js-meter-lab,
 .js-meter-val {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;

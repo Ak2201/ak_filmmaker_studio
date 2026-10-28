@@ -145,7 +145,7 @@
 }
 .bb-beat-head { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: baseline; justify-content: space-between; }
 .bb-beat-name { margin: 0; font-size: var(--t-base); color: var(--ink); }
-.bb-tension { font-size: var(--t-micro); color: var(--ink-muted); letter-spacing: var(--track-label); }
+.bb-tension { font-size: var(--t-micro); color: var(--ink-muted); letter-spacing: 0; }
 .bb-marks { display: grid; gap: var(--s1); }
 .bb-mark {
   margin: 0;
@@ -210,8 +210,8 @@
   border-left: 3px solid var(--hue, var(--accent));
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep, var(--ink));
   white-space: nowrap;
   overflow: hidden;

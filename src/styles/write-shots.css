@@ -14,9 +14,9 @@
   bottom: 100%;
   max-width: 60%;
   padding: 0 var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
   white-space: nowrap;
   overflow: hidden;

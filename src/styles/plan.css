@@ -100,7 +100,7 @@
 }
 .pl-chip.is-loc { border-left: var(--sk-hue-rule-w) solid var(--hue, var(--plan)); }
 .pl-chip.is-day {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
   border-color: var(--rule);
@@ -138,10 +138,10 @@
   border-radius: var(--sk-radius, var(--radius));
   background: var(--brand);
   color: var(--brand-on);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   white-space: nowrap;
 }
 /* The date field. `min-width: 0` on the label as well as the input:
@@ -160,7 +160,7 @@
   background: var(--paper);
   border: 1px solid var(--rule-hair);
   border-radius: var(--sk-radius, var(--radius));
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
 }
 .pl-day-when {
@@ -169,7 +169,7 @@
 }
 .pl-day-meta {
   margin-left: auto;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
   color: var(--ink-muted);
@@ -189,7 +189,7 @@
 .pl-table td.pl-ie,
 .pl-table td.pl-tod,
 .pl-table td.pl-pages {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   white-space: nowrap;
   color: var(--ink-muted);
@@ -257,7 +257,7 @@
 .pl-loc.perm-none .pl-perm-chip { color: var(--ink-muted); }
 .pl-loc-meta {
   margin-left: auto;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
   color: var(--ink-muted);
@@ -432,7 +432,7 @@
   font-size: var(--t-small);
 }
 .pl-media-title { flex: 1 1 14rem; }
-.pl-media-url { flex: 1 1 16rem; font-family: var(--f-mono); font-size: var(--t-micro); }
+.pl-media-url { flex: 1 1 16rem; font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); }
 .pl-media-notes { width: 100%; }
 .pl-media-bar .pl-sel { flex: 0 1 11rem; }
 .pl-media .bd-icon { margin-left: auto; flex: 0 0 auto; }
@@ -550,7 +550,7 @@
 }
 .pl-light-row strong { color: var(--ink); }
 .pl-light-times {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
   color: var(--ink-muted);

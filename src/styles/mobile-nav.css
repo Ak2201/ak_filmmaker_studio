@@ -213,9 +213,9 @@ html.mn-locked body { overflow: hidden; }
 }
 .mn-mod.is-planned { opacity: .72; }
 .mn-mod-flag {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   border: 1px solid currentColor;
   border-radius: var(--sk-radius, var(--radius));
   padding: 0 var(--s1);

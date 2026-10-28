@@ -427,9 +427,9 @@
 .st-plan-link { margin: 0; }
 .st-activity { display: grid; gap: var(--s3); }
 .st-activity .al-count {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-wide);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .st-activity .activity-list { max-height: 28rem; overflow: auto; }
@@ -616,7 +616,7 @@ main.k-page > .st-body { max-width: none; margin-inline: 0; padding-inline: 0; }
 #you .am-inline .am-you { gap: var(--s4); padding: 0 0 var(--s4); border-bottom: 1px solid var(--border-hair); margin: 0; }
 #you .am-inline .am-avatar { width: 3.5rem; height: 3.5rem; font-size: var(--t-lg); font-family: var(--f-display); font-weight: 600; border-radius: var(--sk-radius); }
 #you .am-inline .am-you-name { font-size: var(--t-lg); font-family: var(--f-display); font-weight: 600; }
-#you .am-inline .am-you-mail { font-family: var(--f-mono); font-size: var(--t-small); letter-spacing: .02em; }
+#you .am-inline .am-you-mail { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-small); letter-spacing: 0; }
 #you .am-inline .am-account:not(:empty) { padding-block: var(--s3); border-bottom: 1px solid var(--border-hair); margin: 0; }
 #you .am-inline .am-sync { padding: var(--s3) 0; border-bottom: 0; font-size: var(--t-small); color: var(--ink-body); }
 #you .am-inline .am-sync-dot { width: 8px; height: 8px; }
@@ -711,7 +711,7 @@ main.k-page > .st-body { max-width: none; margin-inline: 0; padding-inline: 0; }
   letter-spacing: 0;
   color: var(--ink-muted);
 }
-.st-fact dd { margin: 0; font-family: var(--f-mono); font-size: var(--t-small); color: var(--ink); overflow-wrap: anywhere; }
+.st-fact dd { margin: 0; font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-small); color: var(--ink); overflow-wrap: anywhere; }
 #you .am-inline .am-actions { display: flex; flex-wrap: wrap; gap: var(--s2); padding-top: var(--s3); }
 /* kit buttons (k-btn); the gate links and "Create a studio account" sit
    on their own line, at the start, like the rows they replaced */
@@ -754,7 +754,7 @@ main.k-page > .st-body { max-width: none; margin-inline: 0; padding-inline: 0; }
 .st-build { margin: 0; font-family: var(--f-body); font-size: var(--t-micro); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 .st-rate { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); align-items: baseline; margin: var(--s3) 0 0; padding: var(--s2) var(--s3); background: var(--surface-canvas); border: 1px solid var(--border-hair); border-radius: var(--sk-radius); }
 .st-rate-k { font-family: var(--f-body); font-size: var(--t-micro); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
-.st-rate-v { font-family: var(--f-mono); font-size: var(--t-small); color: var(--ink); }
+.st-rate-v { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-small); color: var(--ink); }
 
 /* What's in my plan (settings.js renderPlanContents): two short lists in
    columns that wrap, and the next plan's extras in a ruled box. */

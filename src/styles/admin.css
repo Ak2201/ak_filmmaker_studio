@@ -205,10 +205,10 @@ a.ad-stat:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); o
 
 .ad-tag {
   display: inline-block;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .ad-tag.is-admin   { color: var(--accent-deep); }
@@ -410,7 +410,7 @@ a.ad-check-l { color: var(--accent-deep); }
 .ad-diff { display: grid; border: var(--sk-card-line-w) solid var(--sk-card-line); border-radius: var(--sk-radius, var(--radius)); overflow: hidden; font-size: var(--t-small); }
 .ad-diff-h, .ad-diff-r { display: grid; grid-template-columns: minmax(6rem, 0.6fr) 1fr 1fr; }
 .ad-diff-h > span { padding: var(--s1) var(--s3); background: var(--paper-sunk); color: var(--ink-muted); font-family: var(--f-body); font-size: var(--t-micro); text-transform: none; letter-spacing: 0; }
-.ad-diff-r > * { margin: 0; padding: var(--s2) var(--s3); border-top: var(--sk-card-line-w) solid var(--sk-card-line); min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--ink-body); }
+.ad-diff-r > * { margin: 0; padding: var(--s2) var(--s3); border-top: var(--sk-card-line-w) solid var(--sk-card-line); min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-tiny); color: var(--ink-body); }
 .ad-diff-b { background: var(--danger-wash); color: var(--danger); }
 .ad-diff-a { background: var(--ok-wash); color: var(--ok-deep); }
 .ad-diff-b.is-none, .ad-diff-a.is-none { background: var(--paper-sunk); color: var(--ink-muted); }
@@ -533,8 +533,8 @@ html.ad-drawer-on { overflow: hidden; }
 .adc-grid { display: block; }
 .adc-cell { fill: var(--brand); }
 .adc-cell:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); stroke: var(--ink); stroke-width: 2; }
-.adc-axis { fill: var(--ink-muted); font-size: 10px; font-family: var(--f-mono); }
-.adc-cell-t { fill: var(--ink); font-size: 10px; font-family: var(--f-mono); }
+.adc-axis { fill: var(--ink-muted); font-size: 10px; font-family: var(--f-body); font-variant-numeric: tabular-nums; }
+.adc-cell-t { fill: var(--ink); font-size: 10px; font-family: var(--f-body); font-variant-numeric: tabular-nums; }
 .adc-tip {
   position: fixed; z-index: var(--z-toast);
   max-width: 18rem; padding: var(--s1) var(--s2);
@@ -612,7 +612,7 @@ html.ad-drawer-on { overflow: hidden; }
 .ad-drawer .cu-meta a { color: var(--accent-deep); }
 .ad-drawer .cu-none { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
 .ad-drawer .cu-code {
-  font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--ink-body);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-tiny); color: var(--ink-body);
   overflow-wrap: anywhere;
 }
 .ad-drawer .ad-when { margin-left: 0; }
@@ -718,7 +718,7 @@ html.ad-drawer-on { overflow: hidden; }
 .ad-card.us-alarm { border-color: var(--danger); background: var(--danger-wash); }
 .us-loud { padding: var(--s3); border-radius: var(--sk-radius, var(--radius)); border-left: 4px solid var(--danger); background: var(--paper-raised); color: var(--ink); }
 .us-loud p { margin: 0; }
-.us-loud-h { font-family: var(--f-display); font-size: var(--t-base); font-weight: 800; color: var(--danger); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: var(--s1) !important; }
+.us-loud-h { font-family: var(--f-display); font-size: var(--t-base); font-weight: 800; color: var(--danger); text-transform: none; letter-spacing: 0; margin-bottom: var(--s1) !important; }
 .sy-meters { display: grid; gap: var(--s2); min-width: 14rem; }
 @media (max-width: 719px) { .sy-meters { min-width: 10rem; } }
 /* a chart is a grid item of its card; without this its min-content width (the SVG's) widens the track */
@@ -741,9 +741,9 @@ figure.adc { position: relative; overflow: clip; overflow-clip-margin: 4px; }
 .ctl-count { font-variant-numeric: tabular-nums; }
 .ctl-prev-wrap { display: grid; gap: var(--s1); }
 .ctl-prev-l {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .ctl-live { display: grid; gap: var(--s1); }
@@ -762,7 +762,7 @@ figure.adc { position: relative; overflow: clip; overflow-clip-margin: 4px; }
    ============================================================ */
 .ad-status { max-width: 80rem; margin-inline: auto; padding: 0 var(--s5) var(--s4); width: 100%; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); }
 .ad-status-r { margin-left: auto; display: inline-flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
-.ad-status .ad-meta { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: var(--track-label); }
+.ad-status .ad-meta { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); letter-spacing: 0; }
 .ad-state { max-width: 32rem; }
 .ad-state .k-panel-body { display: grid; gap: var(--s2); }
 .ad-kpis { grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); gap: var(--s3); }
@@ -784,17 +784,17 @@ a.k-stat.ad-stat:focus-visible { outline: var(--focus); outline-offset: var(--fo
 .ad-att-list { gap: 0; }
 .ad-att { padding: var(--s3) var(--s2); border-radius: var(--sk-radius); border-bottom: 1px solid var(--border-hair); }
 .ad-att:hover { background: var(--surface-hover); }
-.ad-tl-s { font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); }
-.ad-tl-a { font-family: var(--f-mono); font-size: var(--t-micro); letter-spacing: .04em; }
+.ad-tl-s { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); color: var(--ink-muted); }
+.ad-tl-a { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); letter-spacing: 0; }
 .ad-meter-bar { background: var(--surface-rail); border-radius: var(--radius-pill); }
 
 /* severity tag on a "Needs attention" row (CRIT / HIGH / LOW), text variants only */
 .ad-sev {
   flex: 0 0 auto;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-nano);
   font-weight: 600;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .ad-sev.is-danger { color: var(--danger); }

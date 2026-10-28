@@ -109,10 +109,10 @@
   background: var(--danger-wash);
   color: var(--ink);
   border-bottom: 1px solid var(--danger);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   line-height: var(--lh-snug);
   text-wrap: balance;
 }

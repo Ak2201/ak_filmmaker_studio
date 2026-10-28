@@ -11,7 +11,7 @@
 .stp-tab:hover { border-color: var(--accent); }
 .stp-tab:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: 2px; }
 .stp-tab.is-on { background: var(--accent-wash); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.stp-n { flex: none; font-family: var(--f-mono); font-weight: 700; }
+.stp-n { flex: none; font-family: var(--f-body); font-variant-numeric: tabular-nums; font-weight: 700; }
 .stp-tab.is-done .stp-n { color: var(--accent-deep); }
 .stp-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

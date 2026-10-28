@@ -99,7 +99,7 @@
 .sb-target { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 /* "4 7/8 pp · default" is the longest option; at 390 the select was 165px and cut it. */
 .sb-target-ctl { min-width: 13rem; }
-.sb-day-sel.k-input { font-family: var(--f-mono); font-size: var(--t-micro); font-variant-numeric: tabular-nums; }
+.sb-day-sel.k-input { font-family: var(--f-body); font-size: var(--t-micro); font-variant-numeric: tabular-nums; }
 
 /* ------------------------------------------------------------
    2. THE INT / EXT TAG — outline inside, filled outside, in the
@@ -190,7 +190,9 @@
   column-gap: var(--s3);
   row-gap: var(--s1h);
   padding: var(--s2) var(--s3);
-  background: linear-gradient(90deg, var(--hue-wash, transparent), transparent 55%), var(--sk-card-bg);
+  /* flat card; the 3px stripe carries the hue (a wash fading across
+     the card was the Swiss-era cinematic look) */
+  background: var(--sk-card-bg);
   border: var(--sk-card-line-w, 1px) solid var(--border-hair);
   border-left: var(--sk-hue-rule-w, 3px) solid var(--hue, var(--border-strong));
   border-radius: var(--radius);
@@ -208,7 +210,7 @@
   background: var(--surface-canvas);
   border: 1px solid var(--border-hair);
   border-radius: var(--radius-sm);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-ui);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -244,7 +246,7 @@
 }
 .sb-pages {
   min-width: 4.5rem;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -281,7 +283,7 @@
    so nothing here depends on colour.
    ------------------------------------------------------------ */
 .sb-implied.k-strip-banner { margin: var(--s1) var(--s2); }
-.sb-implied .k-strip-banner-pill { text-transform: none; letter-spacing: .02em; font-size: var(--t-micro); }
+.sb-implied .k-strip-banner-pill { text-transform: none; letter-spacing: 0; font-size: var(--t-micro); }
 
 .sb-banner {
   display: flex;
@@ -410,11 +412,11 @@ body:not(.sb-is-dragging) .sb-dropzone { opacity: 0.75; }
   color: var(--ink);
   border: 1px solid var(--border-strong);
   border-radius: var(--sk-btn-radius);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
   pointer-events: none;
 }
@@ -486,9 +488,9 @@ body.pdf-print .sb-lock-host { display: none !important; }
 .sb-grid .sb-grid-name { min-width: 10rem; text-align: left; }
 .sb-grid tbody .sb-grid-name strong { display: block; font-family: var(--f-display); font-size: var(--t-small); font-weight: 600; color: var(--ink); }
 .sb-grid-sub {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .sb-grid-day,
@@ -523,10 +525,10 @@ body.pdf-print .sb-lock-host { display: none !important; }
 
 .sb-note {
   margin: var(--s3) 0 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   line-height: var(--lh-snug);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 
@@ -574,13 +576,13 @@ body.pdf-print .sb-lock-host { display: none !important; }
 }
 .sb-dc-sub,
 .sb-dc-span {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .sb-dc-tot { display: grid; justify-items: end; flex: 0 0 auto; text-align: right; }
-.sb-dc-wh { font-family: var(--f-mono); font-size: var(--t-small); font-weight: 700; color: var(--dood-w-ink); white-space: nowrap; }
+.sb-dc-wh { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-small); font-weight: 700; color: var(--dood-w-ink); white-space: nowrap; }
 .sb-dc-h { color: var(--warn-deep); }
 /* The day row WRAPS inside the card. It used to be one line that
    scrolled sideways, with no cue and no tab stop, so a phone showed
@@ -606,15 +608,15 @@ body.pdf-print .sb-lock-host { display: none !important; }
 }
 .sb-dc-day.is-off { opacity: 0.7; }
 .sb-dc-day.is-today { border-color: var(--accent-primary); background: var(--brand-wash); }
-.sb-dc-dnum { font-family: var(--f-mono); font-size: var(--t-nano); letter-spacing: var(--track-label); color: var(--ink-muted); }
+.sb-dc-dnum { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-nano); letter-spacing: 0; color: var(--ink-muted); }
 
 /* The day's call, the strip's estimate, the draft name. */
 .sb-call .sym { font-size: 14px; }
 .sb-est {
   margin-left: auto;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
   color: var(--ink-muted);
   white-space: nowrap;

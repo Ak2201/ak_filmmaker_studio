@@ -122,6 +122,8 @@ async function route(r) {
 async function open(browser, signedIn) {
   const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 900 } });
   await ctx.route(SB + '/**', route);
+  /* this fake account has no plan; the unpaid-account redirect to purchase.html would destroy the page mid-proof (plan-gate.js, a PROOF hook) */
+  await ctx.addInitScript(() => { window.__fmsKeepWall = true; });
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.fulfill({ status: 200, body: '' }));
   let native = 0;
   if (signedIn) {

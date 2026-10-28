@@ -11,12 +11,11 @@
      Gabarito        display and headings, 500-800  (--face-display)
      Onest           interface and running text,
                      400-700                        (--face-sans)
-     JetBrains Mono  data: eighths, timecodes,
-                     DOOD codes, labels             (--f-mono)
+     (data: eighths, timecodes, DOOD codes are Onest with
+      tabular-nums; --f-mono and --f-code point at --face-sans)
      Courier Prime   screenplay text                (--f-script)
-     Playfair Display ITALIC only — the project
-                     title / cover and the landing
-                     tagline                        (--face-editorial)
+     (the project title / cover and the landing tagline are
+      Gabarito: --face-editorial points at --face-display)
      Catamaran       TAMIL subset only, behind the UI stacks: none of
                      the faces above has a Tamil glyph, and CSS falls
                      back per glyph.
@@ -30,9 +29,9 @@
    Onest are static: one file per weight per subset, each fetched only
    when text in that weight is laid out.
 
-   Three files are PRELOADED by the fms-fonts plugin in vite.config.js —
-   Onest 400, Gabarito 700 and JetBrains Mono, latin — because every
-   page paints all three above the fold. Everything else loads on demand.
+   Two files are PRELOADED by the fms-fonts plugin in vite.config.js —
+   Onest 400 and Gabarito 700, latin — because every
+   page paints both above the fold. Everything else loads on demand.
 
    Generated once by hand from the packages' own CSS; to add a weight
    or a subset, copy a block. The paths are relative because a bare
@@ -178,22 +177,6 @@
   unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
 }
 @font-face {
-  font-family: 'JetBrains Mono';
-  font-style: normal;
-  font-weight: 100 800;
-  font-display: swap;
-  src: url('../../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2') format('woff2');
-  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
-}
-@font-face {
-  font-family: 'JetBrains Mono';
-  font-style: normal;
-  font-weight: 100 800;
-  font-display: swap;
-  src: url('../../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-ext-wght-normal.woff2') format('woff2');
-  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
-}
-@font-face {
   font-family: 'Courier Prime';
   font-style: normal;
   font-weight: 400;
@@ -255,38 +238,6 @@
   font-weight: 700;
   font-display: swap;
   src: url('../../node_modules/@fontsource/courier-prime/files/courier-prime-latin-ext-700-italic.woff2') format('woff2');
-  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
-}
-@font-face {
-  font-family: 'Playfair Display';
-  font-style: italic;
-  font-weight: 400;
-  font-display: swap;
-  src: url('../../node_modules/@fontsource/playfair-display/files/playfair-display-latin-400-italic.woff2') format('woff2');
-  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
-}
-@font-face {
-  font-family: 'Playfair Display';
-  font-style: italic;
-  font-weight: 400;
-  font-display: swap;
-  src: url('../../node_modules/@fontsource/playfair-display/files/playfair-display-latin-ext-400-italic.woff2') format('woff2');
-  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
-}
-@font-face {
-  font-family: 'Playfair Display';
-  font-style: italic;
-  font-weight: 700;
-  font-display: swap;
-  src: url('../../node_modules/@fontsource/playfair-display/files/playfair-display-latin-700-italic.woff2') format('woff2');
-  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
-}
-@font-face {
-  font-family: 'Playfair Display';
-  font-style: italic;
-  font-weight: 700;
-  font-display: swap;
-  src: url('../../node_modules/@fontsource/playfair-display/files/playfair-display-latin-ext-700-italic.woff2') format('woff2');
   unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
 }
 @font-face {

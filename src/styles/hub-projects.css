@@ -380,8 +380,8 @@
    italic; the card, like the dashboard's title, is the cover preview. */
 .projects-section .project-card .pc-title {
   font-family: var(--f-editorial);
-  font-style: italic;
-  font-weight: 400;
+  font-style: normal;
+  font-weight: 700;
   font-size: var(--t-xl);
   letter-spacing: 0;
 }

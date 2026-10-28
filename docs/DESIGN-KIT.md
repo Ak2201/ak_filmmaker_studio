@@ -111,8 +111,8 @@ A fill is never a text colour: text takes `-deep` / `-ink` / `-on`.
 | --- | --- | --- |
 | `--f-display` (`--face-display`) | Gabarito 500–800 | page titles, headings, panel titles, stat figures |
 | `--f-body` / `--f-sans` (`--face-sans`) | Onest 400–700 | interface, labels, running text |
-| `--f-mono` | JetBrains Mono | data only: eighths, timecodes, DOOD codes, INT/EXT tags, slugs, money columns. NEVER a label, chip, button or crumb (final pass: ~300 mono-caps label rules moved to Onest, sentence case, normal tracking) |
-| `--f-editorial` | Playfair Display *italic* | ONLY the project title / cover preview and the landing tagline |
+| `--f-mono` (`--f-code`) | Onest + tabular-nums (no mono face) | data only: eighths, timecodes, DOOD codes, INT/EXT tags, slugs, money columns. NEVER a label, chip, button or crumb (final pass: ~300 mono-caps label rules moved to Onest, sentence case, normal tracking) |
+| `--f-editorial` | Gabarito (upright) | the project title / cover preview and the landing tagline |
 | `--f-script` | Courier Prime (Noto Sans Tamil LAST) | screenplay text |
 
 Labels are sentence case in Onest (badges, field labels, table heads, stat
@@ -131,8 +131,8 @@ every UI face for Tamil glyphs. Scale: `--t-nano` 9 · `--t-micro` 11 ·
 `--t-tiny` 12 · `--t-ui` 13 · `--t-small` 14 · `--t-base` 16 · `--t-lg` 18 ·
 `--t-xl` 22 · `--t-2xl` 28 · `--t-3xl` 36.
 
-Fonts are self-hosted from `@fontsource` (latin + latin-ext). Onest 400,
-Gabarito 700 and JetBrains Mono (latin) are preloaded by the
+Fonts are self-hosted from `@fontsource` (latin + latin-ext). Onest 400 and
+Gabarito 700 (latin) are preloaded by the
 `fms-font-preloads` plugin; the rest load on demand. The Material Symbols icon
 font is cut at build time from `navigation.json` + `section-icons.json`
 (`scripts/lib/icon-font.mjs`, HarfBuzz): **a kit icon must be listed in

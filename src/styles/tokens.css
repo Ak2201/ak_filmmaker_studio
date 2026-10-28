@@ -9,8 +9,8 @@
    Palette taken from the 8B design-studio template (MIT; notice in
    docs/CREDITS.md): near-black #0d0c11, white, ONE violet #6c3cff, a
    pale card #efeef4, muted inks #5d5a67 (on white) / #aaa7b4 (on
-   black). Gabarito for headings, Onest for the interface, JetBrains
-   Mono for figures. See docs/DESIGN-KIT.md.
+   black). Gabarito for headings, Onest for the interface and figures
+   (tabular-nums). See docs/DESIGN-KIT.md.
 
    TWO SURFACES, STILL ONE PALETTE. There is no theme switch and no
    prefers-color-scheme fork:
@@ -287,9 +287,9 @@
      Arial (fonts.css, from the 8B template) so the swap does not jump. */
   --face-display:   'Gabarito', 'Gabarito Fallback', 'Catamaran', ui-sans-serif, system-ui, sans-serif;
   --face-sans:      'Onest', 'Onest Fallback', 'Catamaran', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  /* The serif, ITALIC, for exactly three things: the project title, the
-     cover preview, and the landing tagline. Never a page title. */
-  --face-editorial: 'Playfair Display', 'Catamaran', Georgia, 'Times New Roman', serif;
+  /* No serif any more: the project title, the cover preview and the
+     landing tagline are Gabarito. The name stays declared (CLAUDE.md). */
+  --face-editorial: var(--face-display);
   --face-serif:     var(--face-sans);
   --face-accent:    var(--face-display);
   --face-accent-style: normal;
@@ -298,9 +298,11 @@
   --f-body:      var(--sk-body, var(--face-sans));
   --f-sans:      var(--f-body);
   --f-editorial: var(--face-editorial);
-  /* --f-mono is the LABEL and DATA face: figures, codes, timecodes. */
-  --f-mono:    'JetBrains Mono', 'Catamaran', ui-monospace, 'SF Mono', Menlo, monospace;
-  --f-code:    'JetBrains Mono', 'Catamaran', ui-monospace, 'SF Mono', Menlo, monospace;
+  /* --f-mono / --f-code keep their names for the sheets that read them,
+     but there is no monospace UI face: data is Onest, and the rule that
+     sets it adds font-variant-numeric: tabular-nums. */
+  --f-mono:    var(--face-sans);
+  --f-code:    var(--face-sans);
   /* 'Noto Sans Tamil' LAST, which the gate asserts in source: a family
      listed earlier would claim every Latin glyph it can draw and break
      the fixed-width grid pageCount() is arithmetic on. */

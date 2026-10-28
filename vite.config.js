@@ -105,21 +105,20 @@ function materialSymbols() {
 }
 
 /* ============================================================
-   FONT PRELOADS — the three faces every page paints above the fold
+   FONT PRELOADS — the two faces every page paints above the fold
    ------------------------------------------------------------
    src/styles/fonts.css declares the faces; a declared face is only
    fetched once layout finds text in it, which is AFTER the CSS has
-   downloaded and parsed. For the three that every page paints at once —
-   Onest 400 (body), Gabarito 700 (headings), JetBrains Mono (labels and
-   figures), latin subset — that is a visible swap on every load, so
-   they are preloaded. Nothing else is: Courier Prime, Playfair italic
+   downloaded and parsed. For the two that every page paints at once —
+   Onest 400 (body and figures) and Gabarito 700 (headings), latin
+   subset — that is a visible swap on every load, so they are preloaded. Nothing else is: Courier Prime
    and the Tamil subsets stay on demand.
 
    The URLs are hashed, so this reads them out of the bundle at the end
    of the build rather than naming them. Dev serves the CSS unhashed
    and gets no preload, which is fine.
    ============================================================ */
-const PRELOAD_FACES = ['onest-latin-400-normal', 'gabarito-latin-700-normal', 'jetbrains-mono-latin-wght-normal'];
+const PRELOAD_FACES = ['onest-latin-400-normal', 'gabarito-latin-700-normal'];
 function fontPreloads() {
   return {
     name: 'fms-font-preloads',

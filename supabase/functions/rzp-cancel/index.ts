@@ -22,13 +22,13 @@
    ============================================================ */
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { basicAuth, cancelBody } from '../_shared/razorpay.js';
-import { sendCancelMail } from '../_shared/mail.js';
+import { sendCancelMail, mailEnvFrom } from '../_shared/mail.js';
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 const background = (p: Promise<unknown>) => {
   if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(p); else p.catch(() => {});
 };
-const mailEnv = () => ({ RESEND_API_KEY: Deno.env.get('RESEND_API_KEY') ?? '', MAIL_FROM: Deno.env.get('MAIL_FROM') ?? '' });
+const mailEnv = () => mailEnvFrom((k) => Deno.env.get(k));
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',

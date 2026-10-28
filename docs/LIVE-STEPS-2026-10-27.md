@@ -9,6 +9,51 @@ Nothing in the database changes behaviour until the console switches the pass
 on: `pass_enabled` is false by default, so after §61 runs, every page and every
 order works exactly as it does today. Do the steps in this order.
 
+## Status, 28 Oct 2026
+
+Run live on `conhlrulxfwkhsnymakz` through the SQL editor, each file loaded at
+`1b1b004d`, its SHA-256 compared with the line in step 1 before Run, then read
+back. Supabase showed its generic "destructive operations" dialog for §59 and
+§61; the drops are CHECK constraints §61 re-adds wider and §59's own policies,
+triggers and functions, none on user data.
+
+| Step | State |
+| --- | --- |
+| §57 invoice year | **RUN LIVE.** `invoices.valid_from`, `valid_until`, `invoices_payment_facts()` present |
+| §58 funnel source | **RUN LIVE.** `events.source`, both `bump_event` forms, `admin_funnel_by_source`, primary key includes `source` |
+| §59 testimonials | **RUN LIVE.** RLS on, `public_testimonials()` answers (0), `testimonials_on_user_delete` trigger, author FK is set-null, `submit_testimonial`, `admin_set_testimonial_status` |
+| §60 trial scope | **RUN LIVE.** `start_trial` carries §60; `trial_offer()` has `trial_scope` (live value `sample`, 30 minutes: the console's trial setting is NOT changed) |
+| §61 week pass | **RUN LIVE.** Pass off, 4900 paise, 7 days, `pro`, no deadline, no cap; `trial_enabled` still true; the four CHECKs name `pass` / `pass_buy` / `has_plan`; `start_trial` carries §61; `paid_buyers()` = 2. `quote_pass` / `admin_set_pass` rows were below the visible grid and not read |
+| §62 auto-renew | **RUN LIVE 28 Oct**, checksum `e37b186c…29f2` matched; read-back: `pass_mode` and `plan_mode` both `once` (also in `trial_offer()`), RLS on `subscriptions` and `rzp_plans`, `pass_sold()` 0, `paid_buyers()` 2 (before the purge), `trial_enabled` true, `pass_enabled` false, the subscription functions present. Changes nothing while the modes are one-time |
+| §63 renewal reminders | **RUN LIVE 28 Oct**, checksum `39984700…a54e` matched; read-back: `subscriptions.reminded_for` present, `release_renewal_reminder` present, neither `authenticated` nor `anon` can execute `claim_renewal_reminders` |
+| §64 Pro blurb | **RUN LIVE.** `plans.blurb` for `pro` reads "A production house: no cap on films, links or collaborators." |
+| Functions redeploy (step 4) | **DONE 28 Oct 03:30 UTC**, from `develop` at `8d4fdb81` (includes §61's `year`/`pass` periods and the SMTP mail path): `rzp-order`, `rzp-verify`, `rzp-webhook` v13, `rzp-refund` v7, all ACTIVE. Probed: the three JWT functions answer 401 "Missing authorization header", `rzp-webhook` 401 "bad signature". The pass, SMTP mail and USD paths are NOT yet exercised: that needs a real purchase, refund and receipt |
+| Mail (BILLING §14, Option B) | **SECRETS SET 28 Oct 03:29–03:30 UTC:** `MAIL_FROM`, `SMTP_USER` (`support@filmmakerstudio.in`), `SMTP_PASSWORD` (a Hostinger app password for that mailbox; value never recorded, stored non-empty). `RESEND_API_KEY` is not set, so mail goes over SMTP (`smtp.hostinger.com:465`). Hostinger plan: Starter Business Email, 1 of 1 mailbox, 1000 messages / 24 h. **The first real send is untested**: `denomailer` has never run under Deno. Test with the console's Resend receipt on an existing invoice or one purchase, then read the result in the function logs |
+| Purge script (step 0) | **RUN 28 Oct ~03:40 UTC**, on the owner's explicit go-ahead and after the owner took a Supabase backup. PREVIEW first (checksum `c442776e…`): exactly one keeper sign-in, 0 unclassified tables; removed 8 sign-ins, 5 films (16 data rows), 5 accounts / seats / studio members, 3 device locks, 7 payments (all test mode: Razorpay LIVE mode shows 0 captured payments), 2 invoices, 1 e-mail grant, 8 invite codes (3 tickets, 1 redemption), 2 promo codes, 2 invite requests, 59 funnel counts, 38 usage counts, 10 audit rows. PURGE (checksum `8aa1d572…`) committed; READ-BACK (checksum `5d076d0f…`): all 34 checks true: one sign-in = the keeper (`arunkumarmohanans@gmail.com`), `admin_roles` and `studio_members` exactly the keeper, no account on a plan, no other owner's films, every emptied table 0, `price_notice()` answers. The keeper has NO plan and NO trial now: give it a plan or an admin grant before testing as that account. The first invoice will be `FMS/<fy>/000001` |
+| Price rise (26 Oct step 1) | **DONE 28 Oct, to 2026-11-15T18:29Z (15 Nov 23:59 IST)**, the owner's later choice instead of 31 Dec. One statement that only moves the date where it still read 2026-10-31 18:29 UTC; read back from `price_notice()`: starter, indie and pro all `2026-11-15T18:29:00+00:00`, prices 59900 / 79900 / 99900 paise unchanged (they rise to 99900 / 149900 / 199900). The dollar rise follows the same date. Not done through the console, so there is no audit row |
+| Pass switched on (step 8) | **NOT DONE.** `pass_enabled` is false |
+
+Razorpay (dashboard read, 28 Oct, nothing changed): live mode; one webhook to
+`/functions/v1/rzp-webhook`, enabled, 7 events (`payment.authorized`,
+`payment.failed`, `payment.captured`, `settlement.processed`,
+`refund.processed`, `refund.failed`, `refund.created`), no `subscription.*`
+events yet; `filmmakerstudio.in` added and VERIFIED (the old vercel.app host is
+still approved); domestic cards and Cards Recurring activated; **international
+cards NOT requested**, so USD orders cannot work until the owner submits "Request
+for international cards" and it is approved. The webhook secret's match with the
+Supabase secret was not checkable.
+
+### Admin account on Pro for good, 28 Oct 2026
+
+The purge left the keeper (`arunkumarmohanans@gmail.com`) with no plan. Granted **Pro for good** on its account (`6f91ada4-d693-49a8-8348-77c1cc06a108`) from the SQL editor with `select public.apply_plan(<account>, 'pro', 'grant', 0)`, the same routine the console's "grant plan" calls (0 days = for good). Read back: `plan` = `pro`, `plan_until` null, `plan_period` = `grant`, `seat_limit` 10, `user_plan()` = `pro`. Done from the editor, so there is NO `admin_audit` row and NO `granted` payments row; granting again from the console (People → grant plan) adds the audit row and changes nothing else. A grant has no end date, so the yearly-expiry logic never touches it; only another purge would remove it. It is not a rule for future admins. It is not a payment, so `paid_buyers()` and the founding-seat count are unaffected.
+
+### Auto-renew deploy, 28 Oct 2026 03:45–03:50 UTC (all but the switch)
+
+- **Functions deployed** from `develop` at `2616fb61`: `rzp-subscribe` v1 and `rzp-cancel` v1 (JWT), `rzp-remind` v1 (NO JWT), `rzp-order` / `rzp-verify` / `rzp-webhook` v14, `rzp-refund` v8. Probed: the JWT ones answer 401 "Missing authorization header", `rzp-webhook` 401 "bad signature", `rzp-remind` 401 "bad cron secret".
+- **Razorpay webhook** `…/functions/v1/rzp-webhook` now has 15 events: the 7 payment / refund / settlement events plus `subscription.authenticated`, `paused`, `resumed`, `activated`, `pending`, `halted`, `cancelled`, `completed` and `charged`. URL and secret untouched.
+- **Reminders:** `CRON_SECRET` set in Supabase (non-empty, checked by digest) and in GitHub Actions together with `FMS_FUNCTIONS_URL`; a hand-run of `renewal-reminders` succeeded with `{"sent":0,"failed":0,"skipped":0}`.
+- **NOT done:** the switch (`admin_set_billing_modes`, owner or finance, console, signed in), and any subscribe / renew / cancel / refund run. The order for that is `docs/AUTORENEW-TEST-CHECKLIST.md`. The modes still read `once` / `once`.
+
 ## 0. Clean slate before launch (one admin, no test data)
 
 **Owner decision, 27 Oct 2026:** the app never launched, so every account in

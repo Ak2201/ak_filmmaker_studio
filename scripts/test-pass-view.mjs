@@ -46,7 +46,7 @@ ok(/try again/i.test(passRefusal('', '')), 'nothing at all: a generic sentence')
 const f = passFacts(at(raw));
 ok(f && f.price === '₹49' && f.length === '7 days' && f.plan === 'pro', 'facts: ₹49, 7 days, pro');
 ok(passFacts(at({ ...raw, amount_paise: 9900 })).price === '₹99', 'the price follows the server (₹99)');
-ok(passCta(f) === 'TRY IT FOR ₹49', 'the button: TRY IT FOR ₹49');
+ok(passCta(f) === 'Try it for ₹49', 'the button, in sentence case (28 Oct 2026 revamp): Try it for ₹49');
 ok(passName(7) === '7-day pass' && passName(null) === 'Launch pass', 'the name: 7-day pass / Launch pass');
 ok(passDays({ payments: [{ period: 'pass', status: 'paid', starts_at: '2026-10-27T10:00:00Z', ends_at: '2026-11-03T10:00:00Z' }] }) === 7, 'days from the pass payment');
 ok(passDays({ payments: [{ period: 'year', status: 'paid', starts_at: '2026-10-27T10:00:00Z', ends_at: '2027-10-27T10:00:00Z' }] }) === null, 'a yearly payment is not a pass');

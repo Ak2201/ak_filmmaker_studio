@@ -27,6 +27,13 @@ import '../styles/list-prices.css';
    `mode` is the server's plan_mode (§62, billing.js cachedModes().plan):
    each price carries its terms in offer-terms.js's words, and an unknown
    mode states neither one-time nor auto-renew. */
+/* THE PLAN WE RECOMMEND (owner, 28 Oct 2026): Intermediate. Here and on
+   the signed-in cards (plan-cards.js re-exports it) it wears the
+   "Recommended" badge and the brand border, and comes first on a phone.
+   This light module owns the id so invite.html's budgeted first paint
+   need not load plan-cards.js to know it. */
+export const RECOMMENDED = 'indie';
+
 export function listPriceBlock(view = null, mode = null) {
   const usd = !!(view && view.currency === 'USD');
   const ids = PLAN_ORDER.filter((id) => id !== 'free' && LIST_PRICE[id] > 0);
@@ -43,7 +50,8 @@ export function listPriceBlock(view = null, mode = null) {
     const text = usd && r ? offerTerms(mode, fmtMinor(r.minor, 'USD'), 'year').line + ' · ≈ ' + perDayIn(r.minor, 'USD') + ' a day · ' + chargeCaption(view, r.inrMinor)
       : !usd && r && r.minor > 0 ? offerTerms(mode, fmtMinor(r.minor, 'INR'), 'year').line + ' · ≈ ' + perDayIn(r.minor, 'INR') + ' a day'
       : offerTerms(mode, inr(LIST_PRICE[id]), 'year').line + ' · ≈ ' + perDay(LIST_PRICE[id]) + ' a day';
-    ul.append(h('li', {}, [h('strong', { text: planName(id) }), h('span.pl-list-price', { text }), line]));
+    const rec = id === RECOMMENDED;
+    ul.append(h('li' + (rec ? '.is-recommended' : ''), { 'data-plan': id }, [rec ? h('span.k-badge.k-badge--solid.pl-list-rec', { text: 'Recommended' }) : null, h('strong', { text: planName(id) }), h('span.pl-list-price', { text }), line].filter(Boolean)));
   }
   import('../lib/plan-matrix.js').then((m) => {
     for (const id of ids) { const t = m.MATRIX.lines && m.MATRIX.lines[id]; if (t && lines[id]) lines[id].textContent = t; }
@@ -54,4 +62,4 @@ export function listPriceBlock(view = null, mode = null) {
       + ', confirmed at checkout' + (t.short ? ' · ' + t.short : '') + '. Each plan includes everything in the one before it.' })]);
 }
 
-export default { listPriceBlock };
+export default { listPriceBlock, RECOMMENDED };

@@ -388,8 +388,8 @@ eq(R.parseRupees('₹499.50'), 49950, 'parseRupees is unchanged');
     valid_from: '2026-10-27T10:00:00Z', valid_until: '2026-11-03T10:00:00Z', razorpay_payment_id: 'pay_C1',
     renews: true, renews_at: '2026-11-03T10:00:00Z', renew_minor: 9900, renew_currency: 'INR', every_days: 7 };
   const cm = Ms.chargeReceiptMail(cinv);
-  ok(cm.text.includes('Renews on 3 November 2026 at ₹99. Cancel anytime in Settings → Plan.'),
-    'a charge receipt says "Renews on <date> at <amount>. Cancel anytime in Settings → Plan."');
+  ok(cm.text.includes('Renews on 3 November 2026 at ₹99. Cancel anytime with Razorpay, in your mandate e-mail or your bank / UPI app.'),
+    'a charge receipt says "Renews on <date> at <amount>. Cancel anytime with Razorpay, in your mandate e-mail or your bank / UPI app."');
   ok(!/nothing renews/i.test(cm.text) && cm.text.includes('7-day pass') && cm.text.includes('FMS/2026-27/000042') && cm.text.includes(Ms.REFUND_TERMS),
     'it never says "nothing renews", names the 7-day pass and the invoice, and keeps the refund terms');
   const off = Ms.chargeReceiptMail({ ...cinv, renews: false });
@@ -403,11 +403,11 @@ eq(R.parseRupees('₹499.50'), 49950, 'parseRupees is unchanged');
     'the cancellation mail: nothing more charged, access until the date, what it was, no refund for a cancel');
   eq(Ms.cancelMail({ email: '' }), null, 'no e-mail, no cancellation mail');
   const rem = Ms.renewalReminderMail({ email: 'sub@example.com', plan_name: 'Pro', period: 'pass', days: 7, amount_minor: 9900, currency: 'INR', next_charge_at: '2026-11-03T10:00:00Z' });
-  ok(rem.subject.includes('3 November 2026') && rem.text.includes('₹99') && rem.text.includes('Settings → Plan'), 'the pre-charge reminder names the date, the amount and where to cancel');
+  ok(rem.subject.includes('3 November 2026') && rem.text.includes('₹99') && rem.text.includes('Razorpay'), 'the pre-charge reminder names the date, the amount and where to cancel');
   eq(Ms.renewalReminderMail({ email: 'x@y.in' }), null, 'no next charge date, no reminder');
 
   /* ---- §63: the reminder is sent, once per cycle ---- */
-  ok(rem.text.includes('Cancel anytime in Settings → Plan & purchases → Cancel auto-pay; nothing more is charged after you cancel')
+  ok(rem.text.includes('Cancel anytime in your Razorpay mandate e-mail or your bank / UPI app; nothing more is charged after you cancel')
      && rem.subject.includes('₹99') && rem.text.includes('every 7 days') && rem.text.includes(Ms.REFUND_TERMS),
     'the reminder says where to cancel and that nothing more is charged after, with the amount, the repeat and the refund terms');
   const remRow = { subscription_row_id: 'sub-row-1', email: 'sub@example.com', name: 'Rina', product: 'starter', plan_name: 'Basic',

@@ -172,7 +172,9 @@ async function ctxAt(width, height, extra = {}) {
   await page.focus('#studioRail .sh-rail-account');
   await page.keyboard.press('Enter');
   await page.waitForSelector('#shAcctMenu');
-  await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowDown');
+  /* walk to the Help row by what it is, not by how many rows precede it
+     (the menu gained "Open the sample project" ahead of it) */
+  for (let i = 0; i < 8 && !(await page.evaluate(() => document.activeElement && document.activeElement.dataset.action === 'rail-help')); i++) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await page.waitForSelector('#shortcutSheet.show');
   await page.keyboard.press('Escape');

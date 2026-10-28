@@ -102,7 +102,7 @@ export function passRefusal(hint, fallback) {
     has_plan: 'You already have a yearly plan, so the pass is not needed.',
     code: 'A promo code does not apply to the launch pass. Buy it without one.',
     renew_off: 'The terms of this offer changed a moment ago. Read the card again before you pay; nothing was charged.',
-    subscribed: 'Auto-pay is already on for this account. It can be cancelled in Settings, under Plan & purchases.'
+    subscribed: 'Auto-pay is already on for this account. Cancel it with Razorpay, the payment service.'
   }[hint] || fallback || 'The pass could not be bought just now. Please try again.';
 }
 

@@ -2132,7 +2132,7 @@ export function mountShell() {
   syncRailAccount();
   /* Two frames: one for layout, one for the web fonts to land. The
      bar is measured, and measuring it before the brand face (Catamaran) and
-     JetBrains Mono arrive records the fallback's height. The spy runs on the
+     Onest arrive records the fallback's height. The spy runs on the
      same schedule because mountShell() is not always called after the
      page has rendered — dashboard.js mounts at import time, when #app
      is still empty, the same trap chrome.js records one level up. */

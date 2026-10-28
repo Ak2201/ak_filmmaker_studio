@@ -120,7 +120,7 @@ function fillRail(block) {
   block.append(
     h('span.sh-rail-trial-label', { text: 'TRIAL ENDS IN' }),
     h('span.sh-rail-trial-time', { role: 'timer', 'aria-live': 'off', 'aria-label': 'Trial time left' }),
-    h('a.sh-rail-trial-cta', { href: 'purchase.html', text: 'SEE PLANS' }),
+    h('a.sh-rail-trial-cta', { href: 'purchase.html', text: 'See plans' }),
     h('span.visually-hidden.sh-rail-trial-say', { role: 'status', 'aria-live': 'polite' })
   );
 }
@@ -175,7 +175,7 @@ function warnVisibly(secs) {
       const ui = window.StudioUI;
       if (!ui || !ui.toast) return;
       ui.toast(lead + (o && o.price ? ' Plans from ' + o.price + ' a year.' : '') + ' Everything you did stays.', {
-        type: 'info', action: 'SEE PLANS', onAction: () => { location.href = 'purchase.html'; } });
+        type: 'info', action: 'See plans', onAction: () => { location.href = 'purchase.html'; } });
     } catch (e) { /* no chrome: the rail still counts */ }
   };
   /* offerFor([]) is the cheapest plan above this one: "from" its price. */

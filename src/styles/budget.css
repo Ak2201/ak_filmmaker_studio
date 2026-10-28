@@ -10,7 +10,7 @@
    kept because print.css lays the estimate out for paper by it).
 
    Every colour is a token, every shape a --sk-* variable. Figures
-   are JetBrains Mono with tabular numerals (.k-mono / .k-num).
+   are Onest with tabular numerals (.k-mono / .k-num).
    Doubled classes where a rule must beat widgets.css or kit.css
    regardless of stylesheet order.
    ============================================================ */

@@ -1843,7 +1843,7 @@ function autoInit() {
     if (toolbar) attachSignInPill(toolbar);
     upgradeThemeButton(toolbar);
     /* Two frames, for the same reason shell.js measures twice: once
-       for layout and once for Fraunces and JetBrains Mono to land.
+       for layout and once for Gabarito and Onest to land.
        A toolbar measured in the fallback face is a toolbar measured
        at the wrong height. */
 

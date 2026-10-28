@@ -15,7 +15,7 @@
      depends on which sheet a page happened to import last (the
      ordering trap in CLAUDE.md).
    - Distance is multiplied by --motion; durations come from --speed-*.
-   - Figures are JetBrains Mono with tabular-nums: eighths, timecodes,
+   - Figures are Onest with tabular-nums: eighths, timecodes,
      DOOD codes, counts. Labels are Onest in sentence case (the 8B look):
      mono caps survive only on data (codes, eighths, table figures).
    - Shapes follow the 8B template (MIT, docs/CREDITS.md): soft cards,
@@ -230,7 +230,7 @@
 .k-chip-x::after { content: ''; position: absolute; inset: -4px; }
 
 /* ============================================================
-   PAGE HEADER — mono eyebrow, Space Grotesk title, actions
+   PAGE HEADER — eyebrow, Gabarito title, actions
    ============================================================ */
 .k-page-head {
   display: grid;

@@ -241,7 +241,7 @@ function passSection(signedIn) {
   const terms = passTerms(passOfferNow);
   const t = section('pass', 'Launch offer', terms.mode === 'renew' ? 'Try the whole studio.' : 'Try the whole studio for ' + f.price + '.',
     'The whole studio, every stage, on your own films: ' + terms.line + '. Once per account, through Razorpay. ' + (terms.mode === 'renew'
-      ? 'Cancel in Settings, under Plan & purchases, and you keep the days already paid for.'
+      ? 'Cancel with Razorpay, the payment service, and you keep the days already paid for.'
       : 'Then choose a yearly plan, or don’t.'));
   t.dataset.offerMode = terms.mode || 'unknown';
   t.append(passClock());

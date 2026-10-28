@@ -237,7 +237,7 @@ export function chargeReceiptMail(inv) {
   const pass = (inv.sub_period || inv.period) === 'pass';
   const label = pass ? passLabel(inv.valid_from, until) : `1 year${until ? ' (valid until ' + dateIST(until) + ')' : ''}`;
   const next = inv.renews && inv.renews_at && dateIST(inv.renews_at)
-    ? `Renews on ${dateIST(inv.renews_at)} at ${fmtMinor(inv.renew_minor ?? inv.amount_paise, inv.renew_currency || inv.currency || 'INR')}. Cancel anytime in Settings → Plan.`
+    ? `Renews on ${dateIST(inv.renews_at)} at ${fmtMinor(inv.renew_minor ?? inv.amount_paise, inv.renew_currency || inv.currency || 'INR')}. Cancel anytime with Razorpay, in your mandate e-mail or your bank / UPI app.`
     : `Auto-pay is off. Nothing more will be charged${until && dateIST(until) ? `, and your access runs until ${dateIST(until)}` : ''}.`;
   const what = pass ? `${inv.plan_name} ${label.replace(/ \(.*$/, '')}` : `${inv.plan_name} plan`;
   return message(inv.buyer_email, `Payment received: ${what}, auto-pay (${inv.number})`, [
@@ -283,7 +283,7 @@ export function cancelMail(c) {
  *  buyer_name), plan_name, period, days, amount_minor, currency,
  *  next_charge_at. Sent once per billing cycle by rzp-remind
  *  (sendRenewalReminders below). */
-export const CANCEL_PATH = 'Settings → Plan & purchases → Cancel auto-pay';
+export const CANCEL_PATH = 'your Razorpay mandate e-mail or your bank / UPI app';
 export function renewalReminderMail(r) {
   if (!r || !r.next_charge_at || !dateIST(r.next_charge_at)) return null;
   const what = r.period === 'pass' ? `${r.plan_name || 'Pro'} pass` : `${r.plan_name || 'yearly'} plan`;

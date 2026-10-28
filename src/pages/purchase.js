@@ -56,7 +56,7 @@ import { pricingCurrency, readPayCurrency, writePayCurrency, guessVisitorRegion,
 import { shopView, rupeeView, orderCurrency, currencySentence, CURRENCY_OPTIONS, fromDay, perDayIn } from '../lib/price-model.js';
 import { segmented } from '../ui/kit/segmented.js';
 import {
-  visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, deckFor, planHeading, plansPendingHeading, lapsedLine, trialStatus, passHeading
+  visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, deckFor, planHeading, plansPendingHeading, lapsedLine, refundNotice, trialStatus, passHeading
 } from '../lib/purchase-model.js';
 import { clearAttribRef } from '../lib/attribution.js';
 /* THE LAUNCH PASS (§61): a card above the yearly ones while it is on
@@ -433,6 +433,14 @@ function planSection() {
   if (st) {
     const tl = trialLine(st);
     if (tl) ident.append(tl);
+    /* A REFUND IS ANNOUNCED, BIG (owner, 28 Oct 2026): the one page an
+       unpaid person can reach says the money came back and what to do. */
+    const rn = refundNotice(st);
+    if (rn) ident.prepend(h('div.pu-refund-banner', { role: 'status' }, [
+      h('p.pu-refund-eyebrow', { text: 'Refunded' }),
+      h('h2.pu-refund-h', { text: rn.title }),
+      h('p.pu-refund-p', { text: rn.text })
+    ]));
     if (st.lapsed) ident.append(h('p.pl-status', { text: lapsedLine(st) }));
   }
   strip.append(ident);

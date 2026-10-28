@@ -153,12 +153,15 @@ const waitTrial = (page, up = true, timeout = 10000) => page.waitForFunction((u)
   return (!!b && !b.hidden && !!b.querySelector('[role="timer"]')) === u;
 }, up, { timeout });
 
-async function newContext(browser, { tok = null, timezoneId = null, locale = null } = {}) {
+async function newContext(browser, { tok = null, timezoneId = null, locale = null, keepWall = true } = {}) {
   /* THE VISITOR IS IN INDIA unless a block says otherwise
      (docs/US-MARKET-PLAN.md §B): the shop's currency follows the time
      zone, and a CI runner in UTC with en-US would otherwise be shown
      dollars on every card this proof reads in rupees. */
   const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 900 }, timezoneId: timezoneId || 'Asia/Kolkata', locale: locale || 'en-IN' });
+  /* THE WALL'S OWN LOGIC (the fallback now: a walled person is SENT to purchase.html, 28 Oct 2026). Most of this proof is about that
+     logic, so the wall is held in place; the redirect itself is asserted in its own block with keepWall: false. */
+  if (keepWall) await ctx.addInitScript(() => { window.__fmsKeepWall = true; });
   await ctx.route(SB + '/**', handle);
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.fulfill({ status: 200, body: '' }));
   /* THE CHECKOUT LOGO. billing.js passes Razorpay an absolute
@@ -984,32 +987,27 @@ try {
     ok(!(await amy.page.$('.pg-lock.pg-wall')), 'purchase.html is NOT walled — it is where a plan is bought');
     ok(!!(await amy.page.$('#plan .pl-card')), 'and the tiers are there to buy');
 
-    /* ---- DOWNLOAD MY WORK ----------------------------------------
-       The one door that must stay open. It calls backup.js directly
-       rather than the hub's exportAll(), because the wall appears on
-       every page and exportAll() needs hub.js. */
+    /* ---- NO DOWNLOAD ON THE WALL (owner, 28 Oct 2026) -------------
+       "Terms, privacy, refund, contact and sign out" are what an unpaid
+       person may reach, and the owner did not tick "download my work".
+       The wall is only the fallback now, but it must not offer one. */
     await amy.page.goto(BASE + 'index.html');
-    await amy.page.waitForSelector('.pg-lock.pg-wall [data-action="pg-export"]', { timeout: 12000 }).catch(() => {});
-    const btn = await amy.page.$('.pg-lock.pg-wall [data-action="pg-export"]');
-    ok(!!btn, 'the wall offers DOWNLOAD MY WORK');
-    if (!btn) {
-      skip('the download produces a real file (no button to press)');
-    } else {
-      const dl = amy.page.waitForEvent('download', { timeout: 15000 }).catch(() => null);
-      await btn.click();
-      const file = await dl;
-      ok(!!file, 'pressing it produces a real download' + (file ? ': ' + file.suggestedFilename() : ''));
-      if (file) {
-        const to = path.join(OUT, '__wall-backup.json');
-        await file.saveAs(to).catch(() => {});
-        let body = null; try { body = JSON.parse(fs.readFileSync(to, 'utf8')); } catch (e) { /* */ }
-        ok(!!body, 'and the file is a readable backup, not an empty blob');
-        ok(!!body && /Dragon|p-dragon/.test(JSON.stringify(body)), 'carrying the work that was on the device');
-        try { fs.unlinkSync(to); } catch (e) { /* */ }
-      } else {
-        skip('the downloaded file is a readable backup (nothing was downloaded)');
-      }
-    }
+    await amy.page.waitForSelector('.pg-lock.pg-wall', { timeout: 12000 }).catch(() => {});
+    ok(!(await amy.page.$('.pg-lock.pg-wall [data-action="pg-export"]')), 'the wall no longer offers DOWNLOAD MY WORK');
+    ok(!!(await amy.page.$('.pg-lock.pg-wall [data-auth-action="signout"]')), 'and still offers SIGN OUT');
+
+    /* ---- THE ONE PAGE (owner, 28 Oct 2026) -------------------------
+       Without the proof hook, a walled person is SENT to purchase.html. */
+    const redir = await newContext(browser, { tok: 'tok-amy', keepWall: false });
+    await redir.page.goto(BASE + 'index.html');
+    await redir.page.waitForURL(/purchase\.html/, { timeout: 15000 }).catch(() => {});
+    ok(/purchase\.html/.test(redir.page.url()), 'a lapsed account on index.html is sent to purchase.html: ' + redir.page.url());
+    await redir.page.goto(BASE + 'settings.html');
+    await redir.page.waitForURL(/purchase\.html/, { timeout: 15000 }).catch(() => {});
+    ok(/purchase\.html/.test(redir.page.url()), 'settings.html is no longer a way around it: ' + redir.page.url());
+    await redir.page.waitForTimeout(1500);
+    ok(/purchase\.html/.test(redir.page.url()) && !(await redir.page.$('.pg-lock.pg-wall')), 'purchase.html stays put, with no wall and no loop');
+    allErrors.push(...redir.errors); await redir.ctx.close();
     allErrors.push(...amy.errors); await amy.ctx.close();
 
     /* ---- an administrator is never walled -------------------------

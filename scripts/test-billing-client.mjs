@@ -92,6 +92,18 @@ globalThis.Event = DomEvent;   // plan-cards dispatches a submit when it re-quot
   ok(/^Your Pro plan ended on /.test(PM.lapsedLine({ bought_plan: 'pro', plan_period: 'year', plan_until: '2026-03-04T10:00:00Z', payments: [] })), 'a yearly plan is worded exactly as before');
 }
 
+/* ---- the refund announcement (owner, 28 Oct 2026) ---- */
+{
+  const lapsedRefund = { lapsed: true, plan: 'free', payments: [
+    { status: 'refunded', amount_paise: 4900, created_at: '2026-10-28T04:10:00Z', plan_id: 'pro', period: 'pass' },
+    { status: 'refunded', amount_paise: 59900, created_at: '2026-10-20T04:10:00Z', plan_id: 'starter', period: 'year' }] };
+  const n = PM.refundNotice(lapsedRefund);
+  ok(n && /49/.test(n.title) && /refunded/i.test(n.title) && /purchase again/i.test(n.text), 'a lapsed account with a refund gets the announcement, with the latest amount — ' + (n && n.title));
+  ok(PM.refundNotice({ lapsed: false, payments: lapsedRefund.payments }) === null, 'no announcement while a paid plan is running');
+  ok(PM.refundNotice({ lapsed: true, payments: [{ status: 'paid', amount_paise: 4900 }] }) === null, 'no announcement for a lapse that was not a refund');
+  ok(PM.refundNotice(null) === null && PM.refundNotice({ lapsed: true }) === null, 'unreadable status says nothing');
+}
+
 /* ---- bug 6: money moved, the studio has not confirmed ---- */
 {
   globalThis.__notes = [];

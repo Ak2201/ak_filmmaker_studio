@@ -133,6 +133,25 @@ export function lapsedLine(st) {
   return `Your ${Billing.planName(st.bought_plan)} plan ${when ? 'ended' + when : 'has ended'}${refunded ? ' (refunded)' : ''}. Renew it, or choose a plan, to keep using the studio.`;
 }
 
+/** The big announcement for a signed-in person whose payment was refunded and
+ *  who has not bought again: { title, text }, else null. It is shown on the
+ *  purchase page (the one page an unpaid person can reach) until a paid plan
+ *  is running, i.e. for as long as billing_status() says `lapsed`.
+ *  The amount is the most recent refunded payment's, in rupees (the
+ *  billing_status() payload carries no currency, and rupee checkout is the
+ *  only one on sale; dollar checkout is off until Razorpay approves it). */
+export function refundNotice(st) {
+  if (!st || st.lapsed !== true || !Array.isArray(st.payments)) return null;
+  const refunded = st.payments.filter((p) => p && p.status === 'refunded' && Number(p.amount_paise) > 0);
+  if (!refunded.length) return null;
+  const last = refunded.reduce((a, b) => (Date.parse(b.created_at) > Date.parse(a.created_at) ? b : a), refunded[0]);
+  const amount = Billing.fmtPaise(Number(last.amount_paise));
+  return {
+    title: `${amount} has been refunded.`,
+    text: `Your payment was refunded to the way you paid. Please purchase again to keep using the studio. Everything you wrote is still saved on this device.`
+  };
+}
+
 /** §33 — WHERE THE TRIAL STANDS, or null when there is nothing to say.
  *  `now` is a function (the server's clock, via plan-gate), read only
  *  when a running trial needs it.
@@ -166,5 +185,5 @@ export function trialStatus(st, now, canStart = false) {
 
 export default {
   wantedPlan, clearPlanStash, stashPlanFromAddress, linkCode, visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, DECK,
-  planHeading, passHeading, plansPendingHeading, lapsedLine, trialStatus
+  planHeading, passHeading, plansPendingHeading, lapsedLine, refundNotice, trialStatus
 };

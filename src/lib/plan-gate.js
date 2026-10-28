@@ -730,7 +730,14 @@ function gonePanel() {
    `/settings`, not `/settings.html`, and a regex anchored to `.html`
    would have walled the page you buy from on the live site and nowhere
    else. modulesHere() strips the extension for the same reason. */
-const WALL_EXEMPT = /^(settings|purchase|purchases|invite|start|screening|admin|pricing|contact|about|product-[a-z-]+|guides|guide-[a-z-]+|compare-[a-z-]+|trust)$/;
+/* OWNER, 28 Oct 2026: ONE page for somebody who has not paid, the purchase page.
+   A person with no running plan, pass or trial reaches nothing else of the
+   studio, Settings included (it was exempt, and it holds backup and Drive,
+   which are the studio). What stays: the purchase page itself, the doorway
+   and the public pages (terms, privacy, refund, contact and the rest of the
+   marketing site), and admin, which is role-gated and never walls an
+   administrator. */
+const WALL_EXEMPT = /^(purchase|purchases|invite|start|screening|admin|pricing|contact|about|privacy|terms|refund|product-[a-z-]+|guides|guide-[a-z-]+|compare-[a-z-]+|trust)$/;
 const pageName = () => file().replace(/\.html$/, '');
 
 /* ---- PASS TIMER — the launch offer's countdown, in the studio's pages
@@ -852,7 +859,7 @@ function wallPanel() {
         : 'A plan opens the desk for your own film: your script, your breakdown, your schedule, your budget, your call sheets.' }),
     /* The promise the owner made, kept where it is visible rather than
        in a FAQ: nothing a person wrote is held hostage to a sale. */
-    h('p.pg-lock-p.pg-wall-safe', { text: 'Everything you wrote is still here. Nothing has been deleted and nothing is locked away from you — download all of it, right now, with no plan.' }),
+    h('p.pg-lock-p.pg-wall-safe', { text: 'Everything you wrote is still saved on this device. Nothing has been deleted.' }),
     /* The plans themselves, ON the wall: a name, a price and one line
        each, every row a link straight to that plan's card. "SEE PLANS"
        alone made the person leave the wall to learn what it would cost.
@@ -863,7 +870,6 @@ function wallPanel() {
     h('div.pg-lock-actions', {}, [
       fresh ? h('button.btn.primary', { type: 'button', 'data-action': 'pg-start-trial', text: len ? 'START MY ' + len.toUpperCase() : 'START MY FREE TRIAL' }) : null,
       h('a.btn' + (fresh ? '' : '.primary'), { href: 'purchase.html', text: 'SEE PLANS' }),
-      h('button.btn', { type: 'button', 'data-action': 'pg-export', text: 'DOWNLOAD MY WORK' }),
       /* THE WAY OUT. The wall hides the band (.sh-bar) and the phone's
          bar (.mab) — plan-gate.css, [data-paywall] — and those held the
          only sign-out route there was (the account pill, then
@@ -895,11 +901,10 @@ function passWallPanel(e) {
       h('button.btn.primary', { type: 'button', 'data-action': 'pg-buy-pass', text: passMode(wallPass) === 'renew' ? 'TRY THE WHOLE STUDIO' : 'TRY THE WHOLE STUDIO FOR ' + f.price + ' · ' + f.length.toUpperCase() })
     ]),
     h('p.pg-lock-p.pg-wall-msg', { role: 'status', 'aria-live': 'polite', text: '' }),
-    h('p.pg-lock-p.pg-wall-safe', { text: 'Everything you wrote is still here. Nothing has been deleted and nothing is locked away from you — download all of it, right now, with no plan.' }),
+    h('p.pg-lock-p.pg-wall-safe', { text: 'Everything you wrote is still saved on this device. Nothing has been deleted.' }),
     wallPlans(),
     h('div.pg-lock-actions', {}, [
       h('a.btn', { href: 'purchase.html', text: 'SEE PLANS' }),
-      h('button.btn', { type: 'button', 'data-action': 'pg-export', text: 'DOWNLOAD MY WORK' }),
       h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
     ])
   ]);
@@ -1126,6 +1131,7 @@ function anyLockedHere() {
   return shelves().some((s) => s.modules.some(on)) || phases().some((p) => p.modules.some(on));
 }
 
+let sentToPurchase = false;
 function apply() {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
@@ -1136,6 +1142,17 @@ function apply() {
   /* The wall outranks the module lock: there is no point telling
      somebody which tier a module is on when their trial has ended. */
   const wall = walled();
+  /* THE ONE PAGE (owner, 28 Oct 2026): a walled person is SENT to the purchase
+     page, which holds the plans, the pass and the refund announcement, rather
+     than shown a copy of the offer on whatever page they asked for. The wall
+     below stays as the fallback (a blocked navigation, a build with no
+     purchase page), so nothing is ever left showing the studio. */
+  /* window.__fmsKeepWall is a PROOF hook: prove:billing's wall checks are
+     about the wall's own logic (the fallback), so they hold it in place. */
+  if (wall && !sentToPurchase && typeof location !== 'undefined' && !window.__fmsKeepWall) {
+    sentToPurchase = true;
+    try { location.replace('purchase.html'); } catch (e) { /* draw the wall instead */ }
+  }
   const gone = !wall && pageGone();
   const lock = !wall && (gone || pageLocked());
   if (wall || lock) {

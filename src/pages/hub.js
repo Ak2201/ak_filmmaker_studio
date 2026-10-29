@@ -64,7 +64,8 @@ import { registerSW, onInstallAvailable, promptInstall } from '../lib/pwa.js';
 import { h, delegate, coalesce } from '../lib/dom.js';
 import { reveal, spotlight } from '../lib/motion.js';
 
-import { DEFAULT_SAMPLE, sampleById, isSampleTitle } from '../lib/samples.js';
+import { DEFAULT_SAMPLE, sampleById } from '../lib/samples.js';
+import { isSampleProject, findSampleProject } from '../lib/sample-project.js';
 /* The plan's say over the hub (schema section 18 `features`, read by
    src/lib/plan-gate.js): `sample_only` shows the Dragon sample and no
    other project; `new_projects` off hides every way of making one.
@@ -408,12 +409,15 @@ function openSampleFromURL() {
 /* ONE entry for every "open the sample": a sample already in this
    namespace is RE-OPENED (never duplicated, never touching the user's
    films), otherwise it is created. Sample projects are matched by
-   title (isSampleTitle), the same rule the plan gate uses. */
+   the stamp on its entry (or, for one opened before the stamp, the
+   provable seed ids) — see src/lib/sample-project.js. Never by title. */
 function reopenOrOpenSample(id, toDashboard) {
   const sample = sampleById(id) || sampleById(DEFAULT_SAMPLE);
-  const existing = Store.listProjects().find((p) => p.title === sample.title);
+  const existing = findSampleProject(sample.id);
   const done = () => { if (toDashboard) location.href = 'dashboard.html'; };
   if (existing) {
+    // A legacy sample gets its stamp now, so it never depends on the marker again.
+    if (!existing.sample) Store.updateProject(existing.id, { sample: sample.id });
     if (Store.currentProjectId() !== existing.id) Store.setCurrentProject(existing.id);
     done();
     return Promise.resolve();
@@ -479,7 +483,7 @@ async function openSampleProject(id = DEFAULT_SAMPLE) {
   let story = null;
   try { story = (await sample.loadStory()).default.story; } catch (e) { /* no story */ }
 
-  const project = Store.createProject({ title: sample.title, format: sample.format, region: sample.region });
+  const project = Store.createProject({ title: sample.title, format: sample.format, region: sample.region, sample: sample.id });
   // createProject() has already made this the current project, so the
   // storage proxy scopes every write below to it.
   const scenes   = sampleScenes(sample);
@@ -560,7 +564,7 @@ function duplicateProject(id) {
 }
 
 function renderProjectSwitcher() {
-  const projects = PlanGate.sampleOnly() ? Store.listProjects().filter((p) => isSampleTitle(p.title)) : Store.listProjects();
+  const projects = PlanGate.sampleOnly() ? Store.listProjects().filter(isSampleProject) : Store.listProjects();
   const current  = Store.currentProject();
   const btn   = $('#projectSwitcherBtn');
   const label = $('#projectSwitcherLabel');

@@ -79,6 +79,10 @@ async function route(r) {
   const url = new URL(req.url());
   const uid = uidOf((req.headers()['authorization'] || '').replace(/^Bearer\s+/i, ''));
   const p = url.pathname;
+  /* (h) the membership door: this account is a member, so sync is OPEN deterministically. Without it
+     the proof raced the gate's first answer and only the first film made in a page ever pushed. */
+  if (p.endsWith('/rpc/studio_status')) return json(r, 200, [{ registered: true, role: 'member', disabled: false }]);
+  if (/\/rpc\/session_(acquire|ping|takeover|release)$/.test(p)) return json(r, 200, [{ status: 'ok' }]);
   if (p.startsWith('/rest/v1/projects')) {
     const m = req.method();
     const visible = (x) => x.owner_id === uid || DB.visibleExtra.includes(x.id);
@@ -201,20 +205,38 @@ try {
   }
 
   console.log('(h) the sample stays on this device; a normal project still syncs');
-  resetDb(); DB.projects = []; DB.data = [];
-  {
+  /* One film per fresh signed-in page and a clean fake server each time: the sync follows the OPEN
+     project. Each probe says whether anything for that project reached the server. */
+  const probe = async (title, extra, seedScenes) => {
+    resetDb(); DB.projects = []; DB.data = [];
     const { ctx, page } = await open(browser, true);
     await page.waitForFunction(() => window.StudioCloud.getSession(), null, { timeout: 15000 });
-    const ids = await page.evaluate(() => {
+    const id = await page.evaluate(({ title, extra, seedScenes }) => {
       const S = window.StudioStore;
-      const mk = (title) => { const p = S.createProject({ title, format: 'feature' }); S.setCurrentProject(p.id); localStorage.setItem('fms_scenes_v1', JSON.stringify([{ id: 's1', heading: 'INT. ROOM - DAY' }])); return p.id; };
-      return { sample: mk('Dragon'), mine: mk('My Own Film') };
-    });
+      const id = crypto.randomUUID();
+      /* a legacy sample's seed ids are stored BEFORE its entry exists, so the create-time push sees them */
+      if (seedScenes) S.rawSet('fms_scenes_v1__' + id, JSON.stringify({ scenes: seedScenes }));
+      const p = S.createProject({ id, title, format: 'feature', ...(extra || {}) });
+      S.setCurrentProject(p.id);
+      if (!seedScenes) localStorage.setItem('fms_scenes_v1', JSON.stringify([{ id: 's1', heading: 'INT. ROOM - DAY' }]));
+      return p.id;
+    }, { title, extra, seedScenes });
     await page.waitForTimeout(3500);
-    const touched = (id) => LOG.filter((l) => /^(POST|PATCH|PUT) project/.test(l) && l.endsWith(' ' + id));
-    ok(touched(ids.mine).length > 0, 'a normal project still pushes (' + touched(ids.mine).join(', ') + ')');
-    ok(touched(ids.sample).length === 0, 'the sample pushes no project row and no scope: ' + JSON.stringify(touched(ids.sample)));
+    const hits = LOG.filter((l) => /^(POST|PATCH|PUT) project/.test(l) && l.endsWith(' ' + id));
     await ctx.close();
+    return hits;
+  };
+  {
+    const mine = await probe('My Own Film');
+    ok(mine.length > 0, 'a normal project still pushes (' + mine.join(', ') + ')');
+    const sample = await probe('Dragon', { sample: 'dragon' });
+    ok(sample.length === 0, 'the sample (stamped, as openSampleProject() writes it) pushes no project row and no scope: ' + JSON.stringify(sample));
+    const namesake = await probe('Dragon');
+    ok(namesake.length > 0, 'a film the user titled "Dragon" STILL syncs, title alone is not the sample: ' + namesake.join(', '));
+    const bare = await probe('The Dark Knight');
+    ok(bare.length > 0, 'an unstamped "The Dark Knight" with no seed ids syncs (no provable marker, safe default)');
+    const legacy = await probe('The Dark Knight', null, [{ id: 'darkknight-sc-1' }]);
+    ok(legacy.length === 0, 'an unstamped legacy sample whose stored scenes still carry the seed ids stays on the device: ' + JSON.stringify(legacy));
   }
 } finally {
   await browser.close();

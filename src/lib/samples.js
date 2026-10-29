@@ -60,8 +60,4 @@ export function isSampleTitle(title) {
   return SAMPLES.some((s) => s.title === title);
 }
 
-export function isSampleProject(p) {
-  return !!p && isSampleTitle(p.title);
-}
-
-export default { SAMPLES, DEFAULT_SAMPLE, sampleById, isSampleTitle, isSampleProject };
+export default { SAMPLES, DEFAULT_SAMPLE, sampleById, isSampleTitle };

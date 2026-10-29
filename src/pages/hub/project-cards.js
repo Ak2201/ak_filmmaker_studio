@@ -14,7 +14,7 @@ import PlanGate from '../../lib/plan-gate.js';
 import { STAGES, journey, guideJourney } from '../../lib/journey.js';
 import { h } from '../../lib/dom.js';
 import { button, buttonGroup } from '../../ui/kit/index.js';
-import { isSampleTitle } from '../../lib/samples.js';
+import { isSampleProject } from '../../lib/sample-project.js';
 import { PROJECT_HOME_URL, FORMAT_LABELS, fmtRelDate, $ } from './util.js';
 import { applyProjectFilters as applyProjectFiltersTo, projectBlob } from '../../lib/hub-model.js';
 import { renderFirstRun, renderSampleOnly } from './first-run.js';
@@ -228,7 +228,7 @@ function renderProjects() {
   renderAdoptNotice();
   if (!grid) return;
   const sampleOnly = PlanGate.sampleOnly();
-  const projects  = sampleOnly ? Store.listProjects().filter((p) => isSampleTitle(p.title)) : Store.listProjects();
+  const projects  = sampleOnly ? Store.listProjects().filter(isSampleProject) : Store.listProjects();
   const currentId = Store.currentProjectId();
 
   if (toolbar) toolbar.hidden = projects.length < 2;

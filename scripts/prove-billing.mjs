@@ -1246,7 +1246,7 @@ try {
       await A.page.goto(BASE + 'index.html');
       await A.page.waitForSelector('.pg-wall [data-action="pg-start-trial"]', { timeout: 12000 }).catch(() => {});
       const b = await A.page.$('.pg-wall [data-action="pg-start-trial"]');
-      ok(!!b && /2 HOURS/.test(await b.textContent()), 'a member who never had a trial is offered one on the wall, in hours: ' + (b ? await b.textContent() : 'no button'));
+      ok(!!b && /2 hours/i.test(await b.textContent()), 'a member who never had a trial is offered one on the wall, in hours: ' + (b ? await b.textContent() : 'no button'));
       if (b) {
         await b.click();
         await A.page.waitForFunction(() => !document.querySelector('.pg-wall') && (() => { const b = document.querySelector('#studioRail .sh-rail-trial'); return b && !b.hidden && b.querySelector('[role="timer"]'); })(), null, { timeout: 12000 })

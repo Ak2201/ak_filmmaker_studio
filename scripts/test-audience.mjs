@@ -251,12 +251,12 @@ const flatRes = M.buildResult({ panel, run: flat, synth: { verdicts: {}, notes: 
 ok(flatRes.agreed && M.resultNote(flatRes).includes('barely disagreed'), 'a panel that agreed is told it was one reader\'s view');
 
 const text = M.resultText(res);
-ok(text.startsWith('AUDIENCE TEST — 3 VIEWERS') && text.includes(M.SIMULATED_LINE), 'prose header and simulated line');
+ok(text.startsWith('Audience test — 3 viewers') && text.includes(M.SIMULATED_LINE), 'prose header and simulated line');
 ok(text.includes('“The bus is late again.” — I know this house.'), 'prose keeps the verified quote');
 ok(!text.includes('Everybody follows me'), 'prose never carries a stripped quote');
 ok(text.includes('1:0  2:-0.33  3:-2  4:0.5  5:-0.5'), 'prose carries the engagement line');
 const kept = M.resultText(res, new Set(['v:' + A]));
-ok(kept.includes(panel[0].label.toUpperCase()) && !kept.includes(panel[1].label.toUpperCase()) && !kept.includes('THE PANEL'), 'prose keeps only the ticked rows');
+ok(kept.includes(panel[0].label) && !kept.includes(panel[1].label) && !kept.includes('The panel'), 'prose keeps only the ticked rows');
 
 /* ---- the cost, on the Dragon sample ----------------------------- */
 const dragon = JSON.parse(readFileSync(new URL('../src/data/sample.dragon.script.json', import.meta.url), 'utf8'));
@@ -642,9 +642,9 @@ restoreFetch();
   ok(qnote.includes('1 quote was removed because they were not word for word in your story.'), 'quick note: quotes checked against the story');
   ok(qnote.includes('named a beat that is not in the story'), 'quick note: unknown beats named as beats');
   const qtext = M.resultText(qres);
-  ok(qtext.startsWith('AUDIENCE TEST OF THE STORY — 3 VIEWERS\n' + M.SIMULATED_LINE), 'quick prose: its own heading and the simulated line');
-  ok(qtext.includes('ENGAGEMENT PER BEAT (panel mean') && qtext.includes('  1:0  3:-1'), 'quick prose: engagement per beat');
-  ok(M.resultText(res).includes('ENGAGEMENT PER SCENE') && M.resultText(res).startsWith('AUDIENCE TEST — '), 'scene prose unchanged');
+  ok(qtext.startsWith('Audience test of the story — 3 viewers\n' + M.SIMULATED_LINE), 'quick prose: its own heading and the simulated line');
+  ok(qtext.includes('Engagement per beat (panel mean') && qtext.includes('  1:0  3:-1'), 'quick prose: engagement per beat');
+  ok(M.resultText(res).includes('Engagement per scene') && M.resultText(res).startsWith('Audience test — '), 'scene prose unchanged');
 
   /* ---- naming a viewer ------------------------------------------ */
   eq(M.viewerNamed('Family weekend viewer, why did you stay?', panel).id, A, 'viewerNamed: by label');
@@ -771,7 +771,7 @@ restoreFetch();
   const qout = await quick.run(qin, { ctx: sctx });
   eq(qlog.length, 1, 'task quick: one request');
   ok(qlog[0].user.includes('- festival | ') && viewersIn(qlog[0].user, 'THE PANEL (id | who they are):')[0] === 'festival', 'task quick: a short film\'s panel (the jury first)');
-  ok(qout.text.startsWith('AUDIENCE TEST OF THE STORY') && /Nothing was saved/.test(qout.text), 'task quick: the read is the prose, and says nothing was saved');
+  ok(qout.text.startsWith('Audience test of the story') && /Nothing was saved/.test(qout.text), 'task quick: the read is the prose, and says nothing was saved');
   ok(qout.text.split(M.SIMULATED_LINE).length === 2, 'task quick: the simulated line once, not twice');
   eq(mem.size, sizeBefore, 'task quick: writes no storage');
   const blank = { getStory: () => StoryM.blankStory() };

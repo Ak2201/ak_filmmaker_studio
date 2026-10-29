@@ -183,13 +183,13 @@ const partOf = (n) => PARTS.find((p) => p.part === n) || { steps: [], phase: { l
 const partWord = (n) => numberWord(partOf(n).steps.length);
 const partTag = (n) => {
   const p = partOf(n);
-  return esc(p.phase.label.toUpperCase()) + ' · ' + p.steps.length + ' STEP' + (p.steps.length === 1 ? '' : 'S');
+  return esc(p.phase.label) + ' · ' + p.steps.length + ' step' + (p.steps.length === 1 ? '' : 's');
 };
 const MASTER_COUNTS = capitalise(numberWord(PARTS.length)) + ' parts. '
   + capitalise(numberWord(ALL_STEPS.length)) + ' guided steps';
 /* One stamp per part, each in its own stage's hue. */
 const MASTER_STAMPS = PARTS.map((p) =>
-  `<span class="vol-stamp st-part-stamp sh-ph-${esc(p.phase.hue)}">PART ${roman(p.part)} · ${partTag(p.part)}</span>`
+  `<span class="vol-stamp st-part-stamp sh-ph-${esc(p.phase.hue)}">Part ${roman(p.part)} · ${partTag(p.part)}</span>`
 ).join('');
 
 /* ============================================================
@@ -219,7 +219,7 @@ const MASTER_COVER_HTML = `
 const VOL1_COVER_HTML   = `
 <section class="vol-cover" id="vol-1">
   <div>
-    <div class="master-mark">PART I</div>
+    <div class="master-mark">Part I</div>
     <div class="vol-tag">${partTag(1)}</div>
     <h2 class="vol-h">The <span class="light">Story</span><br>Blueprint.</h2>
     <p class="sub">From a vague idea to a story with a spine, in ${partWord(1)} guided steps. Every example explained in English &amp; Tanglish — using <em>Dragon</em>, <em>Vikram Vedha</em>, <em>96</em> &amp; <em>Por Thozhil</em> as our reference films.</p>
@@ -264,12 +264,12 @@ const HOWTO1_HTML       = `
     <li><strong>Print when done.</strong> Each step lands on its own page.</li>
   </ol>
   <div class="tip-box">
-    <div class="label">A NOTE ON RHYTHM</div>
+    <div class="label">A note on rhythm</div>
     <p>Steps 1–4 might take an evening. Step 8 (the 15-beat outline) might take a week. Step 11 (the scene list) might take a month. The blueprint is a guide, not a deadline.<span class="tn">Konjam steps oru saayangaalathula mudichidalam, sila steps ku oru vaaram aagum, scene list ku oru maasame aagalaam. Indha blueprint guide thaan, deadline illa.</span></p>
   </div>
   <div class="tip-box" style="margin-top:14px; border-left-color: var(--accent);">
-    <div class="label">SHORTCUTS &amp; FEATURES</div>
-    <p>Progress bar (top toolbar) tracks completion across all ${ALL_STEPS.length} steps. Step badges show <em>EMPTY · IN-PROGRESS · COMPLETE</em>. Tables have <strong>⎘</strong> duplicate and <strong>✕</strong> delete on every row. Step 6 has a live <em>Character Relationship Map</em>. Step 8 has a <em>Pacing Visualizer</em>. Step 11 has a <em>Scene Charge Timeline</em>. Step 15 has a <em>Color Palette Picker</em>. Step 23 auto-calculates your budget total &amp; breakdown bar. The Glossary is at the end. The bottom-right <strong>◷</strong> is a 25-min focus timer (right-click or Shift+click to reset).<br><br>Keyboard: <kbd>Ctrl+S</kbd> save · <kbd>Ctrl+D</kbd> theme · <kbd>Ctrl+K</kbd> command palette · <kbd>/</kbd> search · <kbd>?</kbd> every shortcut. Toolbar: <strong>JSON</strong> exports your data, <strong>MD</strong> exports a clean markdown document, <strong>▤</strong> hides all input fields for distraction-free reading.</p>
+    <div class="label">Shortcuts &amp; features</div>
+    <p>Progress bar (top toolbar) tracks completion across all ${ALL_STEPS.length} steps. Step badges show <em>Empty · In progress · Complete</em>. Tables have <strong>⎘</strong> duplicate and <strong>✕</strong> delete on every row. Step 6 has a live <em>Character Relationship Map</em>. Step 8 has a <em>Pacing Visualizer</em>. Step 11 has a <em>Scene Charge Timeline</em>. Step 15 has a <em>Color Palette Picker</em>. Step 23 auto-calculates your budget total &amp; breakdown bar. The Glossary is at the end. The bottom-right <strong>◷</strong> is a 25-min focus timer (right-click or Shift+click to reset).<br><br>Keyboard: <kbd>Ctrl+S</kbd> save · <kbd>Ctrl+D</kbd> theme · <kbd>Ctrl+K</kbd> command palette · <kbd>/</kbd> search · <kbd>?</kbd> every shortcut. Toolbar: <strong>JSON</strong> exports your data, <strong>MD</strong> exports a clean markdown document, <strong>▤</strong> hides all input fields for distraction-free reading.</p>
   </div>
 </section>
 `;
@@ -284,7 +284,7 @@ const LADDER_HTML       = `
          one box to a background the stylesheet could not reach, which
          is how it ended up with light panel ink on light paper. -->
     <div class="formula-box" style="margin: 20px 0; max-width: 720px;">
-      <span class="label">FORMULA</span>
+      <span class="label">Formula</span>
       <p style="margin-top: 6px; font-style: italic; font-size: 14.5px;">Each rung must be readable on its own. If you can't show a rung independently and have it work, the rung above it is also broken.</p>
       <p class="tn" style="margin-top: 8px; font-size: 13.5px; font-style: italic;">Tanglish: ovvoru rung um thaniya padichaalum sense aaganum. Oru rung break aagudhuna, adhukku mela irukura rung um break-thaan.</p>
     </div>
@@ -339,7 +339,7 @@ const INTERLUDE_HTML    = `
 const PART2_COVER_HTML = `
 <section class="vol-cover" id="part-2">
   <div>
-    <div class="master-mark">PART II</div>
+    <div class="master-mark">Part II</div>
     <div class="vol-tag">${partTag(2)}</div>
     <h2 class="vol-h">The <span class="light">Screenplay</span><br>Blueprint.</h2>
     <p class="sub">From a story with a spine to a locked script, in ${partWord(2)} guided steps — the scene list, the final check before FADE IN, the draft itself, and the lock.</p>
@@ -356,7 +356,7 @@ const PART2_COVER_HTML = `
 const DRAFT_HTML = `
 <section class="ladder-step draft-step" id="write-the-draft">
   <div class="ladder-intro">
-    <div class="draft-eyebrow">INTERLUDE · BETWEEN STEPS 12 AND 13</div>
+    <div class="draft-eyebrow">Interlude · between steps 12 and 13</div>
     <h2 class="draft-title">Write <em>the draft.</em></h2>
     <p class="draft-deck">This is the step the blueprint cannot do for you, and does not try to. The screenplay is written in the Screenplay Writer — formatted as you type, paginated the way the PDF will be, and read by the breakdown, the stripboard and the budget as soon as a scene heading exists. Come back for Step 13 when the draft is done.</p>
     <div class="draft-acts" data-draft-slot></div>
@@ -369,7 +369,7 @@ const DRAFT_HTML = `
 const PHASE3_COVER_HTML = `
 <section class="vol-cover" id="phase-3">
   <div>
-    <div class="master-mark">PART IV</div>
+    <div class="master-mark">Part IV</div>
     <div class="vol-tag">${partTag(4)}</div>
     <h2 class="vol-h">The <span class="light">Production</span><br>Blueprint.</h2>
     <p class="sub">The shoot itself — call sheets, continuity, dailies and the wrap. Checklists rather than prompts, because a shoot day is a list you work through before the light goes, not a question you sit with.</p>
@@ -385,7 +385,7 @@ const PHASE3_COVER_HTML = `
 const PHASE4_COVER_HTML = `
 <section class="vol-cover" id="phase-4">
   <div>
-    <div class="master-mark">PART V</div>
+    <div class="master-mark">Part V</div>
     <div class="vol-tag">${partTag(5)}</div>
     <h2 class="vol-h">The <span class="light">Post-Production</span><br>Blueprint.</h2>
     <p class="sub">Assembly to delivery. Half the film is made here, and it is the half that gets budgeted last — so it is written down first.</p>
@@ -401,7 +401,7 @@ const PHASE4_COVER_HTML = `
 const VOL2_COVER_HTML   = `
 <section class="vol-cover vol-2" id="vol-2">
   <div>
-    <div class="master-mark">PART III</div>
+    <div class="master-mark">Part III</div>
     <div class="vol-tag">${partTag(3)}</div>
     <h2 class="vol-h">The <span class="light">Pre-Production</span><br>Blueprint.</h2>
     <p class="sub">From a locked script to "ROLL CAMERA" — ${partWord(3)} guided steps for direction, design, and the discipline of pre-production.</p>
@@ -428,28 +428,28 @@ const HOWTO2_HTML       = `
     <li><strong>Print sections and hand to HODs.</strong> Schedule to AD, lookbook to DOP, budget to producer.</li>
   </ol>
   <div class="tip-box">
-    <div class="label">A NOTE ON SCALE</div>
+    <div class="label">A note on scale</div>
     <p>This works for a Rs. 5 lakh short and a Rs. 5 crore feature. The questions are the same — only the answers scale up.<span class="tn">Rs. 5 lakh short ku adhuvey, Rs. 5 crore feature ku adhuvey velai seyyum. Kelvigal same — answers thaan scale aagum.</span></p>
   </div>
 </section>
 `;
 const PHASE1_HTML       = `
 <section class="phase vol-2">
-  <div class="label">PART III · 1</div>
+  <div class="label">Part III · 1</div>
   <h2>From Script to <em>Vision.</em></h2>
   <p>Steps 14–16 — defining directorial intent, building the visual reference library, planning shot grammar.</p>
 </section>
 `;
 const PHASE2_HTML       = `
 <section class="phase vol-2">
-  <div class="label">PART III · 2</div>
+  <div class="label">Part III · 2</div>
   <h2>Building the <em>World.</em></h2>
   <p>Steps 17–20 — cinematography, production design, costume, casting. The departments that build the visible film.</p>
 </section>
 `;
 const PHASE3_HTML       = `
 <section class="phase vol-2">
-  <div class="label">PART III · 3</div>
+  <div class="label">Part III · 3</div>
   <h2>The <em>Logistics &amp; Lock.</em></h2>
   <p>Steps 21–24 — locations, sound, schedule &amp; budget, and the final tech recce that closes pre-production.</p>
 </section>
@@ -460,61 +460,61 @@ const GLOSSARY_HTML     = `
   <p class="deck">Every film term used in this blueprint, grouped by department. Bookmark this page — you'll come back to it whenever an HOD uses a word you don't recognise.</p>
 
   <div class="glossary-grid">
-    <div class="gloss-cat">CAMERA &amp; LENS</div>
+    <div class="gloss-cat">Camera &amp; lens</div>
     <dl class="gloss-item"><dt>FOCAL LENGTH (mm)</dt><dd>How "wide" or "tight" a lens sees. Lower mm = wider field. 24mm is wide, 50mm is "normal" (close to human eye), 85mm is portrait, 200mm is tele.</dd></dl>
-    <dl class="gloss-item"><dt>ANAMORPHIC</dt><dd>A lens that squeezes a wider image onto the sensor; gives 2.39:1 scope, oval bokeh, and horizontal flares. Iconic Tamil/Indian "cinematic" feel.</dd></dl>
-    <dl class="gloss-item"><dt>PROBE / MACRO</dt><dd>Speciality lenses for extreme close-ups (food, eyes, insects). Probe lenses can shoot inside very small spaces.</dd></dl>
-    <dl class="gloss-item"><dt>ASPECT RATIO</dt><dd>The width:height of the frame. 1.85:1 is "flat" cinema, 2.39:1 is "scope" / CinemaScope, 16:9 is TV, 9:16 is vertical/reels.</dd></dl>
-    <dl class="gloss-item"><dt>FRAME RATE (FPS)</dt><dd>Frames-per-second. 24 fps is the cinema standard. 25 fps is PAL/India broadcast. Higher fps (60, 120) is for slow motion.</dd></dl>
-    <dl class="gloss-item"><dt>RESOLUTION</dt><dd>How many pixels in the frame. 4K is roughly 4 times HD. Higher = more detail, but also more storage and longer post-production.</dd></dl>
+    <dl class="gloss-item"><dt>Anamorphic</dt><dd>A lens that squeezes a wider image onto the sensor; gives 2.39:1 scope, oval bokeh, and horizontal flares. Iconic Tamil/Indian "cinematic" feel.</dd></dl>
+    <dl class="gloss-item"><dt>Probe / macro</dt><dd>Speciality lenses for extreme close-ups (food, eyes, insects). Probe lenses can shoot inside very small spaces.</dd></dl>
+    <dl class="gloss-item"><dt>Aspect ratio</dt><dd>The width:height of the frame. 1.85:1 is "flat" cinema, 2.39:1 is "scope" / CinemaScope, 16:9 is TV, 9:16 is vertical/reels.</dd></dl>
+    <dl class="gloss-item"><dt>Frame rate (FPS)</dt><dd>Frames-per-second. 24 fps is the cinema standard. 25 fps is PAL/India broadcast. Higher fps (60, 120) is for slow motion.</dd></dl>
+    <dl class="gloss-item"><dt>Resolution</dt><dd>How many pixels in the frame. 4K is roughly 4 times HD. Higher = more detail, but also more storage and longer post-production.</dd></dl>
 
-    <div class="gloss-cat">SHOT &amp; COVERAGE TYPES</div>
-    <dl class="gloss-item"><dt>MASTER</dt><dd>The wide shot covering the entire scene from start to finish. Editor cuts away from the master to closer shots and back.</dd></dl>
+    <div class="gloss-cat">Shot &amp; coverage types</div>
+    <dl class="gloss-item"><dt>Master</dt><dd>The wide shot covering the entire scene from start to finish. Editor cuts away from the master to closer shots and back.</dd></dl>
     <dl class="gloss-item"><dt>WS / EWS</dt><dd>Wide Shot / Extreme Wide Shot. Sets location and scale. Character may be tiny in frame.</dd></dl>
     <dl class="gloss-item"><dt>MS / MCU</dt><dd>Medium Shot (waist up) / Medium Close-Up (chest up). Conversational distance.</dd></dl>
     <dl class="gloss-item"><dt>CU / ECU</dt><dd>Close-Up (face fills frame) / Extreme Close-Up (eyes, lips, an object). Reveals emotion or detail.</dd></dl>
     <dl class="gloss-item"><dt>OS</dt><dd>Over-the-Shoulder shot. Camera looks past one character at another. The standard of dialogue scenes.</dd></dl>
     <dl class="gloss-item"><dt>POV</dt><dd>Point-of-View shot — the camera is what a character is seeing. Used sparingly for impact.</dd></dl>
-    <dl class="gloss-item"><dt>2-SHOT</dt><dd>Two characters in frame together. Used to establish relationship and proximity.</dd></dl>
-    <dl class="gloss-item"><dt>INSERT / CUTAWAY</dt><dd>A close-up of an object (insert) or a brief glance away from the main action (cutaway). Used to emphasize or to give the editor a cut point.</dd></dl>
+    <dl class="gloss-item"><dt>2-shot</dt><dd>Two characters in frame together. Used to establish relationship and proximity.</dd></dl>
+    <dl class="gloss-item"><dt>Insert / cutaway</dt><dd>A close-up of an object (insert) or a brief glance away from the main action (cutaway). Used to emphasize or to give the editor a cut point.</dd></dl>
 
-    <div class="gloss-cat">CAMERA MOVEMENT</div>
-    <dl class="gloss-item"><dt>PAN / TILT</dt><dd>Pan = camera rotates horizontally on a fixed point. Tilt = vertical rotation. Camera doesn't move in space.</dd></dl>
-    <dl class="gloss-item"><dt>DOLLY</dt><dd>The whole camera moves on a wheeled platform. Dolly in = toward subject. Dolly out = away. Dolly with = beside a moving subject.</dd></dl>
-    <dl class="gloss-item"><dt>STEADICAM / GIMBAL</dt><dd>Stabilised handheld rigs. Steadicam is a body-worn mechanical rig; gimbal is electronic. Both let camera move smoothly without dolly tracks.</dd></dl>
-    <dl class="gloss-item"><dt>HANDHELD</dt><dd>Operator holds the camera with no stabilisation. Adds urgency, intimacy, immediacy. Documentary feel.</dd></dl>
-    <dl class="gloss-item"><dt>CRANE / JIB</dt><dd>Camera mounted on an arm that rises, falls, swoops. For grand reveals and overhead movement.</dd></dl>
-    <dl class="gloss-item"><dt>WHIP PAN</dt><dd>An ultra-fast pan, often used as a transition between scenes (e.g. action cinema or stylised cuts).</dd></dl>
+    <div class="gloss-cat">Camera movement</div>
+    <dl class="gloss-item"><dt>Pan / tilt</dt><dd>Pan = camera rotates horizontally on a fixed point. Tilt = vertical rotation. Camera doesn't move in space.</dd></dl>
+    <dl class="gloss-item"><dt>Dolly</dt><dd>The whole camera moves on a wheeled platform. Dolly in = toward subject. Dolly out = away. Dolly with = beside a moving subject.</dd></dl>
+    <dl class="gloss-item"><dt>Steadicam / gimbal</dt><dd>Stabilised handheld rigs. Steadicam is a body-worn mechanical rig; gimbal is electronic. Both let camera move smoothly without dolly tracks.</dd></dl>
+    <dl class="gloss-item"><dt>Handheld</dt><dd>Operator holds the camera with no stabilisation. Adds urgency, intimacy, immediacy. Documentary feel.</dd></dl>
+    <dl class="gloss-item"><dt>Crane / jib</dt><dd>Camera mounted on an arm that rises, falls, swoops. For grand reveals and overhead movement.</dd></dl>
+    <dl class="gloss-item"><dt>Whip pan</dt><dd>An ultra-fast pan, often used as a transition between scenes (e.g. action cinema or stylised cuts).</dd></dl>
 
-    <div class="gloss-cat">PRODUCTION</div>
+    <div class="gloss-cat">Production</div>
     <dl class="gloss-item"><dt>HOD</dt><dd>Head of Department. Each major area (camera, art, costume, sound) has one. The director collaborates with HODs, not every individual crew member.</dd></dl>
-    <dl class="gloss-item"><dt>1ST AD</dt><dd>First Assistant Director. The director's right hand on set. Owns the schedule, runs the floor, calls "rolling."</dd></dl>
+    <dl class="gloss-item"><dt>1st AD</dt><dd>First Assistant Director. The director's right hand on set. Owns the schedule, runs the floor, calls "rolling."</dd></dl>
     <dl class="gloss-item"><dt>DOP / DP</dt><dd>Director of Photography / Cinematographer. Runs the camera and lighting departments. Translates the director's vision into images.</dd></dl>
-    <dl class="gloss-item"><dt>GAFFER</dt><dd>Chief lighting technician. Reports to the DOP. Plans and executes the lighting design.</dd></dl>
-    <dl class="gloss-item"><dt>RECCE</dt><dd>Reconnaissance — visiting locations before shoot. Tech recce = full HOD walkthrough at the time of day you'll actually shoot.</dd></dl>
-    <dl class="gloss-item"><dt>CALL SHEET</dt><dd>The daily schedule sent to crew the night before — call times, locations, scenes, cast required, weather, contacts. The sacred document.</dd></dl>
-    <dl class="gloss-item"><dt>DAY-OUT-OF-DAYS</dt><dd>A document showing which actors and crew are needed on which days. Drives the schedule and the contracts.</dd></dl>
-    <dl class="gloss-item"><dt>DOOD / DAY-PLAYER</dt><dd>An actor/crew member booked for a single day or short stretch, not the full shoot.</dd></dl>
+    <dl class="gloss-item"><dt>Gaffer</dt><dd>Chief lighting technician. Reports to the DOP. Plans and executes the lighting design.</dd></dl>
+    <dl class="gloss-item"><dt>Recce</dt><dd>Reconnaissance — visiting locations before shoot. Tech recce = full HOD walkthrough at the time of day you'll actually shoot.</dd></dl>
+    <dl class="gloss-item"><dt>Call sheet</dt><dd>The daily schedule sent to crew the night before — call times, locations, scenes, cast required, weather, contacts. The sacred document.</dd></dl>
+    <dl class="gloss-item"><dt>Day-out-of-days</dt><dd>A document showing which actors and crew are needed on which days. Drives the schedule and the contracts.</dd></dl>
+    <dl class="gloss-item"><dt>DOOD / day-player</dt><dd>An actor/crew member booked for a single day or short stretch, not the full shoot.</dd></dl>
 
-    <div class="gloss-cat">BUDGET</div>
+    <div class="gloss-cat">Budget</div>
     <dl class="gloss-item"><dt>ATL — Above-the-line</dt><dd>Costs locked before production: writer, director, producer, lead cast. The "names" on the poster.</dd></dl>
     <dl class="gloss-item"><dt>BTL — Below-the-line</dt><dd>Everything else: crew daily rates, equipment, locations, transport, food, insurance.</dd></dl>
-    <dl class="gloss-item"><dt>POST</dt><dd>Post-production costs: edit, sound mix, music, color grade, VFX, deliverables.</dd></dl>
-    <dl class="gloss-item"><dt>CONTINGENCY</dt><dd>The reserve fund (usually 10–15%) for the unexpected. Weather days, equipment failure, illness. Don't shoot without one.</dd></dl>
+    <dl class="gloss-item"><dt>Post</dt><dd>Post-production costs: edit, sound mix, music, color grade, VFX, deliverables.</dd></dl>
+    <dl class="gloss-item"><dt>Contingency</dt><dd>The reserve fund (usually 10–15%) for the unexpected. Weather days, equipment failure, illness. Don't shoot without one.</dd></dl>
 
-    <div class="gloss-cat">SOUND</div>
-    <dl class="gloss-item"><dt>DIEGETIC</dt><dd>Sound that exists inside the world of the film — characters can hear it (a radio in the room, footsteps).</dd></dl>
-    <dl class="gloss-item"><dt>NON-DIEGETIC</dt><dd>Sound only the audience hears — background score, voiceover, sound design that comments on the action.</dd></dl>
-    <dl class="gloss-item"><dt>FOLEY</dt><dd>Reproduced everyday sounds (footsteps, fabric, doors) recorded in post by Foley artists matched to picture.</dd></dl>
-    <dl class="gloss-item"><dt>5.1 / 7.1 / ATMOS</dt><dd>Surround mix formats. 5.1 = 5 speakers + sub. 7.1 = 7 + sub. Atmos = object-based 3D sound including overhead.</dd></dl>
-    <dl class="gloss-item"><dt>SCRATCH TRACK</dt><dd>A temporary score (often a famous film's music) used during edit so the team can feel rhythm before the real composer delivers.</dd></dl>
+    <div class="gloss-cat">Sound</div>
+    <dl class="gloss-item"><dt>Diegetic</dt><dd>Sound that exists inside the world of the film — characters can hear it (a radio in the room, footsteps).</dd></dl>
+    <dl class="gloss-item"><dt>Non-diegetic</dt><dd>Sound only the audience hears — background score, voiceover, sound design that comments on the action.</dd></dl>
+    <dl class="gloss-item"><dt>Foley</dt><dd>Reproduced everyday sounds (footsteps, fabric, doors) recorded in post by Foley artists matched to picture.</dd></dl>
+    <dl class="gloss-item"><dt>5.1 / 7.1 / Atmos</dt><dd>Surround mix formats. 5.1 = 5 speakers + sub. 7.1 = 7 + sub. Atmos = object-based 3D sound including overhead.</dd></dl>
+    <dl class="gloss-item"><dt>Scratch track</dt><dd>A temporary score (often a famous film's music) used during edit so the team can feel rhythm before the real composer delivers.</dd></dl>
 
-    <div class="gloss-cat">SCREENWRITING</div>
-    <dl class="gloss-item"><dt>SLUG / SLUGLINE</dt><dd>The first line of every scene: <code>INT. KITCHEN — NIGHT</code>. Tells the reader where and when.</dd></dl>
-    <dl class="gloss-item"><dt>BEAT</dt><dd>A unit of dramatic action — a turning point or shift. The 15-beat structure breaks a film into its essential beats.</dd></dl>
-    <dl class="gloss-item"><dt>CHARGE</dt><dd>The emotional value of a scene. If a scene starts negative and ends positive (or vice versa), the charge has flipped — that's drama.</dd></dl>
-    <dl class="gloss-item"><dt>SETUP / PAYOFF</dt><dd>Setup = a detail planted earlier (subtly). Payoff = when it returns and means more. Distance + reframing = power.</dd></dl>
-    <dl class="gloss-item"><dt>LOGLINE</dt><dd>The film in one sentence — usually under 30 words, with inciting event, protagonist, goal, obstacle, stakes.</dd></dl>
+    <div class="gloss-cat">Screenwriting</div>
+    <dl class="gloss-item"><dt>Slug / slugline</dt><dd>The first line of every scene: <code>INT. KITCHEN — NIGHT</code>. Tells the reader where and when.</dd></dl>
+    <dl class="gloss-item"><dt>Beat</dt><dd>A unit of dramatic action — a turning point or shift. The 15-beat structure breaks a film into its essential beats.</dd></dl>
+    <dl class="gloss-item"><dt>Charge</dt><dd>The emotional value of a scene. If a scene starts negative and ends positive (or vice versa), the charge has flipped — that's drama.</dd></dl>
+    <dl class="gloss-item"><dt>Setup / payoff</dt><dd>Setup = a detail planted earlier (subtly). Payoff = when it returns and means more. Distance + reframing = power.</dd></dl>
+    <dl class="gloss-item"><dt>Logline</dt><dd>The film in one sentence — usually under 30 words, with inciting event, protagonist, goal, obstacle, stakes.</dd></dl>
     <dl class="gloss-item"><dt>WANT vs NEED</dt><dd>Want = what the protagonist consciously chases. Need = what they actually require to be whole. The arc is the gap between them.</dd></dl>
   </div>
 </section>
@@ -547,7 +547,7 @@ function jumpOptionsHTML() {
   ).join('');
 
   return `
-    <optgroup label="OVERVIEW">
+    <optgroup label="Overview">
       <option value="top">↑ Master cover</option>
       <option value="pitch-deck">→ Pitch Deck</option>
       <option value="sync-section">→ Sync &amp; backup</option>
@@ -571,7 +571,7 @@ function renderToolbar() {
     href: 'index.html', title: 'Back to Studio · current project'
   });
   proj.append(h('span.spl-arrow', { text: '←' }),
-              h('span#studioProjLabel.spl-label', { text: 'STUDIO' }));
+              h('span#studioProjLabel.spl-label', { text: 'Studio' }));
 
   const meter = h('div.progress-meter', { title: 'Overall completion across all ' + ALL_STEPS.length + ' steps' });
   const track = h('div.progress-bar');
@@ -1043,7 +1043,7 @@ function assignStepIds() {
       meta.className = 'step-meta';
       meta.innerHTML = `
           ${time ? `<span class="step-time-tag">${esc(time)}</span>` : ''}
-          <span class="step-badge" data-step="${n}">EMPTY</span>
+          <span class="step-badge" data-step="${n}">Empty</span>
         `;
       header.appendChild(meta);
       // The duration now lives in .step-meta beside the badge, which is
@@ -1090,9 +1090,9 @@ function updateStepBadges() {
     const { total, done } = computeStepCompletion(s);
     const pct = completionPct(total, done);
     badge.classList.remove('in-progress', 'complete');
-    if (pct === 0) badge.textContent = 'EMPTY';
-    else if (pct >= 100) { badge.textContent = '✓ COMPLETE'; badge.classList.add('complete'); }
-    else { badge.textContent = pct + '% IN-PROGRESS'; badge.classList.add('in-progress'); }
+    if (pct === 0) badge.textContent = 'Empty';
+    else if (pct >= 100) { badge.textContent = '✓ Complete'; badge.classList.add('complete'); }
+    else { badge.textContent = pct + '% in progress'; badge.classList.add('in-progress'); }
   });
 }
 

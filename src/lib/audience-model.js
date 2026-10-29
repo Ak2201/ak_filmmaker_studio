@@ -617,13 +617,13 @@ export function resultNote(res) {
 export function resultText(res, keep = null) {
   const on = (id) => !keep || keep.has(id);
   const U = unitOf(res);
-  const L = ['AUDIENCE TEST' + (U === UNITS.Sc ? '' : ' OF THE STORY') + ' — ' + plural(res.panel.length, 'VIEWER', 'VIEWERS'), SIMULATED_LINE];
+  const L = ['Audience test' + (U === UNITS.Sc ? '' : ' of the story') + ' — ' + plural(res.panel.length, 'viewer', 'viewers'), SIMULATED_LINE];
   if (res.agreed) L.push('The panel barely disagreed, so treat this as one reader\'s view.');
   L.push('');
   for (const p of res.panel) {
     if (!on('v:' + p.id)) continue;
     const v = res.verdicts[p.id] || {};
-    L.push(p.label.toUpperCase() + ' — ' + (verdictWord(res, p.id) || NO_VERDICT));
+    L.push(p.label + ' — ' + (verdictWord(res, p.id) || NO_VERDICT));
     L.push('  ' + p.who);
     if (v.voice) L.push('  “' + v.voice + '”');
     const det = viewerDetail(res, p);
@@ -635,11 +635,11 @@ export function resultText(res, keep = null) {
   }
   const panelRows = resultItems(res).filter((it) => !it.id.startsWith('v:') && on(it.id));
   if (panelRows.length) {
-    L.push('THE PANEL');
+    L.push('The panel');
     for (const it of panelRows) L.push('  · ' + it.text);
     L.push('');
   }
-  L.push('ENGAGEMENT PER ' + U.one.toUpperCase() + ' (panel mean, -2 to +2)');
+  L.push('Engagement per ' + U.one.toLowerCase() + ' (panel mean, -2 to +2)');
   L.push('  ' + res.order.map((n, i) => n + ':' + (res.mean[i] == null ? '-' : res.mean[i])).join('  '));
   if (res.model) L.push('', 'Read by ' + res.model + '.');
   return L.join('\n');

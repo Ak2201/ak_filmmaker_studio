@@ -755,7 +755,7 @@ export default defineConfig({
       injectManifest: {
         // The app shell, all four pages, the manifest and the icons.
         globPatterns: ['**/*.{html,js,css,svg,png,ico,webmanifest,woff,woff2}'],
-        // Recorded media (public/media/**) is fetched on demand, never precached.
+        // Recorded media (public/media/** video thumbnails, public/marketing/**) is fetched on demand, never precached.
         globIgnores: ['media/**', 'marketing/**'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024
       }

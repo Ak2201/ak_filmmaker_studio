@@ -25,8 +25,8 @@ Two builds matter: `npm run build` is the gated build (what the hosts run),
 
 In `package.json` but in neither `test:all`, `ship` nor CI (run by hand):
 `prove:stage-guide`, `prove:board-frames`, `test:videos:online`
-(needs the network), `density`, `live-checks`, `smoke`, `demo`, `thumbs`,
-`shots`, `record:marketing`, `make:marketing` (its drift check
+(needs the network), `density`, `live-checks`, `smoke`, `thumbs`,
+`record:marketing`, `make:marketing` (its drift check
 `test:marketing` IS in `test:all`). In `ship` but not CI: `prove:tamil`,
 `prove:walk`. In CI but not `ship`: `prove:ai-desk`, `prove:nav`.
 
@@ -128,8 +128,6 @@ Re-run after the input they derive from changes; none runs in `ship`.
 | --- | --- | --- |
 | `make-marketing-pages.mjs` | `make:marketing` | Home, `pricing.html` and the `product-<id>.html` pages from `src/data/marketing-*.json` (`test:marketing` fails on drift). |
 | `record-marketing-media.mjs` | `record:marketing` | `public/marketing/` loops, posters and stills (see `public/marketing/README.md`). Needs `build:open`, Chromium, ffmpeg. |
-| `make-shots.mjs` | `shots` | `public/shots/*.webp`, four product screenshots for `start.html`. Needs `build:open`. |
-| `make-demo.mjs` | `demo` | `public/media/demo.mp4` and `demo-poster.webp`. Needs ffmpeg. |
 | `make-video-thumbs.mjs` | `thumbs` | Video thumbnails served from our own origin. Network, once. |
 | `make-og.mjs` | `og` | `public/og.png`, from `tokens.css` and `brand.json`. |
 | `make-icons.mjs` | `icons` | PWA icons under `public/icons/`. |

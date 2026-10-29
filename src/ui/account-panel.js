@@ -122,7 +122,7 @@ function renderCreate() {
         + 'either way — this adds a shared space, it does not move anything '
         + 'into one.'
   }));
-  wrap.append(h('label.acct-label', { for: 'acctName', text: 'STUDIO NAME' }));
+  wrap.append(h('label.acct-label', { for: 'acctName', text: 'Studio name' }));
   wrap.append(h('input#acctName.acct-input', {
     type: 'text', placeholder: 'My Studio', autocomplete: 'off', spellcheck: 'false'
   }));
@@ -152,7 +152,7 @@ function renderMembers(d, myEmail) {
 
   if (canManage && d.seats.used < d.seats.limit) {
     const form = h('div.acct-invite');
-    form.append(h('label.acct-label', { for: 'acctEmail', text: 'INVITE BY EMAIL' }));
+    form.append(h('label.acct-label', { for: 'acctEmail', text: 'Invite by email' }));
     form.append(h('input#acctEmail.acct-input', {
       type: 'email', placeholder: 'someone@example.com',
       autocomplete: 'off', spellcheck: 'false'
@@ -191,7 +191,7 @@ function renderMembers(d, myEmail) {
    shared space, the other decides what goes in it. */
 function filmsBlock(d) {
   const wrap = h('div.acct-films');
-  wrap.append(h('p.acct-label', { text: 'FILMS IN THIS ACCOUNT' }));
+  wrap.append(h('p.acct-label', { text: 'Films in this account' }));
 
   const rows = d.projects || [];
   if (!rows.length) {

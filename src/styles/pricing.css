@@ -87,7 +87,7 @@
   border-radius: var(--radius-pill); background: var(--brand); color: var(--brand-on);
   font-size: var(--t-tiny); font-weight: 700; letter-spacing: .02em; max-width: none;
 }
-.pr-tier-tag { font-size: var(--t-tiny); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-muted); }
+.pr-tier-tag { font-size: var(--t-small); font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 .pr-tier-name { font-family: var(--face-display); font-size: var(--t-2xl); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; color: var(--ink); }
 .pr-tier-line { margin: 0; max-width: none; font-size: var(--t-small); line-height: 1.55; color: var(--ink-body); min-height: 3.1em; }
 .pr-price {
@@ -157,7 +157,7 @@
 .pr-th-price { display: block; margin-top: var(--s1); font-size: var(--t-small); font-weight: 600; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
 .pr-group th {
   padding: var(--s6) var(--s3) var(--s2); text-align: left; background: transparent;
-  font-size: var(--t-tiny); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--brand-deep);
+  font-size: var(--t-small); font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-muted);
   border-bottom: 1px solid var(--border-default);
 }
 .pr-table tbody tr:not(.pr-group) > * { padding: var(--s3) var(--s2); border-bottom: 1px solid var(--border-hair); }
@@ -187,8 +187,8 @@
   content: ''; position: absolute; inset: 0; margin: auto; width: 10px; height: 10px;
   border-radius: var(--radius-pill); background: var(--accent-primary); transition: transform var(--speed-lazy) var(--ease);
 }
-.pr-acc summary:hover .mk-mark::after { transform: scale(1.8); }
-.pr-acc[open] .mk-mark::after { transform: scale(3.1); }
+.pr-acc summary .sym { flex: none; font-size: 28px; color: var(--brand-deep); transition: transform var(--speed) var(--ease); }   /* a chevron, like the comparison disclosure: a ringed dot reads as a radio */
+.pr-acc[open] summary .sym { transform: rotate(180deg); }
 .pr-qa { margin: 0; padding: 0 0 var(--s6); display: grid; gap: var(--s2); }
 .pr-qa dt { margin-top: var(--s4); font-weight: 700; color: var(--ink); }
 .pr-qa dt:first-child { margin-top: 0; }
@@ -217,7 +217,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pr-tier, .pr-more-s .sym, .mk-mark::after { transition: none; }
+  .pr-tier, .pr-more-s .sym, .pr-acc summary .sym, .mk-mark::after { transition: none; }
 }
 
 /* ---- students and film schools: one band under the cards, no price ----

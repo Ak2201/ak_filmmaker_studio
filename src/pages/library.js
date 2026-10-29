@@ -51,11 +51,12 @@ import '../styles/modules.css';
 import '../styles/rates.css';
 import '../styles/library-shelf.css';
 import '../styles/library-books.css';
+import '../styles/library-films.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
-import { panel, pageHeader, button } from '../ui/kit/index.js';
+import { panel, pageHeader, button, chip } from '../ui/kit/index.js';
 import { shelves } from '../lib/navmodel.js';
 import PlanGate from '../lib/plan-gate.js';
 import { mountCaseStudies } from '../ui/case-studies.js';
@@ -181,12 +182,12 @@ const MENU = {
 const SECTIONS = [
   {
     id: 'films',
-    nav: 'FILMS',
+    nav: 'Films',
     tab: 'Films',
-    title: 'The Tamil Cinema <em>Craft Library.</em>',
+    title: 'The Tamil Cinema Craft Library.',
     tocTitle: 'Tamil Cinema Craft Library',
     tocDesc: `${N_FILMS} films, what to learn from each`,
-    count: `${N_FILMS} FILMS`,
+    count: `${N_FILMS} films`,
     deck: `${cap(numWord(N_FILMS))} films, mostly Tamil with a few Malayalam ` +
           `neighbours. For each one, the single craft lesson worth taking. ` +
           `Not reviews — extractable techniques you can apply to your own work.`,
@@ -194,9 +195,9 @@ const SECTIONS = [
   },
   {
     id: 'directors',
-    nav: 'DIRECTORS',
+    nav: 'Directors',
     tab: 'Directors',
-    title: 'Director <em>Archetypes.</em>',
+    title: 'Director Archetypes.',
     tocTitle: 'Director Archetypes',
     tocDesc: `${N_DIRECTORS} voices to study`,
     count: `${N_DIRECTORS} ARCHETYPES`,
@@ -208,7 +209,7 @@ const SECTIONS = [
   },
   {
     id: 'rules',
-    nav: 'RULES',
+    nav: 'Rules',
     tab: 'Rules',
     title: `${cap(numWord(N_RULES))} <em>Rules of Thumb.</em>`,
     tocTitle: `${N_RULES} Rules of Thumb`,
@@ -222,9 +223,9 @@ const SECTIONS = [
      so openShelves() always keeps them. */
   {
     id: 'emotional-impact',
-    nav: 'EMOTIONAL IMPACT',
+    nav: 'Emotional impact',
     tab: 'Emotional impact',
-    title: 'Writing for <em>Emotional Impact.</em>',
+    title: 'Writing for Emotional Impact.',
     tocTitle: 'Writing for Emotional Impact',
     tocDesc: `${bookEI.tools.length} tools for engineering what the reader feels`,
     count: `${bookEI.tools.length} TOOLS`,
@@ -236,9 +237,9 @@ const SECTIONS = [
   },
   {
     id: 'save-the-cat',
-    nav: 'SAVE THE CAT',
+    nav: 'Save the Cat',
     tab: 'Save the Cat',
-    title: 'Save the <em>Cat.</em>',
+    title: 'Save the Cat.',
     tocTitle: 'Save the Cat',
     tocDesc: `Logline, ${bookSTC.genres.items.length} genres, ${bookSTC.beats.items.length} beats and the Board`,
     count: `${bookSTC.beats.items.length} BEATS · ${bookSTC.genres.items.length} GENRES`,
@@ -251,13 +252,13 @@ const SECTIONS = [
   },
   {
     id: 'equipment',
-    nav: 'EQUIPMENT',
+    nav: 'Equipment',
     tab: 'Equipment',
     /* The estimator moved to budget.html; this section kept only the
        rate tables, and its title still advertised the calculator and
        told the reader to "use the calculator at the bottom". It names
        what is here now, and the deck routes to the Budget page. */
-    title: 'Equipment &amp; <em>Rates.</em>',
+    title: 'Equipment &amp; Rates.',
     tocTitle: 'Equipment & Rates',
     tocDesc: `Chennai ${rates.asOf} indicative ranges, some re-checked ${rateChecks.lastChecked}`,
     count: `${N_TABLES} RATE TABLES · ${rates.asOf}`,
@@ -269,12 +270,12 @@ const SECTIONS = [
   },
   {
     id: 'watch',
-    nav: 'WATCH LIST',
+    nav: 'Watch list',
     tab: 'Watch list',
-    title: 'Watch List <em>per Step.</em>',
+    title: 'Watch List per Step.',
     tocTitle: 'Watch List per Step',
     tocDesc: `${FILMS_PER_STEP} films for each of the first ${N_STEPS} of ${N_BLUEPRINT} blueprint steps`,
-    count: `${N_WATCHFILMS} FILMS · ${N_STEPS} STEPS`,
+    count: `${N_WATCHFILMS} films · ${N_STEPS} steps`,
     deck: `For every one of the first ${N_STEPS} blueprint steps (story and writing; the ` +
           `Feature Blueprint runs to ${N_BLUEPRINT}), ${numWord(FILMS_PER_STEP)} ` +
           `films to study for that exact craft concept. ${N_WATCHFILMS} films total. ` +
@@ -287,11 +288,11 @@ const SECTIONS = [
      this strip cannot name one tool three ways. */
   {
     id: 'case-studies',
-    nav: 'CASE STUDIES',
-    title: 'Case <em>Studies.</em>',
+    nav: 'Case studies',
+    title: 'Case Studies.',
     tocTitle: 'Case Studies',
     tocDesc: `${N_STUDIES} films, read beat by beat`,
-    count: `${N_STUDIES} FILMS`,
+    count: `${N_STUDIES} films`,
     deck: `Pick one of ${numWord(N_STUDIES)} films and every card below speaks in its ` +
           `terms: the concept, the logline, the characters, the beats, the scene ` +
           `craft. Each card is the same three steps — what the thing is, how this ` +
@@ -300,11 +301,11 @@ const SECTIONS = [
   },
   {
     id: 'dissection',
-    nav: 'DISSECTION',
-    title: 'Film <em>Dissection.</em>',
+    nav: 'Dissection',
+    title: 'Film Dissection.',
     tocTitle: 'Film Dissection',
     tocDesc: 'A finished film taken apart, then yours',
-    count: `${N_DISSECTED} WORKED ${N_DISSECTED === 1 ? 'EXAMPLE' : 'EXAMPLES'}`,
+    count: `${N_DISSECTED} worked ${N_DISSECTED === 1 ? 'example' : 'examples'}`,
     deck: 'The blueprints build a script forwards. This runs the other way: ' +
           'start with a film that works, and name the job every sequence is doing. ' +
           'Read the worked example, then fill the same fields in about yours.',
@@ -312,12 +313,12 @@ const SECTIONS = [
   },
   {
     id: 'glossary',
-    nav: 'TERMINOLOGY',
+    nav: 'Terminology',
     tab: 'Film terminology',
-    title: 'Film <em>Terminology.</em>',
+    title: 'Film Terminology.',
     tocTitle: 'Film Terminology',
     tocDesc: 'From logline to edit sheet: every term, with examples',
-    count: 'FILM TERMINOLOGY',
+    count: 'Film terminology',
     deck: 'Every term a filmmaker meets, from logline to edit sheet, grouped by the ' +
           'stage where it matters. Each opens with a plain definition, a Tanglish line, ' +
           'an example in your favourite film and, where there is one, a short video. ' +
@@ -471,7 +472,7 @@ function renderCover() {
   return [head, h('section.cover', {}, [
     h('div', {}, [
       h('div.cover-row', {}, [
-        /* 8B pass (28 Oct 2026): the "N SHELVES" pill beside this line
+        /* 8B pass (28 Oct 2026): the "N shelves" pill beside this line
            left; the cards below are the count. */
         h('p.cover-sub', { text: blurb })
       ]),
@@ -566,11 +567,11 @@ function renderContents() {
   return h('div#library-index.lib-contents', {}, [
     h('div.section-head', {}, [
       h('div.left', {}, [
-        h('div.label', { text: 'THE LIBRARY · INDEX' }),
+        h('div.label', { text: 'The library · index' }),
         h('h2', { html: 'The library <em>index.</em>' }),
         h('p.deck', { text: 'Every shelf, and the films, directors, rate tables and watch-list steps on it, in one place. Open one to jump straight in.' })
       ]),
-      h('div.right', { text: `${openShelves().length} SHELVES` })
+      h('div.right', { text: `${openShelves().length} shelves` })
     ]),
     h('div.lib-contents-grid', {}, secs.map((s) => {
       const head = h('a.lib-contents-head', { href: `#${s.id}` }, [
@@ -607,13 +608,23 @@ function renderSectionHead(section) {
 /* ============================================================
    SECTION I — FILMS
    ============================================================ */
+/* films.json is typed in capitals (it comes from the 2023 pages and
+   `npm run extract` rewrites it), so the card sets the case instead of
+   the data: an all-capitals string becomes sentence case, a name
+   becomes Title Case. Mixed-case text is left exactly as written. */
+const isCaps = (t) => /[A-Z]/.test(t) && t === t.toUpperCase();
+const lowerFirst = (t) => t.toLowerCase().replace(/^(\P{L}*)(\p{L})/u, (_, a, b) => a + b.toUpperCase());
+const sentenceCase = (t) => (isCaps(String(t || '')) ? lowerFirst(String(t)) : String(t || ''));
+const nameCase = (t) => (isCaps(String(t || '')) ? String(t).toLowerCase().replace(/(^|[\s\-\u2013.])(\p{L})/gu, (_, a, b) => a + b.toUpperCase()) : String(t || ''));
+const metaCase = (t) => String(t || '').split(' \u00b7 ').map(sentenceCase).join(' \u00b7 ');
+
 function renderFilms() {
   return h('section.section-body', {}, [
     h('div.films-grid', {}, films.map((f) => h('article.film-card', { id: filmId(f.title) }, [
-      h('div.meta', { text: f.meta }),
       h('h3', { text: f.title }),
-      h('div.director', { text: f.director }),
-      h('div.tags', {}, (f.tags || []).map((t) => h('span.tag', { text: t }))),
+      h('div.director', { text: nameCase(f.director) }),
+      h('div.meta', { text: metaCase(f.meta) }),
+      h('div.tags', {}, (f.tags || []).map((t) => chip({ label: sentenceCase(t) }))),
       h('p.lesson', { html: f.lesson }, [
         f.tanglish ? h('span.tn', { html: f.tanglish }) : null
       ]),
@@ -676,7 +687,7 @@ function renderRules() {
    ============================================================ */
 function bookCredit(c) {
   return h('aside.book-credit', { 'aria-label': 'Recommended reading' }, [
-    h('div.book-label', { text: 'RECOMMENDED READING' }),
+    h('div.book-label', { text: 'Recommended reading' }),
     h('p.book-credit-title', {}, [
       h('cite', { text: c.title }),
       h('span.book-credit-meta', { text: ` · ${c.author} · ${c.publisher}, ${c.year}` })
@@ -692,7 +703,7 @@ function bookBlock(label, children) {
 function bookExample(ex, label) {
   if (!ex) return null;
   return h('div.book-example', {}, [
-    h('div.book-label', { text: label || 'IN A STUDIED FILM' }),
+    h('div.book-label', { text: label || 'In a studied film' }),
     h('p.book-example-head', {}, [
       h('span.book-example-film', { text: ex.film }),
       ex.function ? h('span.book-example-fn', { text: ex.function }) : null
@@ -703,7 +714,7 @@ function bookExample(ex, label) {
 
 function bookChecklist(items, label) {
   return h('div.book-check', {}, [
-    h('h4.book-label', { text: label || 'APPLY IT TO YOUR SCRIPT' }),
+    h('h4.book-label', { text: label || 'Apply it to your script' }),
     h('ul', {}, items.map((t) => h('li', { text: t })))
   ]);
 }
@@ -738,12 +749,12 @@ function renderEmotionalImpact() {
       ])
     ]),
     h('div.book-cols', {}, [
-      bookBlock('WHAT IT IS', [h('p.book-p', { text: t.what })]),
-      bookBlock('WHY IT WORKS ON AN AUDIENCE', [h('p.book-p', { text: t.why })])
+      bookBlock('What it is', [h('p.book-p', { text: t.what })]),
+      bookBlock('Why it works on an audience', [h('p.book-p', { text: t.why })])
     ]),
-    bookBlock('HOW TO BUILD IT ON THE PAGE', [h('ol.book-list', {}, t.how.map((x) => h('li', { text: x })))]),
+    bookBlock('How to build it on the page', [h('ol.book-list', {}, t.how.map((x) => h('li', { text: x })))]),
     h('div.book-cols', {}, [
-      bookBlock('COMMON MISTAKES', [h('ul.book-list.book-list-x', {}, t.mistakes.map((x) => h('li', { text: x })))]),
+      bookBlock('Common mistakes', [h('ul.book-list.book-list-x', {}, t.mistakes.map((x) => h('li', { text: x })))]),
       bookExample(t.example)
     ]),
     bookChecklist(t.checklist)
@@ -800,7 +811,7 @@ function renderSaveTheCat() {
     h('h3.book-h3', { text: L.title }),
     ...L.paragraphs.map((p) => h('p.book-p', { text: p })),
     h('dl.book-defs', {}, L.qualities.flatMap((q) => [h('dt', { text: q.label }), h('dd', { text: q.text })])),
-    h('div.book-template', {}, [h('div.book-label', { text: 'A SHAPE TO START FROM' }), h('p', { text: L.template })]),
+    h('div.book-template', {}, [h('div.book-label', { text: 'A shape to start from' }), h('p', { text: L.template })]),
     h('div.book-cols', {}, L.examples.map((ex) => bookExample(ex))),
     bookChecklist(L.checklist)
   ]);
@@ -816,7 +827,7 @@ function renderSaveTheCat() {
       ]),
       h('p.book-p', { text: g.engine }),
       h('p.book-p.book-question', {}, [h('strong', { text: 'Ask yourself. ' }), g.question]),
-      bookExample({ film: g.example.film, text: g.example.text }, 'TAMIL EXAMPLE')
+      bookExample({ film: g.example.film, text: g.example.text }, 'Tamil example')
     ])))
   ]);
 
@@ -836,7 +847,7 @@ function renderSaveTheCat() {
         bookExample({ film: x.film.name, text: x.film.text })
       ])
     ]))),
-    bookChecklist(B.checklist, 'CHECK YOUR BEATS')
+    bookChecklist(B.checklist, 'Check your beats')
   ]);
 
   const BD = b.board;
@@ -850,8 +861,8 @@ function renderSaveTheCat() {
         h('p.book-board-beats', { text: r.beats })
       ]))),
     h('div.book-cols', {}, [
-      bookBlock('ON EACH CARD', [h('dl.book-defs', {}, BD.card.flatMap((c) => [h('dt', { text: c.label }), h('dd', { text: c.text })]))]),
-      bookBlock('HOW TO USE IT', [h('ol.book-list', {}, BD.steps.map((x) => h('li', { text: x })))])
+      bookBlock('On each card', [h('dl.book-defs', {}, BD.card.flatMap((c) => [h('dt', { text: c.label }), h('dd', { text: c.text })]))]),
+      bookBlock('How to use it', [h('ol.book-list', {}, BD.steps.map((x) => h('li', { text: x })))])
     ]),
     h('p.book-p.book-aside', { text: BD.studio })
   ]);
@@ -1123,7 +1134,7 @@ function termCard(t, g, byName) {
   const see = seeAlso(t, byName);
   if (see.length) {
     card.append(h('div.lib-term-see', {}, [
-      h('span.lib-term-see-label', { text: 'SEE ALSO ' }),
+      h('span.lib-term-see-label', { text: 'See also ' }),
       ...see.map((n) => h('a', { href: '#' + slugOf(byName.get(String(n).toLowerCase()).term), text: byName.get(String(n).toLowerCase()).term }))
     ]));
   }
@@ -1150,7 +1161,7 @@ function drawTerms(g) {
   // the counts, now that they are known
   const nFilms = Object.keys(g.films || {}).length;
   const right = document.querySelector('#glossary .section-head .right');
-  if (right) right.textContent = `${terms.length} TERMS · ${nFilms} FILMS`;
+  if (right) right.textContent = `${terms.length} terms · ${nFilms} films`;
   const toc = document.querySelector('.toc-item[href="#glossary"] .desc');
   if (toc) toc.textContent = `${terms.length} terms, logline to edit sheet, each in ${numWord(nFilms)} films`;
   const count = document.getElementById('libGlossCount');
@@ -1197,7 +1208,7 @@ function renderFinal() {
       '"Watch films like a director, not an audience.', h('br'),
       'Then write films like an audience, not a director."'
     ]),
-    h('div.signature', {}, ['THE FILMMAKER\'S LIBRARY'])
+    h('div.signature', {}, ['The filmmaker\'s library'])
   ]);
 }
 

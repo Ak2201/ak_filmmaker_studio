@@ -272,3 +272,67 @@
   src: url('../../node_modules/@fontsource/noto-sans-tamil/files/noto-sans-tamil-tamil-700-normal.woff2') format('woff2');
   unicode-range: U+0964-0965,U+0B82-0BFA,U+200C-200D,U+20B9,U+25CC;
 }
+
+/* ------------------------------------------------------------
+   GLYPH FALLBACK — the few code points Onest and Gabarito do not ship
+   (owner round 2b, 29 Oct 2026). Their latin/latin-ext subsets have no
+   rupee sign, no almost-equal, no geometric shapes and no heavy
+   asterisk, so the browser reached for whatever system face had them
+   and prices, "≈ 3 days", ▾ ▶ ◯ ▢ and ✱ changed face mid-line.
+
+   TWO families, and the split is load-bearing: Chromium picks ONE
+   weight group per family from the requested weight and only then
+   looks at unicode-range, so a family that mixes "100 599", "600 900"
+   and "100 900" descriptors never reaches the faces in the groups it
+   did not pick (measured: the shapes never loaded beside a ₹ face of
+   weight 100 599). "Rupee Fallback" carries the two weights of ₹;
+   "Glyph Fallback" carries everything else under ONE descriptor.
+
+   Each face is limited by unicode-range to exactly its code points, so
+   neither can claim a letter. Both sit AFTER Onest / Gabarito in
+   --face-sans and --face-display (tokens.css) and BEFORE Catamaran;
+   --f-script keeps its Tamil face last and names neither. Fetched only
+   when one of these glyphs is laid out. Self-hosted, OFL, from
+   @fontsource: Noto Sans (₹), Noto Sans Math (≈) and Noto Sans
+   Symbols 2 (■ ▶ ▾ ◯ ▢ ✱ ✕ ← → ↗ ⋯ — the 25A0-25FF and 2190-21FF blocks, U+2715, U+2731, U+22EF).
+   ------------------------------------------------------------ */
+@font-face {
+  font-family: 'Rupee Fallback';
+  font-style: normal;
+  font-weight: 100 599;
+  font-display: swap;
+  src: url('../../node_modules/@fontsource/noto-sans/files/noto-sans-latin-ext-400-normal.woff2') format('woff2');
+  unicode-range: U+20B9;
+}
+@font-face {
+  font-family: 'Rupee Fallback';
+  font-style: normal;
+  font-weight: 600 900;
+  font-display: swap;
+  src: url('../../node_modules/@fontsource/noto-sans/files/noto-sans-latin-ext-700-normal.woff2') format('woff2');
+  unicode-range: U+20B9;
+}
+@font-face {
+  font-family: 'Glyph Fallback';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../../node_modules/@fontsource/noto-sans-math/files/noto-sans-math-latin-400-normal.woff2') format('woff2');
+  unicode-range: U+2248;
+}
+@font-face {
+  font-family: 'Glyph Fallback';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../../node_modules/@fontsource/noto-sans-symbols-2/files/noto-sans-symbols-2-symbols-400-normal.woff2') format('woff2');
+  unicode-range: U+2190-21FF, U+25A0-25FF, U+2715, U+2731;   /* arrows (Onest holds only ↑ ↓) and ✕ join the shapes */
+}
+@font-face {
+  font-family: 'Glyph Fallback';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../../node_modules/@fontsource/noto-sans-symbols-2/files/noto-sans-symbols-2-math-400-normal.woff2') format('woff2');
+  unicode-range: U+22EF;   /* ⋯ */
+}

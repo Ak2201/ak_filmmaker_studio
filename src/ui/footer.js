@@ -34,7 +34,7 @@
         `?ref=<code>` is added when the signed-in member has a referral
         code — read from my_referral() via growth.js (see
         learnReferral below) — and omitted when it has none.
-   2. "HELP ON WHATSAPP" — VITE_SUPPORT_WHATSAPP (digits, country code
+   2. "Help on WhatsApp" — VITE_SUPPORT_WHATSAPP (digits, country code
       first). Set, the link renders here, in Settings → Plan and on
       invite.html (which imports chrome.js too). Unset, nothing renders
       anywhere: no empty link, no "coming soon".

@@ -42,7 +42,7 @@ function coverage(study) {
     (study.scenes || []).length ||
     (study.characters || []).length
   );
-  return hasAny ? 'PARTIAL' : 'SOON';
+  return hasAny ? 'Partial' : 'Soon';
 }
 
 let wired = false;
@@ -101,7 +101,7 @@ export function renderDemoSelector(options) {
     if (flag) {
       tab.append(h('span.ds-tab-flag', {
         text: flag,
-        title: flag === 'SOON'
+        title: flag === 'Soon'
           ? 'This study has not been written yet'
           : 'This study is partly written'
       }));

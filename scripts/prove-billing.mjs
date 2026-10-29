@@ -65,7 +65,7 @@
      (pass) THE LAUNCH PASS (schema §61): the offer page leads with the
          server's price, countdown and cap and offers no free trial; a
          stranger buys it there (period 'pass', ₹49) and is a member on
-         Pro for 7 days; the rail says PASS ENDS IN; a second pass is
+         Pro for 7 days; the rail says Pass ends in; a second pass is
          refused; a yearly plan bought on a pass starts now and replaces
          it; the wall offers the pass first and plans only once the
          offer has ended; switched off, the old offer returns; the
@@ -236,8 +236,22 @@ try {
       ok(r.bullets.every((n) => n > 0 && n <= 5), 'every card lists at most five bullets: ' + r.bullets.join('/'));
       ok(/No plan yet/.test(r.summary), '"Your plan" says plainly that nothing is bought yet'); }
     ok(p.find((x) => x[0] === 'indie')[1] === '₹7,999', 'the card shows the table’s ONE price (₹7,999)');
-    { const t = await page.textContent('#plan');
-      ok(/a year/.test(t) && /≈ ₹21\.92 a day/.test(t) && /₹7,999 for a year · one payment, nothing renews/.test(t), 'and says it is a year, priced by the day (₹7,999 ÷ 365 ≈ ₹21.92), one payment that does not renew (§62 one-time)'); }
+    /* ONE price line a card, the currency and the term said ONCE (QA r2b,
+       29 Oct 2026; wording changed deliberately, the facts are the same):
+       "₹7,999 a year · about ₹21.92 a day" on the card, the currency and
+       "a year each" beside the switch, "One payment · nothing renews"
+       once above the row (§62 one-time). */
+    { const r = await page.evaluate(() => ({
+        line: ((document.querySelector('#plan .pl-card[data-plan="indie"] .pl-price') || {}).textContent || '').trim(),
+        cur: ((document.querySelector('#plan .pu-currency-line') || {}).textContent || ''),
+        terms: [...document.querySelectorAll('#plan .pl-row-terms')].map((e) => e.textContent),
+        cardTerms: document.querySelectorAll('#plan .pl-card .pl-terms').length,
+        charge: document.querySelectorAll('#plan .pl-card .pl-charge').length,
+        rupees: (document.querySelector('#plan').textContent.match(/Indian rupees/g) || []).length
+      }));
+      ok(r.line === '₹7,999 a year · about ₹21.92 a day', 'the card says it is a year, priced by the day, on ONE line (₹7,999 ÷ 365 ≈ ₹21.92): ' + JSON.stringify(r.line));
+      ok(/Indian rupees, a year each/.test(r.cur) && r.rupees === 1, 'the currency and the term are said once, beside the switch: ' + r.cur + ' (' + r.rupees + '× "Indian rupees")');
+      ok(r.terms.length === 1 && r.terms[0] === 'One payment · nothing renews' && r.cardTerms === 0 && r.charge === 0, 'and "One payment · nothing renews" once above the row, no terms or charge line repeated on each card: ' + JSON.stringify(r)); }
     ok(!(await page.$('[data-plan-action="period"]')), 'there is no period switch — section 18 withdrew the subscription model');
     ok(!(await page.$('#plan .is-current')) && !/Baseline/.test(await page.textContent('#plan')), 'with nothing bought, no card is "Your plan" and none is a "Baseline"');
     ok(!(await page.textContent('#plan')).includes('Your usage'), 'and no usage against a free tier\'s caps (there is no free tier)');
@@ -1232,7 +1246,7 @@ try {
       await A.page.goto(BASE + 'index.html');
       await A.page.waitForSelector('.pg-wall [data-action="pg-start-trial"]', { timeout: 12000 }).catch(() => {});
       const b = await A.page.$('.pg-wall [data-action="pg-start-trial"]');
-      ok(!!b && /2 HOURS/.test(await b.textContent()), 'a member who never had a trial is offered one on the wall, in hours: ' + (b ? await b.textContent() : 'no button'));
+      ok(!!b && /2 hours/i.test(await b.textContent()), 'a member who never had a trial is offered one on the wall, in hours: ' + (b ? await b.textContent() : 'no button'));
       if (b) {
         await b.click();
         await A.page.waitForFunction(() => !document.querySelector('.pg-wall') && (() => { const b = document.querySelector('#studioRail .sh-rail-trial'); return b && !b.hidden && b.querySelector('[role="timer"]'); })(), null, { timeout: 12000 })
@@ -1297,7 +1311,7 @@ try {
     const N = await soloContext({ tok: 'tok-ben' });
     await N.page.goto(BASE + 'invite.html');
     await N.page.waitForSelector('[data-iv-action="start-trial"]', { timeout: 12000 }).catch(() => {});
-    ok(/START MY 3 HOURS/.test(await N.page.textContent('[data-iv-action="start-trial"]').catch(() => '')), 'invite.html offers the trial in hours: START MY 3 HOURS');
+    ok(/Start my 3 hours/.test(await N.page.textContent('[data-iv-action="start-trial"]').catch(() => '')), 'invite.html offers the trial in hours: Start my 3 hours');
     ok(!(await N.page.$('.pl-card')) && !!(await N.page.$('#buy a[href="purchase.html"]')), 'invite.html draws no plan cards: it links to purchase.html, where plans are bought');
     await N.page.goto(BASE + 'purchase.html');
     await N.page.waitForSelector('#plan .pl-card', { timeout: 12000 }).catch(() => {});
@@ -1539,7 +1553,8 @@ try {
     await page.goto(BASE + 'purchase.html');
     await page.waitForSelector('#plan .pl-card', { timeout: 10000 });
     await waitText(page, '#plan .pl-card[data-plan="starter"] .pl-price strong', /^\$25$/, 'dollar checkout on: the Basic card reads the owner\'s new $25');
-    await waitText(page, '#plan .pl-card[data-plan="starter"] .pl-charge', /Charged in US dollars/, 'and says it is charged in US dollars');
+    await waitText(page, '#plan .pu-currency-line', /charged in US dollars/, 'and the line beside the switch says it is charged in US dollars');
+    ok(!(await page.$('#plan .pl-card .pl-charge')), 'which no card repeats (a card names the charge only when it differs from what it shows)');
     await page.click('.pl-card[data-plan="starter"] [data-plan-action="buy"]');
     await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'starter', null, { timeout: 15000 }).catch(() => {});
     const last = await page.evaluate(() => window.__rzpLast);
@@ -1592,19 +1607,22 @@ try {
             async () => ok(false, 'Settings › Team leaves "Reading the account…" — read: ' + (await page.textContent('#acctHost').catch(() => '(no #acctHost)'))));
     await page.waitForTimeout(3000);
     ok(await page.evaluate(() => document.querySelectorAll('#acctHost').length === 1 && !/Reading the account/.test(document.getElementById('acctHost').textContent)), 'and stays shown after the later re-renders');
-    /* purchase.html: the deck's per-day figure is the cheapest CARD's,
+    /* purchase.html: the card's per-day figure is derived from the card's
+       own price (the deck no longer restates it: QA r2b, 29 Oct 2026),
        and the count and comparison tell the plans apart. */
     await page.goto(BASE + 'purchase.html');
-    await page.waitForSelector('#plan .pl-card[data-plan="starter"] .pl-price-cap', { timeout: 15000 });
+    await page.waitForSelector('#plan .pl-card[data-plan="starter"] .pl-day', { timeout: 15000 });
     await page.waitForTimeout(1500);
     const pu = await page.evaluate(() => ({
       deck: (document.querySelector('#plan .bd-sub') || {}).textContent || '',
-      cap: (document.querySelector('#plan .pl-card[data-plan="starter"] .pl-price-cap') || {}).textContent || '',
+      price: (document.querySelector('#plan .pl-card[data-plan="starter"] .pl-price strong') || {}).textContent || '',
+      cap: (document.querySelector('#plan .pl-card[data-plan="starter"] .pl-day') || {}).textContent || '',
       counts: [...document.querySelectorAll('#plan .pl-card .pl-features-n')].map((n) => n.textContent.trim()),
       off: document.querySelectorAll('#plan td.is-off').length
     }));
     const cardDay = (pu.cap.match(/₹[\d,.]+/) || [''])[0];
-    ok(!!cardDay && pu.deck.includes('from about ' + cardDay + ' a day'), 'the deck quotes the Basic card\'s own per-day figure (' + cardDay + '), not the build-time one: ' + pu.deck.slice(0, 160));
+    const want = '₹' + (Math.round(Number(pu.price.replace(/[^\d]/g, '')) * 100 / 365) / 100).toFixed(2);
+    ok(!!cardDay && cardDay === want && !/a day/.test(pu.deck), 'the Basic card\'s per-day figure is its own price ÷ 365 (' + pu.price + ' → ' + cardDay + '), and the deck does not restate it: ' + pu.deck.slice(0, 160));
     ok(pu.counts.length === 3 && new Set(pu.counts).size === 3, 'with empty feature maps the three cards count different features, from the matrix: ' + pu.counts.join(' / '));
     ok(pu.off > 0, 'and the comparison table marks what Basic lacks (' + pu.off + ' cells)');
     allErrors.push(...errors); await ctx.close();
@@ -1661,14 +1679,32 @@ try {
     allErrors.push(...errors); await ctx.close();
   }
   {
-    /* Signed out, in rupees: the list quotes price_notice's current price. */
+    /* Signed out, in rupees: the prices are price_notice's current ones.
+       purchase.html draws the SAME cards a member sees (QA r2b, 29 Oct
+       2026), invite.html its light list. */
     const { ctx, page, errors } = await newContext(browser, {});
-    for (const pg of ['purchase.html', 'invite.html']) {
+    for (const [pg, sel] of [['purchase.html', '.pl-card[data-plan="starter"] .pl-price'], ['invite.html', '.pl-list-prices']]) {
       await page.goto(BASE + pg);
-      await page.waitForFunction(() => /₹2,999/.test((document.querySelector('.pl-list-prices') || {}).textContent || ''), null, { timeout: 12000 })
-        .then(() => ok(true, pg + ' signed out: the rupee list reads the server\'s ₹2,999, not the build-time ₹599'),
-              async () => ok(false, pg + ' signed out: the rupee list reads ₹2,999 — read: ' + (await page.textContent('.pl-list-prices').catch(() => '')).slice(0, 120)));
+      await page.waitForFunction((s) => /₹2,999/.test((document.querySelector(s) || {}).textContent || ''), sel, { timeout: 12000 })
+        .then(() => ok(true, pg + ' signed out: the rupee price reads the server\'s ₹2,999, not the build-time ₹599'),
+              async () => ok(false, pg + ' signed out: the rupee price reads ₹2,999 — read: ' + (await page.textContent(sel).catch(() => '')).slice(0, 120)));
     }
+    await page.goto(BASE + 'purchase.html');
+    await page.waitForFunction(() => document.querySelectorAll('#plan .pl-card .pl-check li').length > 0, null, { timeout: 12000 }).catch(() => {});
+    { const r = await page.evaluate(() => ({
+        cards: [...document.querySelectorAll('#plan .pl-card')].map((c) => c.dataset.plan),
+        lead: ((document.querySelector('#plan .pl-card[data-plan="indie"] .pl-adds-lead') || {}).textContent || ''),
+        bullets: [...document.querySelectorAll('#plan .pl-card')].map((c) => c.querySelectorAll('.pl-check li').length),
+        primary: [...document.querySelectorAll('#plan .pl-card .k-btn--primary')].map((b) => b.textContent),
+        outline: [...document.querySelectorAll('#plan .pl-card [data-plan-signin].k-btn--secondary')].map((b) => b.dataset.planSignin),
+        google: [...document.querySelectorAll('#plan .pl-card [data-plan-signin]')].every((b) => b.dataset.authAction === 'google'),
+        buy: document.querySelectorAll('#plan [data-plan-action="buy"]').length,
+        rec: ((document.querySelector('#plan .pl-card.is-recommended .pl-tag') || {}).textContent || '').trim(),
+        terms: !!document.querySelector('#plan .pl-row + .pu-terms')
+      }));
+      ok(r.cards.join() === 'starter,indie,pro' && /^Everything in Basic, plus:$/.test(r.lead) && r.bullets.every((n) => n > 0 && n <= 5), 'purchase.html signed out: the three cards, "Everything in Basic, plus:" and at most five bullets each: ' + JSON.stringify(r));
+      ok(r.primary.join() === 'Sign in to buy Intermediate' && r.outline.join() === 'starter,pro' && r.google && r.rec === 'Recommended', 'the one filled button is "Sign in to buy Intermediate" (Recommended), the others outline, each a Google sign-in');
+      ok(r.buy === 0 && r.terms, 'nothing on it can buy, and "Read this before you purchase" is under the row'); }
     allErrors.push(...errors); await ctx.close();
   }
   {
@@ -1676,12 +1712,13 @@ try {
     const ctx0 = await newContext(browser, { timezoneId: 'America/New_York', locale: 'en-US' });
     await ctx0.page.setViewportSize({ width: 390, height: 900 });
     await ctx0.page.goto(BASE + 'purchase.html');
-    await ctx0.page.waitForFunction(() => /Charged as/.test((document.querySelector('.pl-list-prices') || {}).textContent || ''), null, { timeout: 12000 }).catch(() => {});
+    await ctx0.page.waitForFunction(() => /Charged as/.test((document.querySelector('#plan .pl-card .pl-charge') || {}).textContent || ''), null, { timeout: 12000 }).catch(() => {});
     /* LINES of text, not the box: a grid item stretches to its row. */
-    const rows = await ctx0.page.$$eval('.pl-list-prices > li > strong', (ss) => ss.map((s) => { const rg = document.createRange(); rg.selectNodeContents(s); const tops = new Set([...rg.getClientRects()].map((r) => Math.round(r.top))); return { t: s.textContent, w: Math.round(s.getBoundingClientRect().width), lines: tops.size }; }));
-    const caption = await ctx0.page.textContent('.pl-list-prices').catch(() => '');
-    ok(/Charged as/.test(caption), 'the dollar list shows its long charge caption');
-    ok(rows.length === 3 && rows.every((r) => r.w > 20 && r.lines === 1), 'at 390 each plan name is on one line beside the wrapping price: ' + JSON.stringify(rows));
+    const rows = await ctx0.page.$$eval('#plan .pl-card .pl-name', (ss) => ss.map((s) => { const rg = document.createRange(); rg.selectNodeContents(s); const tops = new Set([...rg.getClientRects()].map((r) => Math.round(r.top))); return { t: s.textContent, w: Math.round(s.getBoundingClientRect().width), lines: tops.size }; }));
+    const caption = await ctx0.page.textContent('#plan .pl-card[data-plan="starter"]').catch(() => '');
+    ok(/Charged as/.test(caption), 'a dollar card charged in rupees names the rupee charge on the card');
+    ok(rows.length === 3 && rows.every((r) => r.w > 20 && r.lines === 1), 'at 390 each plan name is on one line: ' + JSON.stringify(rows));
+    ok(await ctx0.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'and the signed-out cards do not overflow 390px');
     allErrors.push(...ctx0.errors); await ctx0.ctx.close();
   }
   {
@@ -1802,8 +1839,8 @@ try {
     void last;
     await page.goto(BASE + 'index.html');
     ok(await waitGate(page, 'open'), 'the studio opens');
-    await page.waitForFunction(() => { const b = document.querySelector('#studioRail .sh-rail-trial'); return b && !b.hidden && /PASS ENDS IN/.test(b.textContent); }, null, { timeout: 10000 })
-      .then(() => ok(true, 'the rail says PASS ENDS IN'), () => ok(false, 'the rail says PASS ENDS IN'));
+    await page.waitForFunction(() => { const b = document.querySelector('#studioRail .sh-rail-trial'); return b && !b.hidden && /Pass ends in/.test(b.textContent); }, null, { timeout: 10000 })
+      .then(() => ok(true, 'the rail says Pass ends in'), () => ok(false, 'the rail says Pass ends in'));
     ok(/7 days/.test(await page.textContent('#studioRail .sh-rail-trial').catch(() => '')), 'with 7 days left');
     ok(!(await page.$('.pg-wall')), 'and no wall');
 
@@ -1831,7 +1868,7 @@ try {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
     await page.goto(BASE + 'index.html');
     await page.waitForSelector('.pg-wall [data-action="pg-buy-pass"]', { timeout: 12000 }).then(() => ok(true, 'the wall offers the pass'), () => ok(false, 'the wall offers the pass'));
-    ok(/TRY THE WHOLE STUDIO FOR ₹49 · 7 DAYS/.test(await page.textContent('.pg-wall [data-action="pg-buy-pass"]').catch(() => '')), 'labelled TRY THE WHOLE STUDIO FOR ₹49 · 7 DAYS');
+    ok(/Try the whole studio for ₹49 · 7 days/.test(await page.textContent('.pg-wall [data-action="pg-buy-pass"]').catch(() => '')), 'labelled Try the whole studio for ₹49 · 7 days');
     ok(!(await page.$('.pg-wall [data-action="pg-start-trial"]')), 'and no START MY FREE TRIAL');
     /* the offer ends (the deadline passes on the server) */
     F.db.settings.pass_ends_at = new Date(Date.now() - 1000).toISOString();
@@ -1902,7 +1939,8 @@ try {
     await page.waitForSelector('#plan .pl-card .pl-terms', { timeout: 12000 }).catch(() => {});
     const t = await page.textContent('#plan').catch(() => '');
     ok(/₹49 for 7 days/.test(t) && !/renew/i.test((await page.textContent('#pass').catch(() => '')) || 'renew'), 'no §62: the pass card says ₹49 for 7 days and claims neither one-time nor auto-renew');
-    ok(await page.$$eval('#plan .pl-terms', (els) => els.length === 3 && els.every((e) => e.dataset.offerMode === 'unknown' && !/renew/i.test(e.textContent))), 'and each plan card prints its price for a year, mode unknown, no renewal claim');
+    ok(await page.$$eval('#plan .pl-card .pl-price', (els) => els.length === 3 && els.every((e) => e.dataset.offerMode === 'unknown' && / a year/.test(e.textContent) && !/renew/i.test(e.textContent))), 'and each plan card prints its price for a year, mode unknown, no renewal claim');
+    ok(!(await page.$('#plan .pl-row-terms')) && !(await page.$('#plan .pl-card .pl-terms')), 'and no terms line, above the row or on a card (an unknown mode states neither)');
     allErrors.push(...errors); await ctx.close();
   }
   {
@@ -1911,7 +1949,8 @@ try {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben' });
     await page.goto(BASE + 'purchase.html');
     await waitRe(page, '#pass .pu-pass-terms', /^₹49 for 7 days · one payment, nothing renews$/, 'one-time: the pass card reads "₹49 for 7 days · one payment, nothing renews"');
-    await waitRe(page, '.pl-card[data-plan="indie"] .pl-terms', /^₹7,999 for a year · one payment, nothing renews$/, 'and the Intermediate card "₹7,999 for a year · one payment, nothing renews"');
+    await waitRe(page, '.pl-card[data-plan="indie"] .pl-price', /^₹7,999 a year · about ₹21\.92 a day$/, 'and the Intermediate card "₹7,999 a year · about ₹21.92 a day"');
+    await waitRe(page, '#plan .pl-row-terms', /^One payment · nothing renews$/, 'with "One payment · nothing renews" said once above the row');
     await shot(page, 'purchase-once');
     await page.click('#pass [data-pu-action="buy-pass"]');
     await waitRe(page, '#pass, #plan', /pass is on|7-day pass/, 'the one-time pass is bought');

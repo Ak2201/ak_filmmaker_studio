@@ -11,7 +11,7 @@
    the Scene List and the Screenplay Writer (src/ui/notes-dock.js).
    ============================================================ */
 import { h } from '../lib/dom.js';
-import { paperTextarea } from './paper-field.js';
+import { paperTextarea, paperField } from './paper-field.js';
 import { BRAND } from '../lib/brand.js';
 import * as Story from '../lib/story.js';
 import { button, badge, emptyState, panel, segmented } from './kit/index.js';
@@ -51,7 +51,7 @@ export function renderVault(s, view = { filter: 'all', color: '' }) {
 
   const add = h('div.st-vault-add');
   add.append(h('label.st-label', { for: 'stClip', text: 'Add a clipping' }));
-  add.append(paperTextarea('#stClip.st-text.k-textarea', { rows: 3, maxlength: String(Story.VAULT_MAX), placeholder: 'A quote, a link, a page of notes…' }));
+  add.append(paperField(paperTextarea('#stClip.st-text.k-textarea', { rows: 3, maxlength: String(Story.VAULT_MAX), placeholder: 'A quote, a link, a page of notes…' }), { script: false }));
   add.append(button({ label: 'Add to vault', variant: 'secondary', icon: 'add', attrs: { 'data-st': 'clip-add' } }));
   sec.append(h('div.nt-board-adds', {}, [
     panel({ class: 'st-vault-panel nt-board-new', body: [noteAdd('ntBoardNew')] }),

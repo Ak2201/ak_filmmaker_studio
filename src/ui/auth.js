@@ -415,7 +415,7 @@ export function renderAccountBlock() {
   if (!c || !sess || !sess.user) {
     return h('div#amBlock.account-menu.am-inline.show', {}, [
       h('p.am-acct-note', { text: 'You are not signed in. Your projects are saved on this device either way.' }),
-      h('button.am-item', { type: 'button', 'data-auth-action': 'pill', text: 'SIGN IN' })
+      h('button.am-item', { type: 'button', 'data-auth-action': 'pill', text: 'Sign in' })
     ]);
   }
   const st    = (c.getSyncStatus && c.getSyncStatus()) || { state: 'idle', detail: '' };
@@ -425,7 +425,7 @@ export function renderAccountBlock() {
   const waiting = (g.status && g.status.pendingRequests) || 0;
   const gateRows = [];
   if (g.state === 'closed') {
-    /* "GET AN INVITE" was right while asking was the only road in. The
+    /* "Get an invite" was right while asking was the only road in. The
        door offers a free trial, a plan and a code now, so it says what
        the page actually does; a request already in flight still gets
        its own row and its own address. */
@@ -437,7 +437,7 @@ export function renderAccountBlock() {
        price, and the offer page says both. */
     const passRow = () => (passPhase(cachedPassOffer()) === 'open'
       ? '→ ' + passCta(passMode(cachedPassOffer()) === 'renew' ? null : passFacts(cachedPassOffer())) : '→ See plans');
-    if (g.reason === 'pending') gateRows.push(h('a.am-item', { href: 'invite.html#request', text: '→ YOUR INVITE REQUEST' }));
+    if (g.reason === 'pending') gateRows.push(h('a.am-item', { href: 'invite.html#request', text: '→ Your invite request' }));
     else {
       const row = h('a.am-item', { href: 'invite.html', text: passRow() });
       gateRows.push(row);
@@ -492,7 +492,7 @@ function ensureCloudAuthModal() {
 
   const card = h('form.cm-card', { novalidate: true }, [
     h('button.cm-close', { type: 'button', 'aria-label': 'Close', 'data-auth-action': 'close', text: '×' }),
-    h('div.cm-eyebrow', { text: 'ACCOUNT · OPTIONAL' }),
+    h('div.cm-eyebrow', { text: 'Account · optional' }),
     h('h2#cmHeading', { html: 'Sign <em>in.</em>' }),
     h('p.cm-deck', {
       text: 'Your writing is saved on this device either way. An account adds a durable backup and lets you pick the same project up on another machine.'
@@ -505,7 +505,7 @@ function ensureCloudAuthModal() {
       h('input#cmCfgUrl', { type: 'url', placeholder: 'https://xxxx.supabase.co', autocomplete: 'off', spellcheck: 'false' }),
       h('label', { for: 'cmCfgKey', text: 'Anon (public) key' }),
       h('input#cmCfgKey', { type: 'text', placeholder: 'eyJhbGciOi…', autocomplete: 'off', spellcheck: 'false' }),
-      h('button.cm-btn.primary', { type: 'button', 'data-auth-action': 'save-cfg', text: 'SAVE & CONTINUE' }),
+      h('button.cm-btn.primary', { type: 'button', 'data-auth-action': 'save-cfg', text: 'Save & continue' }),
       h('p.cm-hint', {
         text: 'The anon key is public by design — access is decided by row-level policies on the database, not by hiding this string. Never paste a service-role key here.'
       })
@@ -520,7 +520,7 @@ function ensureCloudAuthModal() {
     h('div#cmAuthBlock', {}, [
       h('button#cmGoogle.cm-btn.google', { type: 'button', 'data-auth-action': 'google' }, [
         h('span.g-mark', { html: GOOGLE_MARK, 'aria-hidden': 'true' }),
-        h('span.cm-btn-label', { text: 'CONTINUE WITH GOOGLE' })
+        h('span.cm-btn-label', { text: 'Continue with Google' })
       ]),
       h('p.cm-hint', { text: 'Sign in with your Google account — there is no separate password to remember.' }),
       /* Hidden unless mayConfigure() says otherwise — see it for why
@@ -703,13 +703,13 @@ export async function startGoogle() {
   const c = cloud();
   if (!c) return;
   setModalError('');
-  setBusy('cmGoogle', true, 'OPENING GOOGLE…', 'CONTINUE WITH GOOGLE');
+  setBusy('cmGoogle', true, 'Opening Google…', 'Continue with Google');
   refreshSignInPill();
   try {
     await c.signInWithGoogle();
     // If this resolves at all, the navigation is already under way.
   } catch (e) {
-    setBusy('cmGoogle', false, 'OPENING GOOGLE…', 'CONTINUE WITH GOOGLE');
+    setBusy('cmGoogle', false, 'Opening Google…', 'Continue with Google');
     refreshSignInPill();
     setModalError(errText(e));
     toastError(errText(e));

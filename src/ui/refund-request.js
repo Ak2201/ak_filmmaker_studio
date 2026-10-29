@@ -77,7 +77,7 @@ export function refundRequestPanel(opts = {}) {
     const form = h('form.rf-form', { 'data-rf-form': 'request', novalidate: true }, [
       h('label', { for: 'rfCategory', text: 'Reason' }), cat,
       h('label', { for: 'rfMessage', text: 'Tell us more' }), msg,
-      h('button.btn.primary', { type: 'submit', disabled: S.busy ? true : null, text: S.busy ? 'SENDING…' : 'SEND REQUEST' })
+      h('button.btn.primary', { type: 'submit', disabled: S.busy ? true : null, text: S.busy ? 'Sending…' : 'Send request' })
     ]);
     form.dataset.payment = d.payment.id;
     box.append(form);

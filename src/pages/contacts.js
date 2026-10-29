@@ -570,7 +570,7 @@ function renderSheetDoc(sheet, contacts, scenes) {
   }
 
   if (onSheet.length) {
-    const table = h('table.ct-doc-table');
+    const table = h('table.ct-doc-table.ct-doc-scenes');
     table.append(h('caption', { text: 'Scenes' }));
     table.append(h('thead', {}, [row('th', ['Sc.', 'Set', 'I/E · D/N', 'Synopsis', 'Pages'])]));
     const body = h('tbody');

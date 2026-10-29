@@ -257,7 +257,7 @@ export const impactActions = {
     C.removeVersion(gone.id);
     if (compareId === gone.id) compareId = '';
     host.refresh();
-    host.toast('Deleted “' + gone.name + '”.', { action: 'UNDO', onAction: () => { C.restoreVersion(gone, index); host.refresh(); } });
+    host.toast('Deleted “' + gone.name + '”.', { action: 'Undo', onAction: () => { C.restoreVersion(gone, index); host.refresh(); } });
   }
 };
 

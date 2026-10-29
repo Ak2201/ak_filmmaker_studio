@@ -8,7 +8,7 @@
    ============================================================ */
 import * as Story from './story.js';
 
-/** "ADD TO SYNOPSIS": append clipping `id` to the end of the synopsis,
+/** "Add to synopsis": append clipping `id` to the end of the synopsis,
  *  exactly as the Story page's own button does.
  *  @returns {boolean} false when there is no such clipping. */
 export function appendClipToSynopsis(id) {

@@ -228,12 +228,12 @@ function cloudStateHTML() {
   if (!isConfigured()) {
     return '<p class="cmt-state">Shared comments need cloud sync, which is not available on '
       + 'this browser. Your private note above stays on this device.'
-      + '<button type="button" class="cmt-btn" data-cmt-action="connect">CONNECT AN ACCOUNT</button></p>';
+      + '<button type="button" class="cmt-btn" data-cmt-action="connect">Connect an account</button></p>';
   }
   if (!signedIn()) {
     return '<p class="cmt-state">Sign in to read and post shared comments. Your private note '
       + 'above is saved either way.'
-      + '<button type="button" class="cmt-btn" data-cmt-action="signin">SIGN IN</button></p>';
+      + '<button type="button" class="cmt-btn" data-cmt-action="signin">Sign in</button></p>';
   }
   if (!projectId()) {
     return '<p class="cmt-state">Open a project before commenting — a thread belongs to a film.</p>';
@@ -255,14 +255,14 @@ function suggestionHTML(r, resolvable) {
         '<span class="cmt-sugg-txt">' + (from ? esc(from) : '<em>empty</em>') + '</span>' +
       '</div>' +
       '<div class="cmt-sugg-side cmt-sugg-to">' +
-        '<span class="cmt-sugg-lab">PROPOSED</span>' +
+        '<span class="cmt-sugg-lab">Proposed</span>' +
         '<span class="cmt-sugg-txt">' + (to ? esc(to) : '<em>empty</em>') + '</span>' +
       '</div>' +
     '</div>';
   if (r.status === 'open' && resolvable) {
     html += '<div class="cmt-acts">' +
-      '<button type="button" class="cmt-btn cmt-accept" data-cmt-action="accept" data-id="' + esc(r.id) + '">ACCEPT · REPLACE THE FIELD</button>' +
-      '<button type="button" class="cmt-btn" data-cmt-action="reject" data-id="' + esc(r.id) + '">DECLINE</button>' +
+      '<button type="button" class="cmt-btn cmt-accept" data-cmt-action="accept" data-id="' + esc(r.id) + '">Accept · replace the field</button>' +
+      '<button type="button" class="cmt-btn" data-cmt-action="reject" data-id="' + esc(r.id) + '">Decline</button>' +
     '</div>';
   } else if (r.status === 'open') {
     html += '<p class="cmt-hint">Only someone with edit access can accept this.</p>';
@@ -286,7 +286,7 @@ function commentHTML(r, replies, resolvable, mine) {
       (r.type === 'suggestion' ? suggestionHTML(r, resolvable) : '');
   if (r.type !== 'suggestion' && r.status === 'open' && resolvable) {
     html += '<div class="cmt-acts">' +
-      '<button type="button" class="cmt-btn" data-cmt-action="resolve" data-id="' + esc(r.id) + '">MARK RESOLVED</button>' +
+      '<button type="button" class="cmt-btn" data-cmt-action="resolve" data-id="' + esc(r.id) + '">Mark resolved</button>' +
     '</div>';
   }
   if (replies.length) {
@@ -299,19 +299,19 @@ function commentHTML(r, replies, resolvable, mine) {
   }
   html += '<div class="cmt-foot">';
   if (canPost()) {
-    html += '<button type="button" class="cmt-link" data-cmt-action="reply" data-id="' + esc(r.id) + '">REPLY</button>';
+    html += '<button type="button" class="cmt-link" data-cmt-action="reply" data-id="' + esc(r.id) + '">Reply</button>';
   }
   if (mine || resolvable) {
     html += '<button type="button" class="cmt-link cmt-link-danger" data-cmt-action="delete" data-id="' + esc(r.id) +
-            '">DELETE</button>';
+            '">Delete</button>';
   }
   html += '</div>';
   if (canPost()) {
     html +=
       '<form class="cmt-reply-form" data-cmt-reply="' + esc(r.id) + '" hidden>' +
-        '<label class="cmt-lab" for="cmtReply-' + esc(r.id) + '">YOUR REPLY</label>' +
+        '<label class="cmt-lab" for="cmtReply-' + esc(r.id) + '">Your reply</label>' +
         '<textarea id="cmtReply-' + esc(r.id) + '" class="cmt-input" name="body" rows="2"></textarea>' +
-        '<button type="submit" class="cmt-btn">POST REPLY</button>' +
+        '<button type="submit" class="cmt-btn">Post reply</button>' +
       '</form>';
   }
   html += '</article>';
@@ -368,7 +368,7 @@ function threadBodyHTML(key) {
   const current = fieldValue(key);
   html +=
     '<form class="cmt-new" data-cmt-form="' + esc(key) + '">' +
-      '<label class="cmt-lab" for="cmtBody-' + esc(key) + '">ADD TO THE THREAD</label>' +
+      '<label class="cmt-lab" for="cmtBody-' + esc(key) + '">Add to the thread</label>' +
       '<textarea id="cmtBody-' + esc(key) + '" class="cmt-input" name="body" rows="2" ' +
         'placeholder="What needs saying about this field?"></textarea>' +
       '<div class="cmt-new-row">' +
@@ -377,7 +377,7 @@ function threadBodyHTML(key) {
         '<button type="submit" class="cmt-btn cmt-post">POST</button>' +
       '</div>' +
       '<div class="cmt-sugg-new" hidden>' +
-        '<label class="cmt-lab" for="cmtTo-' + esc(key) + '">PROPOSED TEXT</label>' +
+        '<label class="cmt-lab" for="cmtTo-' + esc(key) + '">Proposed text</label>' +
         '<textarea id="cmtTo-' + esc(key) + '" class="cmt-input" name="suggestto" rows="3">' + esc(current) + '</textarea>' +
         '<p class="cmt-hint">Accepting this writes it into the field and saves it the ordinary way.</p>' +
       '</div>' +

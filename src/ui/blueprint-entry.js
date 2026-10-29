@@ -184,7 +184,7 @@ export function blueprintEntry(data) {
     title: 'Hide this', 'aria-label': 'Hide the ways-in panel', }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })]));
 
   panel.append(
-    h('p.bp-entry-eyebrow', { text: 'BEFORE STEP 01' }),
+    h('p.bp-entry-eyebrow', { text: 'Before step 01' }),
     h('h2.bp-entry-title', { id: 'bp-entry-title', text: 'Two ways in.' }),
     h('p.bp-entry-deck', {
       text: 'This blueprint is 32 steps and nothing has been written in it yet. '
@@ -222,7 +222,7 @@ export function blueprintEntry(data) {
   panel.append(h('div.bp-entry-acts', {}, [
     h('button.btn.primary', {
       type: 'button', 'data-action': 'startFromScratch',
-      text: 'START FROM SCRATCH'
+      text: 'Start from scratch'
     })
   ]));
 

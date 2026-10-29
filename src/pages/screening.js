@@ -103,7 +103,7 @@ function renderEnter() {
   form.append(h('label', { for: 'scEmail', text: 'Your e-mail (optional)' }));
   form.append(h('input#scEmail.sc-email', { type: 'email', placeholder: 'you@example.com', maxlength: 255, value: typed ? typed.email : '' }));
   form.append(h('p.sc-note', { text: 'Whatever you open here is watermarked with this pass, the e-mail above and the time. The e-mail is not checked; it is printed on the page so the sender knows who is watching.' }));
-  form.append(h('button.btn.primary', { type: 'submit', disabled: state.busy, text: state.busy ? 'OPENING…' : 'OPEN THE SCREENING' }));
+  form.append(h('button.btn.primary', { type: 'submit', disabled: state.busy, text: state.busy ? 'Opening…' : 'Open the screening' }));
   if (state.error) form.append(h('p#scError.sc-error', { role: 'alert', text: state.error }));
   main.append(form);
   return main;

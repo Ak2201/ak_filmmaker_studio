@@ -1273,7 +1273,20 @@ function after() {
     /* Instant, never the page's smooth scroll: the glide was retargeted
        by the redraw's own layout (the strip sticking, the hosts filling)
        and ended at the foot of the page, the new step far above it. */
-    if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'center', behavior: 'instant' }); }
+    if (el) {
+      const land = () => { if (el.isConnected) el.scrollIntoView({ block: 'center', behavior: 'instant' }); };
+      el.focus({ preventScroll: true }); land();
+      /* Late layout (fonts, lazily filled hosts, the paper boxes growing) moves
+         the page after this frame; a box focused but left above the fold is
+         one a keyboard user cannot see. Land again only if it is off screen. */
+      const again = () => {
+        if (!el.isConnected || document.activeElement !== el) return;
+        const r = el.getBoundingClientRect();
+        if (r.top < 0 || r.bottom > innerHeight) land();
+      };
+      requestAnimationFrame(() => requestAnimationFrame(again));
+      setTimeout(again, 400);
+    }
   }
   applyView();
   if (landStep) {

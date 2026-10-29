@@ -6,7 +6,7 @@
    story space. The data did not move: clippings are still
    `fms_idea_vault_v1`, read and written through src/lib/story.js, and
    "pin to a beat" still reads the story's chosen framework from
-   `fms_story_v1`. This page WRITES a story only for "ADD TO SYNOPSIS",
+   `fms_story_v1`. This page WRITES a story only for "Add to synopsis",
    which appends the clipping to the synopsis exactly as the Story
    page's own button does.
 
@@ -85,7 +85,7 @@ delegate(document, 'click', '[data-st]', (e, el) => {
     Story.removeFromVault(cid);
     changed({ focus });
     StudioUI.toast('Clipping removed.', {
-      action: 'UNDO',
+      action: 'Undo',
       onAction: () => { if (Story.restoreToVault(gone, at)) changed({ focus: gone.id, control: '[data-st="clip-del"][data-clip="' + CSS.escape(gone.id) + '"]' }); }
     });
   }

@@ -7,7 +7,7 @@
    phone's Go to / Tools sheets use — a bottom drawer on a phone,
    centred at a reading width from 720px). No second overlay.
 
-   "SEEN" lives in the EXISTING device prefs blob fms_studio_prefs_v1,
+   "Seen" lives in the EXISTING device prefs blob fms_studio_prefs_v1,
    as `whatsNewSeen`: the id of the newest entry the reader has opened.
    No new key. It is written ONLY when the drawer is opened (a click),
    never on load — verify's four idle seconds assert that. unseen() is

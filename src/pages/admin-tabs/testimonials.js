@@ -66,7 +66,7 @@ async function decide(id, status) {
   const r = S.rows.find((x) => x.id === id);
   if (!r) return;
   if (status === 'approved') {
-    const ok = await ask({ title: 'Publish this testimonial?', body: `It becomes readable by anybody through the public list, under the name “${r.display_name}”. The author can still take it back at any time: it then leaves the public list at once, and any copy you put on the site has to be removed by hand (it will be listed under Remove from site).`, confirm: 'PUBLISH' });
+    const ok = await ask({ title: 'Publish this testimonial?', body: `It becomes readable by anybody through the public list, under the name “${r.display_name}”. The author can still take it back at any time: it then leaves the public list at once, and any copy you put on the site has to be removed by hand (it will be listed under Remove from site).`, confirm: 'Publish' });
     if (!ok) return;
   }
   S.busy = id; again();
@@ -86,11 +86,11 @@ function card(r) {
   const busy = S.busy === r.id;
   const btn = (label, act, cls = '') => h('button.btn' + cls, { type: 'button', 'data-tm-act': act, 'data-tm-id': r.id, disabled: busy ? '' : null, text: label });
   const acts = [];
-  if (T.needsTakedown(r)) acts.push(btn('TAKEN OFF THE SITE', 'removed', '.primary'));
+  if (T.needsTakedown(r)) acts.push(btn('Taken off the site', 'removed', '.primary'));
   if (!revoked) {
-    if (r.status !== 'approved') acts.push(btn('APPROVE', 'approved', '.primary'));
-    if (r.status !== 'rejected') acts.push(btn('REJECT', 'rejected'));
-    if (r.status === 'approved') acts.push(btn('COPY FOR THE SITE', 'copy'));
+    if (r.status !== 'approved') acts.push(btn('Approve', 'approved', '.primary'));
+    if (r.status !== 'rejected') acts.push(btn('Reject', 'rejected'));
+    if (r.status === 'approved') acts.push(btn('Copy for the site', 'copy'));
   }
   return h('li.ad-card', { 'data-testimonial': r.id }, [
     h('div.us-bar', {}, [pill(statusWord(r), tone), h('span.ad-meta', { text: (r.author_deleted ? 'account deleted' : r.author_email || 'unknown author') + ' · sent ' + absTime(r.created_at) })]),
@@ -135,7 +135,7 @@ function wire(box) {
 }
 
 async function markRemoved(id) {
-  const ok = await ask({ title: 'Is it off the site?', body: 'Press this once the entry is deleted from src/data/testimonials.json and the site has been rebuilt and deployed. It only records that you did it.', confirm: 'IT IS OFF THE SITE' });
+  const ok = await ask({ title: 'Is it off the site?', body: 'Press this once the entry is deleted from src/data/testimonials.json and the site has been rebuilt and deployed. It only records that you did it.', confirm: 'It is off the site' });
   if (!ok) return;
   S.busy = id; again();
   try {

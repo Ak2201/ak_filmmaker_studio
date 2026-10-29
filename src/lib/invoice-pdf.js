@@ -64,8 +64,8 @@ export function buildInvoice(inv) {
     fact('Plan valid', inv.valid_from && inv.valid_until ? `${shortDate(inv.valid_from)} – ${shortDate(inv.valid_until)}` : ''),
     fact('Payment method', 'Paid online via Razorpay'),
     fact('Currency', cur === 'USD' ? 'US dollars (USD)' : 'Indian rupees (INR)'),
-    fact('Razorpay payment ID', inv.razorpay_payment_id),
-    fact('Razorpay order ID', inv.razorpay_order_id)
+    fact('Payment ID', inv.razorpay_payment_id),
+    fact('Order ID', inv.razorpay_order_id)
   ].filter(Boolean);
   const day = perDayIn(inv.amount_paise, cur);
   return h('div.inv-doc', { role: 'document' }, [

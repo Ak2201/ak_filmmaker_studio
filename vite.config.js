@@ -231,7 +231,7 @@ async function planFigures(values, cls, fail) {
     const shown = pick.length ? pick : adds.slice(0, 6);
     values['tier.list.' + id] = (i === 0 ? '' : '<li class="' + cls + '-inc-all">Everything in ' + esc(planName(PAID[i - 1])) + '</li>')
       + shown.map((t) => '<li>' + esc(t) + '</li>').join('')
-      + (adds.length > shown.length ? '<li class="' + cls + '-inc-more">' + (adds.length - shown.length) + ' more in the comparison</li>' : '');
+      + (M.cardMore(id) > 0 ? '<li class="' + cls + '-inc-more">' + M.cardMore(id) + ' more in the comparison</li>' : '');
   }
   const cell = (yes) => yes ? '<td class="' + cls + '-yes"><span aria-hidden="true">\u2713</span><span class="' + cls + '-vh">Included</span></td>'
                             : '<td class="' + cls + '-no"><span aria-hidden="true">\u2014</span><span class="' + cls + '-vh">Not included</span></td>';
@@ -755,7 +755,7 @@ export default defineConfig({
       injectManifest: {
         // The app shell, all four pages, the manifest and the icons.
         globPatterns: ['**/*.{html,js,css,svg,png,ico,webmanifest,woff,woff2}'],
-        // Recorded media (public/media/**) is fetched on demand, never precached.
+        // Recorded media (public/media/** video thumbnails, public/marketing/**) is fetched on demand, never precached.
         globIgnores: ['media/**', 'marketing/**'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024
       }

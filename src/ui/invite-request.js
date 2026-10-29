@@ -52,7 +52,7 @@ export function requestBlock(st, reason) {
 
   if (reason === 'unreachable' || (!st && reason !== 'notdeployed')) {
     wrap.append(h('p.ir-p', { text: 'The studio could not be reached to check your invite. Sync is paused until it can; everything you write stays on this device meanwhile.' }));
-    wrap.append(h('button.btn', { type: 'button', 'data-ir-action': 'recheck', disabled: busy, text: busy ? 'CHECKING…' : 'TRY AGAIN' }));
+    wrap.append(h('button.btn', { type: 'button', 'data-ir-action': 'recheck', disabled: busy, text: busy ? 'Checking…' : 'Try again' }));
     return wrap;
   }
   if (!st || !st.deployed || reason === 'notdeployed') {
@@ -60,7 +60,7 @@ export function requestBlock(st, reason) {
     if (c && c.isAdmin && c.isAdmin()) {
       wrap.append(h('p.ir-meta', { text: 'You are listed as an administrator of this build: run supabase/schema/supabase-schema.sql sections 13 and 14 in the Supabase SQL editor, then the one-line admin bootstrap in 13.2. docs/GATE.md walks through it.' }));
     }
-    wrap.append(h('button.btn', { type: 'button', 'data-ir-action': 'recheck', disabled: busy, text: busy ? 'CHECKING…' : 'CHECK AGAIN' }));
+    wrap.append(h('button.btn', { type: 'button', 'data-ir-action': 'recheck', disabled: busy, text: busy ? 'Checking…' : 'Check again' }));
     return wrap;
   }
   if (st.disabled || reason === 'disabled' || reason === 'revoked') {
@@ -73,7 +73,7 @@ export function requestBlock(st, reason) {
   if (status === 'pending') {
     wrap.append(h('p.ir-state.is-pending', {}, [h('strong', { text: 'Requested' }), h('span', { text: ' · ' + fmtWhen(st.requestedAt) })]));
     wrap.append(h('p.ir-p', { text: 'An administrator will see this request the next time they open the console. Once it is approved you are through on your next visit — nothing else to do. Until then, everything you write is saved on this device as usual.' }));
-    wrap.append(h('button.btn', { type: 'button', 'data-ir-action': 'recheck', disabled: busy, text: busy ? 'CHECKING…' : 'CHECK AGAIN' }));
+    wrap.append(h('button.btn', { type: 'button', 'data-ir-action': 'recheck', disabled: busy, text: busy ? 'Checking…' : 'Check again' }));
     return wrap;
   }
 
@@ -100,7 +100,7 @@ export function requestBlock(st, reason) {
   form.append(h('p.ir-meta', { text: 'These details come from your Google sign-in.' }));
   form.append(h('label.ir-label', { for: 'irNote', text: 'A line for them (optional)' }));
   form.append(h('textarea#irNote.ir-textarea', { rows: 3, maxlength: 1000, placeholder: 'Who you are, which film this is for, who told you about the studio.', 'data-ir-field': 'note' }));
-  form.append(h('button.btn.primary', { type: 'submit', disabled: busy, text: busy ? 'SENDING…' : (status === 'declined' ? 'ASK AGAIN' : 'REQUEST AN INVITE') }));
+  form.append(h('button.btn.primary', { type: 'submit', disabled: busy, text: busy ? 'Sending…' : (status === 'declined' ? 'Ask again' : 'Request an invite') }));
   if (error) form.append(h('p.gt-error', { role: 'alert', text: error }));
   wrap.append(form);
   return wrap;

@@ -222,7 +222,7 @@ function featureSummary(p, listed = () => true) {
   return { stages, caps, total: all.length, included: all.filter((x) => x.on).length, sampleOnly: f.sample_only === true };
 }
 /* The card's foot: the count, and the way to the full table below. */
-function featureBlock(p, listed) {
+function featureBlock(p, listed, preview = false) {
   const s = featureSummary(p, listed);
   const wrap = h('div.pl-features');
   wrap.append(h('p.pl-features-n', {}, [h('strong', { text: `${s.included} of ${s.total}` }), h('span', { text: ' features' })]));
@@ -288,7 +288,7 @@ function checklist(labels) {
    pricing.html print), then any other addition in stage order, cut so
    that with the "N more" line the list never passes five. */
 const CARD_MAX = 5;
-function addsBlock(plans, p, listed) {
+function addsBlock(plans, p, listed, preview = false) {
   const a = addedIds(plans, p);
   if (!a) return null;
   const s = featureSummary(p, listed);
@@ -340,8 +340,17 @@ export { RECOMMENDED };
 
 /** `fine: false` leaves the fine print to the host, which draws the
  *  same facts in its own "Read this before you purchase" list
- *  (purchase.html), so nothing is said twice on one page. */
-export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = false, shop = null, fine = true } = {}) {
+ *  (purchase.html), so nothing is said twice on one page.
+ *  `rowTerms: false` leaves the one-line terms above the row ("One
+ *  payment · nothing renews") to the host too: purchase.html says them
+ *  beside its currency switch, once.
+ *  `preview: true` is the SIGNED-OUT row (purchase.html): the same cards
+ *  and bullets, from `plans` rows the host builds from the list prices and
+ *  the matrix, with a "Sign in to buy <plan>" button where BUY would be.
+ *  The caps are not known without a session (they are the server's rows),
+ *  so the limits line and the comparison table are left out and the
+ *  count links to the public comparison instead. Nothing here can buy. */
+export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = false, shop = null, fine = true, rowTerms = true, preview = false } = {}) {
   hooks = { onBuy: onBuy || hooks.onBuy, rerender: rerender || hooks.rerender, onSuccess: onSuccess || hooks.onSuccess };
   lastSt = st;
   const nowKey = billingKey(st);
@@ -426,23 +435,37 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
       h('p.pl-blurb', { text: pitch })
     ]));
 
-    /* PRICE: the figure on one line, what kind of payment it is under it. */
-    /* Under the figure: what a day costs, and what is CHARGED. A quote is
-       the charge itself, so it says its own currency. */
-    const charged = q ? (qCur(q) === 'USD' ? 'Charged in US dollars' : 'Charged in Indian rupees')
-      : usdRow ? chargeCaption(shop, usdRow.inrMinor != null ? usdRow.inrMinor : price) : 'Charged in Indian rupees';
+    /* PRICE: ONE line, "₹7,999 a year · about ₹21.92 a day" (QA r2b,
+       29 Oct 2026: the currency and the term were said three or four
+       times before a buyer reached a card). The currency is said once,
+       beside the host's switch, and a one-time payment's terms once above
+       the row (`rowTerms`). What stays on a card is what differs by card:
+       - an AUTO-RENEW card keeps its full terms line, because offer-terms.js's
+         rule is that a renewing price never stands without "every year ·
+         cancel anytime" in the same sentence (an upgrade while a year runs
+         is paid once, and says so);
+       - a dollar card CHARGED in rupees keeps "Charged as ₹X at checkout",
+         because hiding the amount taken until checkout is drip pricing.
+       The per-day figure is derived (perDayIn), never typed. An upgrade's
+       credited price is "now" and its sentence below explains it, so it
+       carries no per-day figure. */
+    const shown = price === null ? null : q ? qFmt(q, 'amount') : fmtMinor(listMinor, listCur);
+    const dayFig = price === null || credit > 0 ? '' : q ? perDayIn(qAmt(q, 'amount'), qCur(q)) : perDayIn(listMinor, listCur);
+    const ownTerms = price !== null && (upgradeOnce || mode === 'renew');
+    const charged = !q && usdRow && shop.charge !== 'USD' ? chargeCaption(shop, usdRow.inrMinor != null ? usdRow.inrMinor : price) : '';
     card.append(h('div.pl-price-block', {}, [
-      h('p.pl-price', {}, [
-        h('strong', { text: p.id === 'free' ? '₹0' : price === null ? '—' : q ? qFmt(q, 'amount') : fmtMinor(listMinor, listCur) }),
+      h('p.pl-price', { 'data-offer-mode': mode || 'unknown' }, [
+        h('strong', { text: price === null ? '—' : shown }),
         price === null ? null : h('span.pl-per', { text: credit > 0 ? ' now' : ' a year' }),
-        q ? h('s.pl-list', { text: qFmt(q, 'list'), 'aria-label': 'list price ' + qFmt(q, 'list') }) : null
+        q ? h('s.pl-list', { text: qFmt(q, 'list'), 'aria-label': 'list price ' + qFmt(q, 'list') }) : null,
+        dayFig ? h('span.pl-day', { text: ' · about ' + dayFig + ' a day' }) : null
       ].filter(Boolean)),
-      h('p.pl-price-cap', { text: price === null ? 'Not for sale' : `≈ ${q ? perDayIn(qAmt(q, credit > 0 ? 'list' : 'amount'), qCur(q)) : perDayIn(listMinor, listCur)} a day` }),
-      price === null ? null : h('p.pl-price-cap.pl-terms', { 'data-offer-mode': mode || 'unknown',
+      price === null ? h('p.pl-price-cap', { text: 'Not for sale' }) : null,
+      ownTerms ? h('p.pl-price-cap.pl-terms', { 'data-offer-mode': upgradeOnce ? 'once' : mode,
         /* the terms name the amount CHARGED: a dollar card charged in
            rupees says the rupees here, as the caption under it does */
-        text: offerTerms(upgradeOnce ? 'once' : mode, q ? qFmt(q, 'amount') : listCur !== orderCur() && usdRow ? fmtMinor(usdRow.inrMinor != null ? usdRow.inrMinor : price, 'INR') : fmtMinor(listMinor, listCur), 'year').line }),
-      price === null ? null : h('p.pl-price-cap.pl-charge', { text: charged })
+        text: offerTerms(upgradeOnce ? 'once' : mode, q ? qFmt(q, 'amount') : listCur !== orderCur() && usdRow ? fmtMinor(usdRow.inrMinor != null ? usdRow.inrMinor : price, 'INR') : fmtMinor(listMinor, listCur), 'year').line }) : null,
+      charged ? h('p.pl-price-cap.pl-charge', { text: charged }) : null
     ].filter(Boolean)));
     if (credit > 0) card.append(h('p.pl-upgrade', { text: `Upgrade to ${name} — ${qFmt(q, 'amount')} today: the ${qFmt(q, 'credit')} left on your ${q.upgrade_from_name || planName(q.upgrade_from)} year counts toward it, and ${name}'s own year starts now.` }));
     if (upgradeOnce) card.append(h('p.pl-upgrade.pl-upgrade-once', { text: UPGRADE_ONCE }));
@@ -453,7 +476,14 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
        nothing — paying to have less is not a thing this page will sell.
        Neither stand-in carries data-plan-action, so nothing can buy it. */
     const act = h('div.pl-cta');
-    if (canBuy) {
+    if (preview && price !== null) {
+      /* SIGNED OUT: a plan belongs to an account, so the press is the
+         Google sign-in, and the plan is held for the tab so its card is
+         marked on the way back (stashed in the capture listener below).
+         Outline here; the recommended plan's is made the one filled
+         button once the row is built. No data-plan-action: nothing buys. */
+      act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--secondary', { type: 'button', 'data-auth-action': 'google', 'data-plan-signin': p.id, text: 'Sign in to buy ' + name }));
+    } else if (canBuy) {
       if (!buyable.length) nextCard = card;
       buyable.push(p.id);
       const disabled = busyPlan !== '' || confirming.id !== '' || !Billing.paymentsConfigured() || (st && st.disabled);
@@ -491,10 +521,10 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     /* WHAT YOU GET: the additions by stage, then the limits, then the
        count with the way to the full table. */
     const body = h('div.pl-card-body');
-    { const adds = addsBlock(plans, p, listed); if (adds) body.append(adds); }
-    body.append(h('p.pl-check-stage', { text: 'Limits' }), limitList(p.limits));
+    { const adds = addsBlock(plans, p, listed, preview); if (adds) body.append(adds); }
+    if (!preview) body.append(h('p.pl-check-stage', { text: 'Limits' }), limitList(p.limits));
     card.append(body);
-    card.append(featureBlock(eff.find((x) => x && x.id === p.id) || p, listed));
+    card.append(featureBlock(eff.find((x) => x && x.id === p.id) || p, listed, preview));
     row.append(card);
   }
   /* The next step up wears the slow border trail (it is a class, so it
@@ -504,7 +534,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
      else the next step up. No glow trail: the 8B mix marks it with the
      brand border and the badge (owner, 28 Oct 2026). */
   {
-    const rec = row.querySelector(`.pl-card[data-plan="${RECOMMENDED}"] [data-plan-action="buy"]`);
+    const rec = row.querySelector(`.pl-card[data-plan="${RECOMMENDED}"] [data-plan-action="buy"], .pl-card[data-plan="${RECOMMENDED}"] [data-plan-signin]`);
     const lead = rec || (nextCard && nextCard.querySelector('[data-plan-action="buy"]'));
     if (lead) { lead.classList.remove('k-btn--secondary'); lead.classList.add('k-btn--primary'); lead.closest('.pl-card').classList.add('is-next'); }
   }
@@ -513,6 +543,10 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     row.setAttribute('data-reveal-group', '');
     setTimeout(() => { if (row.isConnected) reveal(row); }, 0);
   }
+  /* The terms, ONCE, above the row: a one-time payment's "One payment ·
+     nothing renews" (offer-terms.js short). An auto-renew card carries its
+     own full line, and an unknown mode says neither. */
+  if (rowTerms && mode === 'once') wrap.append(h('p.pl-row-terms', { 'data-offer-mode': mode, text: offerTerms(mode, '', 'year').short }));
   wrap.append(row);
   /* ?plan=<id> (the landing page's buttons, a lock card's deep link):
      mark that card, scroll it into view once, and — on request — open
@@ -533,7 +567,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
   else if (picked.id) markPicked(row);
   loadUpgradeQuotes(st, buyable);
   if (statusText && !row.querySelector('.pl-status')) wrap.append(h('p.pl-status', { role: 'status', text: statusText }));
-  if (!Billing.paymentsConfigured()) wrap.append(h('p.pl-note', { text: 'Payments are not available yet. Please check back soon.' }));
+  if (!preview && !Billing.paymentsConfigured()) wrap.append(h('p.pl-note', { text: 'Payments are not available yet. Please check back soon.' }));
   if (st && st.disabled) wrap.append(h('p.pl-note', { text: 'This account has been disabled by an administrator, so it cannot buy a plan.' }));
   /* The offers sit side by side under the row: the code box and the
      student band. Drawn only where there is something to buy. */
@@ -556,7 +590,9 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
       '.'
     ])
   ]));
-  { const cmp = compareBlock(eff, current, listed); if (cmp) wrap.append(cmp); }   // append(null) prints "null"
+  /* Signed out the table is the matrix's own (no caps without a session, so no Limits group),
+     drawn once the lazy matrix is in; the cards' links stay inside the studio frame. */
+  if (!preview || matrixMod) { const cmp = compareBlock(eff, current, listed, preview); if (cmp) wrap.append(cmp); }   // append(null) prints "null"
   return wrap;
 }
 
@@ -568,7 +604,7 @@ function fineTerms(mode) {
   const cur = orderCur() === 'USD' ? 'US dollars' : 'Indian rupees';
   const t = offerTerms(mode, '', 'year');
   const head = `Each plan is a year of full access, paid in ${cur} through Razorpay`;
-  if (t.mode === 'renew') return `${head}. ${t.short}: cancel in Settings, under Plan & purchases, and you keep the year already paid for.`;
+  if (t.mode === 'renew') return `${head}. ${t.short}: cancel with Razorpay, in your mandate e-mail or your bank / UPI app, and you keep the year already paid for.`;
   if (t.mode === 'once') return `${head}. ${t.short}: when the year is ending, buy the next from this page and it starts where the old one stops.`;
   return `${head}. The card says how each one is paid before you pay.`;
 }
@@ -656,7 +692,7 @@ function markPicked(row) {
    table is the check. Whether it is open is kept here for the page (the
    block is rebuilt on every billing event) and in no storage. */
 let compareOpen = null;
-function compareBlock(plans, current, listed) {
+function compareBlock(plans, current, listed, noLimits = false) {
   const cols = (plans || []).filter((p) => p && p.id !== 'free' && (p.active !== false || p.id === current))
     .sort((a, b) => Billing.planRank(a.id) - Billing.planRank(b.id));
   if (cols.length < 2) return null;
@@ -683,13 +719,15 @@ function compareBlock(plans, current, listed) {
     h('span.visually-hidden', { text: on ? 'Included' : 'Not included' })]);
   const curCls = (i) => (cols[i].id === current ? '.is-current' : '');
 
-  group('Limits');
-  for (const [key, label] of LIMIT_ROWS) {
-    body.append(h('tr', {}, [h('th', { scope: 'row', text: label }),
-      ...cols.map((p, i) => { const n = cap(p.limits, key); return h('td.pl-compare-num' + curCls(i), { text: n === null ? 'Unlimited' : String(n) }); })]));
+  if (!noLimits) {
+    group('Limits');
+    for (const [key, label] of LIMIT_ROWS) {
+      body.append(h('tr', {}, [h('th', { scope: 'row', text: label }),
+        ...cols.map((p, i) => { const n = cap(p.limits, key); return h('td.pl-compare-num' + curCls(i), { text: n === null ? 'Unlimited' : String(n) }); })]));
+    }
+    body.append(h('tr', {}, [h('th', { scope: 'row', text: 'Chrome extension' }),
+      ...cols.map((p, i) => mark(!!(p.limits && p.limits.extension), curCls(i)))]));
   }
-  body.append(h('tr', {}, [h('th', { scope: 'row', text: 'Chrome extension' }),
-    ...cols.map((p, i) => mark(!!(p.limits && p.limits.extension), curCls(i)))]));
   sums[0].stages.forEach((stage, si) => {
     group(stage.label);
     stage.items.forEach((item, ii) => body.append(h('tr', {}, [h('th', { scope: 'row', text: item.label }),
@@ -713,8 +751,11 @@ delegate(document, 'click', '[data-plan-action="compare"]', () => {
 
 const wantedPlan = () => wantedPlanFrom(location.search);
 document.addEventListener('click', (e) => {
-  if (!(e.target.closest && e.target.closest('[data-auth-action="google"]'))) return;
-  stashPlanFromAddress(location.search);
+  const g = e.target.closest && e.target.closest('[data-auth-action="google"]');
+  if (!g) return;
+  /* a signed-out card's own button holds ITS plan; any other sign-in, ?plan= */
+  const id = g.dataset.planSignin;
+  stashPlanFromAddress(id && /^[\w-]{1,32}$/.test(id) ? '?plan=' + encodeURIComponent(id) : location.search);
 }, true);
 
 /* PURCHASE SUCCESS. What unlocked is read from the same matrix the

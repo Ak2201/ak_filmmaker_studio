@@ -42,7 +42,7 @@ import { customerCall } from '../lib/admin-api.js';
 /* The call itself is src/lib/admin-api.js's (rule V2); this keeps the
    name the drawer and the Support tab import. */
 export function rpc(name, args) { return customerCall(window.StudioCloud, name, args); }
-const isMissingFn = (e) => !!e && (e.code === 'PGRST202' || e.code === '42883' || /Could not find|does not exist/i.test(String(e.message || '')));
+const isMissingFn = (e) => !!e && (e.code === 'Pgrst202' || e.code === '42883' || /Could not find|does not exist/i.test(String(e.message || '')));
 const sentence = (e, fallback) => errorSentence(e, fallback || 'That did not work.');
 
 const toast = (msg, type, opts) => {
@@ -202,7 +202,7 @@ const money = (minor, row) => fmtMinor(minor || 0, row && row.currency === 'USD'
 function payRow(p, invoices) {
   const hasInvoice = invoices.some((i) => i.payment_id === p.id);
   const issue = can('invoice') && p.status === 'paid' && Number(p.amount_paise) > 0 && !hasInvoice
-    ? h('button.btn.cu-mini', { type: 'button', 'data-cu-act': 'invoice', 'data-id': p.id, 'aria-label': 'Issue an invoice for ' + money(p.amount_paise, p), text: 'ISSUE INVOICE' })
+    ? h('button.btn.cu-mini', { type: 'button', 'data-cu-act': 'invoice', 'data-id': p.id, 'aria-label': 'Issue an invoice for ' + money(p.amount_paise, p), text: 'Issue invoice' })
     : null;
   return h('li.cu-row', {}, [
     h('div.cu-row-main', {}, [
@@ -298,8 +298,8 @@ function sessionsSection(d) {
   const mayDisable = can('session') && (d.standing || {}).is_member && !(d.standing || {}).disabled_at && (d.standing || {}).role !== 'admin' && !isSelf;
   if (mayEnd || mayDisable) {
     wrap.append(h('div.cu-btns', {}, [
-      mayEnd ? h('button.btn', { type: 'button', 'data-cu-act': 'end-session', text: 'END SESSION' }) : null,
-      mayDisable ? h('button.btn.danger', { type: 'button', 'data-cu-act': 'disable', text: 'DISABLE' }) : null
+      mayEnd ? h('button.btn', { type: 'button', 'data-cu-act': 'end-session', text: 'End session' }) : null,
+      mayDisable ? h('button.btn.danger', { type: 'button', 'data-cu-act': 'disable', text: 'Disable' }) : null
     ]));
   }
   return section('sessions', 'Sessions & devices', wrap);
@@ -350,7 +350,7 @@ function notesSection(d, notes) {
     const ta = h('textarea#cuNote', { name: 'body', rows: '3', maxlength: '1000', required: true, 'aria-label': 'A note about this person', placeholder: 'What did you learn? Visible to administrators only.' });
     wrap.append(h('form.cu-note-form', { 'data-cu-form': 'note', autocomplete: 'off' }, [
       ta,
-      h('div.cu-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'ADD NOTE' }), h('span.cu-meta', { text: 'Up to 1000 characters. Notes cannot be edited or deleted.' })])
+      h('div.cu-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'Add note' }), h('span.cu-meta', { text: 'Up to 1000 characters. Notes cannot be edited or deleted.' })])
     ]));
   }
   wrap.append(notes.length
@@ -385,7 +385,7 @@ function actionsSection(d) {
           ['60', '1 hour'], ['1440', '1 day'], ['4320', '3 days'], ['10080', '7 days'], ['43200', '30 days']].map(([v, l]) => h('option', { value: v, text: l, selected: v === '10080' ? '' : null })))]),
         h('div', {}, [h('label', { for: 'cuTrialNote', text: 'Note (optional)' }), h('input#cuTrialNote', { name: 'note', type: 'text', maxlength: '200', placeholder: 'Why' })])
       ]),
-      h('button.btn.primary', { type: 'submit', text: 'GIVE TIME' })
+      h('button.btn.primary', { type: 'submit', text: 'Give time' })
     ]));
   }
   if (can('plan') && cur && cur.plans.length) {
@@ -396,7 +396,7 @@ function actionsSection(d) {
         h('div', {}, [h('label', { for: 'cuPlanDays', text: 'Days' }), h('select#cuPlanDays', { name: 'days' }, [['30', '30 days'], ['90', '90 days'], ['365', '1 year'], ['3660', 'About ten years']].map(([v, l]) => h('option', { value: v, text: l })))]),
         h('div', {}, [h('label', { for: 'cuPlanNote', text: 'Note (optional)' }), h('input#cuPlanNote', { name: 'note', type: 'text', maxlength: '200', placeholder: 'Why' })])
       ]),
-      h('button.btn.primary', { type: 'submit', text: 'GRANT PLAN' })
+      h('button.btn.primary', { type: 'submit', text: 'Grant plan' })
     ]));
   }
   const self = me();
@@ -405,14 +405,14 @@ function actionsSection(d) {
     parts.push(h('div.cu-danger', {}, [
       h('h4.cu-h4', { text: 'Clear access' }),
       h('p.cu-meta', { text: 'Removes their membership, invite request, the code they used (freeing it) and their session, so their next sign-in starts as a new one. Their films, organisation and payments are not touched.' }),
-      h('button.btn.danger', { type: 'button', 'data-cu-act': 'reset', text: 'CLEAR ACCESS…' })
+      h('button.btn.danger', { type: 'button', 'data-cu-act': 'reset', text: 'Clear access…' })
     ]));
   }
   if (can('delete') && s.role !== 'admin' && !isSelf && i.email) {
     parts.push(h('div.cu-danger', {}, [
       h('h4.cu-h4', { text: 'Delete totally' }),
       h('p.cu-meta', { text: 'Removes the person, their sign-in, synced films, payments, team, tickets, grant and mailing-list entry. Their invoices are kept as the seller’s legal record with the name, e-mail and GSTIN removed. It cannot be undone and is recorded in the audit log.' }),
-      h('button.btn.danger', { type: 'button', 'data-cu-act': 'delete', text: 'DELETE TOTALLY…' })
+      h('button.btn.danger', { type: 'button', 'data-cu-act': 'delete', text: 'Delete totally…' })
     ]));
   }
   if (!parts.length) return null;
@@ -431,10 +431,10 @@ function paintHeader(d) {
   );
   const live = can('session') && ((d.sessions || {}).device_lock) && isLive(d.sessions.device_lock.last_heartbeat);
   cur.actsHost.replaceChildren(
-    can('trial') || can('plan') ? h('button.btn', { type: 'button', 'data-cu-act': 'goto', 'data-sec': 'actions', text: 'GIVE TIME' }) : null,
-    can('notes') ? h('button.btn', { type: 'button', 'data-cu-act': 'goto', 'data-sec': 'notes', text: 'ADD NOTE' }) : null,
-    live ? h('button.btn', { type: 'button', 'data-cu-act': 'end-session', text: 'END SESSION' })
-      : h('button.btn', { type: 'button', 'data-cu-act': 'copy-email', text: 'COPY E-MAIL' })
+    can('trial') || can('plan') ? h('button.btn', { type: 'button', 'data-cu-act': 'goto', 'data-sec': 'actions', text: 'Give time' }) : null,
+    can('notes') ? h('button.btn', { type: 'button', 'data-cu-act': 'goto', 'data-sec': 'notes', text: 'Add note' }) : null,
+    live ? h('button.btn', { type: 'button', 'data-cu-act': 'end-session', text: 'End session' })
+      : h('button.btn', { type: 'button', 'data-cu-act': 'copy-email', text: 'Copy e-mail' })
   );
 }
 

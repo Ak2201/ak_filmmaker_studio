@@ -553,6 +553,15 @@ for (const f of ['supabase/schema/schema-64-pro-blurb.sql', 'supabase/schema/sch
 console.log('✓ §64 loads (and re-runs cleanly)');
 runChecks('pro-blurb.sql');
 /* --- end §64 --- */
+/* --- §65 (auto-pay wording) --- restates quote_subscription (§62) with one
+   message reworded; loaded twice. ABOVE the purge. --- */
+for (const f of ['supabase/schema/schema-65-autopay-wording.sql', 'supabase/schema/schema-65-autopay-wording.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §65 loads (and re-runs cleanly)');
+runChecks('autopay-wording.sql');
+/* --- end §65 --- */
 /* --- the clean-slate purge (supabase/schema/patches/purge-test-data-2026-10-27.sql)
    --- LAST, after every section (and §62's when it lands above this block):
    it COMMITS and leaves one sign-in, so nothing may run after it. It runs

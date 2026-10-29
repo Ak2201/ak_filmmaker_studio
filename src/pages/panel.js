@@ -61,7 +61,7 @@ const head = (eyebrow, title, deck) => h('header.pn-head', {}, [
 function renderNotExtension() {
   return h('main#main.pn-main', {}, [head(BRAND.name, 'This is the extension panel.',
     'Open it from the ' + BRAND.name + ' button in Chrome’s toolbar. On the website, everything here is on the hub.'),
-    h('a.btn', { href: '../index.html', text: 'GO TO THE HUB' })]);
+    h('a.btn', { href: '../index.html', text: 'Go to the hub' })]);
 }
 
 function renderGatekeeper() {
@@ -71,7 +71,7 @@ function renderGatekeeper() {
   const form = h('form.gt-code', { 'data-pn-form': 'code', autocomplete: 'off' });
   form.append(h('label.gt-label', { for: 'pnCode', text: 'Code' }));
   form.append(h('input#pnCode.gt-input', { type: 'text', autocapitalize: 'characters', spellcheck: 'false', maxlength: 40, placeholder: 'XXXX-XXXX-XXXX' }));
-  form.append(h('button.btn.primary', { type: 'submit', disabled: ui.busy, text: ui.busy ? 'CHECKING…' : 'CONTINUE' }));
+  form.append(h('button.btn.primary', { type: 'submit', disabled: ui.busy, text: ui.busy ? 'Checking…' : 'Continue' }));
   main.append(form);
   if (ui.deployed === false) {
     main.append(h('p.gt-meta', { text: 'Invite codes are not switched on for this studio yet; an administrator has to enable them before anybody can be let in.' }));
@@ -88,8 +88,8 @@ function renderSignIn() {
   const main = h('main#main.pn-main');
   main.append(head('Step 2 of 3', 'Sign in with Google.',
     'Your code is held for ten minutes and spent only once Google has said who you are.'));
-  main.append(h('button.btn.primary', { type: 'button', 'data-pn': 'google', disabled: ui.busy, text: ui.busy ? 'WAITING FOR GOOGLE…' : 'SIGN IN WITH GOOGLE' }));
-  main.append(h('button.btn', { type: 'button', 'data-pn': 'back', text: 'USE A DIFFERENT CODE' }));
+  main.append(h('button.btn.primary', { type: 'button', 'data-pn': 'google', disabled: ui.busy, text: ui.busy ? 'Waiting for Google…' : 'Sign in with Google' }));
+  main.append(h('button.btn', { type: 'button', 'data-pn': 'back', text: 'Use a different code' }));
   if (ui.error) main.append(h('p.gt-error', { role: 'alert', text: ui.error }));
   return main;
 }
@@ -106,11 +106,11 @@ function renderClosed() {
     const form = h('form.gt-code', { 'data-pn-form': 'redeem', autocomplete: 'off' });
     form.append(h('label.gt-label', { for: 'pnCode', text: 'Or an invite code, if you were given one' }));
     form.append(h('input#pnCode.gt-input', { type: 'text', autocapitalize: 'characters', spellcheck: 'false', maxlength: 40, placeholder: 'XXXX-XXXX-XXXX' }));
-    form.append(h('button.btn.primary', { type: 'submit', disabled: ui.busy, text: 'REDEEM' }));
+    form.append(h('button.btn.primary', { type: 'submit', disabled: ui.busy, text: 'Redeem' }));
     main.append(form);
   }
   if (ui.error) main.append(h('p.gt-error', { role: 'alert', text: ui.error }));
-  main.append(h('button.btn', { type: 'button', 'data-pn': 'signout', text: 'SIGN OUT' }));
+  main.append(h('button.btn', { type: 'button', 'data-pn': 'signout', text: 'Sign out' }));
   return main;
 }
 
@@ -118,8 +118,8 @@ function renderLost() {
   const main = h('main#main.pn-main');
   main.append(head('Session elsewhere', 'Active on another device.',
     'Your account is open in another browser window or on another device. Take the session back to continue here; the other one pauses.'));
-  main.append(h('button.btn.primary', { type: 'button', 'data-pn': 'takeover', text: 'TAKE OVER SESSION' }));
-  main.append(h('button.btn', { type: 'button', 'data-pn': 'signout', text: 'SIGN OUT' }));
+  main.append(h('button.btn.primary', { type: 'button', 'data-pn': 'takeover', text: 'Take over session' }));
+  main.append(h('button.btn', { type: 'button', 'data-pn': 'signout', text: 'Sign out' }));
   return main;
 }
 
@@ -139,9 +139,9 @@ async function checkPlan() {
 function renderNoExtension() {
   const main = h('main#main.pn-main');
   main.append(head('Your plan', 'The extension is not in your plan.', extensionPlansSentence()));
-  main.append(h('a.btn.primary', { href: '../purchase.html', target: '_blank', rel: 'noopener', text: 'SEE PLANS' }));
-  main.append(h('button.btn', { type: 'button', 'data-pn': 'recheck', text: 'I HAVE UPGRADED' }));
-  main.append(h('button.btn', { type: 'button', 'data-pn': 'signout', text: 'SIGN OUT' }));
+  main.append(h('a.btn.primary', { href: '../purchase.html', target: '_blank', rel: 'noopener', text: 'See plans' }));
+  main.append(h('button.btn', { type: 'button', 'data-pn': 'recheck', text: 'I have upgraded' }));
+  main.append(h('button.btn', { type: 'button', 'data-pn': 'signout', text: 'Sign out' }));
   return main;
 }
 
@@ -184,7 +184,7 @@ function renderPipeline() {
   main.append(clipLine());
   main.append(h('p.pn-foot', {}, [
     h('span', { text: cloud().getUserEmail() || '' }),
-    h('button.btn', { type: 'button', 'data-pn': 'signout', text: 'SIGN OUT' })
+    h('button.btn', { type: 'button', 'data-pn': 'signout', text: 'Sign out' })
   ]));
   return main;
 }

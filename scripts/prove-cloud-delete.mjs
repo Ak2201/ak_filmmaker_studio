@@ -97,7 +97,11 @@ async function route(r) {
       }
       return json(r, 200, hit ? [{ id }] : []);
     }
-    return handle(r);   // sync pushes etc. are not on trial here
+    if (m !== 'GET') {   // (h) watches what a sync push says
+      let b = {}; try { b = JSON.parse(req.postData() || '{}'); } catch (e) {}
+      LOG.push(m + ' projects ' + (b.id || eq(url, 'id')));
+    }
+    return handle(r);
   }
   if (p.startsWith('/rest/v1/project_data')) {
     const m = req.method();
@@ -113,6 +117,10 @@ async function route(r) {
       const owner = (DB.projects.find((x) => x.id === pid) || {}).owner_id;
       if (owner === uid) DB.data = DB.data.filter((d) => d.project_id !== pid);   // pd_write via has_project_access(edit)
       return json(r, 200, []);
+    }
+    {   // (h)
+      let b = {}; try { b = JSON.parse(req.postData() || '{}'); } catch (e) {}
+      LOG.push(m + ' project_data ' + b.project_id);
     }
     return handle(r);
   }
@@ -189,6 +197,23 @@ try {
     const r = await page.evaluate(() => window.StudioCloud.deleteOwnedCloudProjects().then(() => 'resolved', (e) => String(e.message)));
     ok(/sign in/i.test(r), 'rejects with a sign-in message: ' + r);
     ok(DB.projects.length === 4 && LOG.length === 0, 'and touches nothing');
+    await ctx.close();
+  }
+
+  console.log('(h) the sample stays on this device; a normal project still syncs');
+  resetDb(); DB.projects = []; DB.data = [];
+  {
+    const { ctx, page } = await open(browser, true);
+    await page.waitForFunction(() => window.StudioCloud.getSession(), null, { timeout: 15000 });
+    const ids = await page.evaluate(() => {
+      const S = window.StudioStore;
+      const mk = (title) => { const p = S.createProject({ title, format: 'feature' }); S.setCurrentProject(p.id); localStorage.setItem('fms_scenes_v1', JSON.stringify([{ id: 's1', heading: 'INT. ROOM - DAY' }])); return p.id; };
+      return { sample: mk('Dragon'), mine: mk('My Own Film') };
+    });
+    await page.waitForTimeout(3500);
+    const touched = (id) => LOG.filter((l) => /^(POST|PATCH|PUT) project/.test(l) && l.endsWith(' ' + id));
+    ok(touched(ids.mine).length > 0, 'a normal project still pushes (' + touched(ids.mine).join(', ') + ')');
+    ok(touched(ids.sample).length === 0, 'the sample pushes no project row and no scope: ' + JSON.stringify(touched(ids.sample)));
     await ctx.close();
   }
 } finally {

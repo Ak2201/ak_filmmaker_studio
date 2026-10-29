@@ -43,7 +43,6 @@ import { pageHeader } from '../ui/kit/page-header.js';
 import Billing from '../lib/billing.js';
 import { planCards, usageTiles, RECOMMENDED } from '../ui/plan-cards.js';
 import { sym } from '../ui/kit/util.js';
-import { listPriceBlock } from '../ui/list-prices.js';
 import { memberGrowthPanels, refreshGrowthPanels } from '../ui/growth-panels.js';
 import { refundRequestPanel, refreshRefundRequest } from '../ui/refund-request.js';
 import { memberInvoicePanel, refreshInvoices } from '../ui/invoice-panels.js';
@@ -54,10 +53,11 @@ import PlanGate from '../lib/plan-gate.js';
 import { SUPPORT_EMAIL } from '../lib/brand.js';
 import { priceNotice as publicPriceNotice, countPlanViewInApp } from '../lib/funnel.js';
 import { pricingCurrency, readPayCurrency, writePayCurrency, guessVisitorRegion, chosenRegion } from '../lib/region.js';
-import { shopView, rupeeView, orderCurrency, currencySentence, CURRENCY_OPTIONS, fromDay, perDayIn } from '../lib/price-model.js';
+import { shopView, rupeeView, orderCurrency, CURRENCY_OPTIONS } from '../lib/price-model.js';
+import { LIST_PRICE, PLAN_ORDER } from '../lib/plans.js';
 import { segmented } from '../ui/kit/segmented.js';
 import {
-  visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, deckFor, planHeading, plansPendingHeading, lapsedLine, refundNotice, trialStatus, passHeading
+  visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, planHeading, plansPendingHeading, lapsedLine, refundNotice, trialStatus, passHeading
 } from '../lib/purchase-model.js';
 import { clearAttribRef } from '../lib/attribution.js';
 /* THE LAUNCH PASS (§61): a card above the yearly ones while it is on
@@ -196,14 +196,34 @@ async function refreshShop() {
   shop.loading = false;
   render();
 }
-/* The switch and the one sentence that says what is shown and what is
-   charged. While the dollar figures load, the cards stay on rupees and
-   the line says so; a BUY pressed then orders in rupees, which is what
-   the card it was pressed on says. */
+/* THE CURRENCY AND THE TERM, SAID ONCE (QA r2b, 29 Oct 2026): beside the
+   switch, right above the row, and nowhere else on the page — the cards
+   print one price line each ("₹7,999 a year · about ₹21.92 a day"). The
+   sentence says what is shown, that each plan is a year, and what is
+   charged; a one-time payment's terms follow it in offer-terms.js's words
+   ("One payment · nothing renews"). On auto-renew each card carries its
+   own full terms line instead (a renewing price never stands without
+   them), and an unknown mode states neither. While the dollar figures
+   load, the cards stay on rupees and the line says so; a BUY pressed then
+   orders in rupees, which is what the card it was pressed on says. */
+function currencyLine(view) {
+  if (!view || view.currency !== 'USD') {
+    return view && view.fallback
+      ? 'Prices in rupees, a year each: the dollar prices could not be loaded just now. You pay in Indian rupees through Razorpay.'
+      : 'Prices in Indian rupees, a year each, paid through Razorpay.';
+  }
+  return view.charge === 'USD'
+    ? 'Prices in US dollars, a year each, charged in US dollars through Razorpay.'
+    : 'Prices shown in US dollars, a year each. Razorpay charges the rupee price shown on each plan, and your card provider converts it.';
+}
 function currencyBlock() {
   const view = shop.view || rupeeView(shop.want);
+  const t = offerTerms(Billing.cachedModes().plan, '', 'year');
   return h('div.pu-currency', {}, [
-    h('p.pu-currency-line', { role: 'status', text: shop.loading ? 'Loading the dollar prices…' : currencySentence(view) }),
+    h('div.pu-currency-text', {}, [
+      h('p.pu-currency-line', { role: 'status', text: shop.loading ? 'Loading the dollar prices…' : currencyLine(view) }),
+      t.mode === 'once' ? h('p.pl-row-terms', { 'data-offer-mode': t.mode, text: t.short }) : null
+    ].filter(Boolean)),
     segmented({ label: 'Show prices in', options: CURRENCY_OPTIONS, value: shop.want, name: 'pu-currency', action: 'pu-currency', quiet: true })
   ]);
 }
@@ -296,29 +316,29 @@ function trialLine(st) {
 /* READ THIS BEFORE YOU PURCHASE — what one payment buys and when a
    refund IS given, drawn right under the buy buttons (launch study,
    21 Oct 2026: "purchases are final" with no visible exceptions was a
-   reason to wait). One numbered card, one fact a row (owner, 28 Oct
-   2026: "a nice format, not a wall of text"); it also carries what
-   plan-cards.js's fine print says on invite.html (planCards({fine:
-   false}) here), so no line is said twice on this page. The three
-   exceptions are refund.html §4's, in its own headings and order; the
-   one-year line is refund.html §2 and §52, in the mode the server sells
-   (§62, offer-terms.js; an unknown mode states neither). If refund.html
-   changes, change this, REFUND_TERMS in supabase/functions/_shared/
-   terms.js and plan-cards.js's fine print together. No trial length is
-   typed here: it is the console's to set. Auto-pay is cancelled with
-   the payment service, never in the studio (owner, 28 Oct 2026). */
+   reason to wait). ONE COLUMN of short numbered rows, the refund
+   exceptions last as one full-width block with its cases as a compact
+   list, then the legal line directly under it (QA r2b, 29 Oct 2026: the
+   two-column equal-height grid left ~200px holes beside the short rows).
+   It also carries what plan-cards.js's fine print says on invite.html
+   (planCards({fine: false}) here), so no line is said twice on this
+   page; the currency is not restated (the line beside the switch says
+   it). The three exceptions are refund.html §4's, in its own headings
+   and order; the one-year line is refund.html §2 and §52, in the mode
+   the server sells (§62, offer-terms.js; an unknown mode states
+   neither). If refund.html changes, change this, REFUND_TERMS in
+   supabase/functions/_shared/terms.js and plan-cards.js's fine print
+   together. No trial length is typed here: it is the console's to set.
+   Auto-pay is cancelled with the payment service, never in the studio
+   (owner, 28 Oct 2026). */
 function termsYear() {
   const t = offerTerms(Billing.cachedModes().plan, '', 'year');
   if (t.mode === 'renew') return 'A plan is a year of the studio. ' + t.short + ': cancel it with Razorpay, the payment service, and nothing more is charged; you keep the year already paid for. A cancel is not a refund.';
-  if (t.mode === 'once') return 'A plan is a year of the studio. ' + t.short + ', so there is nothing to cancel: if you do not want another year, do nothing.';
+  if (t.mode === 'once') return 'A plan is a year of the studio from the day you pay. Nothing renews, so there is nothing to cancel: if you do not want another year, do nothing.';
   return 'A plan is a year of the studio. Each plan card says how it is paid before you pay.';
 }
-function termsPaid() {
-  const cur = orderCurrency(currentView()) === 'USD' ? 'US dollars' : 'Indian rupees';
-  return 'Paid in ' + cur + ' through Razorpay. The card shows the amount charged before you press Buy.';
-}
 function buyTerms() {
-  const row = (icon, head, body) => h('li.pu-term', {}, [
+  const row = (icon, head, body, cls = '') => h('li.pu-term' + cls, {}, [
     h('span.pu-term-icon', { 'aria-hidden': 'true' }, [sym(icon)]),
     h('div.pu-term-text', {}, [h('strong.pu-term-h', { text: head }), ...[].concat(body)])
   ]);
@@ -327,23 +347,23 @@ function buyTerms() {
     h('h3.pu-h3', { id: 'puTermsH', text: 'Read this before you purchase' }),
     h('ol.pu-terms-list', {}, [
       row('event', 'One year of access', p(termsYear())),
-      row('payments', 'How you pay', p(termsPaid())),
+      row('payments', 'How you pay', p('Through Razorpay. The card shows the amount charged before you press Buy.')),
       row('trending_up', 'Moving up', p('Move up any time: what is left of your year counts toward the new plan.')),
+      row('receipt_long', 'Your receipt', p('Every payment gets a Bill of Supply by e-mail, and it is listed under Invoices on this page.')),
       row('check_circle', 'When a refund is given', [
         p('A refund is given in these cases. They are not discretionary: if one applies, the refund is yours.'),
         h('ul.pu-terms-cases', {}, [
           h('li', {}, [h('strong', { text: 'A duplicate or erroneous charge' }), ' — charged more than once for the same order, or an amount you did not agree to at checkout: the extra payment is refunded in full.']),
           h('li', {}, [h('strong', { text: 'Charged but not delivered' }), ' — the payment went through but the plan was never activated on your account: you choose, the plan you paid for or a full refund.']),
           h('li', {}, [h('strong', { text: 'Where the law requires it' }), ' — wherever the law of India, including the Consumer Protection Act, 2019, requires a refund.'])
+        ]),
+        h('p', {}, [
+          'Otherwise, once bought and activated, a plan is final. To ask for a refund, e-mail ',
+          h('a', { href: 'mailto:' + SUPPORT_EMAIL, text: SUPPORT_EMAIL }),
+          ' from the e-mail address on your account, with the payment ID from your receipt or invoice. ',
+          h('a', { href: 'refund.html#the-exceptions', text: 'The full policy' }), '.'
         ])
-      ]),
-      row('support_agent', 'Otherwise a plan is final', h('p', {}, [
-        'Once bought and activated, a plan is final. To ask for a refund, e-mail ',
-        h('a', { href: 'mailto:' + SUPPORT_EMAIL, text: SUPPORT_EMAIL }),
-        ' from the e-mail address on your account, with the payment ID from your receipt or invoice. ',
-        h('a', { href: 'refund.html#the-exceptions', text: 'The full policy' }), '.'
-      ])),
-      row('receipt_long', 'Your receipt', p('Every payment gets a Bill of Supply by e-mail, and it is listed under Invoices on this page.'))
+      ], '.is-block')
     ]),
     h('p.pu-terms-legal', {}, [
       'By paying you agree to the ',
@@ -357,20 +377,27 @@ function buyTerms() {
   ]);
 }
 
-/* The deck says the per-day figure in the currency the cards are drawn in. */
-/* The cheapest plan a day, from the SAME rows the cards beside it are
-   drawn from: a signed-in rupee view reads the plans rows (billing.plans),
-   anybody else the shop view (price_notice). LIST_PRICE only when neither
-   has answered: it is the price before any scheduled rise. */
-function rowsFromDay() {
-  const paise = (billing.plans || []).filter((p) => p && p.id !== 'free' && p.active !== false)
-    .map((p) => Billing.priceFor(p, 'year')).filter((n) => Number(n) > 0);
-  return paise.length ? perDayIn(Math.min(...paise), 'INR') : '';
+/* WHAT A PLAN DOES, said once at the head of the plans: the stages it
+   opens and that nothing is ever deleted. No price, currency or term here
+   (each is said once, beside the switch and on the cards). A plan decides
+   which STAGES open (plan-matrix.json); names from planName(), never typed. */
+const deck = () => 'A plan opens the stages of your own film — ' + Billing.planName('starter') + ' to write it, '
+  + Billing.planName('indie') + ' to prepare it, ' + Billing.planName('pro') + ' to shoot and finish it — and sets how much syncs to the cloud. Nothing you write is ever deleted, on any plan or none.';
+
+/* THE SIGNED-OUT ROW: the same cards a member sees, built from what a
+   signed-out page can know without the SDK: the price notice's current
+   rupee price (the shop view), else LIST_PRICE (the price before any
+   scheduled rise, as start.html is stamped), and empty feature maps,
+   which plan-cards.js reads from the matrix (the "Everything in Basic,
+   plus:" bullets). No caps: those are the server's rows (planCards
+   `preview`). A dollar view prints its own figures over these. */
+function previewRows(view) {
+  return PLAN_ORDER.filter((id) => id !== 'free' && LIST_PRICE[id] > 0).map((id) => {
+    const r = view && view.plans ? view.plans[id] : null;
+    const inr = r && r.inrMinor > 0 ? r.inrMinor : LIST_PRICE[id] * 100;
+    return { id, name: Billing.planName(id), active: true, price_paise: inr, features: {}, limits: {} };
+  });
 }
-const deck = () => { const v = currentView(); return deckFor(v.currency === 'USD' ? fromDay(v) : (rowsFromDay() || fromDay(v)), Billing.cachedModes().plan); };
-/* What a plan actually does: deckFor(), in purchase-model.js. A plan decides
-   which STAGES open (plan-matrix.json), and the trial's end walls the
-   studio. Nothing written is ever deleted. */
 
 /* ---- your plan: the summary card ------------------------------------ */
 const dayOf = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); };
@@ -460,27 +487,29 @@ function planSection() {
     const x0 = planExtras(null); if (x0) sec.append(x0);
     return sec;
   }
+  /* Until cloud.js has booted, "no session" may only mean "not restored
+     yet": draw the plans as loading, not the signed-out cards, so a
+     member never sees (or presses) a "Sign in to buy" row for a moment
+     before their own cards replace it. cloud:booted redraws. */
+  if (!signedIn && c.isBooted && !c.isBooted()) return section('plan', 'Plan', plansPendingHeading({}), deck());
   if (!signedIn) {
-    const sec = section('plan', 'Plan', 'Sign in to buy a plan.',
-      deck() + ' A plan belongs to an account, so sign in with Google first and you come straight back to this page.');
-    /* The prices HERE, not one page away (start.html#pricing), which
-       took a buyer off the buying path to learn the one fact they came
-       for. The link stays for the full comparison. */
+    /* THE SAME CARDS A MEMBER SEES (QA r2b, 29 Oct 2026), not a price
+       list: the "Everything in Basic, plus:" bullets on each, and on each
+       a "Sign in to buy <plan>" button where BUY will be, Intermediate's
+       the one filled. A plan belongs to an account, so the press is the
+       Google sign-in, and that card is marked on the way back. The terms
+       still come before any payment, under the row. */
+    const sec = section('plan', 'Plan', 'Choose a plan', deck() + ' A plan belongs to an account: sign in with Google and you come straight back here.');
     { const pc = passCard(null, false); if (pc) sec.append(pc); }
     sec.append(currencyBlock());
-    sec.append(listPriceBlock(currentView(), Billing.cachedModes().plan));
-    /* The action straight under the prices, before the refund terms: at
-       390px it sat two screens down, under the whole policy (UI review,
-       22 Oct 2026). The terms still come before any payment, which is
-       on the next page, after sign-in. */
-    sec.append(h('div.pu-actions', {}, [
-      h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', text: 'Sign in to buy' }),
-      h('a.k-btn.k-btn--secondary', { href: 'pricing.html#compare', text: 'Compare every feature' })
-    ]));
+    const view = currentView();
+    const cards = planCards(previewRows(view), null, { shop: view, rerender: render, fine: false, rowTerms: false, preview: true });
+    const row = cards.querySelector('.pl-row');
+    if (row) row.after(buyTerms()); else cards.append(buyTerms());
+    sec.append(cards);
     if (LINK_CODE) {
       sec.append(h('p.pl-status.pu-ref', { text: `You arrived with the code ${LINK_CODE}. Sign in and it is filled in under \u201cHave a code?\u201d below the plan cards, with what it takes off; you can clear it there.` }));
     }
-    sec.append(buyTerms());
     const x1 = planExtras(null); if (x1) sec.append(x1);
     return sec;
   }
@@ -520,8 +549,8 @@ function planSection() {
   /* THE PLANS: a heading, what a plan does, and the row. */
   sec.append(h('div.pu-plans-head', {}, [
     h('h3.pu-h3', { text: buyer ? 'Renew or move up' : 'Choose a plan' }),
-    h('p.bd-sub', { text: deck() })
-  ]));
+    buyer ? null : h('p.bd-sub', { text: deck() })
+  ].filter(Boolean)));
   { const pc = passCard(st, true); if (pc) sec.append(pc); }
   sec.append(currencyBlock());
   const view = currentView();
@@ -529,7 +558,8 @@ function planSection() {
     shop: view,
     onBuy: (planId, period, onStatus, code, currency, shownMode, passStopped) => Billing.buy(planId, period, { accountId: st && st.account_id, onStatus, code, shownMode, passStopped, currency: currency || orderCurrency(view) }).then(() => { clearAttribRef(); refreshGrowthPanels(); refreshInvoices(); return refreshBilling(); }),
     rerender: render,
-    fine: false
+    fine: false,
+    rowTerms: false
   });
   /* the terms go straight under the row of buy buttons, above the code
      box and the comparison table, so they are read before a press */
@@ -570,8 +600,9 @@ function render() {
      hides a header's sub, and this one says whether anything is on sale). */
   main.append(pageHeader({ eyebrow: ['Studio', 'Purchase'], title: 'Purchase', class: 'bd-head' }));
   const body = h('div.pu-body');
-  body.append(h('p.bd-deck.pu-deck', { text: purchasesOff(billing.st) ? 'Nothing is for sale at the moment, and every part of the studio is open.'
-    : 'Your plan, the plans you can buy, and your invoices, in one place.' }));
+  /* No intro line: the header names the page and the plan section says
+     what is on sale (QA r2b, 29 Oct 2026: "Your plan, the plans you can
+     buy, and your invoices" restated the page's own headings). */
   body.append(planSection());
   for (const x of afterSections()) body.append(x);
   /* The terms promise your work can be downloaded on any plan or none, and an

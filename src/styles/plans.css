@@ -51,6 +51,11 @@
 .pl-price-cap { margin: 0; font-size: var(--t-tiny); color: var(--ink-muted); }
 /* "a year" beside the figure: the period is part of the price, not fine print */
 .pl-per { font-size: var(--t-small); font-weight: 500; color: var(--ink-muted); margin-left: var(--s1); }
+/* "· about ₹21.92 a day": the rest of the card's one price line; it may
+   wrap under the figure as a unit on a narrow card */
+.pl-day { font-size: var(--t-small); color: var(--ink-muted); white-space: nowrap; }
+/* a one-time payment's terms, said once above the row (offer-terms.js short) */
+.pl-row-terms { margin: 0; font-size: var(--t-small); font-weight: 600; color: var(--ink); }
 .pl-save { margin: 0; font-size: var(--t-tiny); font-family: var(--f-body); letter-spacing: 0; text-transform: none; color: var(--ok-deep); }
 .pl-upgrade { margin: 0; font-size: var(--t-small); color: var(--ink-body); }
 .pl-cta { display: grid; gap: var(--s2); }
@@ -206,6 +211,7 @@
   .pl-card.is-below .pl-tag,
   .pl-card.is-below .pl-blurb,
   .pl-card.is-below .pl-price-cap,
+  .pl-card.is-below .pl-day,
   .pl-card.is-below .pl-card-body,
   .pl-card.is-below .pl-features { display: none; }
   .pl-card.is-below .pl-cta .k-btn { min-height: 0; padding-block: var(--s1); }

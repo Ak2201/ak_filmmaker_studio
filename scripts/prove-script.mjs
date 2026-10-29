@@ -1025,7 +1025,18 @@ await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(url('drafts.html'), { waitUntil: 'networkidle' });
   /* The page draws after networkidle on a slow runner (CI run 361): wait
      for the button, never assume it is there. */
-  await page.waitForSelector('[data-dr="new"]', { timeout: 15000 });
+  /* CI runs 361/362: the button never appeared, so the page drew its
+     no-project branch. Say what the page saw instead of timing out blind. */
+  if (!(await page.waitForSelector('[data-dr="new"]', { timeout: 15000 }).catch(() => null))) {
+    const seen = await page.evaluate(() => ({
+      url: location.href,
+      current: window.StudioStore && window.StudioStore.currentProjectId && window.StudioStore.currentProjectId(),
+      projects: window.StudioStore && window.StudioStore.listProjects && window.StudioStore.listProjects().map((p) => p.title),
+      main: (document.querySelector('main') || document.body).innerText.slice(0, 400)
+    }));
+    console.log('23e drafts.html drew no "Save as new draft" button:', JSON.stringify(seen));
+    throw new Error('23e: drafts.html has no [data-dr="new"]');
+  }
   await page.focus('[data-dr="new"]');
   await page.keyboard.press('Enter');
   await page.waitForSelector('.lp-card [data-lp="go"]');

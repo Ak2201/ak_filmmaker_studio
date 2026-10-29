@@ -47,3 +47,89 @@
 /* "Your work stays yours": the list sits on the .mk-wrap edge like the
    stage cards above it (28 Oct 2026: the UA list indent put it 25px in). */
 .st-points { list-style: none; margin: 0 0 var(--s5); padding: 0; }
+
+/* ============================================================
+   THE SCROLL STORY (29 Oct 2026) — the CSS half
+   ------------------------------------------------------------
+   src/pages/start-motion.js is the other half (Motion's scroll()). What
+   lives here works with no script at all and hides nothing: with JS off,
+   in print, under reduced motion and under the device switch
+   (html.ma-off) the page reads as written.
+   ============================================================ */
+
+/* 1. The hero's words rise in one after another, then the line under
+   them, then the one action, then the video. CSS, so it needs no script
+   and is done before anybody could start reading. The h1 itself has an id
+   (a fragment target), so IT does not travel; its words do. */
+.st-hero .st-w { display: inline-block; }
+@media (prefers-reduced-motion: no-preference) {
+  .st-hero .mk-h1 { animation: none; }
+  .st-hero .st-w { animation: mk-rise .7s var(--ease-out) both; }
+  .st-hero .st-w:nth-child(2) { animation-delay: .05s; }
+  .st-hero .st-w:nth-child(3) { animation-delay: .1s; }
+  .st-hero .st-w:nth-child(4) { animation-delay: .15s; }
+  .st-hero .st-w:nth-child(5) { animation-delay: .2s; }
+  .st-hero .st-w:nth-child(6) { animation-delay: .25s; }
+  .st-hero .st-w:nth-child(7) { animation-delay: .3s; }
+  .st-hero .st-w:nth-child(n+8) { animation-delay: .35s; }
+  .st-hero .mk-h1::after { animation: mk-fade .5s var(--ease-out) .4s both; }   /* the violet full stop arrives with the last word */
+  .st-hero .mk-sub { animation-delay: .32s; }
+  .st-hero .mk-cta-row { animation-delay: .42s; }
+  .st-hero :is(.mk-player, .mk-caption) { animation-delay: .52s; }
+}
+
+/* 2. Buttons lift a little on hover and on keyboard focus (cards already
+   do, in marketing.css); a card a keyboard is inside is drawn lifted. */
+:is(.st-hero, .mk-close, .st-plans) .mk-btn {
+  transition: background-color var(--speed) var(--ease), border-color var(--speed) var(--ease), color var(--speed) var(--ease), transform var(--speed-slow) var(--ease-out), box-shadow var(--speed-slow) var(--ease-out);
+}
+:is(.st-hero, .mk-close, .st-plans) .mk-btn:is(:hover, :focus-visible) { transform: translateY(calc(-2px * var(--motion))); box-shadow: var(--shadow-card-hover); }
+:is(.st-hero, .mk-close, .st-plans) .mk-btn:active { transform: translateY(0) scale(calc(1 - .03 * var(--motion))); }
+.st-stage:focus-within { border-color: var(--border-strong); box-shadow: var(--shadow-card-hover); }
+
+/* 3. THE STAGE STACK. On a desk-sized window the four stage cards stop
+   being a grid and become a stack: each card is sticky a step below the
+   one before it, so the next slides up over it. Sticky, not a pinned
+   scroller: no nested scroll container, the page's own scroll carries
+   it, and the stack ends with its section, so the end of the page is
+   reached as before (prove:scroll). start-motion.js adds the dimming and
+   the progress line; without it the stack still works.
+
+   A CARD A KEYBOARD IS INSIDE COMES TO THE FRONT, whole: z-index over the
+   cards stacked on it, and the dimming dropped (!important beats the
+   script's inline style), so a focused link is never under another card
+   (WCAG 2.4.11). Phones and short windows keep the grid, and so do
+   reduced motion and the device switch. The query is repeated in
+   start-motion.js (STACK); change both. */
+@media (min-width: 1100px) and (min-height: 700px) and (prefers-reduced-motion: no-preference) {
+  html:not(.ma-off) .st-tools .st-stages { display: block; position: relative; padding-left: var(--s8); }
+  html:not(.ma-off) .st-tools .st-stage {
+    position: sticky; top: calc(var(--mk-top-h) + var(--s6));
+    display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: stretch;
+    margin: 0; transform-origin: 50% 0;
+  }
+  /* the scroll between two cards is the LATER card's top margin: a sticky
+     box's margin box must stay inside the stack, so a bottom margin would
+     push the earlier cards off before the last one arrived */
+  html:not(.ma-off) .st-tools .st-stage + .st-stage { margin-top: 32vh; }
+  html:not(.ma-off) .st-tools .st-stage:nth-child(2) { top: calc(var(--mk-top-h) + var(--s6) + var(--s4)); }
+  html:not(.ma-off) .st-tools .st-stage:nth-child(3) { top: calc(var(--mk-top-h) + var(--s6) + 2 * var(--s4)); }
+  html:not(.ma-off) .st-tools .st-stage:nth-child(4) { top: calc(var(--mk-top-h) + var(--s6) + 3 * var(--s4)); }
+  html:not(.ma-off) .st-tools .st-shot { height: 100%; border-bottom: 0; border-right: 1px solid var(--border-hair); }
+  html:not(.ma-off) .st-tools .st-stage-in { justify-content: center; padding: var(--s7); }
+  html:not(.ma-off) .st-tools .st-stage:focus-within { z-index: 5; scale: none !important; filter: none !important; }
+  /* the progress line: a track in the gutter the stack leaves on its
+     left, and start-motion.js's .st-fill drawn down it from the top */
+  html:not(.ma-off) .st-tools .st-stages::before, html:not(.ma-off) .st-fill {
+    content: ''; display: block; position: absolute; left: calc(var(--s3) - 1px); top: 0; bottom: 0; width: 2px;
+    border-radius: var(--radius-pill); background: var(--border-hair);
+  }
+  html:not(.ma-off) .st-fill { background: var(--brand); transform-origin: 50% 0; transform: scaleY(0); }
+}
+.st-fill { display: none; }
+@media print {
+  .st-tools .st-stages { display: grid !important; padding-left: 0 !important; }
+  .st-tools .st-stages::before, .st-fill { display: none !important; }
+  .st-hero .mk-h1::after { animation: none !important; }
+  .st-tools .st-stage { position: static !important; scale: none !important; filter: none !important; }
+}

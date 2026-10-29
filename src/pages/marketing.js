@@ -655,6 +655,9 @@ document.addEventListener('submit', (e) => {
   let k = 1;
   try {
     if (deviceReduce || navigator.webdriver || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    /* the landing page has its own scroll story (src/pages/start-motion.js,
+       29 Oct 2026); two veils on one element would fight */
+    if (document.querySelector('.st-hero')) return;
     if (!('IntersectionObserver' in window) || typeof Element.prototype.animate !== 'function') return;
     const m = parseFloat(getComputedStyle(root).getPropertyValue('--motion'));
     k = Number.isFinite(m) ? m : 1;

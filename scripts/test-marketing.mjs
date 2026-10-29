@@ -322,10 +322,22 @@ for (const id of IDS) {
   ok([...scss.matchAll(/transform:\s*([^;]+);/g)].map((m) => m[1]).filter((v) => /translate/.test(v)).every((v) => /var\(--motion\)/.test(v)), 'every translate in start.css is multiplied by --motion');
   const sjs = read('src/pages/start.js');
   const simports = [...sjs.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
-  const sallowed = [/^\.\/marketing\.js$/, /^\.\.\/styles\/start\.css$/, /^\.\.\/lib\/(funnel|auth-scope|start-model|region-core|price-model)\.js$/];
+  const sallowed = [/^\.\/(marketing|start-motion)\.js$/, /^\.\.\/styles\/start\.css$/, /^\.\.\/lib\/(funnel|auth-scope|start-model|region-core|price-model)\.js$/];
   const sstray = simports.filter((i) => !sallowed.some((a) => a.test(i)));
   ok(sstray.length === 0, 'start.js imports only the light allowlist (the startlib rule)' + (sstray.length ? ': ' + sstray.join(', ') : ''));
   ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(sjs), 'start.js builds no markup from strings');
+  /* start-motion.js (29 Oct 2026, the landing scroll story): the motion
+     package (motion/mini's animate, motion's scroll) and the import-free
+     device-motion.js, nothing else; it stands down under webdriver and
+     both reduced-motion switches, and restores its veils for print and
+     on an 8s backstop. */
+  const mjs = read('src/pages/start-motion.js');
+  const mimports = [...mjs.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
+  const mstray = mimports.filter((i) => !/^(motion|motion\/mini|\.\.\/lib\/device-motion\.js)$/.test(i));
+  ok(mstray.length === 0, 'start-motion.js imports only motion, motion/mini and device-motion.js' + (mstray.length ? ': ' + mstray.join(', ') : ''));
+  ok(/navigator\.webdriver/.test(mjs) && /deviceReducedMotion\(\)/.test(mjs) && /prefers-reduced-motion: reduce/.test(mjs), 'start-motion.js stands down under webdriver, the device switch and prefers-reduced-motion');
+  ok(/beforeprint/.test(mjs) && /setTimeout\(check, 8000\)/.test(mjs), 'start-motion.js restores its veils for print and on the 8s backstop');
+  ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(mjs), 'start-motion.js builds no markup from strings');
 }
 
 /* ---- contact.html and about.html (the company pages) ---------------- */

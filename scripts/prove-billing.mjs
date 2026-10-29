@@ -404,8 +404,16 @@ try {
     await page.waitForSelector('#tiers .ba-plan', { timeout: 15000 });
     ok((await page.$$eval('#tiers .ba-plan', (e) => e.length)) === 4, 'the console lists the four tiers for editing');
     ok(!(await page.$('#ba_indie_monthly')) && !(await page.$('#ba_indie_yearly')), 'the console has one price field per tier, no monthly/yearly');
-    await page.fill('#ba_indie_price', '599');
-    await page.fill('#ba_indie_projects', '12');
+    /* The console can re-draw the form after its plans arrive, and a fill
+       that lands mid-draw read back as "1210" (the old 10 kept). Fill until
+       both fields read back exactly, then submit. */
+    for (let t = 0; t < 20; t++) {
+      await page.fill('#ba_indie_price', '599');
+      await page.fill('#ba_indie_projects', '12');
+      await page.waitForTimeout(150);
+      const v = await page.evaluate(() => [document.querySelector('#ba_indie_price').value, document.querySelector('#ba_indie_projects').value]);
+      if (v[0] === '599' && v[1] === '12') break;
+    }
     await page.click('form[data-plan="indie"] button[type="submit"]');
     await page.waitForSelector('.ba-saved', { timeout: 8000 });
     /* .ba-saved can already be on the page from the render before this
@@ -491,7 +499,7 @@ try {
     await amy.page.evaluate((uid) => {
       const list = JSON.parse(localStorage.getItem('fms_studio_projects_v1') || '[]');
       const now = new Date().toISOString();
-      list.push({ id: 'p-dragon', title: 'Dragon', format: 'feature', createdAt: now, updatedAt: now, ns: ['', uid] });
+      list.push({ id: 'p-dragon', title: 'Dragon', format: 'feature', sample: 'dragon', createdAt: now, updatedAt: now, ns: ['', uid] });   // stamped as openSampleProject() stamps it: a sample is never found by title
       list.push({ id: 'p-mine', title: 'My own film', format: 'short', createdAt: now, updatedAt: now, ns: ['', uid] });
       localStorage.setItem('fms_studio_projects_v1', JSON.stringify(list));
     }, USERS['tok-amy'].id);
@@ -970,7 +978,7 @@ try {
     await amy.page.evaluate((uid) => {
       const list = JSON.parse(localStorage.getItem('fms_studio_projects_v1') || '[]');
       const now = new Date().toISOString();
-      list.push({ id: 'p-dragon', title: 'Dragon', format: 'feature', createdAt: now, updatedAt: now, ns: ['', uid] });
+      list.push({ id: 'p-dragon', title: 'Dragon', format: 'feature', sample: 'dragon', createdAt: now, updatedAt: now, ns: ['', uid] });   // stamped as openSampleProject() stamps it: a sample is never found by title
       list.push({ id: 'p-mine', title: 'My own film', format: 'short', createdAt: now, updatedAt: now, ns: ['', uid] });
       localStorage.setItem('fms_studio_projects_v1', JSON.stringify(list));
     }, USERS['tok-amy'].id);

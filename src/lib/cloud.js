@@ -38,7 +38,7 @@ import { callPort, hasPort } from './ports.js';
    with no view to show it, the answer is no. */
 const ask = (q) => Promise.resolve(callPort('ask', false, q));
 import { bumpUsage } from './usage.js';
-import { isSampleProject } from './samples.js';
+import { isSampleProject } from './sample-project.js';
 import { countSignIn } from './funnel.js';
 import { inExtension, sessionStorageAdapter, gateHolder, extensionGoogleTokens, onSessionLost } from './extension-bridge.js';
 

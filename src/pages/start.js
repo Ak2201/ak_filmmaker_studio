@@ -17,7 +17,8 @@
    account that signs in. The old banner is gone; its job (telling the
    visitor the code took) is the modal's message.
 
-   WHAT THIS FILE MAY IMPORT, AND WHY THE LIST IS SHORT. marketing.js, the
+   WHAT THIS FILE MAY IMPORT, AND WHY THE LIST IS SHORT. marketing.js,
+   start-motion.js (the scroll story: motion and device-motion.js only), the
    stylesheet, funnel.js, auth-scope.js and start-model.js (import-free).
    NOT store.js, chrome.js, cloud.js, gate.js, billing.js, plan-gate.js,
    plans.js or dom.js: every one of those lives in (or drags in) the shared
@@ -45,6 +46,7 @@
       where the price is.
    ============================================================ */
 import './marketing.js';
+import './start-motion.js';   // the scroll story (29 Oct 2026): motion + device-motion only
 import '../styles/start.css';
 import { bumpOnce, optOut, priceNotice } from '../lib/funnel.js';
 import { AUTH_ERROR_KEY } from '../lib/auth-scope.js';

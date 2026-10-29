@@ -103,7 +103,7 @@
   color: var(--ink-body);
   background: transparent;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--sk-field-radius, var(--radius));
   cursor: pointer;
   transition: color var(--speed) var(--ease), background-color var(--speed) var(--ease),
               transform var(--speed-tap) var(--ease-out);

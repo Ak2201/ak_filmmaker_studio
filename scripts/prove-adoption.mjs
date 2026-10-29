@@ -458,14 +458,17 @@ console.log(`        (${aa.total} measurements across ${aa.themes} themes x ${aa
   await sp.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'networkidle' });
   await sp.evaluate(() => {
     localStorage.clear();
-    const S = window.StudioStore; const p = S.createProject({ title: 'My Own Film', format: 'feature' });
+    const S = window.StudioStore; S.createProject({ title: 'Dragon', format: 'feature' });   // the user's own film, same title as a sample
+    const p = S.createProject({ title: 'My Own Film', format: 'feature' });
     S.setCurrentProject(p.id); S.notify('projects:changed', { reason: 'test' });
   });
   await sp.reload({ waitUntil: 'networkidle' });
   await sp.click('[data-action="sample-project"][data-go]');
   await sp.waitForURL(/dashboard\.html/, { timeout: 20000 });
   let t = await titles();
-  check('Home: Open the sample project adds the sample beside the user\'s film', t.length, 2);
+  check('Home: Open the sample project adds the sample beside the user\'s films (a namesake is not the sample)', t.length, 3);
+  const stamps = () => sp.evaluate(() => window.StudioStore.listProjects().map((p) => p.title + ':' + (p.sample || '')));
+  check('Home: exactly one entry is stamped as the sample, the user\'s Dragon is not', (await stamps()).sort(), ['Dragon:', 'Dragon:dragon', 'My Own Film:']);
   check('Home: the user\'s own film is untouched', t.includes('My Own Film'), true);
   check('Home: the open project is the sample', await sp.evaluate(() => window.StudioStore.currentProject().title !== 'My Own Film'), true);
   // The account menu, from another page, a second time: re-opens, no duplicate.
@@ -475,7 +478,9 @@ console.log(`        (${aa.total} measurements across ${aa.themes} themes x ${aa
   await sp.click('#shAcctMenu a[href*="sample=1"]');
   await sp.waitForURL(/dashboard\.html/, { timeout: 20000 });
   t = await titles();
-  check('Menu: re-opens the existing sample, no duplicate', t.length, 2);
+  check('Menu: re-opens the existing sample, no duplicate', t.length, 3);
+  check('Menu: still exactly one stamped sample', (await stamps()).sort(), ['Dragon:', 'Dragon:dragon', 'My Own Film:']);
+  check('Menu: the open project is the stamped one', await sp.evaluate(() => window.StudioStore.currentProject().sample), 'dragon');
   check('Menu: the sample is the open project again', await sp.evaluate(() => window.StudioStore.currentProject().title !== 'My Own Film'), true);
   await sctx.close();
 }

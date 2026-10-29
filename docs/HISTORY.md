@@ -3171,3 +3171,80 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     "Order ID". `npm run extract` would bring the stray letters back from
     `legacy/` (it overwrites steps.feature.json); fix them in the extractor's
     output again if it is ever re-run.
+
+72. **Gaps round (29 Oct 2026): sample flag, sentence case, pills, print fonts, call-sheet media.**
+    Three lanes merged `--no-ff` into develop. (a) **Sample flag**: a sample
+    film is stamped `sample: '<id>'` on its project entry (a field, no new
+    key; only `openSampleProject()` passes it; the backup importer and
+    Duplicate never carry it). `src/lib/sample-project.js` holds
+    `sampleIdOf` / `isSampleProject` / `findSampleProject`: a stamp, or an
+    unstamped film whose title is a sample's AND whose scenes still carry the
+    seed ids. A user's own film called "Dragon" now syncs; the old title test
+    in `samples.js` is gone. `prove-cloud-delete` (h) and `prove-adoption`
+    were widened and mutation-tested. Left alone: `tour.js` still matches by
+    title (cosmetic, ticks "open the sample"). (b) **Sentence case** for the
+    remaining all-caps UI copy (blueprint step JSON, short.js, feature.js,
+    pitch-deck kickers, audience prose); case-only, baseline word sets did not
+    move. `npm run extract` would bring the capitals back from `legacy/`.
+    (c) **Pills**: `.k-seg` and the base `.tabs-tab` take
+    `--sk-field-radius`. **Print fonts**: `exportPDF()` loads each face the
+    staged text needs (`document.fonts.load` per family and weight, 1.5s
+    ceiling, same tick when all are ready) before `print()`;
+    `npm run prove:print-fonts` (not in CI) runs `pdffonts` on the result. The
+    check mark U+2713 is in no fallback face. (d) **Call-sheet marketing
+    media** re-recorded from the open build with the Dragon sample
+    (`ONLY=call-sheets npm run record:marketing`): 8B look, no pink or teal.
+    A PROVE_PORT held by another worktree makes a proof talk to someone
+    else's build: use a unique port per lane.
+
+73. **Remaining all-caps copy to sentence case (29 Oct 2026, lane caps).**
+    Typed-in-capitals labels in `steps.feature.json`, `steps.short.json` and
+    `steps.production.json` (FORMULA, RELATED:, BEFORE MOVING ON, WHY THIS
+    MATTERS, craft-lesson labels, step times, button/field labels inside raw
+    html blocks), `short.js` (stamps, festival tracker, glossary terms and
+    categories), `feature.js` (glossary terms, part marks, step badges now
+    Empty / In progress / Complete), `feature-model.js` (pitch-deck slide
+    kickers, footers, bullet prefixes, relationship-map labels, mirrored in
+    `stage-guide-widgets.js`), `audience-model.js` `resultText` (a kept
+    document's prose heading; `test:audience` changed with it). Case-only: the
+    baseline's word sets are lower-cased, so no EXPECTED row moved and no
+    data-key changed. `npm run extract` WOULD UNDO the three step JSON edits
+    (it regenerates steps.feature.json / steps.short.json from `legacy/`);
+    re-apply the same sentence-casing to its output if it is ever re-run.
+    LEFT AS THEY WERE on purpose: formula equations (`eq`, e.g. SPARK = ...),
+    screenplay conventions (slug placeholders, FADE IN/ROLL CAMERA in prose,
+    script-preview upper-casing), the AI prompts in `audience-model.js`, the
+    email-to-self body and the `# THE FILMMAKER'S BLUEPRINT` Markdown title
+    (exported file conventions, not shown in the UI), and `kit.js` (dev showcase).
+
+74. **The landing page's scroll story (29 Oct 2026).** The owner's spec for
+    `start.html`, made with the bundled `motion` package. (1) The hero's h1
+    is split into `.st-w` word spans by `renderHome()` (text and heading
+    name unchanged) and start.css rises them in one after another, then the
+    line, the one action and the video: CSS only, so it runs with no
+    script. (2) The product video grows from 84% to the content width as
+    its centre reaches the window's, scroll-linked (`scroll()` on a
+    motion/mini animation of the `scale` property, so it composes with the
+    CSS rise and with hover transforms); 900px and up. (3) The four stage
+    cards are a sticky stack at 1100x700 and up (start.css, pure CSS: no
+    nested scroller, the stack ends with its section, `prove:scroll` 0
+    findings); `src/pages/start-motion.js` sinks each card (scale and
+    brightness) as later cards slide over it and fills a progress line in
+    the stack's gutter. The gap between cards is the LATER card's top
+    margin: a sticky box's margin box must stay inside the stack, so a
+    bottom margin pushed the first three off before the fourth arrived. A
+    card a keyboard is inside comes to the front (z-index, and
+    `!important` drops the script's inline scale/filter), so focus is never
+    under another card. (4) Every other section's parts fade and rise in,
+    scroll-linked over the first 160px of their entry (`translate`, not
+    `transform`, so a card's hover lift survives); an element with an id
+    only fades. (5) Buttons in the hero, plans and closing band lift on
+    hover and focus; a focused card is drawn lifted. Stands down under
+    webdriver, prefers-reduced-motion and the device switch (`ma-off`,
+    which also keeps the grid); nothing on screen at run time is veiled;
+    print, and a timeline found stalled at 8s or after a scroll, cancel
+    every animation and put every inline style back. marketing.js's calm
+    motion stands down on this page so one element is never veiled twice.
+    Cost: start.html's JS 48.4 KB -> 59.4 KB raw (20.4 -> 25.0 KB gzip),
+    CSS +3.0 KB raw (+0.7 KB gzip). `test:marketing` holds start-motion.js
+    to motion, motion/mini and device-motion.js.

@@ -360,6 +360,20 @@ await page.evaluate(() => {
 });
 await page.goto(url('plan.html#calendar'), { waitUntil: 'networkidle' });
 await settle(page);
+/* CI run 368 found no stat here while local runs always do: wait for it,
+   and on a miss print what the page drew (the CI-only "page opened without
+   its project" pattern prove-script also reports). */
+if (!(await page.waitForSelector('.bd-head [data-pl-dated] .k-stat-value', { state: 'attached', timeout: 15000 }).catch(() => null))) {
+  const seen = await page.evaluate(() => {
+    const S = window.StudioStore || {};
+    let pointer = null; try { pointer = Object.keys(localStorage).filter((k) => /current_project/.test(k)).map((k) => k + '=' + localStorage.getItem(k)); } catch (e) { /* */ }
+    return { url: location.href, current: S.currentProjectId && S.currentProjectId(), pointer,
+      projects: S.listProjects && S.listProjects().map((p) => p.id + ':' + p.title),
+      head: (document.querySelector('.bd-head') || {}).outerHTML ? document.querySelector('.bd-head').outerHTML.slice(0, 600) : null,
+      main: (document.querySelector('main') || document.body).innerText.slice(0, 400) };
+  });
+  console.log('13 plan.html drew no "dates set" stat:', JSON.stringify(seen));
+}
 const planDated = await page.$eval('.bd-head [data-pl-dated] .k-stat-value', (v) => v.textContent.trim());
 await page.goto(url('dashboard.html'), { waitUntil: 'networkidle' });
 await settle(page, 800);

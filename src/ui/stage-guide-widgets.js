@@ -429,11 +429,11 @@ function drawCharMap(q, get) {
   const t = (k) => String(get(k) || '').trim();
   const cx = 360, cy = 180;
   const pos = {
-    protagonist: { x: cx, y: cy, name: t('s4_name'), label: 'PROTAGONIST', conn: 'Story · Step 4' },
-    antagonist: { x: cx + 240, y: cy, name: t('s5_name'), label: 'ANTAGONIST', conn: 'opposes' },
-    ally: { x: cx - 240, y: cy - 90, name: t('s6_ally_name'), label: 'ALLY', conn: 'reflects' },
-    lover: { x: cx - 240, y: cy + 90, name: t('s6_lover_name'), label: 'LOVE / MIRROR', conn: 'pulls toward need' },
-    mentor: { x: cx, y: cy - 130, name: t('s6_mentor_name'), label: 'MENTOR / CATALYST', conn: 'hands over tool' }
+    protagonist: { x: cx, y: cy, name: t('s4_name'), label: 'Protagonist', conn: 'Story · Step 4' },
+    antagonist: { x: cx + 240, y: cy, name: t('s5_name'), label: 'Antagonist', conn: 'opposes' },
+    ally: { x: cx - 240, y: cy - 90, name: t('s6_ally_name'), label: 'Ally', conn: 'reflects' },
+    lover: { x: cx - 240, y: cy + 90, name: t('s6_lover_name'), label: 'Love / mirror', conn: 'pulls toward need' },
+    mentor: { x: cx, y: cy - 130, name: t('s6_mentor_name'), label: 'Mentor / catalyst', conn: 'hands over tool' }
   };
   let s = '';
   for (const key of Object.keys(pos)) {

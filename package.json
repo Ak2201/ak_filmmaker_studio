@@ -39,6 +39,7 @@
     "test:homestage": "node scripts/test-home-stage.mjs",
     "prove:nav": "node scripts/prove-nav.mjs",
     "prove:scroll": "node scripts/prove-scroll.mjs",
+    "prove:print-fonts": "node scripts/prove-print-fonts.mjs",
     "prove:legal": "node scripts/prove-legal.mjs",
     "prove:shell-a11y": "node scripts/prove-shell-a11y.mjs",
     "test:beats": "node scripts/test-beats.mjs",

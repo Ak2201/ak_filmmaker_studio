@@ -519,7 +519,7 @@ export function renderStep(step, extra, ns) {
     section.firstChild.append(
       typeof b === 'string'
         ? fromHTML(b)
-        : h('span.step-badge', { 'data-step': b.step ?? step.num, text: b.initial ?? 'EMPTY' })
+        : h('span.step-badge', { 'data-step': b.step ?? step.num, text: b.initial ?? 'Empty' })
     );
   }
 

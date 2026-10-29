@@ -752,10 +752,13 @@ export function renderHome({ site, pages, home }) {
   const hue = (id) => (site.stages.find((s) => s.id === id) || {}).hue || '';
 
   /* The first screen: one line, one sentence, one action, and the scene
-     chain running end to end under it (the recorder's cross-page clip). */
+     chain running end to end under it (the recorder's cross-page clip).
+     Each word of the h1 is its own .st-w span (29 Oct 2026) so start.css
+     can rise them in one after another; the text and the heading's name
+     are unchanged, and with no CSS the spans are plain inline text. */
   const hero = `<section class="mk-hero st-hero" id="top" aria-labelledby="mkH1" data-surface="dark">
   <div class="mk-wrap mk-hero-in">
-    <h1 class="mk-h1" id="mkH1">${esc(home.hero.h1)}</h1>
+    <h1 class="mk-h1" id="mkH1">${home.hero.h1.split(' ').map((w) => `<span class="st-w">${esc(w)}</span>`).join(' ')}</h1>
     <p class="mk-sub"${alt(home.hero, 'sub')}>${priceSpans(esc(home.hero.sub))}</p>
     <div class="mk-cta-row">
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-off>${esc(home.hero.cta)}</a>

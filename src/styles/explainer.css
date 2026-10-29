@@ -1,0 +1,29 @@
+/* The explainer (src/ui/explainer.js). The modal IS the kit modal
+   (kit.css styles .dlg.k-modal); the sheet IS the phone sheet
+   (mobile-nav.css). This file only lays out the body inside either.
+   Tokens only; no motion of its own. */
+.xp-body {
+  display: grid;
+  gap: var(--s3);
+  font-size: var(--t-small);
+  color: var(--ink-body);
+  max-width: var(--sk-deck-measure, 60ch);
+}
+.xp-wait { margin: 0; color: var(--ink-muted); }
+.xp-body .vid-block { margin: 0; }
+
+/* the sheet's footer: the same Close the modal carries */
+.xp-sheet-body .xp-actions {
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border-hair);
+}
+.xp-sheet-body .xp-actions .mbtn.k-btn {
+  flex: 1 1 auto;
+  min-height: var(--tap-min, 44px);
+  font-size: var(--t-ui);
+  font-weight: 600;
+}
+@media print {
+  .xp-overlay, .mn-overlay[data-mn-sheet="explainer"] { display: none !important; }
+}

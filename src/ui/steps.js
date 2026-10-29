@@ -328,10 +328,20 @@ const BLOCKS = {
     prose('p', b.body, b.tanglish)
   ]),
 
-  why: (b) => h('div.why-this', {}, [
-    h('div.label', { text: b.label || 'Why this matters' }),
-    prose('p', b.body, b.tanglish)
-  ]),
+  /* "Why this matters" opens as a pop-up (owner, 29 Oct 2026): a quiet
+     trigger on screen, the words kept in .why-body (hidden on screen,
+     printed, searched and read by the pop-up when it opens). An EMPTY
+     body is not an explainer - step 13's "From Part I" panel, which
+     feature.js fills in place - so it keeps the old box. */
+  why: (b) => {
+    const label = b.label || 'Why this matters';
+    const words = [h('div.label', { text: label }), prose('p', b.body, b.tanglish)];
+    if (!b.body) return h('div.why-this', {}, words);
+    return h('div.why-this.why-pop', {}, [
+      h('button.why-open', { type: 'button', 'data-why-open': '', 'aria-haspopup': 'dialog', text: label }),
+      h('div.why-body', {}, words)
+    ]);
+  },
 
   hint: (b) => prose('div.hint', b.body, b.tanglish),
 
@@ -548,6 +558,7 @@ export function renderStep(step, extra, ns) {
     }
     const el = fn(block);
     if (block.type === 'why') {
+      if (ns && step.id) el.setAttribute('data-why-step', stepKey(ns, step.id));
       const key = deckKey(ns, step);
       const idx = whyN++;
       const alt = key && (SIDECAR.why[key] || [])[idx];
@@ -613,6 +624,30 @@ export function stepIndex(steps) {
    because this is where every page already imports it from, and a
    gratuitous import change is a diff nobody can read. One
    implementation, two importable homes — not two implementations. */
+/* One listener for every "Why this matters" trigger, wherever the step is
+   drawn (blueprint page, stage guide, drawer). The explainer and the
+   video code load on the first press, not with the page. */
+delegate(document, 'click', '[data-why-open]', (e, btn) => {
+  const box = btn.closest('.why-pop');
+  if (!box) return;
+  const sec = box.closest('section');
+  const head = sec && sec.querySelector('h2, h3');
+  const stepKeyOf = box.getAttribute('data-why-step') || '';
+  import('./explainer.js').then(({ openExplainer }) => openExplainer({
+    title: btn.textContent,
+    eyebrow: head ? head.textContent.trim().replace(/\s+/g, ' ').slice(0, 80) : 'Why it matters',
+    returnTo: btn,
+    build: async (body) => {
+      const src = box.querySelector('.why-body p');
+      body.replaceChildren(...(src ? [src.cloneNode(true)] : []));
+      if (!stepKeyOf) return;
+      const [{ approvedFor }, vid] = await Promise.all([import('../lib/videos.js'), import('./video.js')]);
+      const vids = vid.watchBlock(approvedFor(stepKeyOf).slice(0, 2), 'Watch');
+      if (vids) body.append(vids);
+    }
+  })).catch((err) => console.warn('[steps] why pop-up', err));
+});
+
 export { stepKeys, stepFieldKeys } from '../lib/step-keys.js';
 
 /* The stage helpers, re-exported for the two pages so they import the

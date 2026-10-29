@@ -1707,3 +1707,35 @@ body.reading-mode .how-to { padding-block: var(--s6); }
 /* Motion hosts (src/lib/motion.js spotlight): the glow is absolutely
    positioned, so the card is its containing block and clips it. */
 .start-card, .tool-card { position: relative; overflow: hidden; }
+
+/* "Why this matters" is a pop-up (steps.js BLOCKS.why): on screen only the
+   quiet trigger shows; the words stay in the DOM for print, search and the
+   pop-up, which reads them when it opens. Selector weight matches the card
+   rule in blueprint-kit.css so the box does not draw around a button. */
+:root .step .why-this.why-pop {
+  padding: 0;
+  background: none;
+  border: 0;
+  margin: var(--s3) 0;
+}
+.why-pop .why-body { display: none; }
+.why-pop .why-open {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: var(--t-tiny);
+  color: var(--ink-muted);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.why-pop .why-open:hover { color: var(--ink); }
+.why-pop .why-open:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; border-radius: var(--sk-radius, var(--radius)); }
+@media print {
+  .why-pop .why-open { display: none !important; }
+  .why-pop .why-body { display: block !important; }
+}

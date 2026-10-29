@@ -176,6 +176,11 @@ jobs:
       - run: npm run prove:shell-a11y
         env:
           PROVE_DIST: dist-verify
+      # Explainers ("What is a …?") open over the page — kit modal on a
+      # desk, bottom sheet on a phone — trap focus, write nothing.
+      - run: npm run prove:explainer
+        env:
+          PROVE_DIST: dist-verify
       # The built markup a crawler gets: lang, titles, canonicals, one h1,
       # noindex on studio shells, robots/sitemap/llms.txt/favicon, no source maps.
       - run: npm run test:site

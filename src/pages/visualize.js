@@ -1432,7 +1432,7 @@ function render(focus) {
     /* Several renders in a row (an arrow key held on a mark) each start
        this import, and every promise lands in the same DOM: insert only
        where the box is not already there, or they stack up. */
-    if (!at || at.parentElement.querySelector(':scope > details.learn[data-learn="blocking-diagram"]')) return;
+    if (!at || at.parentElement.querySelector(':scope > .learn[data-learn="blocking-diagram"]')) return;
     const boxes = ["blocking-diagram"].map((id) => m.learn(id)).filter(Boolean);
     if (boxes.length) at.after(...boxes);
   }).catch(() => { /* a nicety, never the page */ });

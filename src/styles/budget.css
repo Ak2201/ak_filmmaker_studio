@@ -627,7 +627,6 @@ p.cx-hint { margin: 0; }
    row while closed; an opened one takes the full width for its body. */
 .bud-learn-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s1) var(--s4); margin-block: var(--s3); }
 .bud-learn-row > .learn { margin: 0; }
-.bud-learn-row > .learn[open] { flex-basis: 100%; }
 
 /* The currency note (src/ui/budget.js currencyNote()): drawn only when a
    budget with money in it is not in the film's currency. A warning wash

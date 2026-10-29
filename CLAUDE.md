@@ -136,6 +136,7 @@ npm run prove:scroll      # every root page scrolls right at 1440/1100/390: nest
 #   the end reachable above fixed chrome, locks at rest, sticky, fragments, wheel (item 45;
 #   reads dist by default, CI runs it with PROVE_DIST=dist-verify after build:verify)
 npm run test:contact      # contact.html's pure form model: validation and the mailto (item 48)
+npm run prove:explainer   # learn() opens a pop-up over story.html at 1440/390: focus trap, Escape, nothing moves, no writes
 npm run prove:legal       # privacy/terms/refund inside the window under the fixed header, at 5 widths
 #   (PROVE_DIST=dist-verify after build:verify; in CI)
 # Playwright in a sandbox: the bundled browser build may be missing and `playwright install`
@@ -230,7 +231,9 @@ src/
              section-menu.js ← the ONE navigation control (side menu,
                        strip, phone Sections sheet); tabs.js builds on it
              mobile-nav.js ← the phone's bottom bar + Go-to / Tools sheets
-             learn.js ← learn(): the topic panel, built on first open
+             learn.js ← learn(): a "What is …?" button that opens
+                       explainer.js (kit modal / phone sheet) OVER the
+                       page; nothing expands in place (owner, 29 Oct 2026)
              story-bible.js ← the Story Bible: characters, conflict, stakes, theme, world
              stage-guide.js ← mountStageGuide(): a stage's blueprint steps, in the stage
              project-switcher.js ← the band's project switcher (CORE)

@@ -182,7 +182,7 @@ for (let i = 0; i < 3; i++) { await page.click('[data-action="blk-add-mark"][dat
 await page.focus('.vz-map.is-editable [data-mark]');
 for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowLeft');
 await settle(page, 800);
-ok(await page.$$eval('#blocking details.learn', (d) => d.length) === 1, '3  held arrow keys leave ONE learn box', await page.$$eval('#blocking details.learn', (d) => d.length));
+ok(await page.$$eval('#blocking .learn', (d) => d.length) === 1, '3  held arrow keys leave ONE learn box', await page.$$eval('#blocking .learn', (d) => d.length));
 await page.focus('.vz-map.is-editable [data-mark]');
 await page.keyboard.press('Delete');
 await settle(page, 300);

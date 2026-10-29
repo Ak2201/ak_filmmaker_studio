@@ -301,55 +301,27 @@ main:has(> .lib-sec) > .tabs { margin-inline: var(--gutter); }
 }
 .lib-term-alias { font-weight: 400; color: var(--ink-muted); }
 .lib-term-def { color: var(--ink-body); max-width: var(--sk-deck-measure, 60ch); }
-.lib-term-more > summary {
+.lib-term-more {
   display: inline-flex;
   align-items: center;
-  gap: var(--s2);
+  width: fit-content;
   min-height: 1.75rem;
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
   cursor: pointer;
-  list-style: none;
   font-size: var(--t-tiny);
   color: var(--accent-deep);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
 }
-.lib-term-more > summary::-webkit-details-marker { display: none; }
-.lib-term-more > summary::before {
-  content: '';
-  flex: none;
-  width: .4rem;
-  height: .4rem;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  transform: rotate(-45deg);
-  transition: transform var(--speed) var(--ease-out, ease-out);
-}
-.lib-term-more[open] > summary::before { transform: rotate(45deg); }
-.lib-term-more > summary:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-deep); outline-offset: 2px; border-radius: var(--sk-radius, var(--radius)); }
-.lib-term-body {
-  display: grid;
-  gap: var(--s3);
-  margin-top: var(--s2);
-  max-width: var(--sk-deck-measure, 60ch);
-  font-size: var(--t-small);
-  color: var(--ink-body);
-}
-.lib-term-body .learn-tn { color: var(--ink-muted); font-style: italic; }
-.lib-term-body .learn-ex-film { color: var(--ink); }
-.learn-ex-more {
-  display: grid;
-  gap: var(--s2);
-  margin: var(--s2) 0 0;
-  padding: 0;
-  list-style: none;
-}
-.learn-ex-more li { padding-left: var(--s3); border-left: var(--sk-hue-rule-w, 2px) solid var(--rule-hair, var(--rule)); }
-.lib-term-body .vid-block { margin: 0; }
+.lib-term-more:hover { color: var(--ink); }
+.lib-term-more:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-deep); outline-offset: 2px; border-radius: var(--sk-radius, var(--radius)); }
 .lib-term-see { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); align-items: baseline; }
 .lib-term-see a { font-size: var(--t-tiny); color: var(--accent-deep); text-decoration: underline; text-underline-offset: 3px; }
 .lib-term:target { border-color: var(--accent-deep); }
 
-@media (prefers-reduced-motion: reduce) {
-  .lib-term-more > summary::before { transition: none; }
-}
 @media (max-width: 720px) {
   .lib-search { padding-top: var(--s4); }
   .lib-search-row { flex-wrap: wrap; }

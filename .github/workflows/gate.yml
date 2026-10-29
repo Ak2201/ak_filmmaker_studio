@@ -181,6 +181,9 @@ jobs:
       - run: npm run prove:explainer
         env:
           PROVE_DIST: dist-verify
+      - run: npm run prove:explainer-c
+        env:
+          PROVE_DIST: dist-verify
       # The built markup a crawler gets: lang, titles, canonicals, one h1,
       # noindex on studio shells, robots/sitemap/llms.txt/favicon, no source maps.
       - run: npm run test:site

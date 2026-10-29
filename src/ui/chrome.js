@@ -1022,24 +1022,14 @@ function refreshBeatFills() {
 // ============================================================
 // GLOSSARY POPOVER
 // ============================================================
-// Glossary terms inline. Each blueprint can define a global
-// window.STUDIO_GLOSSARY = { 'logline': 'def…', … }.
+// Glossary terms inline. A press on one opens the shared explainer
+// pop-up (ui/glossary-explainer.js), never a tooltip in the page.
 // ============================================================
-function ensurePopover() {
-  let p = document.getElementById('glossaryPopover');
-  if (p) return p;
-  p = document.createElement('div');
-  p.id = 'glossaryPopover';
-  p.className = 'glossary-popover';
-  p.setAttribute('role', 'tooltip');
-  document.body.appendChild(p);
-  return p;
-}
 /* The dictionaries are derived from src/data/glossary.json, so a term is
    added by editing the JSON and nothing else. The globals stay because
    the legacy pages set them directly; anything already there wins, so a
    page can still override an entry. */
-const GLOSSARY = {};   // term -> { def, tanglish, examples }
+const GLOSSARY = {};   // term -> true (the pop-up reads glossary.json itself)
 /** Every term and alias, longest first so "the lie" wins over "lie".
  *  Filled by loadGlossary(); empty until the JSON has arrived. */
 let GLOSSARY_KEYS = [];
@@ -1055,18 +1045,9 @@ function loadGlossary() {
   if (glossaryLoading) return glossaryLoading;
   glossaryLoading = import('../data/glossary.json').then((m) => {
     const glossaryData = m.default || m;
-    const films = glossaryData.films || {};
     for (const entry of glossaryData.terms || []) {
-      const record = {
-        def: entry.def,
-        tanglish: entry.tanglish,
-        examples: (entry.examples || []).map((ex) => ({
-          film: films[ex.film] || ex.film,
-          note: ex.note
-        }))
-      };
       for (const key of [entry.term, ...(entry.aliases || [])]) {
-        GLOSSARY[key.toLowerCase()] = record;
+        GLOSSARY[key.toLowerCase()] = true;
         /* `notag` terms (take, wrap, scene…) are everyday words: they live
            in the library's Film terminology and its search, but are not
            auto-wrapped in step prose (the popover would speckle it). */
@@ -1078,60 +1059,6 @@ function loadGlossary() {
   return glossaryLoading;
 }
 
-function showPopover(term, anchor) {
-  const key = term.toLowerCase();
-  const entry = GLOSSARY[key];
-  const legacyDef = (global.STUDIO_GLOSSARY || {})[key];
-  const def = legacyDef || (entry && entry.def) || term;
-  const tn = (global.STUDIO_GLOSSARY_TN || {})[key] || (entry && entry.tanglish);
-  const p = ensurePopover();
-  // Built as nodes, not an innerHTML string: the definitions are authored
-  // but the term can come from page text, and this popover is one of the
-  // places a stray "<" used to disappear silently.
-  p.replaceChildren();
-  const head = document.createElement('div');
-  head.className = 'gp-term';
-  head.textContent = term.toUpperCase();
-  p.append(head);
-  const body = document.createElement('div');
-  body.textContent = def;
-  p.append(body);
-  if (tn) {
-    const t = document.createElement('div');
-    t.className = 'gp-tn';
-    t.textContent = tn;
-    p.append(t);
-  }
-  if (entry && entry.examples.length) {
-    const wrap = document.createElement('div');
-    wrap.className = 'gp-examples';
-    for (const ex of entry.examples) {
-      const row = document.createElement('div');
-      row.className = 'gp-example';
-      const film = document.createElement('span');
-      film.className = 'gp-film';
-      film.textContent = ex.film;
-      row.append(film, document.createTextNode(' ' + ex.note));
-      wrap.append(row);
-    }
-    p.append(wrap);
-  }
-  const rect = anchor.getBoundingClientRect();
-  p.classList.add('show');
-  requestAnimationFrame(() => {
-    const pw = p.offsetWidth, ph = p.offsetHeight;
-    let left = rect.left + rect.width / 2 - pw / 2;
-    let top = rect.top - ph - 10;
-    left = Math.max(8, Math.min(window.innerWidth - pw - 8, left));
-    if (top < 8) top = rect.bottom + 10;
-    p.style.left = left + 'px';
-    p.style.top  = top + 'px';
-  });
-}
-function hidePopover() {
-  const p = document.getElementById('glossaryPopover');
-  if (p) p.classList.remove('show');
-}
 /* Mark up glossary terms in the step prose.
 
    The alternative was hand-tagging every occurrence across 35 steps of
@@ -1203,23 +1130,13 @@ function wireGlossaryNow() {
     if (el._glossaryWired) return;
     el._glossaryWired = true;
     const term = el.getAttribute('data-glossary') || el.textContent.trim();
-    el.addEventListener('mouseenter', () => showPopover(term, el));
-    el.addEventListener('mouseleave', hidePopover);
-    el.addEventListener('focus', () => showPopover(term, el));
-    el.addEventListener('blur', hidePopover);
-    /* role="button" promises Enter and Space, and a popover that opens
-       on focus has to close on Esc without moving focus (WCAG 1.4.13).
-       Enter/Space toggle it, so a keyboard reader who dismissed it can
-       bring it back without tabbing away and back again. */
+    el.setAttribute('aria-haspopup', 'dialog');
+    const open = () => import('./glossary-explainer.js').then((m) => m.openGlossaryTerm(term, el))
+      .catch((e) => console.warn('[glossary] explainer', e));
+    el.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); open(); });
+    /* role="button" promises Enter and Space. */
     el.addEventListener('keydown', (e) => {
-      const p = document.getElementById('glossaryPopover');
-      const open = !!(p && p.classList.contains('show'));
-      if (e.key === 'Escape' && open) {
-        e.preventDefault(); e.stopPropagation(); hidePopover();
-      } else if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        if (open) hidePopover(); else showPopover(term, el);
-      }
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
     });
   });
 }

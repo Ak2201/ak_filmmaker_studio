@@ -22,6 +22,7 @@
    is a migration, not a rename.
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
+import '../styles/learn.css';
 import { parseAmount, fmtMoney, fmtINR } from '../lib/money.js';
 import {
   PRESET_ITEMS, readCalcData, saveCalcData, clearCalcData, maxRowIndex, rescuedCustomNames,
@@ -484,17 +485,10 @@ function renderCalculator() {
          'feature' / 'short' scopes, which a screening pass does open,
          so the sentence says they are not covered. Said here because a budget is the one module people assume is
          private and is not. */
-      /* Behind a disclosure since 28 Oct 2026 (one sentence of
-         essentials on screen); the summary names the question so a
-         reader who wants it finds it, and the words are unchanged. */
-      h('details.bud-who', {}, [h('summary', { text: 'Who can see this budget?' }), h('p.hint', {
-        text: 'Once it syncs, anyone you share this project with can see the budget, '
-            + 'a view-only link included, and only an edit link lets them change it, '
-            + 'unless you keep the budget private: then only you and people with an '
-            + 'edit link can see it. A screening pass does not show it. Figures typed '
-            + 'into the blueprint\u2019s budget questions are not part of this page '
-            + 'and stay visible to anyone you share the film with, a screening pass included.'
-      })]),
+      /* A pop-up since 29 Oct 2026 (it was a disclosure that pushed the
+         rows below it down): the question stays on the page as a quiet
+         button, the answer opens over it. The words are unchanged. */
+      whoCanSee(),
       currencyNote(),
       // Column captions for the desk layout. Each field carries its
       // own <label> too, so this strip is decoration to a screen
@@ -533,6 +527,24 @@ function renderCalculator() {
    ------------------------------------------------------------ */
 
 /** The estimator and the schedule link, as one block. */
+const WHO_TEXT = 'Once it syncs, anyone you share this project with can see the budget, '
+  + 'a view-only link included, and only an edit link lets them change it, '
+  + 'unless you keep the budget private: then only you and people with an '
+  + 'edit link can see it. A screening pass does not show it. Figures typed '
+  + 'into the blueprint\u2019s budget questions are not part of this page '
+  + 'and stay visible to anyone you share the film with, a screening pass included.';
+function whoCanSee() {
+  const btn = h('button.learn.learn-q', { type: 'button', 'aria-haspopup': 'dialog', text: 'Who can see this budget?' });
+  btn.addEventListener('click', () => {
+    import('./explainer.js').then(({ openExplainer }) => openExplainer({
+      title: 'Who can see this budget?',
+      returnTo: btn,
+      build: (body) => { body.replaceChildren(h('p.hint', { text: WHO_TEXT })); }
+    })).catch((e) => console.warn('[budget] explainer', e));
+  });
+  return h('div.bud-who', {}, [btn]);
+}
+
 export function renderBudget() {
   cur = budgetCurrency();
   const frag = document.createDocumentFragment();

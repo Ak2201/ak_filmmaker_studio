@@ -1023,6 +1023,9 @@ await page.setViewportSize({ width: 1280, height: 900 });
   /* e) drafts.html: the action buttons keep keyboard focus across the redraw */
   await fresh('Proof Draft Focus', FOUR);
   await page.goto(url('drafts.html'), { waitUntil: 'networkidle' });
+  /* The page draws after networkidle on a slow runner (CI run 361): wait
+     for the button, never assume it is there. */
+  await page.waitForSelector('[data-dr="new"]', { timeout: 15000 });
   await page.focus('[data-dr="new"]');
   await page.keyboard.press('Enter');
   await page.waitForSelector('.lp-card [data-lp="go"]');
@@ -1047,6 +1050,7 @@ await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
   await page.waitForTimeout(400);
   await page.evaluate(() => document.documentElement.setAttribute('data-no-india', ''));
+  await page.waitForSelector('#scTop .tb-menu [data-action="sc-tamil"]', { state: 'attached', timeout: 15000 });
   const more = await page.evaluateHandle(() => [...document.querySelectorAll('#scTop .tb-menu')].find((m) => m.querySelector('[data-action="sc-tamil"]')).querySelector('.tb-menu-btn'));
   await more.focus();
   await page.keyboard.press('ArrowDown');

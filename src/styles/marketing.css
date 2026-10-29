@@ -185,7 +185,7 @@ html.mk-modal-open { overflow: hidden; }
 @keyframes mk-drop { from { opacity: 0; transform: translateY(calc(-6px * var(--motion))); } to { opacity: 1; transform: none; } }
 .mk-mega-h, .mk-foot-h {
   margin: 0 0 var(--s3); max-width: none;
-  font-size: var(--t-tiny); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted);
+  font-size: var(--t-small); font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-muted);
 }
 .mk-mega ul, .mk-foot ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); }
 .mk-mega a {
@@ -438,7 +438,7 @@ html.mk-modal-open { overflow: hidden; }
 /* the article: a sticky contents list beside the prose on a desk */
 .mk-article-grid { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: clamp(var(--s6), 5vw, var(--s8)); align-items: start; }
 .mk-toc { position: sticky; top: calc(var(--mk-top-h) + var(--s4)); }
-.mk-toc-h { margin: 0 0 var(--s3); font-size: var(--t-tiny); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.mk-toc-h { margin: 0 0 var(--s3); font-size: var(--t-small); font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 .mk-toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); }
 .mk-toc li { margin: 0; }
 .mk-toc a {

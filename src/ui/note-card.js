@@ -11,7 +11,7 @@
    The text is a paper field (paper-field.js), on the note's own colour.
    ============================================================ */
 import { h } from '../lib/dom.js';
-import { paperTextarea } from './paper-field.js';
+import { paperTextarea, paperField } from './paper-field.js';
 import { button, sym } from './kit/index.js';
 import { COLORS, COLOR_LABEL, colorOf, pinValue } from '../lib/notes-model.js';
 
@@ -65,10 +65,10 @@ export function noteCard(note, o = {}) {
   top.append(h('span.nt-date', { text: dayLabel(note.at) }));
   li.append(top);
 
-  const ta = paperTextarea('.nt-text', {
+  const ta = paperField(paperTextarea('.nt-text', {
     rows: o.compact ? 3 : 4, 'data-nt-field': 'text', 'data-note': note.id,
     'aria-label': 'Note text', maxlength: '4000'
-  });
+  }), { script: false });
   ta.value = note.snippet;
   li.append(ta);
 
@@ -93,7 +93,7 @@ export function noteCard(note, o = {}) {
 export function noteAdd(id, { pin = '' } = {}) {
   const box = h('div.nt-add');
   box.append(h('label.st-label', { for: id, text: 'New sticky note' }));
-  box.append(paperTextarea('#' + id + '.nt-text.nt-new', { rows: 3, placeholder: 'A thought, a line, an image…', maxlength: '4000' }));
+  box.append(paperField(paperTextarea('#' + id + '.nt-text.nt-new', { rows: 3, placeholder: 'A thought, a line, an image…', maxlength: '4000' }), { script: false }));
   const row = h('div.nt-add-row');
   const dots = h('div.nt-colors', { role: 'radiogroup', 'aria-label': 'Colour for the new note' });
   COLORS.forEach((c, i) => dots.append(h('button.nt-dot.nt-dot-' + c, {

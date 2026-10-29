@@ -141,7 +141,11 @@ const sw = await page.evaluate(() => {
 });
 ok(sw && !sw.checked && sw.role === 'switch' && sw.label === 'Keep the budget private' && sw.afterWho, '3  labelled "Keep the budget private", a switch, off, under the who-sees-it line', sw);
 ok(sw && /Only you and people with an edit link can see or change the budget\. People who already opened it may still have a copy on their device\./.test(sw.hint), '3  with its sentence, tied by aria-describedby', sw && sw.hint);
-ok(await page.$eval('.bud-who', (n) => /unless you keep the budget private/.test(n.textContent)), '3  the who-sees-it line mentions keeping it private');
+await page.click('.bud-who button');
+await page.waitForSelector('[data-explainer]');
+ok(await page.$eval('[data-explainer]', (n) => /unless you keep the budget private/.test(n.textContent)), '3  the who-sees-it pop-up mentions keeping it private');
+await page.keyboard.press('Escape');
+await page.waitForSelector('[data-explainer]', { state: 'detached' });
 await page.click('#budPrivacy label');
 await page.waitForTimeout(400);
 const after = await page.evaluate(() => ({ set: window.__bp.set, checked: (document.querySelector('#budPrivacy input') || {}).checked,

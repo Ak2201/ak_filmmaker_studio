@@ -44,6 +44,7 @@
     "prove:shell-a11y": "node scripts/prove-shell-a11y.mjs",
     "prove:explainer": "node scripts/prove-explainer.mjs",
     "prove:why-popup": "node scripts/prove-why-popup.mjs",
+    "prove:explainer-c": "node scripts/prove-explainer-c.mjs",
     "test:beats": "node scripts/test-beats.mjs",
     "test:pacing": "node scripts/test-story-pacing.mjs",
     "test:tanglish": "node scripts/test-tanglish.mjs",

@@ -1107,6 +1107,7 @@ function renderTerminology() {
   return body;
 }
 
+let termOpen = ''; // the term whose explainer is up, so a link click and its hashchange open it once
 function termCard(t, g, byName) {
   const slugOf = (n) => termId(n);
   const card = h('article.lib-term', {
@@ -1114,21 +1115,25 @@ function termCard(t, g, byName) {
   });
   const head = h('h4.lib-term-name', { text: t.term });
   if ((t.aliases || []).length) head.append(h('span.lib-term-alias', { text: ' · ' + t.aliases.slice(0, 3).join(', ') }));
-  const more = h('details.lib-term-more', {}, [
-    h('summary', {}, [h('span', { text: 'Tanglish, example, video' })]),
-    h('div.lib-term-body', { 'aria-busy': 'true' }, [h('div.learn-wait', { text: 'Loading…' })])
-  ]);
-  let built = false;
-  more.addEventListener('toggle', () => {
-    if (!more.open || built) return;
-    built = true;
-    const slot = more.querySelector('.lib-term-body');
-    termBody(t, { glossary: g }).then((el) => {
-      slot.replaceChildren(el);
-      slot.removeAttribute('aria-busy');
-    }).catch(() => {
-      slot.replaceChildren(h('div.learn-wait', { text: 'Could not load the examples.' }));
-    });
+  /* Opens the shared explainer over the page (owner, 29 Oct 2026), not
+     a <details> that pushed the cards below it down. The body is the
+     same termBody() it always was, built on each open. */
+  const more = h('button.lib-term-more', {
+    type: 'button', 'aria-haspopup': 'dialog', text: 'Tanglish, example, video'
+  });
+  more.addEventListener('click', () => {
+    termOpen = termId(t.term);
+    import('../ui/explainer.js').then(({ openExplainer }) => openExplainer({
+      title: t.term,
+      eyebrow: 'Film terminology',
+      returnTo: more,
+      onClose: () => { termOpen = ''; },
+      build: (body) => termBody(t, { glossary: g }).then((el) => {
+        body.replaceChildren(h('div.learn-def', { text: t.def || '' }), el);
+      }).catch(() => {
+        body.replaceChildren(h('div.learn-wait', { text: 'Could not load the examples.' }));
+      })
+    })).catch((e) => console.warn('[library] explainer', e));
   });
   card.append(head, h('div.lib-term-def', { text: t.def || '' }), more);
   const see = seeAlso(t, byName);
@@ -1170,14 +1175,15 @@ function drawTerms(g) {
   openTermFromHash();
 }
 
-/* A term's card is closed; arriving at its id (a search hit, a "go
-   deeper" link, a pasted address) opens it so the example is there. */
+/* Arriving at a term's id (a search hit, a "go deeper" link, a pasted
+   address) opens its explainer pop-up so the example is there; closing
+   it returns focus to the card's button. */
 function openTermFromHash(id) {
   const want = id || (location.hash || '').replace(/^#/, '');
-  if (!want || want.indexOf('term-') !== 0) return;
+  if (!want || want.indexOf('term-') !== 0 || want === termOpen) return;
   const el = document.getElementById(want);
-  const d = el && el.querySelector('details.lib-term-more');
-  if (d && !d.open) d.open = true;
+  const b = el && el.querySelector('.lib-term-more');
+  if (b) b.click();
 }
 
 function filterTerms(input) {

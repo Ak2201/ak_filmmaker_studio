@@ -107,9 +107,6 @@
 .bud-est-body.k-panel-body { padding: 0; display: grid; }
 .bud-est-body > .hint { padding: var(--s3) var(--s4); }
 .bud-est-body > .bud-who { padding: 0 var(--s4) var(--s3); }
-.bud-who > summary { cursor: pointer; width: fit-content; font-size: var(--t-small); font-weight: 600; color: var(--accent-deep); }
-.bud-who > summary:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-primary); outline-offset: 2px; }
-.bud-who > .hint { margin: var(--s2) 0 0; }
 .bud-est-body > .calc-actions { padding: var(--s3) var(--s4); border-top: 1px solid var(--border-hair); }
 
 /* Narrow (phones, and a narrow tab): one column, each field labelled. */

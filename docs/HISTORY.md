@@ -3171,3 +3171,28 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     "Order ID". `npm run extract` would bring the stray letters back from
     `legacy/` (it overwrites steps.feature.json); fix them in the extractor's
     output again if it is ever re-run.
+
+72. **Gaps round (29 Oct 2026): sample flag, sentence case, pills, print fonts, call-sheet media.**
+    Three lanes merged `--no-ff` into develop. (a) **Sample flag**: a sample
+    film is stamped `sample: '<id>'` on its project entry (a field, no new
+    key; only `openSampleProject()` passes it; the backup importer and
+    Duplicate never carry it). `src/lib/sample-project.js` holds
+    `sampleIdOf` / `isSampleProject` / `findSampleProject`: a stamp, or an
+    unstamped film whose title is a sample's AND whose scenes still carry the
+    seed ids. A user's own film called "Dragon" now syncs; the old title test
+    in `samples.js` is gone. `prove-cloud-delete` (h) and `prove-adoption`
+    were widened and mutation-tested. Left alone: `tour.js` still matches by
+    title (cosmetic, ticks "open the sample"). (b) **Sentence case** for the
+    remaining all-caps UI copy (blueprint step JSON, short.js, feature.js,
+    pitch-deck kickers, audience prose); case-only, baseline word sets did not
+    move. `npm run extract` would bring the capitals back from `legacy/`.
+    (c) **Pills**: `.k-seg` and the base `.tabs-tab` take
+    `--sk-field-radius`. **Print fonts**: `exportPDF()` loads each face the
+    staged text needs (`document.fonts.load` per family and weight, 1.5s
+    ceiling, same tick when all are ready) before `print()`;
+    `npm run prove:print-fonts` (not in CI) runs `pdffonts` on the result. The
+    check mark U+2713 is in no fallback face. (d) **Call-sheet marketing
+    media** re-recorded from the open build with the Dragon sample
+    (`ONLY=call-sheets npm run record:marketing`): 8B look, no pink or teal.
+    A PROVE_PORT held by another worktree makes a proof talk to someone
+    else's build: use a unique port per lane.

@@ -568,7 +568,7 @@ function fineTerms(mode) {
   const cur = orderCur() === 'USD' ? 'US dollars' : 'Indian rupees';
   const t = offerTerms(mode, '', 'year');
   const head = `Each plan is a year of full access, paid in ${cur} through Razorpay`;
-  if (t.mode === 'renew') return `${head}. ${t.short}: cancel in Settings, under Plan & purchases, and you keep the year already paid for.`;
+  if (t.mode === 'renew') return `${head}. ${t.short}: cancel with Razorpay, in your mandate e-mail or your bank / UPI app, and you keep the year already paid for.`;
   if (t.mode === 'once') return `${head}. ${t.short}: when the year is ending, buy the next from this page and it starts where the old one stops.`;
   return `${head}. The card says how each one is paid before you pay.`;
 }

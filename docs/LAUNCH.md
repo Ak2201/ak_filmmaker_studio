@@ -242,6 +242,8 @@ that one.
 >    public.billing_settings` → `full`, `4320`. No function redeploy. Then the checks in
 >    `docs/SECURITY-RLS.md` §60.
 >
+> 6. **§65** `schema-65-autopay-wording.sql` (29 Oct 2026, after §62) — the refusal for a second auto-pay now says to cancel with Razorpay (mandate e-mail or bank / UPI app), not "Settings, Plan". sha256 `122cf2292754bdc897f31e27d104706f0b1f729ffd3c93b98eb6abc79940b33c`. Read back (65.1 in the file): `reworded` → true. No function redeploy.
+>
 > §53 and §54 ran live on 22 Oct 2026 and the four functions were redeployed that day
 > (`docs/LIVE-STEPS-2026-10-21.md`). The next free section is §61 (§57, the year on the invoice, 22 Oct 2026: `docs/LIVE-STEPS-2026-10-22.md`).
 

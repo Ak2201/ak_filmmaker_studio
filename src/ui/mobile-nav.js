@@ -256,7 +256,7 @@ function modRow(m, here) {
       h('span.mn-mod-label', { text: m.label }),
       m.purpose ? h('span.mn-mod-purpose', { text: m.purpose }) : null
     ]),
-    planned ? h('span.mn-mod-flag', { text: 'SOON' }) : null
+    planned ? h('span.mn-mod-flag', { text: 'Soon' }) : null
   ].filter(Boolean));
   return el;
 }

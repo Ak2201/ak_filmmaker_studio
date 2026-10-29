@@ -274,7 +274,7 @@ function renderReport() {
     h('p.cv-verdict.is-' + (r.verdict || 'none'), { text: (VERDICT_WORD[r.verdict] || 'No verdict') }),
     r.verdictWhy ? h('p.cv-verdict-why', { text: r.verdictWhy }) : null,
     h('p.cv-meta', {}, [
-      Panelm.aiMark('MODEL READING'),
+      Panelm.aiMark('Model reading'),
       ' Read ' + stamp(c.at) + (c.revision ? ' · draft after revision “' + c.revision + '”' : '')
         + ' · ' + plural(res.scenes, 'scene', 'scenes') + ' · by ' + res.model
         + (res.truncated ? ' · the reply was cut short' : '')

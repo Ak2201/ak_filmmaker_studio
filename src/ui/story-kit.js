@@ -221,9 +221,9 @@ function panelStart() {
   const acts = h('div.sk-actions');
   acts.append(link(STORY_HREF + '#path-' + next.n,
     (any ? 'CONTINUE THE STORY PATH: ' : 'START THE STORY PATH: ') + next.label.toUpperCase() + ' →', '.primary'));
-  if (IO.isEmptyStory(s)) for (const sm of SAMPLES) acts.append(h('button.btn', { type: 'button', 'data-sk': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'USE ' + sm.label.toUpperCase() }));
+  if (IO.isEmptyStory(s)) for (const sm of SAMPLES) acts.append(h('button.btn', { type: 'button', 'data-sk': 'sample', 'data-sample': sm.id, title: sm.blurb, text: 'Use ' + sm.label }));
   acts.append(h('label.btn.sk-file', {}, [
-    h('span', { text: 'IMPORT A SYNOPSIS FILE' }),
+    h('span', { text: 'Import a synopsis file' }),
     h('input', { type: 'file', accept: '.txt,.md,.text,.docx,.pdf', 'data-sk-file': 'synopsis', 'aria-label': 'Import a synopsis file into the Story page' })
   ]));
   kids.push(acts);
@@ -260,8 +260,8 @@ function panelVault(card) {
   add.append(paperTextarea('#skClip.sk-text', { rows: 2, spellcheck: 'true' }));
   card.append(add);
   card.append(h('div.sk-actions', {}, [
-    h('button.btn', { type: 'button', 'data-sk': 'clip-add', text: 'ADD TO VAULT' }),
-    link('vault.html#vault', 'OPEN THE IDEA VAULT →')
+    h('button.btn', { type: 'button', 'data-sk': 'clip-add', text: 'Add to vault' }),
+    link('vault.html#vault', 'Open the idea vault →')
   ]));
 }
 
@@ -289,12 +289,12 @@ function panelBeats(ns) {
     kids.push(h('p.sk-note', { text: `The Story page is set to ${Story.frameworkById(s.framework).label}. Shown here in ${fw.short}: steps written under another format stay on the Story page, and tagged passages are placed by position.` }));
   }
   const acts = h('div.sk-actions');
-  acts.append(link(STORY_HREF + '#path-4', 'OPEN THE BEAT SHEET →', o.covered ? '' : '.primary'));
+  acts.append(link(STORY_HREF + '#path-4', 'Open the beat sheet →', o.covered ? '' : '.primary'));
   if (!s.source.trim()) {
     acts.append(h('button.btn', { type: 'button', 'data-sk': 'copy-beats', 'data-ns': ns,
       text: `START THE STORY SYNOPSIS FROM MY ${fw.beats.length} BEATS` }));
   }
-  if (undoCopy && undoCopy.ns === ns) acts.append(h('button.btn', { type: 'button', 'data-sk': 'copy-undo', text: 'UNDO THE COPY' }));
+  if (undoCopy && undoCopy.ns === ns) acts.append(h('button.btn', { type: 'button', 'data-sk': 'copy-undo', text: 'Undo the copy' }));
   kids.push(acts);
   if (!s.source.trim()) {
     kids.push(h('p.sk-note', { text: `Copies what you wrote above each field into the Story page as one step per beat, then builds its synopsis from them, tagged. Add-only — nothing on the Story page is replaced — and offered only while it has no synopsis.` }));
@@ -340,10 +340,10 @@ function panelEnd() {
     const fig = renderHeat(s, { interactive: false });
     if (fig) kids.push(fig);
     kids.push(renderFlags(s, { interactive: false }));
-    kids.push(h('div.sk-actions', {}, [link(STORY_HREF + '#pacing', 'OPEN THE PACING ON THE STORY PAGE →')]));
+    kids.push(h('div.sk-actions', {}, [link(STORY_HREF + '#pacing', 'Open the pacing on the story page →')]));
   } else {
     kids.push(h('p.sk-lead', { text: 'No synopsis on the Story page yet. The tension curve appears here once there is one — build it from the step outline, or paste the one you have.' }));
-    kids.push(h('div.sk-actions', {}, [link(STORY_HREF + '#path-5', 'OPEN THE SYNOPSIS STEP →')]));
+    kids.push(h('div.sk-actions', {}, [link(STORY_HREF + '#path-5', 'Open the synopsis step →')]));
   }
   kids.push(h('h4.sk-sub', { text: 'Take it with you' }));
   let d = null;
@@ -481,7 +481,7 @@ function copyBeats(ns) {
   undoCopy = { ns, before, wrote: s.updatedAt };
   refreshStoryKit();
   StudioUI.toast(`${plural(added, 'beat')} copied into the Story page’s step outline, and its synopsis built from them.`, {
-    action: 'UNDO', onAction: undoCopyBeats
+    action: 'Undo', onAction: undoCopyBeats
   });
 }
 

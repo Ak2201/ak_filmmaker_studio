@@ -160,8 +160,8 @@ function rolesCard() {
       { key: 'at', label: 'Since', render: (r) => (r.at ? h('time', { title: absTime(r.at), text: relTime(r.at) }) : 'from the start') },
       { key: 'by', label: 'Set by', render: (r) => (r.granted_by ? emailOf(r.granted_by) : r.explicit ? '—' : 'no role row: reads as owner') },
       { key: 'go', label: '', align: 'end', render: (r) => h('span.ctl-row-a', {}, [
-        h('button.btn', { type: 'button', text: 'EDIT', 'aria-label': 'Edit the role of ' + r.email, onclick: () => { S.draft.role = { who: r.email || r.user_id, role: r.role }; redraw(); const el = document.getElementById('ctl-role-who'); if (el) el.focus(); } }),
-        h('button.btn', { type: 'button', text: 'REMOVE', 'aria-label': 'Remove the role of ' + r.email, onclick: () => setRole(r.user_id, r.email, null) })
+        h('button.btn', { type: 'button', text: 'Edit', 'aria-label': 'Edit the role of ' + r.email, onclick: () => { S.draft.role = { who: r.email || r.user_id, role: r.role }; redraw(); const el = document.getElementById('ctl-role-who'); if (el) el.focus(); } }),
+        h('button.btn', { type: 'button', text: 'Remove', 'aria-label': 'Remove the role of ' + r.email, onclick: () => setRole(r.user_id, r.email, null) })
       ]) }
     ],
     rows: S.roles.rows,
@@ -175,7 +175,7 @@ function rolesCard() {
     ]),
     h('p#ctl-role-help.ad-meta', { text: ROLE_REACH[d.role] + ' Anyone given a role becomes an administrator.' }),
     h('div.gt-actions', {}, [
-      h('button.btn.primary', { type: 'submit', text: 'SET ROLE', disabled: S.busy ? '' : null }),
+      h('button.btn.primary', { type: 'submit', text: 'Set role', disabled: S.busy ? '' : null }),
       noteLine('role')
     ])
   ]);
@@ -213,7 +213,7 @@ function overridesCard() {
       { key: 'enabled', label: 'Effect', render: (r) => pill(r.enabled ? 'forced ON' : 'switched OFF', r.enabled ? 'ok' : 'danger') },
       { key: 'set_by', label: 'Set by', render: (r) => emailOf(r.set_by) },
       { key: 'at', label: 'When', render: (r) => h('time', { title: absTime(r.at), text: relTime(r.at) }) },
-      { key: 'go', label: '', align: 'end', render: (r) => h('button.btn', { type: 'button', text: 'CLEAR', 'aria-label': 'Clear the override for ' + r.key, onclick: () => clearOverride(r) }) }
+      { key: 'go', label: '', align: 'end', render: (r) => h('button.btn', { type: 'button', text: 'Clear', 'aria-label': 'Clear the override for ' + r.key, onclick: () => clearOverride(r) }) }
     ],
     rows: S.ov.rows,
     rowId: (r) => r.key + ':' + r.scope + ':' + r.scope_id,
@@ -235,7 +235,7 @@ function overridesCard() {
     ]),
     h('p.ad-meta', { text: 'Which one wins, most specific first: an override for one account, then one for a plan, then one for everybody, then the plan’s own list. Two overrides of the same kind that disagree: the restrictive one wins. If this cannot be read, the plan’s own list applies and nothing is hidden.' }),
     h('div.gt-actions', {}, [
-      h('button.btn.primary', { type: 'submit', text: 'SAVE OVERRIDE', disabled: S.busy ? '' : null }),
+      h('button.btn.primary', { type: 'submit', text: 'Save override', disabled: S.busy ? '' : null }),
       noteLine('ov')
     ])
   ]);
@@ -292,10 +292,10 @@ function annCard() {
       field('Ends (your time)', input(d.ends, (v) => { d.ends = v; }, { type: 'datetime-local' }))
     ]),
     h('div.ctl-count-row', {}, [count, h('span.ad-meta', { text: 'Leave the dates empty to start now and run until cleared.' })]),
-    h('div.ctl-prev-wrap', {}, [h('span.ctl-prev-l', { text: 'PREVIEW' }), preview]),
+    h('div.ctl-prev-wrap', {}, [h('span.ctl-prev-l', { text: 'Preview' }), preview]),
     h('div.gt-actions', {}, [
-      h('button.btn.primary', { type: 'submit', text: 'SET BANNER', disabled: S.busy ? '' : null }),
-      h('button.btn', { type: 'button', text: 'CLEAR BANNER', disabled: S.busy || !live ? '' : null, onclick: clearBanner }),
+      h('button.btn.primary', { type: 'submit', text: 'Set banner', disabled: S.busy ? '' : null }),
+      h('button.btn', { type: 'button', text: 'Clear banner', disabled: S.busy || !live ? '' : null, onclick: clearBanner }),
       noteLine('ann')
     ])
   ]);
@@ -334,7 +334,7 @@ function dataCard() {
     who,
     h('p.ad-meta', { text: 'Export covers what is on the server: profile, payments, invoices, notes, sessions and synced projects. Work kept only in someone’s own browser is not here, and the file says so. To erase a person, use People → Delete totally.' }),
     h('div.gt-actions', {}, [
-      h('button.btn.primary', { type: 'submit', text: 'EXPORT AS JSON', disabled: S.busy ? '' : null }),
+      h('button.btn.primary', { type: 'submit', text: 'Export as JSON', disabled: S.busy ? '' : null }),
       noteLine('data')
     ])
   ]);

@@ -204,7 +204,7 @@ export function emptyState({ title, body, action, stamp, icon } = {}) {
 
 /** A panel that cannot load SAYS WHY and offers Retry — never an empty table that reads as all clear. */
 export function errorState({ title, why, onRetry } = {}) {
-  const retry = onRetry ? h('button.btn', { type: 'button', 'data-ad-act': 'run', text: 'RETRY' }) : null;
+  const retry = onRetry ? h('button.btn', { type: 'button', 'data-ad-act': 'run', text: 'Retry' }) : null;
   if (retry) handlers.set(retry, onRetry);
   return h('div.ad-error', { role: 'alert' }, [
     h('p.ad-error-h', { text: title || 'This could not load' }),
@@ -308,7 +308,7 @@ export function openDrawer({ param, id, title, sub, body, actions } = {}) {
   const el = h('aside.ad-drawer.k-scope', { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': label, tabindex: '-1' }, [
     h('header.ad-drawer-h', {}, [
       h('div.ad-drawer-t', {}, [h('h2', { id: label, text: title || '' }), sub ? (isEl(sub) ? sub : h('p.ad-meta', { text: sub })) : null]),
-      h('div.ad-drawer-a', {}, [...arr(actions), h('button.btn.ad-drawer-x', { type: 'button', 'data-ad-act': 'close-drawer', 'aria-label': 'Close', text: 'CLOSE' })])
+      h('div.ad-drawer-a', {}, [...arr(actions), h('button.btn.ad-drawer-x', { type: 'button', 'data-ad-act': 'close-drawer', 'aria-label': 'Close', text: 'Close' })])
     ]),
     h('div.ad-drawer-b', {}, [typeof body === 'function' ? body() : body])
   ]);

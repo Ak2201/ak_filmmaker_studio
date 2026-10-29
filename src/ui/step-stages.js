@@ -5,8 +5,8 @@
    docs/BLUEPRINT-REALIGN-PLAN.md, revision 3, section 3. Three
    things on every step of both blueprints:
 
-     1. a STAGE CHIP — "PART II · SCREENPLAY", in that stage's hue;
-     2. a "DO THIS IN…" row — buttons to the modules that do the
+     1. a STAGE CHIP — "Part II · screenplay", in that stage's hue;
+     2. a "Do this in…" row — buttons to the modules that do the
         step's work for real;
      3. on a few steps, a LIVE READOUT — "36 scenes · 105 pages".
 
@@ -105,23 +105,23 @@ export function idsInPart(part) {
 
 const stageName = (stages) => stages.map((p) => p.label.toUpperCase()).join(' & ');
 
-/** "PART II · SCREENPLAY", "PARTS III–IV · PRE-PRODUCTION & PRODUCTION",
- *  "FINAL LOCK · SCREENPLAY". */
+/** "Part II · screenplay", "PARTS III–IV · PRE-PRODUCTION & PRODUCTION",
+ *  "Final lock · screenplay". */
 export function partLabel(info) {
   if (!info) return '';
   const name = stageName(info.stages);
-  if (info.lock) return 'FINAL LOCK' + (name ? ' · ' + name : '');
+  if (info.lock) return 'Final lock' + (name ? ' · ' + name : '');
   const ps = info.parts;
   const head = !ps.length ? ''
-    : ps.length === 1 ? 'PART ' + roman(ps[0])
-      : 'PARTS ' + roman(ps[0]) + '–' + roman(ps[ps.length - 1]);
+    : ps.length === 1 ? 'Part ' + roman(ps[0])
+      : 'Parts ' + roman(ps[0]) + '–' + roman(ps[ps.length - 1]);
   return [head, name].filter(Boolean).join(' · ');
 }
 
 /** The rail and the jump menu group a part by its own label. */
 export function partHeading(part) {
   const p = partsOf('feature').find((x) => x.part === part);
-  return p ? 'PART ' + roman(part) + ' · ' + p.phase.label.toUpperCase() : 'PART ' + roman(part);
+  return p ? 'Part ' + roman(part) + ' · ' + p.phase.label.toUpperCase() : 'Part ' + roman(part);
 }
 
 /** Resolve a `tools` entry to `{ label, href }`, or null. */
@@ -178,7 +178,7 @@ export function stageRow(ns, id) {
   const tools = info.tools.map(resolveTool).filter(Boolean);
   if (tools.length) {
     row.append(h('span.st-tools', {}, [
-      h('span.st-tools-label', { text: 'DO THIS IN' }),
+      h('span.st-tools-label', { text: 'Do this in' }),
       ...tools.map((t) => h('a.btn.st-tool', { href: t.href, text: t.label + ' →' }))
     ]));
   }

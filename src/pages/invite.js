@@ -124,7 +124,7 @@ function trialSection(section) {
   const t = section('trial', 'Free trial', 'Start your free trial.',
     'Open the Dragon and The Dark Knight samples — two whole films, each with its script, its breakdown, its schedule and its call sheets — and read them from the inside, for ' + len + '. No card, nothing to fill in.');
   t.append(h('div.iv-actions', {}, [
-    h('button.k-btn.k-btn--primary', { type: 'button', 'data-iv-action': 'start-trial', text: 'START MY ' + len.toUpperCase() })
+    h('button.k-btn.k-btn--primary', { type: 'button', 'data-iv-action': 'start-trial', text: 'Start my ' + len })
   ]));
   t.append(h('p.bd-sub', { id: 'trialMsg', role: 'status', 'aria-live': 'polite', text: '' }));
   return t;

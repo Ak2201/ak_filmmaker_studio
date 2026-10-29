@@ -49,8 +49,8 @@ export function refundDialog({ payment, request = null }) {
     const amount = h('input.rf-amount', { id: 'rfAmount', name: 'amount', type: 'text', inputmode: 'decimal', value: String(paid / 100), 'aria-describedby': 'rfAmountHint' });
     const reason = h('textarea', { id: 'rfReason', name: 'reason', maxlength: 500, required: true, 'aria-required': 'true', placeholder: 'Duplicate charge, not delivered, …' });
     reason.value = reasonDefault;
-    const go = h('button.btn.danger', { type: 'submit', text: 'REFUND' });
-    const cancel = h('button.btn', { type: 'button', 'data-rf': 'cancel', text: 'CANCEL' });
+    const go = h('button.btn.danger', { type: 'submit', text: 'Refund' });
+    const cancel = h('button.btn', { type: 'button', 'data-rf': 'cancel', text: 'Cancel' });
     const form = h('form', { novalidate: true }, [
       h('label', { for: 'rfAmount', text: cur === 'USD' ? 'Amount to refund ($, US dollars)' : 'Amount to refund (₹)' }), amount,
       h('p#rfAmountHint.gt-meta', { text: `Up to ${fmt(paid)}, which is what was paid${cur === 'USD' ? ', in US dollars' : ''}. Leave it as it is to refund in full.` }),
@@ -82,14 +82,14 @@ export function refundDialog({ payment, request = null }) {
       if (!why) { fail('Write the reason. It is kept with the refund.'); reason.focus(); return; }
       busy = true; err.hidden = true;
       go.disabled = true; cancel.disabled = true; amount.disabled = true; reason.disabled = true;
-      go.textContent = 'REFUNDING…';
+      go.textContent = 'Refunding…';
       try {
         const out = await Billing.admin.refund(payment.id, { amountPaise: paise === paid ? null : paise, reason: why, requestId: request ? request.id : null });
         busy = false; done(out);
       } catch (ex) {
         busy = false;
         go.disabled = false; cancel.disabled = false; amount.disabled = false; reason.disabled = false;
-        go.textContent = 'REFUND';
+        go.textContent = 'Refund';
         fail(ex.message || 'The refund did not go through. Nothing was refunded.');
       }
     });
@@ -101,8 +101,8 @@ export function declineDialog({ request, email }) {
   return new Promise((resolve) => {
     const err = h('p.gt-error', { role: 'alert', hidden: true });
     const note = h('textarea', { id: 'rfNote', name: 'note', maxlength: 500, required: true, 'aria-required': 'true', placeholder: 'For example: this is outside the refund policy because …' });
-    const go = h('button.btn.danger', { type: 'submit', text: 'DECLINE' });
-    const cancel = h('button.btn', { type: 'button', text: 'CANCEL' });
+    const go = h('button.btn.danger', { type: 'submit', text: 'Decline' });
+    const cancel = h('button.btn', { type: 'button', text: 'Cancel' });
     const form = h('form', { novalidate: true }, [
       h('label', { for: 'rfNote', text: 'Note to the customer (required)' }), note,
       err, h('div.gt-actions', {}, [go, cancel])
@@ -124,10 +124,10 @@ export function declineDialog({ request, email }) {
       if (busy) return;
       const text = note.value.trim();
       if (!text) { err.textContent = 'Say why, in a sentence. The customer will read it.'; err.hidden = false; note.focus(); return; }
-      busy = true; err.hidden = true; go.disabled = true; cancel.disabled = true; note.disabled = true; go.textContent = 'DECLINING…';
+      busy = true; err.hidden = true; go.disabled = true; cancel.disabled = true; note.disabled = true; go.textContent = 'Declining…';
       try { const out = await Billing.admin.decideRefundRequest(request.id, 'declined', text); busy = false; done(out); }
       catch (ex) {
-        busy = false; go.disabled = false; cancel.disabled = false; note.disabled = false; go.textContent = 'DECLINE';
+        busy = false; go.disabled = false; cancel.disabled = false; note.disabled = false; go.textContent = 'Decline';
         err.textContent = ex.message || 'The request was not declined.'; err.hidden = false;
       }
     });

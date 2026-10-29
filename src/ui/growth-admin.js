@@ -138,7 +138,7 @@ function referralBlock(sec) {
     h('div', {}, [h('label', { for: 'graRewardValue', text: 'Reward (% or ₹)' }), h('input', { id: 'graRewardValue', name: 'reward', type: 'text', inputmode: 'decimal', required: true,
       value: Number.isInteger(st.referral_reward_paise) ? String(st.referral_reward_paise / 100) : String(st.referral_reward_pct ?? 10) })])
   ]));
-  f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'SAVE REFERRAL TERMS' }), S.saved === 'referral' ? h('span.ba-saved', { role: 'status', text: 'Saved.' }) : null].filter(Boolean)));
+  f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'Save referral terms' }), S.saved === 'referral' ? h('span.ba-saved', { role: 'status', text: 'Saved.' }) : null].filter(Boolean)));
   f.append(h('p.gr-meta', { text: 'Every paying member has a REF- code; the referrer is owed once the friend’s payment confirms.' }));
   sec.append(f);
 
@@ -169,7 +169,7 @@ function referralBlock(sec) {
     pay.append(h('div.gr-row', {}, [
       h('label.gr-check', { for: 'graPayNote', text: 'Payout note' }),
       h('input', { id: 'graPayNote', name: 'note', type: 'text', maxlength: 300, placeholder: 'UPI ref, date' }),
-      h('button.btn', { type: 'submit', text: 'MARK SELECTED PAID' })
+      h('button.btn', { type: 'submit', text: 'Mark selected paid' })
     ]));
   }
   sec.append(pay);
@@ -255,7 +255,7 @@ function passBlock(sec) {
     h('dt', { text: 'Left' }), h('dd', { text: Number.isInteger(ps.cap) && ps.cap > 0 ? (Number.isInteger(ps.left) ? String(ps.left) : '—') : 'no cap' }),
     h('dt', { text: 'Ends in' }), h('dd', { text: ps.ends_at ? (endsIn(ps.ends_at) || 'ended') : 'no deadline' })
   ]));
-  f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'SAVE LAUNCH PASS' }),
+  f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'Save launch pass' }),
     S.passSaved ? h('span.ba-saved', { role: 'status', text: S.passSaved }) : null].filter(Boolean)));
   f.append(h('p.gr-meta', { text: 'Changing the price applies to new orders only. A payment already made keeps what it paid, and a pass already running keeps its days. Leave the date empty for no deadline (and no countdown).' }));
   sec.append(f);
@@ -287,7 +287,7 @@ function modesBlock(sec) {
   f.append(modeSwitch('pass_mode', 'Week pass', m.pass_mode || 'once'));
   f.append(modeSwitch('plan_mode', 'Yearly plans', m.plan_mode || 'once'));
   f.append(h('p.gr-meta', { text: 'Applies to new purchases only; existing auto-pay keeps its price.' }));
-  f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'SAVE' }),
+  f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'Save' }),
     S.modesSaved ? h('span.ba-saved', { role: 'status', text: S.modesSaved }) : null].filter(Boolean)));
   sec.append(f);
   subsBlock(sec);
@@ -315,7 +315,7 @@ function subsBlock(sec) {
       { label: 'Amount', align: 'end', render: subAmount },
       { label: 'Status', render: (r) => r.status + (r.cancel_at_period_end ? ' · ends at period end' : '') },
       { label: 'Next charge', render: (r) => (subLive(r) && r.current_end ? fmtWhen(r.current_end) : r.current_end ? 'none · access to ' + fmtWhen(r.current_end) : '—') },
-      { label: '', render: (r) => (subLive(r) ? h('button.btn', { type: 'button', 'data-gra-action': 'sub-cancel', 'data-id': String(r.id), 'data-who': r.user_email || '', 'data-until': r.current_end || '', text: 'CANCEL' }) : '') }
+      { label: '', render: (r) => (subLive(r) ? h('button.btn', { type: 'button', 'data-gra-action': 'sub-cancel', 'data-id': String(r.id), 'data-who': r.user_email || '', 'data-until': r.current_end || '', text: 'Cancel' }) : '') }
     ]
   }));
 }
@@ -385,7 +385,7 @@ function trialBlock(sec) {
     h('div', {}, [h('label', { for: 'graTrialScope', text: s60 ? 'A trial shows' : 'A code trial shows' }), scope]),
     h('div', {}, [h('label', { for: 'graTrialPlan', text: 'A whole-studio trial borrows' }), planSel])
   ]));
-  f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'SAVE TRIAL TERMS' }),
+  f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'Save trial terms' }),
     S.saved === 'trial' ? h('span.ba-saved', { role: 'status', text: 'Saved.' }) : null].filter(Boolean)));
   /* THE SENTENCE THAT STOPS A PANIC. The length is snapshotted on each
      member's row when their trial starts, so an owner who shortens it
@@ -408,7 +408,7 @@ function trialBlock(sec) {
     h('div', {}, [h('label', { for: 'graTrialGrantHours', text: 'Hours (up to a year)' }), h('input', { id: 'graTrialGrantHours', name: 'hours', type: 'number', min: 0.5, max: 8760, step: 'any', inputmode: 'decimal', value: '168', required: true })]),
     h('div', {}, [h('label', { for: 'graTrialGrantNote', text: 'Why' }), h('input', { id: 'graTrialGrantNote', name: 'note', type: 'text', maxlength: 300, placeholder: 'asked by e-mail, demo…' })])
   ]));
-  g.append(h('div.ba-actions', {}, [h('button.btn', { type: 'submit', text: 'GRANT MORE TIME' }),
+  g.append(h('div.ba-actions', {}, [h('button.btn', { type: 'submit', text: 'Grant more time' }),
     S.granted ? h('span.ba-saved', { role: 'status', text: S.granted }) : null].filter(Boolean)));
   g.append(h('p.gr-meta', { text: 'A fresh whole-studio trial from now; not a plan. 168 hours is a week.' }));
   sec.append(h('h3.gt-h3', { text: 'Grant more time' }), g);
@@ -507,7 +507,7 @@ function priceRiseBlock(sec) {
   const prev = h('div.gr-preview', { id: 'graPricePreview', role: 'status', 'aria-live': 'polite' });
   f.append(h('p.gr-preview-h', { text: 'What the public page will say' }), prev);
 
-  f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'SCHEDULE THE RISE' }),
+  f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'Schedule the rise' }),
     S.saved === 'pricerise' ? h('span.ba-saved', { role: 'status', text: 'Saved.' }) : null].filter(Boolean)));
 
   if (dates.length > 1) f.append(h('p.gr-msg.is-error', { text: 'The tiers are currently scheduled for ' + dates.length + ' different dates. Saving this form puts them all on the one above.' }));
@@ -519,7 +519,7 @@ function priceRiseBlock(sec) {
     for (const p of rising) {
       ul.append(h('li', {}, [
         h('span', { text: `${p.name || planName(p.id)}: ${fmtPaise(p.price_paise)} → ${fmtPaise(p.next_price_paise)} on ${fmtWhen(p.next_price_at)}${usdRiseText(p.id)}  ` }),
-        h('button.btn', { type: 'button', 'data-gra-action': 'price-cancel', 'data-plan': p.id, text: 'CANCEL THE RISE' })
+        h('button.btn', { type: 'button', 'data-gra-action': 'price-cancel', 'data-plan': p.id, text: 'Cancel the rise' })
       ]));
     }
     sec.append(h('p.gt-meta', { text: 'Scheduled now:' }), ul);
@@ -598,7 +598,7 @@ function affiliateBlock(sec) {
       h('td', {}, [h('strong', { text: byCurrency(a.commission_due_paise, a.usd_commission_due_minor) })]),
       h('td', { text: String(a.refunded) }),
       h('td', { text: fmtDate(a.last_order_at) }),
-      h('td', {}, [h('button.btn', { type: 'button', 'data-gra-action': 'aff-orders', 'data-code': a.code, text: S.openAff === a.code ? 'HIDE ORDERS' : 'ORDERS' })])
+      h('td', {}, [h('button.btn', { type: 'button', 'data-gra-action': 'aff-orders', 'data-code': a.code, text: S.openAff === a.code ? 'Hide orders' : 'Orders' })])
     ]));
     if (S.openAff === a.code) {
       const orders = S.affOrders || [];
@@ -662,7 +662,7 @@ function leadsBlock(sec) {
   const rows = S.leads || [];
   sec.append(h('p.gt-meta', { text: `${rows.length} address${rows.length === 1 ? '' : 'es'} from “Get launch offers”, each with its consent.` }));
   if (!rows.length) return;
-  sec.append(h('button.btn', { type: 'button', 'data-gra-action': 'leads-csv', text: 'EXPORT CSV' }));
+  sec.append(h('button.btn', { type: 'button', 'data-gra-action': 'leads-csv', text: 'Export CSV' }));
   const table = h('table.gt-table');
   table.append(h('thead', {}, [h('tr', {}, ['When', 'E-mail', 'Source'].map((t) => h('th', { scope: 'col', text: t })))]));
   table.append(h('tbody', {}, rows.slice(0, 200).map((r) => h('tr', {}, [h('td', { text: fmtDate(r.created_at) }), h('td', { text: r.email }), h('td', { text: r.source })]))));
@@ -804,7 +804,7 @@ export function growthAdminSection(section, st) {
   leadsBlock(sec);
   funnelBlock(sec);
   cohortsBlock(sec);
-  sec.append(h('button.btn.ad-refresh', { type: 'button', 'data-gra-action': 'reload', text: 'REFRESH' }));
+  sec.append(h('button.btn.ad-refresh', { type: 'button', 'data-gra-action': 'reload', text: 'Refresh' }));
   return sec;
 }
 
@@ -913,7 +913,7 @@ delegate(document, 'change', '[data-gra-sub-filter]', async (e, el) => {
 });
 delegate(document, 'click', '[data-gra-action="sub-cancel"]', async (e, btn) => {
   const until = btn.dataset.until ? fmtWhen(btn.dataset.until) : 'the end of the period paid for';
-  const ok = await askDanger({ title: 'Cancel this auto-pay?', body: (btn.dataset.who || 'This person') + ' keeps access until ' + until + '. Nothing more will be charged. This is not a refund.', confirm: 'CANCEL AUTO-PAY', cancel: 'Keep it' });
+  const ok = await askDanger({ title: 'Cancel this auto-pay?', body: (btn.dataset.who || 'This person') + ' keeps access until ' + until + '. Nothing more will be charged. This is not a refund.', confirm: 'Cancel auto-pay', cancel: 'Keep it' });
   if (!ok) return;
   btn.disabled = true;
   try {

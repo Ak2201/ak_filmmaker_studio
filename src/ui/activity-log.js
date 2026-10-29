@@ -39,7 +39,7 @@ export function renderActivityLog(host) {
     list.append(h('div.activity-row', {}, url ? [h('a', { href: url }, inner)] : inner));
   });
   const refresh = h('button.mini-btn', { type: 'button', text: '↻ REFRESH' });
-  const clear = h('button.mini-btn.danger', { type: 'button', text: 'CLEAR LOG' });
+  const clear = h('button.mini-btn.danger', { type: 'button', text: 'Clear log' });
   /* Nothing to clear is not an action: an empty log's CLEAR LOG stays
      visible (the row keeps its shape) but cannot be pressed. */
   clear.disabled = !arr.length;
@@ -48,7 +48,7 @@ export function renderActivityLog(host) {
     const ok = await ask({
       title: 'Clear the activity log?',
       body: 'Your blueprint data is not affected.',
-      confirm: 'CLEAR LOG', danger: true
+      confirm: 'Clear log', danger: true
     });
     if (!ok) return;
     clearActivityLog();

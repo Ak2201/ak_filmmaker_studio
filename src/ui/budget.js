@@ -515,7 +515,7 @@ function renderCalculator() {
       ])
     ]),
     h('div.calc-grand', {}, [
-      h('span.lab', { text: 'ESTIMATE TOTAL' }),
+      h('span.lab', { text: 'Estimate total' }),
       h('span#calcTotal.total', { 'aria-live': 'polite' }, [
         money(0) + ' ', h('span', { text: 'across 0 line items' })
       ])
@@ -581,7 +581,7 @@ export const BUDGET_ACTIONS = {
        would be worse than no link at all. Rows that were set by hand
        are reported as left alone rather than quietly skipped. */
     /* ...and only on LINES. The page opens with five blank rows, and
-       filling those turned "USE 18 DAYS" into five nameless lines at
+       filling those turned "Use 18 days" into five nameless lines at
        18 days that the toast then counted as lines set. A row is a
        line once it names an item or carries a rate; a blank one is
        left blank, and counted as nothing. */

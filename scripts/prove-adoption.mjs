@@ -211,7 +211,7 @@ const pc = await page.evaluate(probe);
 check('(c) signed in: store offers exactly the device-only projects',
   pc.adoptable.slice().sort(), ['Desk Film', 'Night Shoot']);
 check('(c) signed in: notice host visible', pc.hostHidden, false);
-check('(c) signed in: adopt button present', pc.button, 'ADD ALL 2 TO THIS ACCOUNT');
+check('(c) signed in: adopt button present', pc.button, 'Add all 2 to this account');
 check('(c) signed in: names the right projects, by name', pc.names.slice().sort(),
   ['Desk Film', 'Night Shoot']);
 check('(c) the account project is NOT named in the panel',
@@ -227,7 +227,7 @@ check('(c) copy says the projects stay on this device',
 check('(c) copy says one copy listed in both places',
   /One copy of the work, listed in both places/i.test(copy), true);
 console.log('\n--- the copy, as rendered ---');
-console.log('eyebrow : ON THIS DEVICE ONLY');
+console.log('eyebrow : On this device only');
 ['title', 'deck', 'affects', 'fine'].forEach((k) => console.log(k.padEnd(8) + ': ' + pc[k]));
 console.log('button  : ' + pc.button);
 console.log('-----------------------------\n');

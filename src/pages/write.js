@@ -263,7 +263,7 @@ const smart = createSmartType({
 });
 let openDocId = null;
 
-/* Page view (see "PAGE VIEW" below). In memory: a way of looking at
+/* Page view (see "Page view" below). In memory: a way of looking at
    the script, not part of it, so it is neither stored nor synced. */
 let pageView = false;
 let Typeset = null;            // screenplay-export.js, once page view has asked for it

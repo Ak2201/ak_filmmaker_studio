@@ -319,7 +319,7 @@ function renderActuals(ctx) {
     for (const l of d.lines) {
       const used = l.pctUsed === null ? 100 : Math.min(100, l.pctUsed);
       tb.append(h('tr', { class: l.over ? 'is-over' : null }, [
-        h('th', { scope: 'row' }, [l.name, l.over ? badge({ label: 'OVER', tone: 'danger', class: 'cx-flag' }) : null]),
+        h('th', { scope: 'row' }, [l.name, l.over ? badge({ label: 'Over', tone: 'danger', class: 'cx-flag' }) : null]),
         h('td', {}, l.unbudgeted ? h('span.cx-hint', { text: 'not in the estimate' })
           : frame(select({ 'data-cx-field': 'line-dept', 'data-id': l.id, 'data-fk': 'ld:' + l.id, 'aria-label': 'Department for ' + l.name }, deptOpts, l.dept))),
         numTd(rs(l.estimate)), numTd(rs(l.actual)), numTd(rs(l.actualNet)),
@@ -819,19 +819,19 @@ const ACTIONS = {
     const index = list.findIndex((x) => x.id === el.dataset.id);
     const gone = C.removeExpense(el.dataset.id);
     refresh();
-    if (gone) toast('Expense of ' + rs(gone.amount) + ' deleted.', { action: 'UNDO', onAction: () => { C.restoreExpense(gone, index); refresh(); } });
+    if (gone) toast('Expense of ' + rs(gone.amount) + ' deleted.', { action: 'Undo', onAction: () => { C.restoreExpense(gone, index); refresh(); } });
   },
   'del-float': (el) => {
     const index = C.listFloats().findIndex((x) => x.id === el.dataset.id);
     const gone = C.removeFloat(el.dataset.id);
     refresh();
-    if (gone) toast('Float deleted.', { action: 'UNDO', onAction: () => { C.restoreFloat(gone, index); refresh(); } });
+    if (gone) toast('Float deleted.', { action: 'Undo', onAction: () => { C.restoreFloat(gone, index); refresh(); } });
   },
   'del-payment': (el) => {
     const index = C.listPayments().findIndex((x) => x.id === el.dataset.id);
     const gone = C.removePayment(el.dataset.id);
     refresh();
-    if (gone) toast('Payment deleted.', { action: 'UNDO', onAction: () => { C.restorePayment(gone, index); refresh(); } });
+    if (gone) toast('Payment deleted.', { action: 'Undo', onAction: () => { C.restorePayment(gone, index); refresh(); } });
   },
   'use-wage': (el) => { C.setCrew(el.dataset.id, { fee: Number(el.dataset.v) || 0, feeType: 'day' }); refresh(); toast('Fee set from the wage table — confirm it with the person and the union.'); },
   'reset-wage': (el) => { C.setWageOverride(el.dataset.id, { bata: '', callHours: '', otRule: '' }); refresh(); },

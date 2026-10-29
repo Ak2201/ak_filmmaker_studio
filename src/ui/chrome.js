@@ -168,7 +168,7 @@ function injectSkipLink() {
    A toast must never steal focus, so the ordinary one is
    aria-live="polite": it waits for the reader to finish the
    sentence it is already on. That is right for "SAVED" and wrong
-   for "COULD NOT SAVE — STORAGE IS FULL", which is a message about
+   for "Could not save — storage is full", which is a message about
    work that is being lost while the queue drains. An error goes in
    a role="alert" region, which is assertive and interrupts.
 
@@ -877,7 +877,7 @@ function buildBeatVisualizer() {
 
   const head = document.createElement('div');
   head.className = 'beat-visualizer-head';
-  head.innerHTML = '<span>15-BEAT EMOTIONAL CURVE</span><span style="opacity:.6;">CLICK A DOT TO JUMP</span>';
+  head.innerHTML = '<span>15-beat emotional curve</span><span style="opacity:.6;">Click a dot to jump</span>';
   wrap.appendChild(head);
 
   const W = 800, H = 220, padX = 40, padY = 30;
@@ -1554,13 +1554,13 @@ function openMigrationModal(count) {
     overlay.className = 'cm-overlay show';
     overlay.innerHTML =
       '<div class="cm-card" style="max-width:440px;">' +
-        '<div class="cm-eyebrow">MIGRATION</div>' +
+        '<div class="cm-eyebrow">Migration</div>' +
         '<h2>' + count + ' project' + (count === 1 ? '' : 's') + ' found <em>locally.</em></h2>' +
         '<p class="cm-deck">Upload to your cloud account so you can edit them on any device, share with collaborators, and never lose work to a cleared browser.</p>' +
         '<p class="cm-hint">You can decide later — projects stay on this device until uploaded.</p>' +
         '<div class="cm-actions">' +
-          '<button class="cm-btn" id="mmNo">NOT NOW</button>' +
-          '<button class="cm-btn primary" id="mmYes">UPLOAD ALL</button>' +
+          '<button class="cm-btn" id="mmNo">Not now</button>' +
+          '<button class="cm-btn primary" id="mmYes">Upload all</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(overlay);
@@ -1592,7 +1592,7 @@ function openShareDialog(projectId) {
   m.innerHTML =
     '<div class="cm-card" style="max-width:560px;">' +
       '<button type="button" class="cm-close" aria-label="Close">×</button>' +
-      '<div class="cm-eyebrow">SHARING</div>' +
+      '<div class="cm-eyebrow">Sharing</div>' +
       '<h2>Share <em>this project.</em></h2>' +
       '<p class="cm-deck">Create a link with a role. Anyone who opens it (and signs in) gets that level of access. Revoke any link any time.</p>' +
       '<div class="share-row">' +
@@ -1602,12 +1602,12 @@ function openShareDialog(projectId) {
           '<option value="edit">EDIT · full edit access</option>' +
         '</select>' +
         '<select id="shExp" aria-label="Expiry">' +
-          '<option value="">NO EXPIRY</option>' +
+          '<option value="">No expiry</option>' +
           '<option value="1">1 DAY</option>' +
           '<option value="7" selected>7 DAYS</option>' +
           '<option value="30">30 DAYS</option>' +
         '</select>' +
-        '<button class="cm-btn primary" id="shGen">GENERATE LINK</button>' +
+        '<button class="cm-btn primary" id="shGen">Generate link</button>' +
       '</div>' +
       '<div class="share-result" id="shResult" hidden>' +
         '<input type="text" id="shUrl" readonly>' +
@@ -1906,7 +1906,7 @@ function _storageAlarm(kind, msg, offerBackup) {
   StudioUI.toast(msg, {
     type: 'error',
     duration: 0,
-    action: offerBackup ? 'DOWNLOAD A BACKUP' : null,
+    action: offerBackup ? 'Download a backup' : null,
     onAction: offerBackup ? () => {
       import('../lib/backup.js').then((m) => m.downloadBackup()).catch(() => {});
     } : null

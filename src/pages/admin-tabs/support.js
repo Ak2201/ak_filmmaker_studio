@@ -87,12 +87,12 @@ function rowActions(r, ctx) {
   if (r.source === 'ticket' && writer) {
     kids.push(h('select.su-status', { 'data-su-act': 'status', 'data-id': r.id, 'aria-label': 'Status of ' + r.subject }, STATUSES.map((v) => h('option', { value: v, text: cap(v), selected: v === r.status ? '' : null }))));
     kids.push(r.assignee && r.assignee === myId()
-      ? h('button.btn.cu-mini', { type: 'button', 'data-su-act': 'unassign', 'data-id': r.id, text: 'UNASSIGN' })
-      : h('button.btn.cu-mini', { type: 'button', 'data-su-act': 'assign', 'data-id': r.id, 'aria-label': 'Assign ' + r.subject + ' to me', text: 'ASSIGN TO ME' }));
+      ? h('button.btn.cu-mini', { type: 'button', 'data-su-act': 'unassign', 'data-id': r.id, text: 'Unassign' })
+      : h('button.btn.cu-mini', { type: 'button', 'data-su-act': 'assign', 'data-id': r.id, 'aria-label': 'Assign ' + r.subject + ' to me', text: 'Assign to me' }));
     kids.push(h('button.btn.cu-mini', { type: 'button', 'data-su-act': 'note', 'data-id': r.id, 'aria-label': 'Add a note to ' + r.subject, text: 'NOTE' }));
   }
-  if (r.source === 'refund') kids.push(h('a.btn.cu-mini', { href: '#refunds', text: 'OPEN IN PURCHASES' }));
-  if (r.source === 'invite') kids.push(h('a.btn.cu-mini', { href: '#admin-console', text: 'OPEN REQUEST' }));
+  if (r.source === 'refund') kids.push(h('a.btn.cu-mini', { href: '#refunds', text: 'Open in purchases' }));
+  if (r.source === 'invite') kids.push(h('a.btn.cu-mini', { href: '#admin-console', text: 'Open request' }));
   if (pid) kids.push(h('button.btn.cu-mini', { type: 'button', 'data-su-act': 'person', 'data-uid': pid, 'aria-label': 'Open ' + r.email, text: 'PERSON' }));
   return h('div.su-acts', {}, kids);
 }
@@ -141,7 +141,7 @@ function logForm() {
       h('div', {}, [h('label', { for: 'suSubject', text: 'Subject' }), h('input', { id: 'suSubject', name: 'subject', type: 'text', required: true, maxlength: '200' })])
     ]),
     h('div.gt-field', {}, [h('label', { for: 'suBody', text: 'What they said' }), h('textarea', { id: 'suBody', name: 'body', rows: '4', maxlength: '4000', placeholder: 'Paste or summarise the message (up to 4000 characters)' })]),
-    h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', disabled: S.busy ? '' : null, text: 'LOG TICKET' })])
+    h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', disabled: S.busy ? '' : null, text: 'Log ticket' })])
   ]);
 }
 

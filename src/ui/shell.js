@@ -701,7 +701,7 @@ function flyRow(m) {
   row.append(...[
     iconSpan('sh-fly-icon', m),
     h('span.sh-fly-label', { text: m.label }),
-    planned ? h('span.sh-fly-flag', { text: 'SOON' }) : null
+    planned ? h('span.sh-fly-flag', { text: 'Soon' }) : null
   ].filter(Boolean));
   if (m.purpose) row.title = m.purpose;
   return row;

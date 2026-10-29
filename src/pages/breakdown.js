@@ -546,8 +546,8 @@ function renderSceneBar(scenes) {
       [h('option', { value: '', text: 'Set INT / EXT…' })].concat(INT_EXT.map((v) => h('option', { value: v, text: v })))),
     h('select.bd-sel', { 'data-sl-bulk': 'dayNight', 'aria-label': 'Set time of day on the selected scenes' },
       [h('option', { value: '', text: 'Set time…' })].concat(DAY_NIGHT.map((v) => h('option', { value: v, text: v })))),
-    button({ label: 'MOVE TO BIN', variant: 'danger', action: 'sl-bulk-bin' }),
-    button({ label: 'CLEAR SELECTION', action: 'sl-clear' })
+    button({ label: 'Move to bin', variant: 'danger', action: 'sl-bulk-bin' }),
+    button({ label: 'Clear selection', action: 'sl-clear' })
   ]);
   const names = h('datalist#bdElementNames');
   for (const el of Scenes.elementIndex()) names.append(h('option', { value: el.name }));
@@ -984,7 +984,7 @@ function renderSuggestions(scenes) {
   wrap.append(h('div.bd-sug-tools', {}, [
     h('span.bd-sug-count', { text: suggestCountText({ total, scenes: rows.length, guessed: guessed.length, labelOf: (c) => catById[c].label }) }),
     bulkLeft
-      ? button({ label: 'ADD ALL', action: 'sug-all' })
+      ? button({ label: 'Add all', action: 'sug-all' })
       : null
   ]));
   const list = h('ol.bd-sug-list');
@@ -994,7 +994,7 @@ function renderSuggestions(scenes) {
       h('strong', { text: `Scene ${r.scene.number || '\u2014'}` }),
       h('span.bd-sug-slug', { text: r.heading }),
       isConfident(r.how) ? null : h('span.bd-sug-guess', { text: 'paired by position, check the heading' }),
-      button({ label: 'ADD THESE', size: 'sm', action: 'sug-scene', class: 'bd-sug-scene-all' })
+      button({ label: 'Add these', size: 'sm', action: 'sug-scene', class: 'bd-sug-scene-all' })
     ]));
     const tags = h('div.bd-tags');
     for (const cat of SUGGEST_CATS) {
@@ -1269,7 +1269,7 @@ delegate(document, 'click', '[data-action="sl-preset-x"]', (e, el) => {
   refreshPresets();
   document.querySelector('[data-action="sl-save"]:not([disabled]), .bd-sl-search')?.focus();
   StudioUI.toast('Removed the saved filter \u201C' + p.name + '\u201D.', {
-    type: 'success', action: 'UNDO',
+    type: 'success', action: 'Undo',
     onAction: () => {
       if (SL.presets.some((x) => x.id === p.id)) return;
       SL.presets.splice(Math.min(at, SL.presets.length), 0, p);
@@ -1283,7 +1283,7 @@ delegate(document, 'click', '[data-action="sl-save"]', async () => {
   const name = await askText({
     title: 'Save this filter',
     body: 'Showing: ' + describeFilter(snap) + '. Give it a name. Saved filters stay until you reload this page.',
-    value: describeFilter(snap), confirm: 'SAVE'
+    value: describeFilter(snap), confirm: 'Save'
   });
   if (!name) return;
   const clash = SL.presets.find((x) => x.name.toLowerCase() === name.toLowerCase());
@@ -1324,7 +1324,7 @@ function binScenes(ids) {
 const UNDOS = new Map();   // toast handle → the bin entry ids it would restore
 function undoBin(entryIds, message) {
   const t = StudioUI.toast(message, {
-    type: 'success', action: 'UNDO',
+    type: 'success', action: 'Undo',
     onAction: () => { UNDOS.delete(t); Bin.restoreMany(entryIds); syncSteps(); render(); }   // a step edited meanwhile reaches it now
   });
   if (t && t.dismiss) UNDOS.set(t, entryIds);

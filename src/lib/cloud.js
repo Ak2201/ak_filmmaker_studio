@@ -38,6 +38,7 @@ import { callPort, hasPort } from './ports.js';
    with no view to show it, the answer is no. */
 const ask = (q) => Promise.resolve(callPort('ask', false, q));
 import { bumpUsage } from './usage.js';
+import { isSampleProject } from './samples.js';
 import { countSignIn } from './funnel.js';
 import { inExtension, sessionStorageAdapter, gateHolder, extensionGoogleTokens, onSessionLost } from './extension-bridge.js';
 
@@ -1491,6 +1492,7 @@ async function uploadAllLocalProjects(localProjects) {
   if (!supabase) return;
   const userId = session.user.id;
   for (const p of localProjects) {
+    if (isSampleProject(p)) continue;   // the sample stays on this device
     // Insert/update project meta — keep the same UUID locally so we don't
     // need a key rewrite. The cloud accepts the local UUID directly.
     const { error: pe } = await supabase.from('projects').upsert({
@@ -1538,6 +1540,7 @@ export async function pullProjectList() {
   // stamp would be invisible to the account that just pulled it.
   const localIds = new Set(Store.listProjects().map(p => p.id));
   for (const row of data) {
+    if (_isSample(row.id)) continue;   // the sample stays on this device
     if (!localIds.has(row.id)) {
       Store.upsertProjectMeta({
         id: row.id,
@@ -1656,9 +1659,22 @@ export async function pullProjectData(projectId) {
 // ============================================================
 // PUSH ENGINE
 // ============================================================
+/* THE SAMPLE STAYS ON THIS DEVICE (owner, 29 Oct 2026). A sample film is
+   the same for everybody and is rebuilt from the bundle, so it never
+   pushes a meta row or a scope, and a remote row that carries a sample's
+   local id is never pulled over it. Detected by the registry's own title
+   test (samples.js) on the project entry; no key, no flag stored. Looked
+   up across every namespace, since a push can name a project the open one
+   cannot see. */
+function _isSample(projectId) {
+  if (!projectId) return false;
+  try { return Store.listAllProjects().some((p) => p.id === projectId && isSampleProject(p)); }
+  catch (e) { return false; }
+}
 const _pushTimers = new Map();
 function _debouncedPush(projectId, scope, delay) {
   if (!projectId || !scope) return;
+  if (_isSample(projectId)) return;
   const k = projectId + '::' + scope;
   clearTimeout(_pushTimers.get(k));
   _pushTimers.set(k, setTimeout(() => {
@@ -1692,6 +1708,7 @@ function reportSyncError(scope, code) {
 }
 
 async function _pushScope(projectId, scope, opts) {
+  if (_isSample(projectId)) { _dequeue((o) => o.kind === 'upsert' && o.projectId === projectId && _ownsOp(o)); return; }
   if (!supabase || !session) {
     _enqueue({ kind: 'upsert', projectId, scope });
     idleSync();
@@ -1816,6 +1833,7 @@ async function _pushScope(projectId, scope, opts) {
 
 async function _pushProjectMeta(project) {
   if (!supabase || !session || !project) return;
+  if (isSampleProject(project)) { _dequeue((o) => o.kind === 'meta' && o.project && o.project.id === project.id && _ownsOp(o)); return; }
 
   /* UPDATE FIRST, INSERT ONLY IF ABSENT — and never send owner_id on
      the update.

@@ -42,8 +42,8 @@
 
    AUTO-RENEW (schema §62). A one-time purchase keeps its "nothing renews"
    receipt above, word for word. A subscription CHARGE gets
-   chargeReceiptMail ("Renews on <date> at <amount>. Cancel anytime in
-   Settings → Plan."), a cancel gets cancelMail, and renewalReminderMail
+   chargeReceiptMail ("Renews on <date> at <amount>. Cancel anytime with
+   Razorpay, in your mandate e-mail or your bank / UPI app."), a cancel gets cancelMail, and renewalReminderMail
    is the pre-charge reminder, which rzp-remind sends once per billing
    cycle (schema §63: claim_renewal_reminders stamps the cycle first,
    release_renewal_reminder hands back a cycle whose send failed).
@@ -299,7 +299,7 @@ export function renewalReminderMail(r) {
     `Cancel anytime in ${CANCEL_PATH}; nothing more is charged after you cancel, and you keep the time already paid for.`,
     { html: `Settings: <a href="${site('settings')}">${site('settings')}</a>`,
       text: `Settings: ${site('settings')}` }
-  ], { kicker: 'Upcoming charge', hero: ['Next charge', amount], cta: ['Manage auto-pay', site('settings')] });
+  ], { kicker: 'Upcoming charge', hero: ['Next charge', amount], cta: ['See auto-pay', site('settings')] });
 }
 
 /** POST one message to Resend. Never throws. */

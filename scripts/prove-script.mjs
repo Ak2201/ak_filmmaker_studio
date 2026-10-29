@@ -1020,6 +1020,14 @@ await page.setViewportSize({ width: 1280, height: 900 });
   ok(act2.tag === 'TEXTAREA' && act2.inPage, '23d after "Use theirs" focus is back in the script, not on <body>', act2);
   await tabB.close();
 
+  /* What the page actually drew, for a CI log (runs 361-366 lost the open project there, never locally). */
+  const seenState = () => page.evaluate(() => {
+    const S = window.StudioStore || {};
+    let pointer = null; try { pointer = Object.keys(localStorage).filter((k) => /current_project/.test(k)).map((k) => k + '=' + localStorage.getItem(k)); } catch (e) { /* */ }
+    return { url: location.href, current: S.currentProjectId && S.currentProjectId(), pointer,
+      projects: S.listProjects && S.listProjects().map((p) => p.id + ':' + p.title),
+      main: (document.querySelector('main') || document.body).innerText.slice(0, 400) };
+  });
   /* e) drafts.html: the action buttons keep keyboard focus across the redraw */
   await fresh('Proof Draft Focus', FOUR);
   await page.goto(url('drafts.html'), { waitUntil: 'networkidle' });
@@ -1028,13 +1036,7 @@ await page.setViewportSize({ width: 1280, height: 900 });
   /* CI runs 361/362: the button never appeared, so the page drew its
      no-project branch. Say what the page saw instead of timing out blind. */
   if (!(await page.waitForSelector('[data-dr="new"]', { timeout: 15000 }).catch(() => null))) {
-    const seen = await page.evaluate(() => ({
-      url: location.href,
-      current: window.StudioStore && window.StudioStore.currentProjectId && window.StudioStore.currentProjectId(),
-      projects: window.StudioStore && window.StudioStore.listProjects && window.StudioStore.listProjects().map((p) => p.title),
-      main: (document.querySelector('main') || document.body).innerText.slice(0, 400)
-    }));
-    console.log('23e drafts.html drew no "Save as new draft" button:', JSON.stringify(seen));
+    console.log('23e drafts.html drew no "Save as new draft" button:', JSON.stringify(await seenState()));
     throw new Error('23e: drafts.html has no [data-dr="new"]');
   }
   await page.focus('[data-dr="new"]');
@@ -1061,7 +1063,10 @@ await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
   await page.waitForTimeout(400);
   await page.evaluate(() => document.documentElement.setAttribute('data-no-india', ''));
-  await page.waitForSelector('#scTop .tb-menu [data-action="sc-tamil"]', { state: 'attached', timeout: 15000 });
+  if (!(await page.waitForSelector('#scTop .tb-menu [data-action="sc-tamil"]', { state: 'attached', timeout: 15000 }).catch(() => null))) {
+    console.log('23f screenplay.html drew no More menu:', JSON.stringify(await seenState()));
+    throw new Error('23f: screenplay.html has no #scTop More menu');
+  }
   const more = await page.evaluateHandle(() => [...document.querySelectorAll('#scTop .tb-menu')].find((m) => m.querySelector('[data-action="sc-tamil"]')).querySelector('.tb-menu-btn'));
   await more.focus();
   await page.keyboard.press('ArrowDown');

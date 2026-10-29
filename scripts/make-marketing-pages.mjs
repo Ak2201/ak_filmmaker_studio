@@ -644,7 +644,7 @@ ${c.faq.contact ? `      <p class="mk-body pr-lede pr-contact">${esc(c.faq.conta
     </div>
     <div class="pr-acc-list">
 ${faq.map((g, i) => `      <details class="pr-acc" name="pr-faq" id="faq-${i + 1}">
-        <summary><span>${esc(g.group)}</span><span class="mk-mark" aria-hidden="true"></span></summary>
+        <summary><span>${esc(g.group)}</span>${sym('expand_more')}</summary>
         <dl class="pr-qa">
 ${g.items.map((it) => { const t = it.pass ? ' data-pass-faq' : (it.modes ? ' data-mode-faq' : ''); const a = it.pass ? passOr(passSlots(it.aPass), esc(it.a)) : it.modes ? modeAnswers(it) : chargeVariants(it.aHtml || esc(it.a), it.aUsd && esc(it.aUsd)); return `          <dt${t}>${esc(it.q)}</dt>\n          <dd${t}>${priceSpans(a)}${renewNote(it)}</dd>`; }).join('\n')}
         </dl>

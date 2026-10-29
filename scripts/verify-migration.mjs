@@ -358,7 +358,12 @@ const EXPECTED = /* every earlier row was emptied by the 27 Oct 2026 re-baseline
   "breakdown": {},
   "feature": {},
   "short": {},
-  "library": {},
+  "library": {
+    /* 29 Oct 2026: two Tanglish notes in films.json had stray Tamil and Arabic letters inside Latin words (vெறum, vெளiyey, uللe); now plain verum, veliyey, ulle */
+    "றum": "stray Tamil letters removed from 'verum'",
+    "ளiyey": "stray Tamil letters removed from 'veliyey'",
+    "uللe": "stray Arabic letters removed from 'ulle'"
+  },
   "budget": {},
   "dashboard": {},
   "preprod": {},

@@ -31,7 +31,7 @@
   padding: var(--s1) var(--s4);
   min-height: 2.25rem;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--sk-field-radius, var(--radius));
   background: none;
   font: inherit;
   font-family: var(--f-body);

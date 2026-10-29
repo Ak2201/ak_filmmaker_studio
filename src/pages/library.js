@@ -187,7 +187,7 @@ const SECTIONS = [
     title: 'The Tamil Cinema Craft Library.',
     tocTitle: 'Tamil Cinema Craft Library',
     tocDesc: `${N_FILMS} films, what to learn from each`,
-    count: `${N_FILMS} FILMS`,
+    count: `${N_FILMS} films`,
     deck: `${cap(numWord(N_FILMS))} films, mostly Tamil with a few Malayalam ` +
           `neighbours. For each one, the single craft lesson worth taking. ` +
           `Not reviews — extractable techniques you can apply to your own work.`,
@@ -275,7 +275,7 @@ const SECTIONS = [
     title: 'Watch List per Step.',
     tocTitle: 'Watch List per Step',
     tocDesc: `${FILMS_PER_STEP} films for each of the first ${N_STEPS} of ${N_BLUEPRINT} blueprint steps`,
-    count: `${N_WATCHFILMS} FILMS · ${N_STEPS} STEPS`,
+    count: `${N_WATCHFILMS} films · ${N_STEPS} steps`,
     deck: `For every one of the first ${N_STEPS} blueprint steps (story and writing; the ` +
           `Feature Blueprint runs to ${N_BLUEPRINT}), ${numWord(FILMS_PER_STEP)} ` +
           `films to study for that exact craft concept. ${N_WATCHFILMS} films total. ` +
@@ -292,7 +292,7 @@ const SECTIONS = [
     title: 'Case Studies.',
     tocTitle: 'Case Studies',
     tocDesc: `${N_STUDIES} films, read beat by beat`,
-    count: `${N_STUDIES} FILMS`,
+    count: `${N_STUDIES} films`,
     deck: `Pick one of ${numWord(N_STUDIES)} films and every card below speaks in its ` +
           `terms: the concept, the logline, the characters, the beats, the scene ` +
           `craft. Each card is the same three steps — what the thing is, how this ` +
@@ -571,7 +571,7 @@ function renderContents() {
         h('h2', { html: 'The library <em>index.</em>' }),
         h('p.deck', { text: 'Every shelf, and the films, directors, rate tables and watch-list steps on it, in one place. Open one to jump straight in.' })
       ]),
-      h('div.right', { text: `${openShelves().length} SHELVES` })
+      h('div.right', { text: `${openShelves().length} shelves` })
     ]),
     h('div.lib-contents-grid', {}, secs.map((s) => {
       const head = h('a.lib-contents-head', { href: `#${s.id}` }, [
@@ -1161,7 +1161,7 @@ function drawTerms(g) {
   // the counts, now that they are known
   const nFilms = Object.keys(g.films || {}).length;
   const right = document.querySelector('#glossary .section-head .right');
-  if (right) right.textContent = `${terms.length} TERMS · ${nFilms} FILMS`;
+  if (right) right.textContent = `${terms.length} terms · ${nFilms} films`;
   const toc = document.querySelector('.toc-item[href="#glossary"] .desc');
   if (toc) toc.textContent = `${terms.length} terms, logline to edit sheet, each in ${numWord(nFilms)} films`;
   const count = document.getElementById('libGlossCount');
@@ -1208,7 +1208,7 @@ function renderFinal() {
       '"Watch films like a director, not an audience.', h('br'),
       'Then write films like an audience, not a director."'
     ]),
-    h('div.signature', {}, ['THE FILMMAKER\'S LIBRARY'])
+    h('div.signature', {}, ['The filmmaker\'s library'])
   ]);
 }
 

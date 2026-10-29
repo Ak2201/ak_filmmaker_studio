@@ -778,7 +778,7 @@
           "type": "formula",
           "label": "FORMULA",
           "eq": "SCENE = Slug + POV + <code>Want</code> + Conflict + Charge flip<br>If charge doesn't flip (+→− or −→+), it's not yet a scene.",
-          "tanglish": "SCENE = Slug + POV + Vendiyathu + Thadai + Charge maaridudha. Charge maaravilla na vெறum moment thaan."
+          "tanglish": "SCENE = Slug + POV + Vendiyathu + Thadai + Charge maaridudha. Charge maaravilla na verum moment thaan."
         },
         {
           "type": "craft",
@@ -1400,7 +1400,7 @@
           "type": "formula",
           "label": "FORMULA",
           "eq": "COSTUME = Character arc → Wardrobe arc + Color logic + Period accuracy + Continuity tracker + Stunt duplicates",
-          "tanglish": "COSTUME = Character arc oda mathirye wardrobe um maaranum + Color logic + Period accuracy + Continuity tracker + Stunt duplicates. Costume vெறum dress illa — character oda thol mela skin."
+          "tanglish": "COSTUME = Character arc oda mathirye wardrobe um maaranum + Color logic + Period accuracy + Continuity tracker + Stunt duplicates. Costume verum dress illa — character oda thol mela skin."
         },
         {
           "type": "craft",
@@ -1685,7 +1685,7 @@
           "label": "POR THOZHIL · CRAFT LESSON",
           "trade": "Walking the location at night, before shooting at night",
           "body": "For a film with 36 night-shoot days, the recce HAD to happen at the actual time of night the film would shoot. Daytime recces lie — sodium lights at midnight create a different exposure problem than the same street at noon. Recce in the conditions you'll shoot in.",
-          "tanglish": "36 night shoot day-ku, recce same night neram la nadakkanum. Pagal recce poyi vaayidhanum. Eppadi shoot pannapora, andha conditions la recce panna. Mathadhu vெறum drama."
+          "tanglish": "36 night shoot day-ku, recce same night neram la nadakkanum. Pagal recce poyi vaayidhanum. Eppadi shoot pannapora, andha conditions la recce panna. Mathadhu verum drama."
         },
         {
           "type": "asks",

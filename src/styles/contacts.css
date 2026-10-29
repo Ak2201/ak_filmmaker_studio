@@ -155,7 +155,6 @@
   padding: var(--sk-card-pad);
   background: var(--sk-card-bg);
   border: var(--sk-card-line-w) solid var(--sk-card-line);
-  border-top: var(--sk-hue-rule-w) solid var(--shoot);
   border-radius: var(--sk-radius);
   box-shadow: var(--sk-card-shadow);
 }
@@ -233,7 +232,7 @@
   font-size: var(--t-small);
   cursor: pointer;
 }
-.ct-pick-row.is-on { background: var(--accent-wash); }
+.ct-pick-row.is-on { background: var(--brand-wash); }   /* ONE fill: a selection is the brand's, a phase hue is a mark only */
 /* base.css gives every input `display:block; width:100%`, which a
    checkbox in a flex row takes literally — it claimed 259px and shoved
    the rest of the row off the phone. Size it explicitly. */
@@ -324,6 +323,7 @@
 .ct-doc-facts {
   display: grid;
   gap: var(--s3);
+  align-items: start;   /* a one-line value shares its row's top with a wrapped Location */
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));   /* four fixed columns were 80px each at 390px */
   margin-bottom: var(--s5);
 }
@@ -434,6 +434,7 @@
     padding: 0;
     background: var(--print-paper);
     border: 0;
+    border-radius: 0;
     border-top: 2px solid var(--print-ink);
     padding-top: var(--s4);
     box-shadow: none;
@@ -451,6 +452,9 @@
   .ct-doc-table td { border-bottom: 1px solid var(--print-rule); }
   .ct-doc-notes { border-top: 1px solid var(--print-rule); padding-top: var(--s3); }
 
+  /* Any print of this page is the sheets: the page header and its stat cards stand down. */
+  .k-page-head, .k-stat-strip { display: none !important; }
+
   /* One sheet asked for: everything else, including the unit list and
      the page header, stands down. */
   body.ct-printing .ct-people,
@@ -467,7 +471,8 @@
   body.ct-printing .ct-sheets { padding-block: 0; }
   body.ct-printing .ct-sheet.is-printing {
     margin: 0;
-    border-top: 0;
+    border: 0;
+    border-radius: 0;
     padding-top: 0;
     break-after: auto;
     page-break-after: auto;
@@ -668,7 +673,7 @@
   padding: var(--s4);
   background-color: var(--sk-card-bg);
   background-image: var(--surface-card-sheen);
-  border: var(--sk-card-line-w) solid var(--accent);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
   border-radius: var(--sk-radius);
   box-shadow: var(--shadow-card-rest);
 }

@@ -439,7 +439,7 @@
 .sd-fbtn.sd-fbtn.is-on { background: var(--brand); border-color: var(--brand); color: var(--brand-on); }
 .sd-card.is-next { border-left-color: var(--brand); }
 .sd-head { flex-wrap: wrap; align-items: center; justify-content: space-between; }
-.sd-num { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-tiny); font-weight: 700; letter-spacing: 0; text-transform: uppercase; color: var(--brand-deep); }
+.sd-num { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-tiny); font-weight: 700; letter-spacing: 0; color: var(--brand-deep); }
 .sd-card > .sd-slug { margin-top: var(--s2); font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-base); font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; }
 .sd-card.is-dropped > .sd-slug { text-decoration: line-through; text-decoration-thickness: 1px; }
 .sd-line { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); margin: var(--s1) 0 0; }

@@ -86,7 +86,7 @@
   .inv-doc .inv-facts th, .inv-doc .inv-facts td { padding: 2pt 0; font-size: 9pt; border-bottom: 0; }
   .inv-doc .inv-facts th { width: 42%; padding-right: 6pt; font-weight: 400; color: var(--print-muted); }
   .inv-doc .inv-sub { font-size: 8.5pt; color: var(--print-muted); }
-  .inv-doc .inv-words { font-size: 9pt; font-style: italic; margin: 0 0 12pt; color: var(--print-muted); }
+  .inv-doc .inv-words { font-size: 9pt; margin: 0 0 12pt; color: var(--print-muted); }
   .inv-doc .inv-note { font-size: 8.5pt; margin: 5pt 0 0; color: var(--print-muted); }
   .inv-doc .inv-terms { font-size: 8.5pt; margin: 14pt 0 0; padding-top: 8pt; border-top: 1px solid var(--print-rule); break-inside: avoid; }
 

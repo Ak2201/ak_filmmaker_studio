@@ -227,10 +227,7 @@ function featureBlock(p, listed, preview = false) {
   const wrap = h('div.pl-features');
   wrap.append(h('p.pl-features-n', {}, [h('strong', { text: `${s.included} of ${s.total}` }), h('span', { text: ' features' })]));
   if (s.sampleOnly) wrap.append(h('p.pl-features-note', { text: 'Sample project only' }));
-  /* signed out there is no table on this page (no caps without a session):
-     the public comparison is the one place it is drawn */
-  wrap.append(preview ? h('a.pl-features-link', { href: 'pricing.html#compare', text: 'Compare every feature' })
-    : h('a.pl-features-link', { href: '#plCompare', 'data-plan-action': 'compare', text: 'Compare every feature' }));
+  wrap.append(h('a.pl-features-link', { href: '#plCompare', 'data-plan-action': 'compare', text: 'Compare every feature' }));
   return wrap;
 }
 
@@ -306,8 +303,7 @@ function addsBlock(plans, p, listed, preview = false) {
   const box = h('div.pl-adds', { 'data-plan-adds': p.id });
   box.append(h('p.pl-adds-lead', { text: a.prev ? 'Everything in ' + (a.prev.name || planName(a.prev.id)) + ', plus:' : 'Includes:' }));
   const ul = checklist(shown.map((x) => x.label));
-  if (more > 0) ul.append(h('li.pl-check-more', {}, [preview ? h('a', { href: 'pricing.html#compare', text: `${more} more in the comparison` })
-    : h('a', { href: '#plCompare', 'data-plan-action': 'compare', text: `${more} more in the comparison` })]));
+  if (more > 0) ul.append(h('li.pl-check-more', {}, [h('a', { href: '#plCompare', 'data-plan-action': 'compare', text: `${more} more in the comparison` })]));
   box.append(ul);
   return box;
 }
@@ -594,7 +590,9 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
       '.'
     ])
   ]));
-  if (!preview) { const cmp = compareBlock(eff, current, listed); if (cmp) wrap.append(cmp); }   // append(null) prints "null"
+  /* Signed out the table is the matrix's own (no caps without a session, so no Limits group),
+     drawn once the lazy matrix is in; the cards' links stay inside the studio frame. */
+  if (!preview || matrixMod) { const cmp = compareBlock(eff, current, listed, preview); if (cmp) wrap.append(cmp); }   // append(null) prints "null"
   return wrap;
 }
 
@@ -694,7 +692,7 @@ function markPicked(row) {
    table is the check. Whether it is open is kept here for the page (the
    block is rebuilt on every billing event) and in no storage. */
 let compareOpen = null;
-function compareBlock(plans, current, listed) {
+function compareBlock(plans, current, listed, noLimits = false) {
   const cols = (plans || []).filter((p) => p && p.id !== 'free' && (p.active !== false || p.id === current))
     .sort((a, b) => Billing.planRank(a.id) - Billing.planRank(b.id));
   if (cols.length < 2) return null;
@@ -721,13 +719,15 @@ function compareBlock(plans, current, listed) {
     h('span.visually-hidden', { text: on ? 'Included' : 'Not included' })]);
   const curCls = (i) => (cols[i].id === current ? '.is-current' : '');
 
-  group('Limits');
-  for (const [key, label] of LIMIT_ROWS) {
-    body.append(h('tr', {}, [h('th', { scope: 'row', text: label }),
-      ...cols.map((p, i) => { const n = cap(p.limits, key); return h('td.pl-compare-num' + curCls(i), { text: n === null ? 'Unlimited' : String(n) }); })]));
+  if (!noLimits) {
+    group('Limits');
+    for (const [key, label] of LIMIT_ROWS) {
+      body.append(h('tr', {}, [h('th', { scope: 'row', text: label }),
+        ...cols.map((p, i) => { const n = cap(p.limits, key); return h('td.pl-compare-num' + curCls(i), { text: n === null ? 'Unlimited' : String(n) }); })]));
+    }
+    body.append(h('tr', {}, [h('th', { scope: 'row', text: 'Chrome extension' }),
+      ...cols.map((p, i) => mark(!!(p.limits && p.limits.extension), curCls(i)))]));
   }
-  body.append(h('tr', {}, [h('th', { scope: 'row', text: 'Chrome extension' }),
-    ...cols.map((p, i) => mark(!!(p.limits && p.limits.extension), curCls(i)))]));
   sums[0].stages.forEach((stage, si) => {
     group(stage.label);
     stage.items.forEach((item, ii) => body.append(h('tr', {}, [h('th', { scope: 'row', text: item.label }),

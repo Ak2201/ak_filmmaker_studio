@@ -302,7 +302,7 @@
   background: transparent;
   color: var(--accent-deep);
   border: 1px solid var(--rule-hair);
-  border-radius: var(--radius-pill);
+  border-radius: var(--sk-field-radius, var(--radius));
   font: inherit;
   font-size: var(--t-tiny);
   font-weight: 600;

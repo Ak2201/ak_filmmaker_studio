@@ -187,8 +187,8 @@
   content: ''; position: absolute; inset: 0; margin: auto; width: 10px; height: 10px;
   border-radius: var(--radius-pill); background: var(--accent-primary); transition: transform var(--speed-lazy) var(--ease);
 }
-.pr-acc summary:hover .mk-mark::after { transform: scale(1.8); }
-.pr-acc[open] .mk-mark::after { transform: scale(3.1); }
+.pr-acc summary .sym { flex: none; font-size: 28px; color: var(--brand-deep); transition: transform var(--speed) var(--ease); }   /* a chevron, like the comparison disclosure: a ringed dot reads as a radio */
+.pr-acc[open] summary .sym { transform: rotate(180deg); }
 .pr-qa { margin: 0; padding: 0 0 var(--s6); display: grid; gap: var(--s2); }
 .pr-qa dt { margin-top: var(--s4); font-weight: 700; color: var(--ink); }
 .pr-qa dt:first-child { margin-top: 0; }
@@ -217,7 +217,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pr-tier, .pr-more-s .sym, .mk-mark::after { transition: none; }
+  .pr-tier, .pr-more-s .sym, .pr-acc summary .sym, .mk-mark::after { transition: none; }
 }
 
 /* ---- students and film schools: one band under the cards, no price ----

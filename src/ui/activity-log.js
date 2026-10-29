@@ -22,7 +22,7 @@ export { activityEntries };
 export function renderActivityLog(host) {
   const arr = activityEntries();
   host.textContent = '';
-  const count = h('div.al-count', { id: 'activityCount', text: arr.length + ' ENTR' + (arr.length === 1 ? 'Y' : 'IES') });
+  const count = h('div.al-count', { id: 'activityCount', text: arr.length + ' entr' + (arr.length === 1 ? 'y' : 'ies') });
   const list = h('div.activity-list', { id: 'activityList' });
   if (!arr.length) {
     list.append(h('div.activity-empty', {

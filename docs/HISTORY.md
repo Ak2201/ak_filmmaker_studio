@@ -3124,3 +3124,50 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       asserts it never writes. `scripts/baseline.json` was re-baselined
       deliberately: the dashboard lost "go, next, stands, suggested" (its
       sub line and the duplicate suggestion), no data-key was lost (851).
+
+70. **Round 2: fonts out, one purchase page, auto-pay cancelled at the mandate, a Product menu, the sample for everyone (28–29 Oct 2026).**
+    Lanes `r2/fonts`, `r2/sweep`, `r2/autopay`, `r2/purchase`, `r2/menu`,
+    `r2/sample`, merged on `develop` (5414d8c). Playfair Display, JetBrains
+    Mono, Space Grotesk and Inter are gone (no @font-face, preload or
+    package): Gabarito for headings, Onest for everything else, Courier Prime
+    for screenplay text only. The sweep moved every page to the 8B look
+    (Onest data, sentence-case labels, one button language). Auto-pay is
+    cancelled at the mandate (Razorpay, the mandate e-mail, the bank or UPI
+    app), never in the app: no rail box, no in-app cancel; the wording is
+    `offer-terms.js` and schema §65 restates `quote_subscription` with the new
+    refusal text. The public site's Product menu stays open while the pointer
+    travels to an item. The Dragon sample is open to every user at any time
+    (Home and the account menu), idempotent, and is KEPT ON THIS DEVICE: a
+    sample project pushes no meta or scope and is never pulled over (`cloud.js`;
+    `prove-cloud-delete` (h)). The purchase page was rebuilt: plain "Your
+    plan", Intermediate promoted, one price line a card, signed-out cards,
+    numbered terms in one column.
+
+71. **Round 2b, and the final fix pass (28–29 Oct 2026).** 2b added the glyph
+    fallback faces, the Onest paper variant, sentence-case public eyebrows,
+    Films cards in the kit language and the call sheet print columns, and
+    re-recorded the marketing media on the 8B UI. The final QA pass fixed:
+    `prove:story-path`'s "Add a step" (the new box was focused but late layout
+    left it above the fold; the focus landing re-checks after two frames and
+    400ms and lands again only if the box is off screen); the purchase page's
+    comparison (the signed-out cards linked out to pricing.html and the
+    signed-in table started closed: both now point at `#plCompare` inside the
+    studio and open it, and the signed-out page draws the matrix's own table
+    without a Limits group); the "N more in the comparison" count (ONE rule,
+    `cardMore()` in `plan-matrix.js`, used by the studio cards and by
+    `planFigures()` in vite.config.js: limit rows are caps and never counted,
+    so Intermediate reads 13 on both pages; `test:marketing` asserts it);
+    the call sheet's colours (the selected rows are `--brand-wash`, the pink
+    top rule and teal glance border are gone) and its print (no sliver
+    border, facts top-aligned, page header and stat cards hidden in any print
+    of the page); `Glyph Fallback` now also carries U+2190–21FF, U+2715 and
+    U+22EF from the already-vendored Noto Sans Symbols 2, so arrows, ✕ and ⋯
+    stop depending on the OS; two Tanglish notes lost their stray Tamil and
+    Arabic letters (films.json and three lines of steps.feature.json; library
+    EXPECTED rows name the words that left); library, activity and
+    shoot labels typed in capitals are sentence case; `.pl-more-toggle` and
+    `.dv-tab` take the field radius; the pricing FAQ expands with a chevron;
+    the invoice drops its synthesised italic and says "Payment ID" /
+    "Order ID". `npm run extract` would bring the stray letters back from
+    `legacy/` (it overwrites steps.feature.json); fix them in the extractor's
+    output again if it is ever re-run.

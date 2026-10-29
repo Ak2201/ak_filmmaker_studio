@@ -34,6 +34,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadMatrixModule } from './make-plan-features-sql.mjs';
 import { buildAll, validate, validatePricing, validateCompany, validateGuides, readRows, comparableRows, esc, PAGES_FILE, FIXTURE_FILE, PRICING_FILE, HOME_FILE, CONTACT_FILE, ABOUT_FILE, GUIDES_INDEX, TRUST_FILE } from './make-marketing-pages.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -180,6 +181,13 @@ for (const id of IDS) {
       ok(html.includes('{{fms:plan.' + id + '}}') && html.includes('{{fms:price.' + id + '}}') && html.includes('{{fms:tier.list.' + id + '}}'), `${tag}${id}: name, price and bullets are build-time stamps`);
       ok(new RegExp(`data-start-buy="${id}" data-plan="${id}"`).test(html) && html.includes(`href="purchase.html?plan=${id}"`), `${tag}${id}: the buy link carries the plan`);
     }
+    /* ONE "N more in the comparison" rule for pricing.html and purchase.html's cards: a limit row is a cap, never counted */
+    { const M = await loadMatrixModule();
+      for (const id of PAID) {
+        const n = M.addedBy(id).filter((r) => r.kind !== 'limit').length;
+        ok(M.cardMore(id) === (n <= 5 ? 0 : n - Math.min(((matrix.card && matrix.card[id]) || []).length || 4, 4)), `${tag}${id}: cardMore() counts the non-limit additions the card does not list`);
+      }
+      ok(/M\.cardMore\(id\)/.test(read('vite.config.js')), tag + 'the public cards take their "N more" from cardMore(), the same function the studio cards share'); }
     ok(/id="offer"[^>]*\shidden/.test(html), tag + 'the price-rise band is in the markup and hidden until the server announces a rise');
     /* a year, never a month; whether it renews is a runtime slot (OFFER TERMS below) */
     ok(/a year/.test(html) && !/per month|\/mo\b|monthly|billed yearly|annually|auto-?renew(s|al)? on/i.test(html), tag + 'worded as sold: a plan is a year, nothing that reads as a monthly charge');

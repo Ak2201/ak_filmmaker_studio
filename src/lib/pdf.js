@@ -288,22 +288,67 @@ export function exportPDF(opts = {}) {
   };
   window.addEventListener('afterprint', finish);
 
-  try {
-    window.print();
-  } catch (e) {
-    console.warn('[pdf] print failed', e);
-    finish();
-    return false;
+  const go = () => {
+    try {
+      window.print();
+    } catch (e) {
+      console.warn('[pdf] print failed', e);
+      finish();
+      return;
+    }
+    /* Chrome and Firefox block inside print(), so this timer only starts
+       once the dialog is gone. Safari has historically never fired
+       afterprint at all, and a page stuck in its printing state is worse
+       than a PDF that lost its last half second. */
+    setTimeout(finish, 2000);
+  };
+  /* THE FACES A STAGED DOCUMENT NEEDS MAY NOT BE LOADED YET. A face with a
+     unicode-range (Rupee / Glyph Fallback, the Latin-ext subsets) is fetched
+     when a glyph is first LAID OUT, and a staged call sheet or invoice was
+     display:none until a moment ago, so its ≈ ▾ ₹ had never been laid out:
+     print() then rasterised them in a system face. When every needed face is
+     already usable we print in the same tick (the click's gesture intact);
+     otherwise we load them first, with a short ceiling. */
+  const needs = fontNeeds();
+  if (needs.every(([font, text]) => fontReady(font, text))) {
+    go();
+  } else {
+    const ceiling = new Promise((r) => setTimeout(r, FONT_WAIT_MS));
+    Promise.race([Promise.all(needs.map(([font, text]) => loadFont(font, text))), ceiling]).then(go, go);
   }
-  /* Chrome and Firefox block inside print(), so this timer only starts
-     once the dialog is gone. Safari has historically never fired
-     afterprint at all, and a page stuck in its printing state is worse
-     than a PDF that lost its last half second. */
-  setTimeout(finish, 2000);
   return true;
 }
 
-const StudioPDF = { exportPDF, stage, unstage, projectTitle, filmPrefs, resolveSetup, paperSetupName, DOCUMENTS, SETUPS, LETTER_OF };
+const FONT_WAIT_MS = 1500;
+const fontReady = (font, text) => { try { return document.fonts.check(font, text); } catch (e) { return true; } };
+const loadFont = (font, text) => { try { return document.fonts.load(font, text).catch(() => {}); } catch (e) { return Promise.resolve(); } };
+
+/** [font shorthand, characters] pairs for what the page will print: one per
+ *  distinct style/weight/family among the elements that carry text. Computed
+ *  style is readable on display:none, which is what a staged sheet is. */
+export function fontNeeds() {
+  if (typeof document === 'undefined' || !document.fonts) return [];
+  const by = new Map();
+  const host = document.getElementById('main') || document.body;
+  const els = [host, ...host.querySelectorAll('*')].slice(0, 4000);
+  for (const el of els) {
+    let own = '';
+    for (const n of el.childNodes) if (n.nodeType === 3) own += n.nodeValue;
+    own = own.replace(/\s+/g, '');
+    if (!own) continue;
+    const cs = getComputedStyle(el);
+    /* ONE ENTRY PER FAMILY, not per stack: load() on a whole stack settled
+       while the later families' faces were still loading (measured: the
+       Rupee and Glyph Fallback faces were mid-fetch when print() ran). */
+    for (const fam of cs.fontFamily.split(',')) {
+      const key = cs.fontStyle + ' ' + cs.fontWeight + ' 16px ' + fam.trim();
+      by.set(key, (by.get(key) || '') + own);
+    }
+  }
+  return [...by].map(([font, text]) => [font, [...new Set(text)].join('')]);
+}
+
+const StudioPDF = { exportPDF, fontNeeds, stage, unstage, projectTitle, filmPrefs, resolveSetup, paperSetupName, DOCUMENTS, SETUPS, LETTER_OF };
 if (typeof window !== 'undefined') window.StudioPDF = StudioPDF;
 
 export default StudioPDF;

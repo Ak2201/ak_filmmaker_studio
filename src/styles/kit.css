@@ -354,7 +354,8 @@
   overflow-x: auto;
   background: var(--surface-rail);
   border: 1px solid var(--border-hair);
-  border-radius: var(--radius-pill);
+  /* a control, not a status: field radius (a pill is a badge or the one CTA) */
+  border-radius: var(--sk-field-radius, var(--radius));
 }
 .k-seg-btn {
   flex: 1 0 auto;
@@ -365,7 +366,7 @@
   min-height: var(--h-compact);
   padding: 0 var(--s4);
   border: 1px solid transparent;
-  border-radius: var(--radius-pill);
+  border-radius: calc(var(--sk-field-radius, var(--radius)) - var(--s1));
   background: transparent;
   color: var(--ink-muted);
   font-family: var(--f-body);

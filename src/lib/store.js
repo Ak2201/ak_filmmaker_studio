@@ -695,6 +695,11 @@ export function createProject(meta) {
      caller decides the value (region.js regionForNewProject()); store.js
      imports nothing from region.js, so it only checks the spelling. */
   if (meta.region === 'IN' || meta.region === 'INT') project.region = meta.region;
+  /* A sample film is stamped with its sample id (src/lib/sample-project.js):
+     the sync layer skips entries carrying it and no others. A field on the
+     entry, no key; only hub.js's openSampleProject() passes it, and the
+     backup importer and Duplicate never do. */
+  if (typeof meta.sample === 'string' && /^[a-z0-9-]{1,40}$/.test(meta.sample)) project.sample = meta.sample;
   arr0.push(project);
   saveAllProjects(arr0);
   _invalidateCurrent();

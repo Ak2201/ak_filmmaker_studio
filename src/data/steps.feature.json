@@ -6,25 +6,25 @@
       "num": "01",
       "title": "The <em>Spark.</em>",
       "titlePlain": "The Spark.",
-      "time": "~ 1 EVENING",
+      "time": "~ 1 evening",
       "deck": "Every film starts as a question that won't leave you alone. Capture it here — raw, unedited, in any form.",
       "blocks": [
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "SPARK = <code>What if</code> + [unusual situation] + happening to + [specific person] + in [specific world]",
           "tanglish": "SPARK = <strong>\"Enna aagum?\"</strong> + [vழakkamana illama irukkura situation] + [oru specific aalu / character] ku + [oru specific ulagam la] nadanthaal enna nadakkum."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "Vignesh Raja's spark that survived a decade",
           "body": "The \"what if\" behind <em>Por Thozhil</em> — a serial killer from 1979 starts killing again — was so strong it survived TWO scares of obsolescence: the writers reworked the script after <em>Jigarthanda</em> released, then again after <em>Ratsasan</em>. A real spark doesn't die when nearby films release.",
           "tanglish": "Por Thozhil oda spark — 1979 la kollai poda gangster thirumba killings start pannina enna nadakkum nu — andha question rendu thadava udaichi rewrite pannitirundhuchu. Mudhalla Jigarthanda vandhapo, appram Ratsasan vandhapo. Periya spark adhuthaane."
         },
         {
           "type": "why",
-          "label": "WHY THIS MATTERS",
+          "label": "Why this matters",
           "body": "Most stories die because the writer can't articulate why this story, why now, why them.",
           "tanglish": "Niraya kadhai naduvula nikkudhu — yaen, en kadhai, en idhu naane sollanum nu writer ku ulla clarity illama."
         },
@@ -32,7 +32,7 @@
           "type": "examples",
           "items": [
             {
-              "label": "VIKRAM VEDHA",
+              "label": "Vikram Vedha",
               "body": "What if the gangster a righteous cop is hunting voluntarily walked into the station and started telling him stories that proved the cop's \"good kills\" were murders?",
               "tanglish": "Oru honest police officer thedikitte irukkura gangster, oru naal avana thaaney station ku vandhu surrender pannitan. Aana avan kadhai sollidum bothu, \"good kill\" lam actually murder nu therinjikuran."
             },
@@ -72,7 +72,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_s1_a",
@@ -96,29 +96,29 @@
       "num": "02",
       "title": "The <em>Logline.</em>",
       "titlePlain": "The Logline.",
-      "time": "~ 1 EVENING",
+      "time": "~ 1 evening",
       "deck": "Compress the entire film into one sentence. If you can't, you don't yet know what you're writing.",
       "blocks": [
         {
           "type": "raw",
-          "html": "<div class=\"related-chips\">\n    <span class=\"label\">RELATED:</span>\n    <a class=\"related-chip short\" href=\"short.html#step-02\"><span class=\"src\">SHORTS</span> · Step 02 Logline</a>\n  </div>"
+          "html": "<div class=\"related-chips\">\n    <span class=\"label\">Related:</span>\n    <a class=\"related-chip short\" href=\"short.html#step-02\"><span class=\"src\">Shorts</span> · Step 02 Logline</a>\n  </div>"
         },
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "LOGLINE = <code>When</code> [inciting event], a [protagonist + flaw] must [goal] before [deadline], or [consequence].",
           "tanglish": "LOGLINE = <strong>\"Eppo\"</strong> [edho onnu nadakkudhu] na, [hero + avan kuraivu] [oru goal] ah [time] ku ulla mudikkanum, illana [enna nadakkum]."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "Por Thozhil's logline in one breath",
           "body": "When a serial killer who stopped after 1979 starts killing again, a faint-hearted rookie cop must overcome his fear and partner with a reclusive veteran to catch the killer before more young women die. Every element: inciting event, protagonist with flaw, goal, obstacle, stakes.",
           "tanglish": "1979 la nikka pona killer thirumba varum bothu, payapadara junior cop avan bayatha vetri pidichu, oru veteran kooda sernthu killer ah pidikkanum — innum ponnungal sagardhukku munadi. Ovvoru element um irukku."
         },
         {
           "type": "why",
-          "label": "WHY THIS MATTERS",
+          "label": "Why this matters",
           "body": "A logline is a stress test. It forces you to name your protagonist, their flaw, their goal, the obstacle, and the stakes — in one breath.",
           "tanglish": "Logline oru stress test mathiri. Hero, avan kuraivu, vendiyathu, thadai, panayam — ellam onnu vasanathula vara solli kekkum."
         },
@@ -126,7 +126,7 @@
           "type": "examples",
           "items": [
             {
-              "label": "VIKRAM VEDHA",
+              "label": "Vikram Vedha",
               "body": "When a feared gangster surrenders himself, an encounter cop must answer the moral riddles inside the gangster's stories — or watch his entire worldview collapse.",
               "tanglish": "Oru perusana gangster surrender aagidura. Avan kadhai mudivula oru question kekkura — \"yaaru nallavan?\" Cop answer sollanum, illa moral worldview muzhusa udainjudum."
             },
@@ -166,7 +166,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_s2_a",
@@ -190,18 +190,18 @@
       "num": "03",
       "title": "The <em>Theme &amp; Stakes.</em>",
       "titlePlain": "The Theme & Stakes.",
-      "time": "~ 2-3 EVENINGS",
+      "time": "~ 2-3 evenings",
       "deck": "Theme is what your film argues. Stakes are what it puts on the line to argue it.",
       "blocks": [
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "THEME = [Abstract value] <code>is/isn't worth</code> [cost] <code>when</code> [condition]<br>STAKES = External (world) + Internal (soul) + Philosophical (idea on trial)",
           "tanglish": "THEME = [Oru periya value] [oru vilai] kuduthu [oru sandharbathula] <strong>worth aagumaa illayaa</strong>.<br>STAKES = Veliyilirundhu + Ulla + Periya idea."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "Motive over evidence",
           "body": "Loganathan's central principle — that motive matters more than evidence — isn't just a working method. It's the screenplay's thesis. The whole investigation is structured around finding the WHY, not the WHAT.",
           "tanglish": "Loganathan oda main principle — motive thaan evidence kaatilum mukkiyam — adhu vெறும working style illa. Adhu thaan padathoda thesis."
@@ -210,12 +210,12 @@
           "type": "examples",
           "items": [
             {
-              "label": "VIKRAM VEDHA — THEME",
+              "label": "Vikram Vedha — theme",
               "body": "Moral certainty is a privilege of incomplete information.",
               "tanglish": "\"Idhu correct, idhu thappu\" nu nambikkai vekkurathu — full kadhai theriyatha varaikum thaan saadhyam."
             },
             {
-              "label": "96 — THEME",
+              "label": "96 — theme",
               "body": "The lives we didn't live shape us as much as the ones we did.",
               "tanglish": "Naam vaazhndha vaazhka mattum illa — vaazhama vutta vaazhka kuda namma form pannudhu.",
               "alt": true
@@ -257,7 +257,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_s3_a",
@@ -281,22 +281,22 @@
       "num": "04",
       "title": "The <em>Protagonist.</em>",
       "titlePlain": "The Protagonist.",
-      "time": "~ 2-3 EVENINGS",
+      "time": "~ 2-3 evenings",
       "deck": "Build your hero from the inside out. The lie they believe at page 1 is the whole arc.",
       "blocks": [
         {
           "type": "raw",
-          "html": "<div class=\"related-chips\">\n    <span class=\"label\">RELATED:</span>\n    <a class=\"related-chip short\" href=\"short.html#step-03\"><span class=\"src\">SHORTS</span> · Step 03 Character</a>\n  </div>"
+          "html": "<div class=\"related-chips\">\n    <span class=\"label\">Related:</span>\n    <a class=\"related-chip short\" href=\"short.html#step-03\"><span class=\"src\">Shorts</span> · Step 03 Character</a>\n  </div>"
         },
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "PROTAGONIST = (<code>Want</code> ↔ <code>Need</code>) + The Lie + The Wound + The Flaw<br>ARC = Lie believed → Lie tested → Lie broken → New self",
           "tanglish": "HERO = (<strong>Vendiyathu</strong> ↔ <strong>Avasiyam</strong>) + Avan nambura poi + Pazhaya kaayam + Avan kuraivu.<br>ARC = Poi → test → udaiyum → puthu aalu."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "Prakash — the rookie who shouldn't be a cop",
           "body": "Want: do well in his first case. Need: stop being a cop because someone else wants him to. Lie: \"this uniform is enough.\" Wound: family pressure. Flaw: book-smart, body-blind. Vignesh Raja teaches us through behaviour, not backstory.",
           "tanglish": "Vendiyathu: case la vela seyya. Avasiyam: family solli police aanadhu nirthi sondhama maaranum. Poi: \"uniform enough.\" Wound: family pressure. Flaw: pothagathula theriyum, body kandaa kal nadukum. Backstory illa, behaviour la solradhu."
@@ -305,12 +305,12 @@
           "type": "examples",
           "items": [
             {
-              "label": "VIKRAM VEDHA — VIKRAM",
+              "label": "Vikram Vedha — Vikram",
               "body": "Want: capture/kill Vedha. Need: confront the moral simplicity that lets him sleep at night. Lie: \"I only kill bad people.\" Wound: the case that made him an absolutist.",
               "tanglish": "Want: Vedhava kollanum. Need: \"ellam black-and-white\" thinking ah uduichi paakkanum. Lie: \"naan kettavanga ah dhaan kolluren.\""
             },
             {
-              "label": "96 — RAM",
+              "label": "96 — Ram",
               "body": "Want: get through one polite reunion night. Need: stop running from the love and loss that defines him. Lie: \"I'm fine on my own.\"",
               "tanglish": "Want: oru polite night ah simple ah mudichikkanum. Need: kadhal poyiduchu nu sollama oditingittu irukkurathu nirthanum. Lie: \"tani ah okay.\"",
               "alt": true
@@ -335,7 +335,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_s4_a",
@@ -363,18 +363,18 @@
       "num": "05",
       "title": "The <em>Antagonist.</em>",
       "titlePlain": "The Antagonist.",
-      "time": "~ 2 EVENINGS",
+      "time": "~ 2 evenings",
       "deck": "A great villain isn't evil. They're a person with an opposing want, a real philosophy, and a reason they think they're the hero.",
       "blocks": [
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "ANTAGONIST = Opposite Want + Real Philosophy + <code>\"I am the hero\"</code> belief + Mirror to Protagonist",
           "tanglish": "VILLAIN = Hero ku oppasi vendiyathu + Sariyaana philosophy + <strong>\"naan dhaan correct\"</strong> nambikkai + Hero va paakkura kannadi."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "The killer's duality",
           "body": "The genius isn't that he's monstrous — it's that he's meek at home and ferocious only when killing. Vignesh Raja shows him domestic, ordinary, even sympathetic. The villain has his own internal logic, rooted in childhood. For one moment you almost understand.",
           "tanglish": "Villain greatness — ovvoru scene la ferocious illa. Veetla meek, kollai podum bothu mattume bayangaramaa. Sondha logic irukku, chinnachudu kaalathula irundhu. Oru moment audience ku konjam puriyum."
@@ -383,12 +383,12 @@
           "type": "examples",
           "items": [
             {
-              "label": "VIKRAM VEDHA — VEDHA",
+              "label": "Vikram Vedha — Vedha",
               "body": "Wants: justice for his brother. Philosophy: every villain is a victim with bad timing. Why he thinks he's the hero: he's protecting the only family he has.",
               "tanglish": "Vendiyathu: thambikku justice. Philosophy: \"ellam villain um oru kaalathula victim thaan.\" Avan thaan hero nu nambardhukku reason: family ah kaapathara avan thaan."
             },
             {
-              "label": "96 — TIME ITSELF",
+              "label": "96 — time itself",
               "body": "There is no human villain. The antagonist is the calendar — irreversibility.",
               "tanglish": "Indha padathula villain nu oruthar illa. Antagonist nu solradhu time ah than — kadandha kaalam thirumba varadhe nu solra unmaitha.",
               "alt": true
@@ -401,7 +401,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_s5_a",
@@ -425,18 +425,18 @@
       "num": "06",
       "title": "The <em>Supporting Cast.</em>",
       "titlePlain": "The Supporting Cast.",
-      "time": "~ 2 EVENINGS",
+      "time": "~ 2 evenings",
       "deck": "Each supporting character must reflect, challenge, or change the protagonist. If they don't, they're scenery.",
       "blocks": [
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "SUPPORTING CHARACTER = Their own goal + A function for the hero (mirror / challenger / catalyst) + One specific role nobody else fills",
           "tanglish": "SUPPORTING CHARACTER = Avanga sondha goal + Hero kku oru function + Vera yaarum fill panna mudiyatha oru specific role."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "Loganathan — the mentor without the sob story",
           "body": "The grumpy-veteran-and-eager-rookie pairing is one of the oldest tropes. Vignesh Raja makes it work because Loganathan never gets a soft-side monologue. A single quiet shot from behind tells you everything.",
           "tanglish": "Veteran-rookie pair pazhasu trope. Vignesh Raja work pannum padi — yaen na Loganathan ku emotional monologue scene illa. Oru quiet back shot — andha shot la ellam therinjudum."
@@ -455,11 +455,11 @@
         },
         {
           "type": "raw",
-          "html": "<div class=\"char-map\">\n    <div class=\"label\">RELATIONSHIP MAP</div>\n    <p class=\"deck\">Every character orbits your protagonist. As you fill names above, they appear here. The dotted line connects narrative function — solid lines mean \"active relationship in the story.\"</p>\n    <div class=\"char-map-svg-wrap\">\n      <svg class=\"char-map-svg\" id=\"charMapSvg\" viewBox=\"0 0 720 380\" preserveAspectRatio=\"xMidYMid meet\" />\n    </div>\n  </div>"
+          "html": "<div class=\"char-map\">\n    <div class=\"label\">Relationship map</div>\n    <p class=\"deck\">Every character orbits your protagonist. As you fill names above, they appear here. The dotted line connects narrative function — solid lines mean \"active relationship in the story.\"</p>\n    <div class=\"char-map-svg-wrap\">\n      <svg class=\"char-map-svg\" id=\"charMapSvg\" viewBox=\"0 0 720 380\" preserveAspectRatio=\"xMidYMid meet\" />\n    </div>\n  </div>"
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_s6_a",
@@ -483,22 +483,22 @@
       "num": "07",
       "title": "The <em>World.</em>",
       "titlePlain": "The World.",
-      "time": "~ 1-2 EVENINGS",
+      "time": "~ 1-2 evenings",
       "deck": "Your setting is the third character. Give it rules, texture, and a point of view.",
       "blocks": [
         {
           "type": "raw",
-          "html": "<div class=\"related-chips\">\n    <span class=\"label\">RELATED:</span>\n    <a class=\"related-chip short\" href=\"short.html#step-05\"><span class=\"src\">SHORTS</span> · Step 05 The World</a>\n    <a class=\"related-chip\" href=\"#step-15\"><span class=\"src\">VOL II</span> · Step 15 Lookbook</a>\n  </div>"
+          "html": "<div class=\"related-chips\">\n    <span class=\"label\">Related:</span>\n    <a class=\"related-chip short\" href=\"short.html#step-05\"><span class=\"src\">Shorts</span> · Step 05 The World</a>\n    <a class=\"related-chip\" href=\"#step-15\"><span class=\"src\">Vol II</span> · Step 15 Lookbook</a>\n  </div>"
         },
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "WORLD = Era + Place + Duration + 3-5 Unbreakable Rules + Sensory Signature",
           "tanglish": "ULAGAM = Kaalam + Specific idam + Time period + 3-5 udaikka mudiyaadha rules + Sense signature."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "Trichy at night. No songs. No comedy track.",
           "body": "Vignesh Raja built his world through subtraction. No songs, mostly night, 36 night shoot days. No romantic subplot, no comedy track. Each thing he removed became a rule of his world. The constraints became the signature.",
           "tanglish": "Vignesh Raja ulagatha eduthadhu illa — neekkardhu thaan. Paatu illa, mostly night la, 36 vela naal. Ovvonnayum eduthuvittadhey andha ulagathoda rules. Constraints signature aagi pochu."
@@ -507,7 +507,7 @@
           "type": "examples",
           "items": [
             {
-              "label": "VIKRAM VEDHA",
+              "label": "Vikram Vedha",
               "body": "Era: contemporary. Location: Chennai &amp; North Madras underbelly. Duration: ~72 hours. Palette: rust, gold, blood-red. Recurring object: the gun, swapped between hands.",
               "tanglish": "Indha kaalam, North Madras kuttara ulagam, moonu naal. Color: rust, gold, blood-red. Recurring object: oru gun."
             },
@@ -559,7 +559,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_s7_a",
@@ -583,29 +583,29 @@
       "num": "08",
       "title": "The <em>15 Beats.</em>",
       "titlePlain": "The 15 Beats.",
-      "time": "~ 1 WEEK",
+      "time": "~ 1 week",
       "deck": "The structural backbone. Don't write scenes yet — write what each beat needs to accomplish.",
       "blocks": [
         {
           "type": "raw",
-          "html": "<div class=\"related-chips\">\n    <span class=\"label\">RELATED:</span>\n    <a class=\"related-chip short\" href=\"short.html#step-04\"><span class=\"src\">SHORTS</span> · Step 04 5-Beat (compressed)</a>\n    <a class=\"related-chip\" href=\"#step-10\"><span class=\"src\">VOL I</span> · Step 10 Setups &amp; Payoffs</a>\n  </div>"
+          "html": "<div class=\"related-chips\">\n    <span class=\"label\">Related:</span>\n    <a class=\"related-chip short\" href=\"short.html#step-04\"><span class=\"src\">Shorts</span> · Step 04 5-Beat (compressed)</a>\n    <a class=\"related-chip\" href=\"#step-10\"><span class=\"src\">Vol I</span> · Step 10 Setups &amp; Payoffs</a>\n  </div>"
         },
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "STRUCTURE = Setup (1-25%) + Confrontation (25-75%) + Resolution (75-100%)<br>15 Beats = 3 in Act 1 + turning points + 7 in Act 2 + 3 in Act 3",
           "tanglish": "STRUCTURE = Setup + Confrontation + Resolution. 15 Beats = Act 1 la 3 + turning points + Act 2 la 7 + Act 3 la 3."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "147 minutes that never sag",
           "body": "Por Thozhil runs nearly two and a half hours yet feels lean — every beat earns its place. The structure is invisible. You feel the tension; you don't feel the architecture.",
           "tanglish": "Por Thozhil rendu mani nera maela odudhu, aana yedhuvum tedious illa — ovvoru beat um adhukkana idathula. Structure ye theriyaadhu. Tension feel pannuva."
         },
         {
           "type": "why",
-          "label": "HOW TO USE THIS TABLE",
+          "label": "How to use this table",
           "body": "For each beat, write 1–3 sentences. Not the scene — the function. Examples from VV and 96 included as compasses.",
           "tanglish": "Ovvoru beat ku 1–3 sentence ezhuthunga. Scene ezhutha vendaam — andha beat oda function mattum."
         },
@@ -615,11 +615,11 @@
         },
         {
           "type": "raw",
-          "html": "<div class=\"pacing-viz\">\n    <div class=\"label\">PACING VISUALIZER</div>\n    <p class=\"deck\">Each beat lights up as you fill it. The dotted arc traces the typical rise and fall of dramatic intensity — your beats should follow this shape (or break it intentionally).</p>\n    <div class=\"pacing-svg-wrap\">\n      <svg class=\"pacing-svg\" id=\"pacingSvg\" viewBox=\"0 0 720 200\" preserveAspectRatio=\"none\" />\n    </div>\n    <div class=\"pacing-stats\">\n      <span class=\"pacing-stat\">Beats filled: <strong id=\"pacingFilled\">0</strong> / 15</span>\n      <span class=\"pacing-stat\">Act 1: <strong id=\"pacingAct1\">0/3</strong></span>\n      <span class=\"pacing-stat\">Act 2: <strong id=\"pacingAct2\">0/8</strong></span>\n      <span class=\"pacing-stat\">Act 3: <strong id=\"pacingAct3\">0/4</strong></span>\n    </div>\n  </div>"
+          "html": "<div class=\"pacing-viz\">\n    <div class=\"label\">Pacing visualizer</div>\n    <p class=\"deck\">Each beat lights up as you fill it. The dotted arc traces the typical rise and fall of dramatic intensity — your beats should follow this shape (or break it intentionally).</p>\n    <div class=\"pacing-svg-wrap\">\n      <svg class=\"pacing-svg\" id=\"pacingSvg\" viewBox=\"0 0 720 200\" preserveAspectRatio=\"none\" />\n    </div>\n    <div class=\"pacing-stats\">\n      <span class=\"pacing-stat\">Beats filled: <strong id=\"pacingFilled\">0</strong> / 15</span>\n      <span class=\"pacing-stat\">Act 1: <strong id=\"pacingAct1\">0/3</strong></span>\n      <span class=\"pacing-stat\">Act 2: <strong id=\"pacingAct2\">0/8</strong></span>\n      <span class=\"pacing-stat\">Act 3: <strong id=\"pacingAct3\">0/4</strong></span>\n    </div>\n  </div>"
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_s8_a",
@@ -647,18 +647,18 @@
       "num": "09",
       "title": "The <em>Timeline.</em>",
       "titlePlain": "The Timeline.",
-      "time": "~ 2-3 EVENINGS",
+      "time": "~ 2-3 evenings",
       "deck": "If your story plays with time — flashbacks, reveals, parallel narratives — design the order of revelation now.",
       "blocks": [
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "CHRONO ORDER ≠ SCREENPLAY ORDER<br>The GAP between them = your structural strategy",
           "tanglish": "CHRONO ORDER (story la unmaila events) ≠ SCREENPLAY ORDER (audience paakkura order). Indha gap thaan unga structural strategy."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "1979 vs present day",
           "body": "Two timelines: the killings from 1979 and the new ones now. Vignesh Raja interweaves them so each fragment from 1979 reframes a scene happening in the present. You and the cops learn at the same speed.",
           "tanglish": "Rendu timeline — 1979 la nadanda kollai ka, ippo nadakkura kollai ka. Vignesh Raja randayum maathi maathi cut pannardhu. Audience kum cops kum same speed la therinjikuradhu."
@@ -667,7 +667,7 @@
           "type": "examples",
           "items": [
             {
-              "label": "VIKRAM VEDHA",
+              "label": "Vikram Vedha",
               "body": "Chrono: Pulli's death → Vedha's plan → encounter → surrender. Screenplay: surrender → story 1 → flashback → story 2 → flashback. Deferred reveal IS the engine.",
               "tanglish": "Story-world la: Pulli sethukitan → Vedha plan → encounter → surrender. Padathula: surrender → first kadhai → flashback → second kadhai → flashback. Information ah late ah kudukkurathey thrill ah create pannudhu."
             },
@@ -705,7 +705,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_s9_a",
@@ -725,18 +725,18 @@
       "num": "10",
       "title": "The <em>Setups &amp; Payoffs.</em>",
       "titlePlain": "The Setups & Payoffs.",
-      "time": "~ 2-3 EVENINGS",
+      "time": "~ 2-3 evenings",
       "deck": "List your 5 biggest payoffs in Act 3. For each one, name what plants it earlier — and where.",
       "blocks": [
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "PAYOFF = Setup (Act 1, subtle) + ~60+ pages distance + Reframing event<br>If gap is too small → predictable. If setup is missing → cheating.",
           "tanglish": "PAYOFF = Setup (simple ah) + 60+ pages gap + Meaning maathura event. Gap chinna na yedhirpaarthidum. Setup illama na cheating."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "The casual cop conversation that pays off later",
           "body": "Two cops chat casually about one's wife. Plays as throwaway comedy. Forty minutes later, that conversation is reflected as actual behaviour by a different character. Vignesh Raja plants seeds disguised as filler. By the time they bloom, you've forgotten you ever saw them planted.",
           "tanglish": "Rendu police pesikkurange — casual comedy mathiri. Niraya kazhichu, andha conversation oda meaning vera oru character oda actual behaviour la prathibalikkum. Vidhai poduran filler scene mathiri kaattudhu."
@@ -747,7 +747,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_s10_a",
@@ -771,18 +771,18 @@
       "num": "11",
       "title": "The <em>Scene List.</em>",
       "titlePlain": "The Scene List.",
-      "time": "~ 2-4 WEEKS",
+      "time": "~ 2-4 weeks",
       "deck": "Break each beat into actual scenes. This is the bridge between outline and draft.",
       "blocks": [
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "SCENE = Slug + POV + <code>Want</code> + Conflict + Charge flip<br>If charge doesn't flip (+→− or −→+), it's not yet a scene.",
           "tanglish": "SCENE = Slug + POV + Vendiyathu + Thadai + Charge maaridudha. Charge maaravilla na verum moment thaan."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "Every scene has a job",
           "body": "The railway-crossing scene where a constable casually asks a suspect about a movie is rudimentary on the surface. But the unspoken tension — what every character secretly knows but won't say — is the entire scene. Surface plain, subtext loaded.",
           "tanglish": "Railway crossing la constable suspect kitta movie patthi kekkura — mela paatha simple alibi check. Aana sollatha tension thaan scene oda full content. Mela simple, keezhe vela."
@@ -793,15 +793,15 @@
         },
         {
           "type": "raw",
-          "html": "<div class=\"row-actions\">\n    <button class=\"mini-btn\" onclick=\"addSceneRow()\">+ ADD SCENE</button>\n    <button class=\"mini-btn\" onclick=\"addSceneRow(5)\">+ ADD 5</button>\n    <button class=\"mini-btn\" onclick=\"clearEmpty('sceneListBody')\">CLEAR EMPTY</button>\n  </div>"
+          "html": "<div class=\"row-actions\">\n    <button class=\"mini-btn\" onclick=\"addSceneRow()\">+ Add scene</button>\n    <button class=\"mini-btn\" onclick=\"addSceneRow(5)\">+ Add 5</button>\n    <button class=\"mini-btn\" onclick=\"clearEmpty('sceneListBody')\">Clear empty</button>\n  </div>"
         },
         {
           "type": "raw",
-          "html": "<div class=\"scene-timeline\">\n    <div class=\"label\">SCENE CHARGE TIMELINE</div>\n    <p class=\"deck\">Every scene's emotional charge plotted in order. Bars above the line are positive flips, below are negative. A great script alternates — long stretches of one polarity = pacing problem.</p>\n    <div class=\"scene-chart-wrap\">\n      <div class=\"scene-chart\" id=\"sceneChart\"></div>\n    </div>\n    <div class=\"scene-legend\">\n      <span><i class=\"pos-i\"></i> + → −</span>\n      <span><i class=\"neg-i\"></i> − → +</span>\n      <span><i class=\"dbl-pos-i\"></i> + → ++</span>\n      <span><i class=\"dbl-neg-i\"></i> − → −−</span>\n    </div>\n    <div class=\"scene-stats\">\n      <span>Total scenes: <strong id=\"sceneTotal\">0</strong></span>\n      <span>With charge: <strong id=\"sceneCharged\">0</strong></span>\n      <span>Polarity flips: <strong id=\"sceneFlips\">0</strong></span>\n      <span>Longest single-polarity run: <strong id=\"sceneRun\">—</strong></span>\n    </div>\n  </div>"
+          "html": "<div class=\"scene-timeline\">\n    <div class=\"label\">Scene charge timeline</div>\n    <p class=\"deck\">Every scene's emotional charge plotted in order. Bars above the line are positive flips, below are negative. A great script alternates — long stretches of one polarity = pacing problem.</p>\n    <div class=\"scene-chart-wrap\">\n      <div class=\"scene-chart\" id=\"sceneChart\"></div>\n    </div>\n    <div class=\"scene-legend\">\n      <span><i class=\"pos-i\"></i> + → −</span>\n      <span><i class=\"neg-i\"></i> − → +</span>\n      <span><i class=\"dbl-pos-i\"></i> + → ++</span>\n      <span><i class=\"dbl-neg-i\"></i> − → −−</span>\n    </div>\n    <div class=\"scene-stats\">\n      <span>Total scenes: <strong id=\"sceneTotal\">0</strong></span>\n      <span>With charge: <strong id=\"sceneCharged\">0</strong></span>\n      <span>Polarity flips: <strong id=\"sceneFlips\">0</strong></span>\n      <span>Longest single-polarity run: <strong id=\"sceneRun\">—</strong></span>\n    </div>\n  </div>"
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_s11_a",
@@ -829,18 +829,18 @@
       "num": "12",
       "title": "The <em>Final Check.</em>",
       "titlePlain": "The Final Check.",
-      "time": "~ 1 EVENING",
+      "time": "~ 1 evening",
       "deck": "Before you write FADE IN, walk through this list. If every box is ticked, you have a movie.",
       "blocks": [
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "READY TO WRITE = All 12 steps complete + 20 checks ticked + You can pitch the film without notes",
           "tanglish": "EZHUTHA READY = 12 steps mudichirukku + 20 checks tick aagiruku + Notes paakkama padatha pitch panna mudiyum."
         },
         {
           "type": "check",
-          "heading": "PRE-FLIGHT CHECKLIST",
+          "heading": "Pre-flight checklist",
           "items": [
             {
               "key": "fc_v1_01",
@@ -946,23 +946,23 @@
       "num": "13",
       "title": "The <em>Script Lock.</em>",
       "titlePlain": "The Script Lock.",
-      "time": "~ 1 WEEK",
+      "time": "~ 1 week",
       "deck": "Pre-production cannot begin on a moving target. Lock the script. Then break it down.",
       "blocks": [
         {
           "type": "why",
-          "label": "FROM VOL I — WHAT YOU'RE LOCKING IN",
+          "label": "From vol I — what you're locking in",
           "body": ""
         },
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "SCRIPT LOCK = Final draft + Page count + Scene breakdown + <code>\"No more rewrites until shoot\"</code> commitment",
           "tanglish": "SCRIPT LOCK = Final draft + Total pages + Scene breakdown + <strong>\"shoot mudiyura varai mathaa rewrite illa\"</strong> commitment."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "A draft that survived two threats",
           "body": "Vignesh Raja and Alfred Prakash drafted the script years before shoot. When <em>Jigarthanda</em> released, they reworked it. When <em>Ratsasan</em> released, they reworked it again. By the time they locked it, every page had been pressure-tested. That's a lock.",
           "tanglish": "Vignesh Raja, Alfred Prakash padam shoot pannardhukku munadiye script ezhudhirukkanga. Jigarthanda, Ratsasan vandhapo rendu thadava rewrite. Lock pannarrapo, ovvoru page um test pannittirukku."
@@ -993,7 +993,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_v2s1_a",
@@ -1025,18 +1025,18 @@
       "num": "14",
       "title": "The <em>Director's Vision.</em>",
       "titlePlain": "The Director's Vision.",
-      "time": "~ 3-5 DAYS",
+      "time": "~ 3-5 days",
       "deck": "One page that anchors every department. If the DOP and the costume designer are reading two different visions, you don't have a film — you have a fight.",
       "blocks": [
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "VISION = Theme + Tone (3-5 words) + 2 film refs + 1 non-film ref + What the film <code>refuses</code> to be",
           "tanglish": "VISION = Theme + Tone 3-5 vaarthaila + 2 padam ref + 1 padam alladha ref + Indha padam <strong>maattaen</strong> nu solra vishayam."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "Vision through subtraction",
           "body": "Vignesh Raja's vision could be stated negatively: \"no songs, no comedy, no romantic subplot, no daytime mood, no easy hero introduction.\" The constraints became the brief. Every HOD knew what the film refused to be.",
           "tanglish": "Vignesh Raja vision negative ah sollalam: \"paatu illa, comedy illa, romance illa, pagal time illa, hero introduction illa.\" Ellam venda nu sonnaale brief aagiduchu."
@@ -1104,7 +1104,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_v2s2_a",
@@ -1132,18 +1132,18 @@
       "num": "15",
       "title": "The <em>Lookbook.</em>",
       "titlePlain": "The Lookbook.",
-      "time": "~ 1-2 WEEKS",
+      "time": "~ 1-2 weeks",
       "deck": "Pictures argue better than paragraphs. Build the visual library that translates your vision into specifics every department can copy.",
       "blocks": [
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "LOOKBOOK = Color palette + Lighting refs + Frame composition refs + Texture &amp; mood + Wardrobe / PD plates + 3-5 master frames per scene-type",
           "tanglish": "LOOKBOOK = Color palette + Light reference + Frame composition reference + Texture &amp; mood photos + Wardrobe / art design plates + Ovvoru scene-type ku 3-5 master frames."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "Cold cases as visual texture",
           "body": "The DOP Kalaiselvan Sivaji and Vignesh Raja built the lookbook around <em>Zodiac</em>, <em>Memories of Murder</em>, and the genre's quiet-camera tradition. The lookbook said \"no flashy moves, no neon, no rain-soaked streets for style.\" The film feels confidently calm because every reference image was calm too.",
           "tanglish": "DOP Kalaiselvan Sivaji um Vignesh Raja um Zodiac, Memories of Murder mathra padangal study panni, \"flashy illa, neon illa\" nu lookbook fix pannanga. Reference padangal calm — adhanaala padam um calm."
@@ -1211,7 +1211,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_v2s3_a",
@@ -1239,18 +1239,18 @@
       "num": "16",
       "title": "The <em>Storyboard &amp; Shot List.</em>",
       "titlePlain": "The Storyboard & Shot List.",
-      "time": "~ 2-4 WEEKS",
+      "time": "~ 2-4 weeks",
       "deck": "Plan the camera before the camera plans you. Scenes get translated into shots; shots get translated into time on set.",
       "blocks": [
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "SHOT LIST = Scene + Shot # + Description + Lens (mm) + Camera move + Coverage + Lighting + Time",
           "tanglish": "SHOT LIST = Scene + Shot # + Description + Lens + Move + Coverage + Light note + Time. Indha details thaan day la evvalo set up panna mudiyum nu therikkum."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "\"Clean yet dramatic compositions\"",
           "body": "Critics noted no technical showing-off — no whip-pans, no needless drones, no slow-motion entries. That confidence comes from a shot list that knew when NOT to move the camera. Your shot list isn't proving you're a director — it's proving you served the scene.",
           "tanglish": "Critics sonnanga — Por Thozhil la \"I am director\" nu kaattara fancy moves illa. Shot list la \"indha scene la camera move panna koodathu\" nu therinju vechardhula irundhu varudhu andha confidence."
@@ -1261,11 +1261,11 @@
         },
         {
           "type": "raw",
-          "html": "<div class=\"row-actions\">\n    <button class=\"mini-btn\" onclick=\"addShotRow()\">+ ADD SHOT</button>\n    <button class=\"mini-btn\" onclick=\"addShotRow(5)\">+ ADD 5</button>\n    <button class=\"mini-btn\" onclick=\"clearEmpty('shotListBody')\">CLEAR EMPTY</button>\n  </div>"
+          "html": "<div class=\"row-actions\">\n    <button class=\"mini-btn\" onclick=\"addShotRow()\">+ Add shot</button>\n    <button class=\"mini-btn\" onclick=\"addShotRow(5)\">+ Add 5</button>\n    <button class=\"mini-btn\" onclick=\"clearEmpty('shotListBody')\">Clear empty</button>\n  </div>"
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_v2s4_a",
@@ -1293,18 +1293,18 @@
       "num": "17",
       "title": "The <em>Cinematography Plan.</em>",
       "titlePlain": "The Cinematography Plan.",
-      "time": "~ 2-3 WEEKS",
+      "time": "~ 2-3 weeks",
       "deck": "Camera, lens, lighting, color. Decisions made here are nearly irreversible once shooting starts.",
       "blocks": [
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "CINEMATOGRAPHY = Camera + Lens kit + Aspect ratio + Frame rate + Lighting philosophy + Color grade reference",
           "tanglish": "CINEMATOGRAPHY = Camera + Lens kit + Aspect ratio + Frame rate + Light philosophy + Color grade reference. Lock aana appram, \"feel\" ah maatha mudiyaadhu."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "36 working days of night shoots",
           "body": "Mostly nighttime filming — a brutal logistical choice that paid off as a unified visual language. The DOP couldn't borrow the easy daylight cheat. He had to design lighting from the ground up. Constraints forced craft.",
           "tanglish": "Mostly night la padam pannanum nu fix. Logistically kashtam — aana unified visual language kudukkudhu. DOP daylight cheat edukka mudiyaadhu. Constraint craft ah ezhuppi vidardhu."
@@ -1315,7 +1315,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_v2s5_a",
@@ -1343,18 +1343,18 @@
       "num": "18",
       "title": "The <em>Production Design.</em>",
       "titlePlain": "The Production Design.",
-      "time": "~ 4-6 WEEKS",
+      "time": "~ 4-6 weeks",
       "deck": "Sets, props, signage, every cup on every table. Audiences may not notice production design when it's right — they will absolutely notice it when it's wrong.",
       "blocks": [
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "PRODUCTION DESIGN = Set list + Prop list + Color &amp; texture rules + Period research + Signature recurring objects",
           "tanglish": "PRODUCTION DESIGN = Set list + Prop list + Color &amp; texture rules + Era research + Signature recurring objects."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "Real police stations, real cold-case files",
           "body": "The production design avoided the polished \"cop movie\" aesthetic — no sleek glass, no bright LED interrogation rooms. Paint-peeled, file-stuffed, fluorescent-lit, real. That texture isn't accidental — it's a deliberate refusal of glamour. Audiences trust grit; they doubt polish.",
           "tanglish": "\"Polished cop movie\" feel illa — paint kuzhippoi, files kuvichu, fluorescent light la. Glamour ah refuse pannardhu deliberately. Grit audience nambum."
@@ -1365,7 +1365,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_v2s6_a",
@@ -1393,18 +1393,18 @@
       "num": "19",
       "title": "The <em>Costume, Hair &amp; Makeup.</em>",
       "titlePlain": "The Costume, Hair & Makeup.",
-      "time": "~ 3-4 WEEKS",
+      "time": "~ 3-4 weeks",
       "deck": "Clothes are character. A costume designer translates the script into wearable identity for every actor, every scene.",
       "blocks": [
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "COSTUME = Character arc → Wardrobe arc + Color logic + Period accuracy + Continuity tracker + Stunt duplicates",
           "tanglish": "COSTUME = Character arc oda mathirye wardrobe um maaranum + Color logic + Period accuracy + Continuity tracker + Stunt duplicates. Costume verum dress illa — character oda thol mela skin."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "Anti-glamour as a costume choice",
           "body": "Sarathkumar's Loganathan wears rumpled shirts, no swagger — the kind a real cop on his fifth case would actually wear. Ashok Selvan's Prakash looks book-smart and physically untrained. The costume itself argued against typical Tamil hero coding.",
           "tanglish": "Sarathkumar oda Loganathan rumpled shirt, swagger illa. Real cop mathiri irukkura costume. Ashok Selvan oda Prakash book-smart, untrained look. Typical Tamil hero coding ah refuse pannardhu costume thaan."
@@ -1415,7 +1415,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_v2s7_a",
@@ -1443,18 +1443,18 @@
       "num": "20",
       "title": "The <em>Casting.</em>",
       "titlePlain": "The Casting.",
-      "time": "~ 3-6 WEEKS",
+      "time": "~ 3-6 weeks",
       "deck": "Cast against type when the role allows. Rehearse together before you call action.",
       "blocks": [
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "CASTING = Role brief + Audition + Chemistry read + Schedule lock + Contract<br>NEVER cast for screen presence alone — cast for what the actor can DO with the role.",
           "tanglish": "CASTING = Role brief + Audition + Chemistry read + Schedule lock + Contract. Vெறum screen presence ku cast pannathenga — actor andha role la <strong>enna seyya mudiyumo</strong> adhuvey paakanum."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "Casting Ashok Selvan against type",
           "body": "Tamil cinema usually puts physically imposing actors in cop roles. Vignesh Raja chose Ashok Selvan — geeky, slim, observably nervous. There's even a meta-joke where officers look around for \"someone who doesn't look like a cop\" and the camera lands on Ashok. The casting choice itself was a directorial argument.",
           "tanglish": "Tamil cinema la usually peruma figure aalu cop role ku. Vignesh Raja Ashok Selvan ah cast pannaaru — geeky, slim, nervous look. Casting ye oru directorial statement."
@@ -1465,11 +1465,11 @@
         },
         {
           "type": "raw",
-          "html": "<div class=\"row-actions\">\n    <button class=\"mini-btn\" onclick=\"addCastRow()\">+ ADD ROLE</button>\n    <button class=\"mini-btn\" onclick=\"addCastRow(5)\">+ ADD 5</button>\n    <button class=\"mini-btn\" onclick=\"clearEmpty('castListBody')\">CLEAR EMPTY</button>\n  </div>"
+          "html": "<div class=\"row-actions\">\n    <button class=\"mini-btn\" onclick=\"addCastRow()\">+ Add role</button>\n    <button class=\"mini-btn\" onclick=\"addCastRow(5)\">+ Add 5</button>\n    <button class=\"mini-btn\" onclick=\"clearEmpty('castListBody')\">Clear empty</button>\n  </div>"
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_v2s8_a",
@@ -1501,22 +1501,22 @@
       "num": "21",
       "title": "The <em>Locations &amp; Recce.</em>",
       "titlePlain": "The Locations & Recce.",
-      "time": "~ 4-8 WEEKS",
+      "time": "~ 4-8 weeks",
       "deck": "Scout twice, shoot once. A location dictates lensing, lighting, sound, blocking. Wrong location = wrong film.",
       "blocks": [
         {
           "type": "raw",
-          "html": "<div class=\"related-chips\">\n    <span class=\"label\">RELATED:</span>\n    <a class=\"related-chip short\" href=\"short.html#step-09\"><span class=\"src\">SHORTS</span> · Step 09 Production Reality</a>\n  </div>"
+          "html": "<div class=\"related-chips\">\n    <span class=\"label\">Related:</span>\n    <a class=\"related-chip short\" href=\"short.html#step-09\"><span class=\"src\">Shorts</span> · Step 09 Production Reality</a>\n  </div>"
         },
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "LOCATION = Visual fit + Acoustic suitability + Power + Access + Permits + Backup",
           "tanglish": "LOCATION = Visual fit + Sound suitability + Power + Access (van, washroom) + Permits + Backup. Backup illama lock pannathenga."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "Trichy as the third character",
           "body": "Setting much of the film in Trichy — not the Chennai-glossy of mainstream — was a location decision that became a tonal one. Smaller-town claustrophobia, narrower lanes, fewer visual escape routes. Picked because it was correct, not because it was beautiful.",
           "tanglish": "Padam mostly Trichy la — Chennai-glossy illa. Tonal decision aakiduchu. Chinna ooru claustrophobia, simma theruv. Sariyaana karanam ku select."
@@ -1527,11 +1527,11 @@
         },
         {
           "type": "raw",
-          "html": "<div class=\"row-actions\">\n    <button class=\"mini-btn\" onclick=\"addLocRow()\">+ ADD LOCATION</button>\n    <button class=\"mini-btn\" onclick=\"addLocRow(5)\">+ ADD 5</button>\n    <button class=\"mini-btn\" onclick=\"clearEmpty('locListBody')\">CLEAR EMPTY</button>\n  </div>"
+          "html": "<div class=\"row-actions\">\n    <button class=\"mini-btn\" onclick=\"addLocRow()\">+ Add location</button>\n    <button class=\"mini-btn\" onclick=\"addLocRow(5)\">+ Add 5</button>\n    <button class=\"mini-btn\" onclick=\"clearEmpty('locListBody')\">Clear empty</button>\n  </div>"
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_v2s9_a",
@@ -1563,18 +1563,18 @@
       "num": "22",
       "title": "The <em>Sound &amp; Music.</em>",
       "titlePlain": "The Sound & Music.",
-      "time": "~ 6-8 WEEKS",
+      "time": "~ 6-8 weeks",
       "deck": "Sound is half the film. A composer brief and a sound design plan happen BEFORE the shoot, not after.",
       "blocks": [
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "SOUND = Composer brief + Sound design philosophy + Diegetic / non-diegetic balance + Songs + Foley + Final mix format",
           "tanglish": "SOUND = Composer brief + Sound design philosophy + Diegetic vs non-diegetic balance + Paatu + Foley + Mix format. Shoot mudinju yosikkura vishayam illa."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "No songs. Score as nervous system.",
           "body": "The film has no songs. Jakes Bejoy's score doesn't decorate scenes — it tightens them. Sound design (rain, fluorescent buzz, distant traffic) does the dread work. If you cut songs, you must double the design of every other sound element.",
           "tanglish": "Padathula paatu illa. Score scenes ah tighten pannudhu. Sound design dread feel ah carry pannudhu. Paatu illama vaazhanum na, vera ovvoru sound element um irattipaduthi design pannanum."
@@ -1585,7 +1585,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_v2s10_a",
@@ -1613,33 +1613,33 @@
       "num": "23",
       "title": "The <em>Schedule, Budget &amp; Crew.</em>",
       "titlePlain": "The Schedule, Budget & Crew.",
-      "time": "~ 3-4 WEEKS",
+      "time": "~ 3-4 weeks",
       "deck": "The producer's three pillars. A film is shot in days, paid in lakhs, and run by the right HODs.",
       "blocks": [
         {
           "type": "raw",
-          "html": "<div class=\"related-chips\">\n    <span class=\"label\">RELATED:</span>\n    <a class=\"related-chip short\" href=\"short.html#step-09\"><span class=\"src\">SHORTS</span> · Step 09 Production Reality</a>\n    <a class=\"related-chip lib\" href=\"library.html#equipment\"><span class=\"src\">LIBRARY</span> · Equipment &amp; Costs</a>\n  </div>"
+          "html": "<div class=\"related-chips\">\n    <span class=\"label\">Related:</span>\n    <a class=\"related-chip short\" href=\"short.html#step-09\"><span class=\"src\">Shorts</span> · Step 09 Production Reality</a>\n    <a class=\"related-chip lib\" href=\"library.html#equipment\"><span class=\"src\">Library</span> · Equipment &amp; Costs</a>\n  </div>"
         },
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "SCHEDULE = Total scenes / Day-out-of-days × Avg pages/day<br>BUDGET = ATL + BTL + Post + Contingency (~10-15%)<br>CREW = HODs + Their teams + Daily rates + Confirmed dates",
           "tanglish": "SCHEDULE = Total scenes / Day-out-of-days × Day kku eththan page.<br>BUDGET = Above-the-line + Below-the-line + Post + Contingency 10-15%.<br>CREW = HODs + Teams + Daily rates + Dates confirmed."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "Constraints as a budget strategy",
           "body": "\"No songs\" wasn't only artistic — it was logistical. Cutting songs freed up resources for the 36 night-shoot days. Constraints aren't restrictions; they're redistribution. What you save on one front, you spend on the front that matters.",
           "tanglish": "\"Paatu illa\" decision logistical kuda. Paatu eduthuvuduna 36 night shoot days ku move aaguthu. Constraints redistribution thaan. Onnu save pannardhu, mukkiyam aana inn-onnukku spend aagum."
         },
         {
           "type": "raw",
-          "html": "<div class=\"dept-grid\">\n    <div class=\"dept-block\">\n      <h4>Schedule</h4>\n      <div class=\"dept-fields\">\n        <div><label>Total shoot days</label><input type=\"text\" data-key=\"v2s11_days\"></div>\n        <div><label>Average pages per day</label>\n          <select data-key=\"v2s11_pages\">\n            <option value=\"\">Pick avg...</option>\n            <option>~1 page (heavy production)</option>\n            <option>~2 pages (standard prestige)</option>\n            <option>~3 pages (mainstream)</option>\n            <option>~4 pages (TV / fast-paced)</option>\n            <option>~5+ pages (indie / low-budget)</option>\n          </select>\n        </div>\n        <div><label>Number of schedules / blocks</label><input type=\"text\" data-key=\"v2s11_blocks\"></div>\n        <div><label>1st AD name</label><input type=\"text\" data-key=\"v2s11_ad\"></div>\n        <div><label>Most expensive day on schedule (and why)</label><textarea data-key=\"v2s11_expday\"></textarea></div>\n      </div>\n    </div>\n    <div class=\"dept-block\">\n      <h4>Budget</h4>\n      <div class=\"dept-fields\">\n        <div><label>Total budget</label><input type=\"text\" data-key=\"v2s11_total\"></div>\n        <div><label>Above-the-line</label><input type=\"text\" data-key=\"v2s11_atl\"></div>\n        <div><label>Below-the-line</label><input type=\"text\" data-key=\"v2s11_btl\"></div>\n        <div><label>Post-production</label><input type=\"text\" data-key=\"v2s11_post\"></div>\n        <div><label>Contingency</label>\n          <select data-key=\"v2s11_cont\">\n            <option value=\"\">Pick contingency...</option>\n            <option>5% (very tight)</option>\n            <option>10% (standard minimum)</option>\n            <option>12.5%</option>\n            <option>15% (recommended)</option>\n            <option>20% (first-time / risky)</option>\n            <option>25%+ (high-risk shoot)</option>\n          </select>\n        </div>\n        <div><label>Largest single line item</label><textarea data-key=\"v2s11_largest\"></textarea></div>\n      </div>\n      <div class=\"budget-summary\">\n        <div class=\"label\">AUTO-CALCULATED TOTAL</div>\n        <div class=\"budget-total\" id=\"budgetTotal\">— <span>(fill numbers above)</span></div>\n        <div class=\"budget-bar\" id=\"budgetBar\"></div>\n        <div class=\"budget-legend\">\n          <span><i class=\"atl-i\"></i> Above-the-line</span>\n          <span><i class=\"btl-i\"></i> Below-the-line</span>\n          <span><i class=\"post-i\"></i> Post</span>\n          <span><i class=\"cont-i\"></i> Contingency</span>\n        </div>\n        <p class=\"kbd-hint\">Type any number format — <kbd>50</kbd>, <kbd>50,00,000</kbd>, <kbd>50L</kbd>, <kbd>50 lakh</kbd>, <kbd>2cr</kbd> — the totals add up automatically.</p>\n      </div>\n    </div>\n    <div class=\"dept-block\">\n      <h4>Heads of Department</h4>\n      <div class=\"dept-fields\">\n        <div><label>DOP / Cinematographer</label><input type=\"text\" data-key=\"v2s11_dop\"></div>\n        <div><label>Production Designer</label><input type=\"text\" data-key=\"v2s11_pd\"></div>\n        <div><label>Editor</label><input type=\"text\" data-key=\"v2s11_editor\"></div>\n        <div><label>Composer</label><input type=\"text\" data-key=\"v2s11_composer\"></div>\n        <div><label>Sound Designer</label><input type=\"text\" data-key=\"v2s11_sound\"></div>\n        <div><label>Costume Designer</label><input type=\"text\" data-key=\"v2s11_cd\"></div>\n        <div><label>Casting Director</label><input type=\"text\" data-key=\"v2s11_casting\"></div>\n        <div><label>Production Manager</label><input type=\"text\" data-key=\"v2s11_pm\"></div>\n      </div>\n    </div>\n  </div>"
+          "html": "<div class=\"dept-grid\">\n    <div class=\"dept-block\">\n      <h4>Schedule</h4>\n      <div class=\"dept-fields\">\n        <div><label>Total shoot days</label><input type=\"text\" data-key=\"v2s11_days\"></div>\n        <div><label>Average pages per day</label>\n          <select data-key=\"v2s11_pages\">\n            <option value=\"\">Pick avg...</option>\n            <option>~1 page (heavy production)</option>\n            <option>~2 pages (standard prestige)</option>\n            <option>~3 pages (mainstream)</option>\n            <option>~4 pages (TV / fast-paced)</option>\n            <option>~5+ pages (indie / low-budget)</option>\n          </select>\n        </div>\n        <div><label>Number of schedules / blocks</label><input type=\"text\" data-key=\"v2s11_blocks\"></div>\n        <div><label>1st AD name</label><input type=\"text\" data-key=\"v2s11_ad\"></div>\n        <div><label>Most expensive day on schedule (and why)</label><textarea data-key=\"v2s11_expday\"></textarea></div>\n      </div>\n    </div>\n    <div class=\"dept-block\">\n      <h4>Budget</h4>\n      <div class=\"dept-fields\">\n        <div><label>Total budget</label><input type=\"text\" data-key=\"v2s11_total\"></div>\n        <div><label>Above-the-line</label><input type=\"text\" data-key=\"v2s11_atl\"></div>\n        <div><label>Below-the-line</label><input type=\"text\" data-key=\"v2s11_btl\"></div>\n        <div><label>Post-production</label><input type=\"text\" data-key=\"v2s11_post\"></div>\n        <div><label>Contingency</label>\n          <select data-key=\"v2s11_cont\">\n            <option value=\"\">Pick contingency...</option>\n            <option>5% (very tight)</option>\n            <option>10% (standard minimum)</option>\n            <option>12.5%</option>\n            <option>15% (recommended)</option>\n            <option>20% (first-time / risky)</option>\n            <option>25%+ (high-risk shoot)</option>\n          </select>\n        </div>\n        <div><label>Largest single line item</label><textarea data-key=\"v2s11_largest\"></textarea></div>\n      </div>\n      <div class=\"budget-summary\">\n        <div class=\"label\">Auto-calculated total</div>\n        <div class=\"budget-total\" id=\"budgetTotal\">— <span>(fill numbers above)</span></div>\n        <div class=\"budget-bar\" id=\"budgetBar\"></div>\n        <div class=\"budget-legend\">\n          <span><i class=\"atl-i\"></i> Above-the-line</span>\n          <span><i class=\"btl-i\"></i> Below-the-line</span>\n          <span><i class=\"post-i\"></i> Post</span>\n          <span><i class=\"cont-i\"></i> Contingency</span>\n        </div>\n        <p class=\"kbd-hint\">Type any number format — <kbd>50</kbd>, <kbd>50,00,000</kbd>, <kbd>50L</kbd>, <kbd>50 lakh</kbd>, <kbd>2cr</kbd> — the totals add up automatically.</p>\n      </div>\n    </div>\n    <div class=\"dept-block\">\n      <h4>Heads of Department</h4>\n      <div class=\"dept-fields\">\n        <div><label>DOP / Cinematographer</label><input type=\"text\" data-key=\"v2s11_dop\"></div>\n        <div><label>Production Designer</label><input type=\"text\" data-key=\"v2s11_pd\"></div>\n        <div><label>Editor</label><input type=\"text\" data-key=\"v2s11_editor\"></div>\n        <div><label>Composer</label><input type=\"text\" data-key=\"v2s11_composer\"></div>\n        <div><label>Sound Designer</label><input type=\"text\" data-key=\"v2s11_sound\"></div>\n        <div><label>Costume Designer</label><input type=\"text\" data-key=\"v2s11_cd\"></div>\n        <div><label>Casting Director</label><input type=\"text\" data-key=\"v2s11_casting\"></div>\n        <div><label>Production Manager</label><input type=\"text\" data-key=\"v2s11_pm\"></div>\n      </div>\n    </div>\n  </div>"
         },
         {
           "type": "check",
-          "heading": "BEFORE MOVING ON",
+          "heading": "Before moving on",
           "items": [
             {
               "key": "ck_v2s11_a",
@@ -1671,18 +1671,18 @@
       "num": "24",
       "title": "The <em>Tech Recce &amp; Final Lock.</em>",
       "titlePlain": "The Tech Recce & Final Lock.",
-      "time": "~ 1-2 WEEKS",
+      "time": "~ 1-2 weeks",
       "deck": "The last week of pre-production. Every department walks every primary location together. Every problem found here saves a day on set.",
       "blocks": [
         {
           "type": "formula",
-          "label": "FORMULA",
+          "label": "Formula",
           "eq": "TECH RECCE = Director + DOP + AD + Sound + PD + Gaffer + PM — at every primary location, with shot list",
           "tanglish": "TECH RECCE = Director + DOP + AD + Sound + PD + Gaffer + PM — ovvoru location la, shot list kaiyila."
         },
         {
           "type": "craft",
-          "label": "POR THOZHIL · CRAFT LESSON",
+          "label": "Por Thozhil · craft lesson",
           "trade": "Walking the location at night, before shooting at night",
           "body": "For a film with 36 night-shoot days, the recce HAD to happen at the actual time of night the film would shoot. Daytime recces lie — sodium lights at midnight create a different exposure problem than the same street at noon. Recce in the conditions you'll shoot in.",
           "tanglish": "36 night shoot day-ku, recce same night neram la nadakkanum. Pagal recce poyi vaayidhanum. Eppadi shoot pannapora, andha conditions la recce panna. Mathadhu verum drama."
@@ -1713,7 +1713,7 @@
         },
         {
           "type": "check",
-          "heading": "PRE-PRODUCTION FINAL LOCK",
+          "heading": "Pre-production final lock",
           "items": [
             {
               "key": "fc_v2_01",
@@ -1810,7 +1810,7 @@
         },
         {
           "type": "raw",
-          "html": "<div class=\"hod-signoff\">\n    <h4>HOD SIGN-OFF — DEPARTMENT LOCK</h4>\n    <p class=\"deck\">Each Head of Department countersigns that their work is locked, schedule-ready, and budget-aligned. Once all rows are checked, you can call <em>ROLL CAMERA</em>. Signatures here are honour-bound; they don't replace contracts.</p>\n    <div class=\"hod-row\">\n      <span class=\"role\">Director</span>\n      <input type=\"text\" data-key=\"hod_dir_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_dir_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_dir_check\" title=\"Director sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">Producer</span>\n      <input type=\"text\" data-key=\"hod_prod_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_prod_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_prod_check\" title=\"Producer sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">DOP</span>\n      <input type=\"text\" data-key=\"hod_dop_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_dop_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_dop_check\" title=\"DOP sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">Production Designer</span>\n      <input type=\"text\" data-key=\"hod_pd_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_pd_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_pd_check\" title=\"PD sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">1st AD</span>\n      <input type=\"text\" data-key=\"hod_ad_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_ad_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_ad_check\" title=\"1st AD sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">Sound Designer</span>\n      <input type=\"text\" data-key=\"hod_sd_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_sd_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_sd_check\" title=\"Sound sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">Composer</span>\n      <input type=\"text\" data-key=\"hod_comp_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_comp_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_comp_check\" title=\"Composer sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">Editor</span>\n      <input type=\"text\" data-key=\"hod_ed_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_ed_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_ed_check\" title=\"Editor sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">Costume</span>\n      <input type=\"text\" data-key=\"hod_cos_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_cos_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_cos_check\" title=\"Costume sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">Casting Director</span>\n      <input type=\"text\" data-key=\"hod_cast_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_cast_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_cast_check\" title=\"Casting sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">Production Manager</span>\n      <input type=\"text\" data-key=\"hod_pm_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_pm_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_pm_check\" title=\"PM sign-off\">\n    </div>\n  </div>"
+          "html": "<div class=\"hod-signoff\">\n    <h4>HOD sign-off — department lock</h4>\n    <p class=\"deck\">Each Head of Department countersigns that their work is locked, schedule-ready, and budget-aligned. Once all rows are checked, you can call <em>Roll camera</em>. Signatures here are honour-bound; they don't replace contracts.</p>\n    <div class=\"hod-row\">\n      <span class=\"role\">Director</span>\n      <input type=\"text\" data-key=\"hod_dir_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_dir_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_dir_check\" title=\"Director sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">Producer</span>\n      <input type=\"text\" data-key=\"hod_prod_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_prod_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_prod_check\" title=\"Producer sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">DOP</span>\n      <input type=\"text\" data-key=\"hod_dop_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_dop_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_dop_check\" title=\"DOP sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">Production Designer</span>\n      <input type=\"text\" data-key=\"hod_pd_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_pd_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_pd_check\" title=\"PD sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">1st AD</span>\n      <input type=\"text\" data-key=\"hod_ad_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_ad_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_ad_check\" title=\"1st AD sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">Sound Designer</span>\n      <input type=\"text\" data-key=\"hod_sd_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_sd_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_sd_check\" title=\"Sound sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">Composer</span>\n      <input type=\"text\" data-key=\"hod_comp_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_comp_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_comp_check\" title=\"Composer sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">Editor</span>\n      <input type=\"text\" data-key=\"hod_ed_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_ed_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_ed_check\" title=\"Editor sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">Costume</span>\n      <input type=\"text\" data-key=\"hod_cos_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_cos_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_cos_check\" title=\"Costume sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">Casting Director</span>\n      <input type=\"text\" data-key=\"hod_cast_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_cast_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_cast_check\" title=\"Casting sign-off\">\n    </div>\n    <div class=\"hod-row\">\n      <span class=\"role\">Production Manager</span>\n      <input type=\"text\" data-key=\"hod_pm_name\" placeholder=\"Name\">\n      <input type=\"text\" data-key=\"hod_pm_date\" placeholder=\"Date\">\n      <input type=\"checkbox\" class=\"hod-signoff-check\" data-key=\"hod_pm_check\" title=\"PM sign-off\">\n    </div>\n  </div>"
         }
       ]
     }

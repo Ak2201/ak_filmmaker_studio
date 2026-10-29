@@ -42,7 +42,7 @@ import Store from '../lib/store.js';
 import { listScenes } from '../lib/scenes.js';
 import { loadScript, pageCount } from '../lib/script.js';
 import { activityEntries } from '../lib/hub-activity.js';
-import { isSampleProject } from '../lib/samples.js';
+import { isSampleProject } from '../lib/sample-project.js';
 import { readDevicePrefs, updateDevicePrefs } from '../lib/chrome-prefs.js';
 import { entitlement } from '../lib/plan-gate.js';
 import T, { askDecision, consentText, distinctDays, validate, preview, statusWord, LIMITS } from '../lib/testimonials.js';

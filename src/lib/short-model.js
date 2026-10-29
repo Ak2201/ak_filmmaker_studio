@@ -124,9 +124,9 @@ export function percent(filled, total) {
 
 /** A step badge's state from its filled / total fields. */
 export function badgeState(filled, total) {
-  if (total === 0) return { cls: 'empty', text: 'EMPTY' };
+  if (total === 0) return { cls: 'empty', text: 'Empty' };
   const ratio = filled / total;
-  if (ratio === 0) return { cls: 'empty', text: 'EMPTY' };
+  if (ratio === 0) return { cls: 'empty', text: 'Empty' };
   if (ratio < 1) return { cls: 'partial', text: 'In progress · ' + Math.round(ratio * 100) + '%' };
   return { cls: 'complete', text: 'Complete' };
 }

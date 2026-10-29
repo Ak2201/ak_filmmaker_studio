@@ -10,6 +10,7 @@
      paperTextarea(attrs)          h('textarea', attrs), on paper
      paperTextarea('#id.cls', a)   h('textarea#id.cls', a), on paper
      paperField(el)                an existing input / textarea → paper
+     paperField(el, {script:false}) the same page in Onest, for notes / clippings
      paperScope(el)                every textarea inside el → paper,
                                    including ones added later (table
                                    rows) and raw blueprint markup
@@ -25,10 +26,18 @@ import '../styles/paper-field.css';
 
 export const PAPER_CLASS = 'paper-field';
 export const PAPER_SCOPE = 'paper-scope';
+export const PAPER_SANS = 'paper-sans';
 
-/** Mark an existing input or textarea as paper. Returns it (null-safe). */
-export function paperField(el) {
-  if (el && el.classList) el.classList.add(PAPER_CLASS);
+/** Mark an existing input or textarea as paper. Returns it (null-safe).
+    `{ script: false }` is the interface-face variant: the same white
+    page and black ink, set in Onest (--f-body) instead of Courier Prime.
+    Use it for notes, clippings and vault entries, which are not
+    screenplay text; every screenplay-shaped surface keeps the default. */
+export function paperField(el, opts) {
+  if (el && el.classList) {
+    el.classList.add(PAPER_CLASS);
+    if (opts && opts.script === false) el.classList.add(PAPER_SANS);
+  }
   return el;
 }
 
@@ -72,4 +81,4 @@ export function paperGrow(el) {
   return el;
 }
 
-export default { paperField, paperTextarea, paperScope, paperGrow, PAPER_CLASS, PAPER_SCOPE };
+export default { paperField, paperTextarea, paperScope, paperGrow, PAPER_CLASS, PAPER_SCOPE, PAPER_SANS };

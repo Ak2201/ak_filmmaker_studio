@@ -48,6 +48,12 @@
   box-shadow: none;
 }
 
+/* The Onest variant (paperField(el, {script:false})): notes, vault
+   clippings. Same page, same ink, the interface face. Placed right
+   after the base rule at the same weight of selector so it wins the
+   one declaration it exists for, and still reads a token. */
+:root .paper-field.paper-sans.paper-sans.paper-sans { font-family: var(--f-body); }
+
 /* A long field reads as a page: a screenplay-ish margin, single
    spacing a little opened for a reader, and the page's own shadow. */
 :root textarea.paper-field.paper-field.paper-field,

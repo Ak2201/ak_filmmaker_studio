@@ -1,0 +1,40 @@
+/* ============================================================
+   THE LIBRARY'S FILMS TAB — film cards in the kit's own language
+   ------------------------------------------------------------
+   Owner round 2b, 29 Oct 2026. A film card is the kit card: the film
+   is the heading (Gabarito, from editorial.css), the director sits
+   under it in sentence case and --ink-muted, the year / language line
+   is muted data, the tags are k-chip (kit.css), and nothing on it is
+   the gold / brown accent that the old card text wore. The lesson's
+   bold lead-in reads --ink, not an accent colour.
+
+   Order in the markup is title, director, meta, chips, lesson, so the
+   film name leads on every width with no flex re-ordering to explain.
+   Tokens only; radius, padding and surface still come from the shared
+   card rule in modules.css (a skin can still reshape them).
+   ============================================================ */
+.films-grid .film-card h3 { margin-bottom: var(--s1); color: var(--ink); font-size: var(--t-lg); }
+
+.films-grid .film-card .director {
+  margin-bottom: var(--s1);
+  font-size: var(--t-small);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-muted);
+}
+
+.films-grid .film-card .meta {
+  margin-bottom: var(--s3);
+  font-size: var(--t-tiny);
+  color: var(--ink-muted);
+}
+
+.films-grid .film-card .tags { margin-bottom: var(--s3); }
+
+.films-grid .film-card .lesson strong { color: var(--ink); }
+
+/* The Tamil gloss at the foot of a card: muted ink, and its label in
+   sentence case (editorial.css prints "TAMIL · " in the accent). */
+.films-grid .film-card .tn { color: var(--ink-muted); }
+.films-grid .film-card .tn::before { content: "Tamil \00b7  "; color: var(--ink-muted); letter-spacing: 0; text-transform: none; }

@@ -285,8 +285,8 @@
   /* Catamaran follows every UI face for TAMIL only (fonts.css ships just
      its tamil subset). The "Fallback" faces are metric-matched local
      Arial (fonts.css, from the 8B template) so the swap does not jump. */
-  --face-display:   'Gabarito', 'Gabarito Fallback', 'Catamaran', ui-sans-serif, system-ui, sans-serif;
-  --face-sans:      'Onest', 'Onest Fallback', 'Catamaran', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --face-display:   'Gabarito', 'Rupee Fallback', 'Glyph Fallback', 'Gabarito Fallback', 'Catamaran', ui-sans-serif, system-ui, sans-serif;
+  --face-sans:      'Onest', 'Rupee Fallback', 'Glyph Fallback', 'Onest Fallback', 'Catamaran', ui-sans-serif, system-ui, -apple-system, sans-serif;
   /* No serif any more: the project title, the cover preview and the
      landing tagline are Gabarito. The name stays declared (CLAUDE.md). */
   --face-editorial: var(--face-display);

@@ -414,6 +414,17 @@
   .ct-doc-head,
   .ct-doc-table tr { break-inside: avoid; page-break-inside: avoid; }
   .ct-doc-table thead { display: table-header-group; }
+  /* Round 2b: a table is one block where it fits, and its caption /
+     heading never ends a page alone. The scenes table's narrow first
+     and last columns (Sc., Pages) never wrap "12A" or "3 4/8" and keep a
+     floor, so the Synopsis column cannot squeeze them to a sliver. */
+  .ct-doc-scroll,
+  .ct-doc-table { break-inside: avoid; page-break-inside: avoid; }
+  .ct-doc-table caption,
+  .ct-doc :is(h1, h2, h3, h4),
+  .ct-doc-eyebrow { break-after: avoid; page-break-after: avoid; }
+  .ct-doc-scenes :is(th, td):first-child { white-space: nowrap; min-width: 4ch; }
+  .ct-doc-scenes :is(th, td):last-child { white-space: nowrap; min-width: 7ch; }
   /* base.css's `overflow-wrap: anywhere` split "Department" mid-word
      in a narrow column; a header breaks at spaces or not at all. */
   .ct-doc-table th { overflow-wrap: normal; word-break: normal; hyphens: none; }

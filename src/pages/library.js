@@ -51,11 +51,12 @@ import '../styles/modules.css';
 import '../styles/rates.css';
 import '../styles/library-shelf.css';
 import '../styles/library-books.css';
+import '../styles/library-films.css';
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
-import { panel, pageHeader, button } from '../ui/kit/index.js';
+import { panel, pageHeader, button, chip } from '../ui/kit/index.js';
 import { shelves } from '../lib/navmodel.js';
 import PlanGate from '../lib/plan-gate.js';
 import { mountCaseStudies } from '../ui/case-studies.js';
@@ -183,7 +184,7 @@ const SECTIONS = [
     id: 'films',
     nav: 'FILMS',
     tab: 'Films',
-    title: 'The Tamil Cinema <em>Craft Library.</em>',
+    title: 'The Tamil Cinema Craft Library.',
     tocTitle: 'Tamil Cinema Craft Library',
     tocDesc: `${N_FILMS} films, what to learn from each`,
     count: `${N_FILMS} FILMS`,
@@ -196,7 +197,7 @@ const SECTIONS = [
     id: 'directors',
     nav: 'DIRECTORS',
     tab: 'Directors',
-    title: 'Director <em>Archetypes.</em>',
+    title: 'Director Archetypes.',
     tocTitle: 'Director Archetypes',
     tocDesc: `${N_DIRECTORS} voices to study`,
     count: `${N_DIRECTORS} ARCHETYPES`,
@@ -224,7 +225,7 @@ const SECTIONS = [
     id: 'emotional-impact',
     nav: 'EMOTIONAL IMPACT',
     tab: 'Emotional impact',
-    title: 'Writing for <em>Emotional Impact.</em>',
+    title: 'Writing for Emotional Impact.',
     tocTitle: 'Writing for Emotional Impact',
     tocDesc: `${bookEI.tools.length} tools for engineering what the reader feels`,
     count: `${bookEI.tools.length} TOOLS`,
@@ -238,7 +239,7 @@ const SECTIONS = [
     id: 'save-the-cat',
     nav: 'SAVE THE CAT',
     tab: 'Save the Cat',
-    title: 'Save the <em>Cat.</em>',
+    title: 'Save the Cat.',
     tocTitle: 'Save the Cat',
     tocDesc: `Logline, ${bookSTC.genres.items.length} genres, ${bookSTC.beats.items.length} beats and the Board`,
     count: `${bookSTC.beats.items.length} BEATS · ${bookSTC.genres.items.length} GENRES`,
@@ -257,7 +258,7 @@ const SECTIONS = [
        rate tables, and its title still advertised the calculator and
        told the reader to "use the calculator at the bottom". It names
        what is here now, and the deck routes to the Budget page. */
-    title: 'Equipment &amp; <em>Rates.</em>',
+    title: 'Equipment &amp; Rates.',
     tocTitle: 'Equipment & Rates',
     tocDesc: `Chennai ${rates.asOf} indicative ranges, some re-checked ${rateChecks.lastChecked}`,
     count: `${N_TABLES} RATE TABLES · ${rates.asOf}`,
@@ -271,7 +272,7 @@ const SECTIONS = [
     id: 'watch',
     nav: 'WATCH LIST',
     tab: 'Watch list',
-    title: 'Watch List <em>per Step.</em>',
+    title: 'Watch List per Step.',
     tocTitle: 'Watch List per Step',
     tocDesc: `${FILMS_PER_STEP} films for each of the first ${N_STEPS} of ${N_BLUEPRINT} blueprint steps`,
     count: `${N_WATCHFILMS} FILMS · ${N_STEPS} STEPS`,
@@ -288,7 +289,7 @@ const SECTIONS = [
   {
     id: 'case-studies',
     nav: 'CASE STUDIES',
-    title: 'Case <em>Studies.</em>',
+    title: 'Case Studies.',
     tocTitle: 'Case Studies',
     tocDesc: `${N_STUDIES} films, read beat by beat`,
     count: `${N_STUDIES} FILMS`,
@@ -301,7 +302,7 @@ const SECTIONS = [
   {
     id: 'dissection',
     nav: 'DISSECTION',
-    title: 'Film <em>Dissection.</em>',
+    title: 'Film Dissection.',
     tocTitle: 'Film Dissection',
     tocDesc: 'A finished film taken apart, then yours',
     count: `${N_DISSECTED} WORKED ${N_DISSECTED === 1 ? 'EXAMPLE' : 'EXAMPLES'}`,
@@ -314,7 +315,7 @@ const SECTIONS = [
     id: 'glossary',
     nav: 'TERMINOLOGY',
     tab: 'Film terminology',
-    title: 'Film <em>Terminology.</em>',
+    title: 'Film Terminology.',
     tocTitle: 'Film Terminology',
     tocDesc: 'From logline to edit sheet: every term, with examples',
     count: 'FILM TERMINOLOGY',
@@ -607,13 +608,23 @@ function renderSectionHead(section) {
 /* ============================================================
    SECTION I — FILMS
    ============================================================ */
+/* films.json is typed in capitals (it comes from the 2023 pages and
+   `npm run extract` rewrites it), so the card sets the case instead of
+   the data: an all-capitals string becomes sentence case, a name
+   becomes Title Case. Mixed-case text is left exactly as written. */
+const isCaps = (t) => /[A-Z]/.test(t) && t === t.toUpperCase();
+const lowerFirst = (t) => t.toLowerCase().replace(/^(\P{L}*)(\p{L})/u, (_, a, b) => a + b.toUpperCase());
+const sentenceCase = (t) => (isCaps(String(t || '')) ? lowerFirst(String(t)) : String(t || ''));
+const nameCase = (t) => (isCaps(String(t || '')) ? String(t).toLowerCase().replace(/(^|[\s\-\u2013.])(\p{L})/gu, (_, a, b) => a + b.toUpperCase()) : String(t || ''));
+const metaCase = (t) => String(t || '').split(' \u00b7 ').map(sentenceCase).join(' \u00b7 ');
+
 function renderFilms() {
   return h('section.section-body', {}, [
     h('div.films-grid', {}, films.map((f) => h('article.film-card', { id: filmId(f.title) }, [
-      h('div.meta', { text: f.meta }),
       h('h3', { text: f.title }),
-      h('div.director', { text: f.director }),
-      h('div.tags', {}, (f.tags || []).map((t) => h('span.tag', { text: t }))),
+      h('div.director', { text: nameCase(f.director) }),
+      h('div.meta', { text: metaCase(f.meta) }),
+      h('div.tags', {}, (f.tags || []).map((t) => chip({ label: sentenceCase(t) }))),
       h('p.lesson', { html: f.lesson }, [
         f.tanglish ? h('span.tn', { html: f.tanglish }) : null
       ]),

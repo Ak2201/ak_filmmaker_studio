@@ -3248,3 +3248,28 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     Cost: start.html's JS 48.4 KB -> 59.4 KB raw (20.4 -> 25.0 KB gzip),
     CSS +3.0 KB raw (+0.7 KB gzip). `test:marketing` holds start-motion.js
     to motion, motion/mini and device-motion.js.
+
+75. **Explainers open as a pop-up (29 Oct 2026).** Owner: every in-place
+    explainer ("What is a logline?", the format guide, "What is a step
+    outline?", stage-guide "Why it matters", glossary terms, the
+    format-note "Why?") opens over the page instead of expanding in it, so
+    it never pushes the work around. `src/ui/explainer.js` `openExplainer()`
+    is the one door: at 721px and over it is `dialog.js`'s kit modal (the
+    sign-out dialog's frame), at 720px and below the phone's bottom sheet
+    through `mobile-nav.js` `openSheet()`. Content is title, definition,
+    film example, "Why it matters", up to two click-to-load video facades
+    and Close. Escape closes, focus is trapped (`modal-focus.js`) and
+    returns to the trigger; the body is built once on open, and a window
+    crossing 720px moves the same node between frames. `learn()` returns a
+    trigger button. It writes nothing to storage and never uses a native
+    dialog. Proofs: `prove:explainer` (and `-c`). Re-baselined once: bodies
+    now build on open, so a few words left baselined pages; zero data-key
+    movement. Final QA found no defect. Left as is: (1) the sheet query is
+    `(max-width: 720px)` to match chrome.js `MAB_QUERY` and the bottom bar,
+    so the two never disagree at exactly 720px; (2) the video facade already
+    has a scrim, the overlap seen was the external thumbnail's own lettering;
+    (3) the Film terminology shelf is `OFF_BY_DEFAULT` (`glossary`), so its
+    triggers are unreachable until a plan sells it; (4) `keysPanel` and
+    `mountBeatGuide` are only mounted by `write.js`, which `write.html`
+    redirects away from: leave them until the page is wired, then convert
+    them to the explainer.

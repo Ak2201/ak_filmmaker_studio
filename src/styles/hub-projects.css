@@ -48,7 +48,7 @@
   border: 1px solid var(--rule);
   border-radius: var(--sk-field-radius, var(--radius));
   font-weight: 700;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .projects-section .today-line .tl-text {
@@ -119,7 +119,7 @@
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--ink-muted);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
   font-weight: 500;
   cursor: pointer;
@@ -201,13 +201,20 @@
 .projects-section .project-card .pc-format {
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
+  /* one line: "Feature film · Pre-Production" wrapped to two in a
+     narrow card and pushed the title down; the full words stay in the
+     DOM (and the title attribute's reader) when it ellipsises */
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .projects-section .project-card.active {
   background: var(--paper-raised);
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent), 0 8px 32px var(--cta-glow, transparent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 .projects-section .project-card.active .pc-format { color: var(--accent-deep); }
 .projects-section .project-card .pc-title {
@@ -294,7 +301,7 @@
 .projects-section .project-card.new-card .pc-cta {
   margin: 0;
   font-weight: 700;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .projects-section .project-card.new-card:hover .pc-cta { color: var(--accent-deep); }
@@ -379,11 +386,12 @@
    The project's own name is the one heading that takes the editorial
    italic; the card, like the dashboard's title, is the cover preview. */
 .projects-section .project-card .pc-title {
-  font-family: var(--f-editorial);
-  font-style: italic;
-  font-weight: 400;
+  /* Gabarito, upright: the serif italic retired with the 8B mix */
+  font-family: var(--f-display);
+  font-style: normal;
+  font-weight: 700;
   font-size: var(--t-xl);
-  letter-spacing: 0;
+  letter-spacing: var(--track-tight);
 }
 .projects-section .project-card { background: var(--surface-card); border-color: var(--border-hair); }
 .projects-section .project-card.active { border-color: var(--border-focus); }
@@ -435,6 +443,7 @@
   letter-spacing: 0;
   text-transform: none;
   color: var(--ink-muted);
+  padding-right: var(--s5);   /* clear of the open film's dot */
 }
 .projects-section .project-card .pc-meta { font-family: var(--f-body); color: var(--ink-muted); }
 .projects-section .project-card.active { box-shadow: 0 0 0 1px var(--accent); }

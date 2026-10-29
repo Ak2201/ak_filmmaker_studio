@@ -49,4 +49,9 @@
   overflow-wrap: anywhere;
 }
 .pl-list-wrap > .pl-note { margin: 0; }
+/* The recommended plan (list-prices.js RECOMMENDED): badge, brand
+   border, first on a phone, as on the signed-in cards. */
+.pl-list-prices > li.is-recommended { border-color: var(--accent-primary); box-shadow: 0 0 0 1px var(--accent-primary), var(--shadow-card-hover); }
+.pl-list-rec { order: 0; align-self: flex-start; font-weight: 600; }
+@media (max-width: 720px) { .pl-list-prices > li.is-recommended { order: -1; } }
 @media (max-width: 719px) { .pl-list-prices > li { padding: var(--s4); } }

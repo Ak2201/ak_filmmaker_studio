@@ -71,7 +71,7 @@
   align-items: baseline;
   gap: var(--s2);
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
   font-weight: 700;
   color: var(--ink);
@@ -112,7 +112,7 @@
 .wr-cmp-line.is-changed,
 .wr-cmp-line.is-moved   { background: var(--paper-sunk); }
 .wr-cmp-line.is-removed .wr-cmp-text { text-decoration: line-through; }
-.wr-cmp-mark { font-family: var(--f-mono); font-weight: 700; color: var(--ink); text-align: center; }
+.wr-cmp-mark { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-weight: 700; color: var(--ink); text-align: center; }
 .wr-cmp-type {
   font-family: var(--f-body);
   font-size: var(--t-micro);

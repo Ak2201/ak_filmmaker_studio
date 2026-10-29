@@ -98,9 +98,9 @@
   overflow-wrap: anywhere;
 }
 .ds-tab-meta {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
   overflow-wrap: anywhere;
 }
@@ -119,9 +119,9 @@
   border: 1px solid currentColor;
   border-radius: var(--sk-radius, var(--radius));
   color: var(--ink-muted);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
 }
 
 .ds-note {
@@ -292,7 +292,7 @@
      to carry the hue as well. */
   background: var(--accent-wash);
   color: var(--accent-deep);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
 }
@@ -358,7 +358,7 @@
    --danger would say something is broken, and nothing is. */
 .st-missing {
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
   line-height: var(--lh-snug);
   color: var(--warn-deep);
@@ -698,10 +698,10 @@
 .st-sheet-n {
   flex: none;
   min-width: 2.25em;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--accent-deep);
 }
 /* The label takes the middle, so the page target keeps the right
@@ -761,9 +761,9 @@
 .st-gloss dd { margin: var(--s1) 0 0; }
 .st-gloss .gloss-item.is-core { border-left-color: var(--hue); }
 .st-alias {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   text-transform: none;
   color: var(--ink-muted);
 }
@@ -855,9 +855,9 @@
 }
 .st-gloss-input:focus-visible { border-color: var(--accent-deep); outline: none; }
 .st-gloss-count {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }

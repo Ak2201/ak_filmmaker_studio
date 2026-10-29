@@ -104,7 +104,7 @@ const FORMAT_LABEL = {
 /* ============================================================
    PIECES
    ============================================================ */
-/* A figure for the KPI strip: the kit's stat card (JetBrains Mono value). */
+/* A figure for the KPI strip: the kit's stat card (Onest tabular value). */
 const stat = (value, unit, label, note) => ({ label, value, unit: value === '\u2014' ? '' : unit, note: note || '' });
 
 /* The strip's second line (sceneTagged, nextShootNote, crewCastNote) is

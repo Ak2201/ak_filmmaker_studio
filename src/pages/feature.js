@@ -276,7 +276,7 @@ const HOWTO1_HTML       = `
 const LADDER_HTML       = `
 <section class="ladder-step" id="treatment-ladder">
   <div class="ladder-intro">
-    <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--accent-deep); margin-bottom: 10px;">INTERLUDE · BETWEEN STEPS 02 AND 03</div>
+    <div class="k-eyebrow">Interlude · between steps 02 and 03</div>
     <h2 style="font-size: clamp(32px, 5vw, 52px); font-weight: 800; font-style: italic; line-height: 0.95; margin-bottom: 14px;">The <em style="color: var(--accent-deep);">Treatment Ladder.</em></h2>
     <p style="font-size: 16px; color: var(--ink-muted); font-style: italic; max-width: 720px; line-height: 1.55;">Five rungs from one sentence to a step outline. Each rung is a real document with a target length. Producers and collaborators ask for these in this order. Build them in order, and the script writes itself.</p>
     <!-- No inline surface here: .formula-box IS the slab, and the skin
@@ -628,7 +628,7 @@ function renderToolbar() {
 function pitchSectionHTML() {
   return `
 <section class="pitch-section" id="pitch-deck">
-  <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--accent-deep); margin-bottom: 10px;">AUTO-GENERATED · 10 SLIDES</div>
+  <div class="k-eyebrow">Auto-generated · 10 slides</div>
   <h2>The <em>Pitch Deck.</em></h2>
   <p class="deck">Auto-generated from your filled fields above. The deck refreshes every time you save. For a proper pitch, take this deck, polish the language, and add visuals from your lookbook.</p>
   <div class="pitch-actions">

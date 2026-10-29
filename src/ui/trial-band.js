@@ -29,11 +29,11 @@
    paid year (never for a grant, which has no end). In days, not seconds:
    a renewal is a decision, not a countdown. Nothing is stored.
 
-   AUTO-PAY (schema §62). With a running auto-pay for the plan or pass
-   held, the same window says when it renews and at what amount
-   (offer-terms.js renewsText) and points at Settings, where it is
-   cancelled; the manual RENEW button is drawn only without one. A
-   cancelled auto-pay behaves exactly as a one-time purchase.
+   AUTO-PAY (schema §62). A member with a running auto-pay for the plan or
+   pass gets NO block at all (owner, 28 Oct 2026): it renews itself, and
+   cancelling is done at the mandate (Razorpay e-mail link, bank or UPI
+   app), not here. Settings keeps a status line. A cancelled auto-pay
+   behaves exactly as a one-time purchase.
 
    THE LAUNCH PASS TOO (schema §61). A pass is Pro for a few days, so for
    its whole length the block says "PASS ENDS IN 5 days · CHOOSE A YEARLY
@@ -51,25 +51,9 @@ import Store from '../lib/store.js';
 import PlanGate from '../lib/plan-gate.js';
 import { h } from '../lib/dom.js';
 import { countdown } from '../lib/trial-time.js';
-import { renewsText } from '../lib/offer-terms.js';
 
-/* "3 Nov" for the rail's narrow block. */
-const shortDay = (iso) => { const t = iso ? Date.parse(iso) : NaN; return Number.isFinite(t) ? new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : ''; };
 /* The running auto-pay for `product`, or null. */
 const autopayFor = (cp, product) => (cp && cp.autopay && cp.autopay.live && cp.autopay.product === product ? cp.autopay : null);
-/** The rail block for a running auto-pay: when it renews, and the way to
- *  Settings. Always true (it drew). */
-function paintAutopay(block, ap, fallbackIso) {
-  block.dataset.mode = 'autopay';
-  block.replaceChildren(
-    h('span.sh-rail-trial-label', { text: 'AUTO-PAY' }),
-    h('span.sh-rail-trial-time', { text: renewsText(shortDay(ap.nextChargeAt || ap.currentEnd || fallbackIso), ap.price) }),
-    h('a.sh-rail-trial-cta', { href: 'settings.html#autopay', text: 'MANAGE' }));
-  block.hidden = false;
-  block.classList.remove('is-urgent');
-  return true;
-}
-
 let tick = null;      // the one-second repaint
 let endTimer = null;  // the one-shot at expiry
 let lastText = '';    // what is on screen, so a day-long clock repaints only when it changes
@@ -92,7 +76,8 @@ function paintRenew() {
   if (!block || !cp || cp.reason !== 'paid' || !cp.planUntil) return false;
   const left = Math.ceil((Date.parse(cp.planUntil) - now()) / 86400000);
   if (!(left >= 0 && left <= RENEW_DAYS)) return false;
-  { const ap = autopayFor(cp, cp.plan); if (ap) return paintAutopay(block, ap, cp.planUntil); }
+  /* A running auto-pay renews itself: no box (owner, 28 Oct 2026). */
+  if (autopayFor(cp, cp.plan)) return false;
   block.dataset.mode = 'renew';
   block.replaceChildren(
     h('span.sh-rail-trial-label', { text: 'PLAN ENDS IN' }),
@@ -113,7 +98,8 @@ function paintPass() {
   if (!(ms > 0)) return false;
   const days = Math.ceil(ms / 86400000), hrs = Math.ceil(ms / 3600000);
   { const cp = PlanGate.currentPlan ? PlanGate.currentPlan() : null; const ap = autopayFor(cp, 'pass');
-    if (ap) { paintAutopay(block, ap, ends.toISOString()); armExpiry(ends); return true; } }
+    if (ap) { armExpiry(ends); return true; } }   // renews itself: nothing drawn, the expiry still re-reads
+
   block.dataset.mode = 'pass';
   block.replaceChildren(
     h('span.sh-rail-trial-label', { text: 'PASS ENDS IN' }),
@@ -134,7 +120,7 @@ function fillRail(block) {
   block.append(
     h('span.sh-rail-trial-label', { text: 'TRIAL ENDS IN' }),
     h('span.sh-rail-trial-time', { role: 'timer', 'aria-live': 'off', 'aria-label': 'Trial time left' }),
-    h('a.sh-rail-trial-cta', { href: 'purchase.html', text: 'SEE PLANS' }),
+    h('a.sh-rail-trial-cta', { href: 'purchase.html', text: 'See plans' }),
     h('span.visually-hidden.sh-rail-trial-say', { role: 'status', 'aria-live': 'polite' })
   );
 }
@@ -189,7 +175,7 @@ function warnVisibly(secs) {
       const ui = window.StudioUI;
       if (!ui || !ui.toast) return;
       ui.toast(lead + (o && o.price ? ' Plans from ' + o.price + ' a year.' : '') + ' Everything you did stays.', {
-        type: 'info', action: 'SEE PLANS', onAction: () => { location.href = 'purchase.html'; } });
+        type: 'info', action: 'See plans', onAction: () => { location.href = 'purchase.html'; } });
     } catch (e) { /* no chrome: the rail still counts */ }
   };
   /* offerFor([]) is the cheapest plan above this one: "from" its price. */
@@ -212,7 +198,7 @@ function paint(ends) {
   const text = countdown(ms);
   const block = railBlock();
   if (block) {
-    if (block.dataset.mode === 'renew' || block.dataset.mode === 'pass' || block.dataset.mode === 'autopay') { block.replaceChildren(); delete block.dataset.mode; }
+    if (block.dataset.mode === 'renew' || block.dataset.mode === 'pass') { block.replaceChildren(); delete block.dataset.mode; }
     fillRail(block);
     block.hidden = false;
     const chip = takeChip();

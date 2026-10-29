@@ -160,12 +160,12 @@ const click = (el) => el.dispatchEvent(new DomEvent('click', { bubbles: true }))
   await tick(5);
   draw();   // the page redraws from the SAME (pre-payment) billing
   ok(btn('starter').disabled, 'after an unconfirmed payment Basic\'s BUY is not live again');
-  ok(/CONFIRMING/.test(btn('starter').textContent), 'it says the payment is being confirmed — ' + btn('starter').textContent);
+  ok(/confirming/i.test(btn('starter').textContent), 'it says the payment is being confirmed — ' + btn('starter').textContent);
   ok(btn('indie').disabled && btn('pro').disabled, 'and no other BUY is live while it confirms');
   st = HELD; draw();   // the webhook activated it; billing re-read
   ok(host.querySelector('.pl-success'), 'once billing shows the plan, the success card is drawn');
   ok(btn('indie') && !btn('indie').disabled, 'and the higher tiers are buyable again');
-  ok(btn('starter') && !/CONFIRMING/.test(btn('starter').textContent), 'Basic is a renewal again, not "confirming"');
+  ok(btn('starter') && !/confirming/i.test(btn('starter').textContent), 'Basic is a renewal again, not "confirming"');
 
   // a refusal the server worded is not held: BUY comes back
   st = FREE; draw();

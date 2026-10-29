@@ -694,7 +694,7 @@ export function buildPitchPptx(PptxGenJS, data, slides, brandName) {
     // Title
     slide.addText(s.title || '', {
       x: 0.7, y: 1.3, w: 11, h: 1.2,
-      fontSize: 32, fontFace: 'Georgia',
+      fontSize: 32, fontFace: 'Arial',
       color: PAPER, italic: true, bold: true
     });
     // Body or bullets
@@ -702,14 +702,14 @@ export function buildPitchPptx(PptxGenJS, data, slides, brandName) {
     if (s.body) {
       slide.addText(s.body, {
         x: 0.7, y: yCursor, w: 11, h: 1.5,
-        fontSize: 16, fontFace: 'Georgia',
+        fontSize: 16, fontFace: 'Arial',
         color: PAPER
       });
       yCursor += 1.5;
     }
     if (s.bullets && s.bullets.length) {
       slide.addText(
-        s.bullets.map(b => ({ text: b, options: { bullet: { code: '2014' }, color: PAPER, fontSize: 14, fontFace: 'Georgia' } })),
+        s.bullets.map(b => ({ text: b, options: { bullet: { code: '2014' }, color: PAPER, fontSize: 14, fontFace: 'Arial' } })),
         { x: 0.7, y: yCursor, w: 11, h: 4 }
       );
     }

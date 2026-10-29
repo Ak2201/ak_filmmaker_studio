@@ -115,7 +115,7 @@
   color: var(--ink-body);
 }
 .wk-digits kbd, .wk-print kbd, .wk-nav kbd {
-  font-family: var(--f-code);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
   padding: 1px var(--s1);
@@ -169,7 +169,7 @@
   overflow-wrap: anywhere;
 }
 .wk-nav li:hover { background: var(--surface-hover); color: var(--ink); }
-.wk-nav li .wk-n { min-width: 2.5em; color: var(--ink-muted); font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.wk-nav li .wk-n { min-width: 2.5em; color: var(--ink-muted); font-family: var(--f-body); font-variant-numeric: tabular-nums; }
 .wk-nav li.is-active { background: var(--brand-wash); color: var(--ink); box-shadow: inset 2px 0 0 var(--accent-primary); }
 .wk-nav li.is-active .wk-n { color: var(--brand-deep); }
 .wk-nav .wk-note { font-size: var(--t-micro); }

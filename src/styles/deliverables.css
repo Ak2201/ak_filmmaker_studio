@@ -105,7 +105,7 @@
   gap: var(--s3);
 }
 .dv-group-count {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-small);
   font-variant-numeric: tabular-nums;
   color: var(--ink-muted);

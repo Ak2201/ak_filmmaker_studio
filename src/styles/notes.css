@@ -38,7 +38,7 @@
   background: var(--nt-stock);
   color: var(--note-ink);
 }
-.nt-date { margin-inline-start: auto; flex-shrink: 0; white-space: nowrap; font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--note-muted); }
+.nt-date { margin-inline-start: auto; flex-shrink: 0; white-space: nowrap; font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-tiny); color: var(--note-muted); }
 
 /* The text: paper on the note's stock. Tripled like paper-field.css so
    it out-ranks the paper rule it refines (same specificity, later). */
@@ -185,7 +185,7 @@
   padding: 0 var(--s1);
   border-radius: var(--radius-pill);
   background: var(--surface-elevated);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
   text-align: center;
 }
@@ -199,7 +199,7 @@
   border-radius: var(--radius-pill);
   background: var(--note-yellow);
   color: var(--note-ink);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
   cursor: pointer;
 }

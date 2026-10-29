@@ -195,9 +195,9 @@
 .wr-imp-dest strong { color: var(--ink); font-family: var(--f-display); }
 .wr-imp-dest-state,
 .wr-imp-dest-hint {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .wr-imp-dest-hint { flex: 1 0 100%; text-transform: none; letter-spacing: normal; }
@@ -208,9 +208,9 @@
   border: 1px solid var(--rule);
   border-radius: var(--sk-btn-radius, var(--radius));
   color: var(--ink);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   cursor: pointer;
 }
@@ -322,9 +322,9 @@ body.wr-dropping .bd-empty {
   background: transparent;
   border: 1px solid var(--rule-hair);
   border-radius: var(--sk-radius);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 
@@ -400,9 +400,9 @@ body.wr-dropping .bd-empty {
   border: 1px solid var(--accent);
   border-radius: var(--radius-pill);
   color: var(--accent-deep);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -494,9 +494,9 @@ body.wr-dropping .bd-empty {
   margin-block: var(--s2);
   padding-top: var(--s1);
   border-top: 1px dashed var(--print-rule);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   text-align: right;
   color: var(--print-muted);
 }
@@ -1153,8 +1153,8 @@ body.wr-dropping .bd-empty {
   color: var(--ink);
   font-family: var(--f-display);
   font-size: var(--t-small);
-  text-transform: uppercase;
-  letter-spacing: var(--track-label);
+  text-transform: none;
+  letter-spacing: 0;
 }
 .wr-gen-beat-name::before {
   content: counter(genbeat) ". ";
@@ -1235,9 +1235,9 @@ body.wr-dropping .bd-empty {
   color: var(--ink);
 }
 .tt-hint {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
   text-align: right;
   min-width: 0;
@@ -1304,12 +1304,12 @@ body.wr-dropping .bd-empty {
   color: var(--ink);
 }
 .wr-tr-total, .wr-ch-meta, .wr-ch-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
-.wr-tr-total, .wr-ch-lab { text-transform: uppercase; }
+.wr-tr-total, .wr-ch-lab { text-transform: none; }
 /* The table scrolls inside its own box; the page never scrolls
    sideways at 390px (the reports page's rule for its matrix). */
 .wr-tr-scroll { overflow-x: auto; min-width: 0; }
@@ -1360,7 +1360,7 @@ body.wr-dropping .bd-empty {
   padding: 0 var(--s2);
   border: 1px solid var(--rule);
   border-radius: var(--radius-pill);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--ink-muted);
 }

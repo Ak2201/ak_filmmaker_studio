@@ -194,7 +194,7 @@
   padding: var(--s1h) var(--s4);
   border-top: 1px solid var(--border-hair);
   background: var(--surface-canvas);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--ink-muted);
   /* The strip is empty until a line takes focus, then fills with the type,
@@ -203,7 +203,7 @@
   min-height: 3.5rem;
 }
 .sc-tip[hidden] { display: none; }
-.sc-tip-type { color: var(--brand-deep); font-weight: 600; letter-spacing: var(--track-label); text-transform: uppercase; }
+.sc-tip-type { color: var(--brand-deep); font-weight: 600; letter-spacing: 0; text-transform: none; }
 .sc-tip-what { flex: 1 1 18rem; min-width: 0; color: var(--ink-body); }
 .sc-tip-keys { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sc-tip .learn { flex: 1 1 100%; }
@@ -501,9 +501,9 @@
 .sc-sheet .wx-handoff-msg { margin: 0; font-size: var(--t-ui); font-weight: 600; color: var(--ink); }
 .sc-sheet .wx-handoff-list {
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: .02em;
+  letter-spacing: 0;
   color: var(--ink-muted);
   overflow-wrap: anywhere;
 }
@@ -796,10 +796,10 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   gap: var(--s1) var(--s4);
   margin: 0;
   min-width: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-body);
 }
 /* On a desk it sits in the tools row, between the tools and the menus. */
@@ -843,7 +843,7 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   padding: var(--s3) var(--s4);
   border-top: 1px solid var(--border-hair);
   background: var(--surface-card);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--ink-body);
 }
@@ -858,7 +858,7 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
 }
 .sc-rt-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
 .sc-rt-row strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
-.sc-rt-k { display: inline-flex; align-items: center; gap: var(--s2); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.sc-rt-k { display: inline-flex; align-items: center; gap: var(--s2); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 .sc-rt-key { width: 8px; height: 8px; border-radius: var(--radius-sm); flex: none; }
 .sc-rt-key.is-dia, .sc-rt-dia { background: var(--accent-primary); }
 .sc-rt-key.is-act, .sc-rt-act { background: var(--border-strong); }
@@ -874,8 +874,8 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   margin: 0;
   padding-top: var(--s2);
   border-top: 1px solid var(--border-hair);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .sc-rt-target strong { color: var(--ok-deep); font-weight: 600; }
@@ -918,7 +918,7 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
 .sc-sheet-row .sym { font-size: 18px; color: var(--ink-muted); }
 .sc-sheet-row:hover, .sc-sheet-row:focus-visible { background: var(--surface-hover); border-color: var(--border-hair); outline: none; }
 .sc-sheet-label { flex: 1; min-width: 0; }
-.sc-sheet-hint { font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); }
+.sc-sheet-hint { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); color: var(--ink-muted); }
 
 /* The beats' own bar: a grab handle on the phone sheet, a close
    button wherever the beats float over the page (below 1100px). */
@@ -1123,7 +1123,7 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
     border-bottom: 1px solid var(--border-hair);
   }
 }
-.sc-find-count { min-width: 6.5em; color: var(--ink-muted); font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.sc-find-count { min-width: 6.5em; color: var(--ink-muted); font-family: var(--f-body); font-variant-numeric: tabular-nums; }
 /* On the paper page: the page's own rule colour for a line with a
    match, the accent for the current one. A box-shadow, not a border,
    so the line does not move. */
@@ -1142,7 +1142,7 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   border-radius: var(--radius-pill);
   background: var(--brand); color: var(--brand-on);
   border: 2px solid var(--surface-rail);
-  font-family: var(--f-mono); font-size: var(--t-micro); font-weight: 700; letter-spacing: 0;
+  font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); font-weight: 700; letter-spacing: 0;
 }
 .sc-peer:first-child { margin-inline-start: 0; }
 .sc-peer[data-editing="true"] { box-shadow: 0 0 0 2px var(--accent-primary); }
@@ -1221,4 +1221,4 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
 /* 8B pass (28 Oct 2026): the resting tip is a sentence, so it is set in
    the body face; the element type it names keeps its capitals. */
 .sc-tip { font-family: var(--f-body); font-size: var(--t-tiny); }
-.sc-tip-keys { font-family: var(--f-mono); }
+.sc-tip-keys { font-family: var(--f-body); font-variant-numeric: tabular-nums; }

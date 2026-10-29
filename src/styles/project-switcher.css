@@ -11,9 +11,9 @@
   border-radius: var(--sk-btn-radius);
   background: var(--chrome-fill);
   color: var(--chrome-ink);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   cursor: pointer;
   transition: background-color var(--speed-tap), border-color var(--speed-tap);
 }
@@ -91,7 +91,7 @@
 .ps-link { color: var(--brand-deep); }
 .ps-item:hover, .ps-link:hover { background: var(--surface-hover); }
 .ps-item.is-current { background: var(--brand-wash); border-color: var(--accent-primary); }
-.ps-item-meta { color: var(--ink-muted); font-family: var(--f-mono); font-size: var(--t-nano); letter-spacing: 0.02em; }
+.ps-item-meta { color: var(--ink-muted); font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-nano); letter-spacing: 0; }
 .ps-btn:focus-visible, .ps-item:focus-visible, .ps-link:focus-visible { outline: var(--focus); outline-offset: 2px; }
 
 /* phone: the Go-to sheet carries the switcher instead */

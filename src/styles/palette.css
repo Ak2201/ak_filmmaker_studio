@@ -210,9 +210,9 @@
    paid for fourteen times. The wash carries the warning; the
    letters stay at a readable contrast. */
 .pal-row-status {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
   background: var(--warn-wash);
   border-radius: var(--sk-btn-radius);

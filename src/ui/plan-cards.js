@@ -79,6 +79,7 @@ import { onPass } from '../lib/pass-view.js';
 import { offerTerms, renewsText, cancelledText } from '../lib/offer-terms.js';
 import { fmtMinor, perDayIn, orderCurrency, chargeCaption } from '../lib/price-model.js';
 import { meter } from './kit/meter.js';
+import { RECOMMENDED } from './list-prices.js';
 import SITE from '../data/marketing-site.json';   // student.live: the code is named only once it exists
 import '../styles/plans.css';
 import '../styles/growth.css';
@@ -281,29 +282,41 @@ function addedIds(plans, p) {
 function checklist(labels) {
   return h('ul.pl-check', {}, labels.map((t) => h('li', { text: t })));
 }
+/* AT MOST FIVE BULLETS (owner, 28 Oct 2026): the card is the decision,
+   the comparison table is the check. The bullets are the plan's OWN
+   additions in plan-matrix.json `card` order (the list start.html and
+   pricing.html print), then any other addition in stage order, cut so
+   that with the "N more" line the list never passes five. */
+const CARD_MAX = 5;
 function addsBlock(plans, p, listed) {
   const a = addedIds(plans, p);
   if (!a) return null;
   const s = featureSummary(p, listed);
-  const groups = s.stages.map((st) => ({ label: st.label, labels: st.items.filter((x) => a.ids.has(x.id)).map((x) => x.label) }));
-  const extras = s.caps.filter((c) => a.ids.has(c.id)).map((c) => c.label);
-  groups.push({ label: 'Tools', labels: extras });
-  const shown = groups.filter((g) => g.labels.length);
-  if (!shown.length) return null;
+  const all = [...s.stages.flatMap((st) => st.items), ...s.caps].filter((x) => a.ids.has(x.id));
+  if (!all.length) return null;
+  const order = (matrixMod && matrixMod.MATRIX.card && matrixMod.MATRIX.card[p.id]) || [];
+  const rank = (id) => { const i = order.indexOf(id); return i < 0 ? order.length : i; };
+  const sorted = all.map((x, i) => ({ x, i })).sort((m, n) => rank(m.x.id) - rank(n.x.id) || m.i - n.i).map((m) => m.x);
+  const pickN = order.length ? Math.min(order.length, CARD_MAX - 1) : CARD_MAX - 1;
+  const shown = sorted.length <= CARD_MAX ? sorted : sorted.slice(0, pickN);
+  const more = sorted.length - shown.length;
   const box = h('div.pl-adds', { 'data-plan-adds': p.id });
   box.append(h('p.pl-adds-lead', { text: a.prev ? 'Everything in ' + (a.prev.name || planName(a.prev.id)) + ', plus:' : 'Includes:' }));
-  for (const g of shown) box.append(h('p.pl-check-stage', { text: g.label }), checklist(g.labels));
+  const ul = checklist(shown.map((x) => x.label));
+  if (more > 0) ul.append(h('li.pl-check-more', {}, [h('a', { href: '#plCompare', 'data-plan-action': 'compare', text: `${more} more in the comparison` })]));
+  box.append(ul);
   return box;
 }
 
 /* The caps, as the card's last group. What the plan INCLUDES (Drive,
    AI, the stages) is the checklist above and the table below, so it is
    not said a third time here. */
+/* One line, not a second list: the five bullets above are the card's
+   list (owner, 28 Oct 2026). The table below has each cap as a row. */
 function limitList(limits) {
-  const ul = h('ul.pl-limits');
-  for (const [key, text] of LIMIT_LINES) ul.append(h('li', { text: text(cap(limits, key)) }));
-  ul.append(h('li' + (limits && limits.extension ? '' : '.is-off'), { text: limits && limits.extension ? 'Chrome extension included' : 'Chrome extension not included' }));
-  return ul;
+  const parts = LIMIT_LINES.map(([key, text]) => text(cap(limits, key)));
+  parts.push(limits && limits.extension ? 'Chrome extension included' : 'No Chrome extension');
+  return h('p.pl-limits', { text: parts.join(' · ') });
 }
 
 let staggered = false;
@@ -319,7 +332,16 @@ function wantModes() {
 const planMode = () => Billing.cachedModes().plan;
 
 /** `st` is billing_status() or null (signed out / unknown). */
-export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = false, shop = null } = {}) {
+/* THE PLAN WE RECOMMEND (owner, 28 Oct 2026): Intermediate. Its card
+   carries the "Recommended" badge and the brand border, comes first on a
+   phone (plans.css) and, whenever it can be bought, its button is the
+   only filled one in the row. The id lives in list-prices.js. */
+export { RECOMMENDED };
+
+/** `fine: false` leaves the fine print to the host, which draws the
+ *  same facts in its own "Read this before you purchase" list
+ *  (purchase.html), so nothing is said twice on one page. */
+export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = false, shop = null, fine = true } = {}) {
   hooks = { onBuy: onBuy || hooks.onBuy, rerender: rerender || hooks.rerender, onSuccess: onSuccess || hooks.onSuccess };
   lastSt = st;
   const nowKey = billingKey(st);
@@ -392,13 +414,14 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     const usdRow = usd && price !== null ? shop.plans[p.id] : null;
     const listMinor = usdRow ? usdRow.minor : price;
     const listCur = usdRow ? 'USD' : 'INR';
-    const card = h('article.pl-card' + (isCurrent ? '.is-current' : '') + (below ? '.is-below' : '') + (pq ? '.has-promo' : '') + (credit > 0 ? '.is-upgrade' : ''), { 'data-plan': p.id, 'data-currency': q ? qCur(q) : listCur, 'aria-label': name + (isCurrent ? ' — your plan' : '') });
+    const recommended = p.id === RECOMMENDED && !isCurrent && !below;
+    const card = h('article.pl-card' + (isCurrent ? '.is-current' : '') + (below ? '.is-below' : '') + (recommended ? '.is-recommended' : '') + (pq ? '.has-promo' : '') + (credit > 0 ? '.is-upgrade' : ''), { 'data-plan': p.id, 'data-currency': q ? qCur(q) : listCur, 'aria-label': name + (isCurrent ? ' — your plan' : '') });
 
     /* HEAD: what it is called and who it is for. The badge row keeps its
        height on every card so the prices line up across the row. */
     const pitch = p.blurb || (matrixMod && matrixMod.MATRIX.lines && matrixMod.MATRIX.lines[p.id]) || '';
     card.append(h('div.pl-card-head', {}, [
-      h('p.bd-eyebrow.pl-tag', {}, [isCurrent ? h('span.k-badge.k-badge--solid', { text: 'Your plan' }) : null, ' '].filter(Boolean)),
+      h('p.pl-tag', {}, [isCurrent ? h('span.k-badge.k-badge--solid', { text: 'Your plan' }) : recommended ? h('span.k-badge.k-badge--solid.pl-rec', { text: 'Recommended' }) : null, ' '].filter(Boolean)),
       h('h3.pl-name', { text: name }),
       h('p.pl-blurb', { text: pitch })
     ]));
@@ -439,27 +462,28 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
          promise "1 YEAR" or "ADD A YEAR": the terms line above says how
          it runs. */
       const auto = mode === 'renew';
-      const label = busyPlan === p.id ? 'OPENING…'
-        : confirming.id === p.id ? 'PAYMENT RECEIVED — CONFIRMING…'
-        : renew || lapsedHere ? (auto ? 'CONTINUE ' + name.toUpperCase() + ' — START AUTO-PAY' : 'RENEW ' + name.toUpperCase() + ' — ADD A YEAR')
-        : first ? (auto ? 'BUY ' + name.toUpperCase() : 'BUY ' + name.toUpperCase() + ' — 1 YEAR') : 'UPGRADE TO ' + name.toUpperCase();
-      act.append(h('button.k-btn.k-btn--lg.k-btn--block' + (buyable.length === 1 ? '.k-btn--primary' : '.k-btn--secondary'), {
+      const label = busyPlan === p.id ? 'Opening…'
+        : confirming.id === p.id ? 'Payment received — confirming…'
+        : renew || lapsedHere ? (auto ? 'Continue ' + name + ' — start auto-pay' : 'Renew ' + name + ' — add a year')
+        : first ? (auto ? 'Buy ' + name : 'Buy ' + name + ' — 1 year') : 'Upgrade to ' + name;
+      /* secondary here; the ONE filled button is chosen once the row is built */
+      act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--secondary', {
         type: 'button', 'data-plan-action': 'buy', 'data-plan': p.id, 'data-offer-mode': mode || '', disabled, text: label }));
       if (renew) {
         const left = daysTo(until);
         act.append(h('p.pl-until' + (left <= 30 ? '.is-soon' : ''), { text: left <= 30
           ? `Ends in ${left} day${left === 1 ? '' : 's'} (${day(until)}). Renew to keep full access; the new year starts when this one ends.`
-          : `Valid until ${day(until)}. Renewing adds a year after that date.` }));
+          : `Valid until ${day(until)} · a renewal adds a year after that date.` }));
       }
     } else if (apHere) {
-      act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--secondary.pl-cta-held', { type: 'button', disabled: true, text: 'YOUR CURRENT PLAN' }));
+      act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--secondary.pl-cta-held', { type: 'button', disabled: true, text: 'Your current plan' }));
       const when = day(ap.nextChargeAt || ap.currentEnd);
       act.append(h('p.pl-until.pl-autopay', { text: ap.live ? renewsText(when, ap.price) : cancelledText(day(ap.currentEnd)) }));
     } else if (isCurrent && p.id !== 'free') {
-      act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--secondary.pl-cta-held', { type: 'button', disabled: true, text: 'YOUR CURRENT PLAN' }));
+      act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--secondary.pl-cta-held', { type: 'button', disabled: true, text: 'Your current plan' }));
       act.append(h('p.pl-until', { text: 'Granted to you for good. Nothing to renew.' }));
     } else if (current && !higher) {
-      act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--ghost.pl-cta-held', { type: 'button', disabled: true, text: 'INCLUDED IN YOUR PLAN' }));
+      act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--ghost.pl-cta-held', { type: 'button', disabled: true, text: 'Included in your plan' }));
     }
     if (statusText && statusPlan === p.id) act.append(h('p.pl-status', { role: 'status', text: statusText }));
     if (act.childNodes.length) card.append(act);
@@ -476,7 +500,14 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
   /* The next step up wears the slow border trail (it is a class, so it
      is there on every redraw), and the row staggers in ONCE: the settings
      page redraws this block on every billing event. */
-  if (nextCard) nextCard.classList.add('mo-trail', 'is-next');
+  /* ONE filled button: the recommended plan's when it can be bought,
+     else the next step up. No glow trail: the 8B mix marks it with the
+     brand border and the badge (owner, 28 Oct 2026). */
+  {
+    const rec = row.querySelector(`.pl-card[data-plan="${RECOMMENDED}"] [data-plan-action="buy"]`);
+    const lead = rec || (nextCard && nextCard.querySelector('[data-plan-action="buy"]'));
+    if (lead) { lead.classList.remove('k-btn--secondary'); lead.classList.add('k-btn--primary'); lead.closest('.pl-card').classList.add('is-next'); }
+  }
   if (!staggered) {
     staggered = true;
     row.setAttribute('data-reveal-group', '');
@@ -506,12 +537,13 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
   if (st && st.disabled) wrap.append(h('p.pl-note', { text: 'This account has been disabled by an administrator, so it cannot buy a plan.' }));
   /* The offers sit side by side under the row: the code box and the
      student band. Drawn only where there is something to buy. */
-  if (apBlocks) wrap.append(h('p.pl-note.pl-autopay-note', {}, ['Auto-pay is on for this account, so nothing more is bought here while it runs. ',
-    h('a', { href: 'settings.html#autopay', text: 'Manage auto-pay in Settings' }), '.']));
+  /* Auto-pay is managed with the payment service, not in the studio
+     (owner, 28 Oct 2026): no link to a Settings control here. */
+  if (apBlocks) wrap.append(h('p.pl-note.pl-autopay-note', { text: 'Auto-pay is on for this account, so nothing more is bought here while it runs.' }));
   if (buyable.length && Billing.paymentsConfigured() && !(st && st.disabled)) wrap.append(h('div.pl-offers', {}, [mode === 'renew' ? null : promoBox(buyable), eduCallout()].filter(Boolean)));
   /* The fine print, together: what kind of payment, the refund terms and
      the upgrade credit (refund.html §4, schema section 21), the legal. */
-  wrap.append(h('div.pl-fine', {}, [
+  if (fine) wrap.append(h('div.pl-fine', {}, [
     h('p.pl-note', { text: fineTerms(mode) }),
     h('p.pl-note.pl-promise', { text: 'Refunded in full if you are charged twice or by mistake, if the plan is not activated on your account, or where Indian law requires it. Otherwise a year is final. Move up any time: what is left of your year counts toward the new plan.' }),
     h('p.pl-note.pl-legal', {}, [
@@ -789,7 +821,7 @@ delegate(document, 'click', '[data-plan-action="buy"]', async (e, el) => {
     try { st = await Billing.status(); } catch (x) { /* the drawn billing */ }
     const ap = Billing.autopayOf(st);
     if (ap && ap.live && ap.product === 'pass') {
-      const yes = await ask({ title: 'Stop the weekly auto-pay?', body: 'Buying a yearly plan stops your weekly auto-pay. Continue?', confirm: 'STOP IT AND CONTINUE', cancel: 'Not now' });
+      const yes = await ask({ title: 'Stop the weekly auto-pay?', body: 'Buying a yearly plan stops your weekly auto-pay. Continue?', confirm: 'Stop it and continue', cancel: 'Not now' });
       if (!yes) return;
       busyPlan = planId; statusPlan = planId; statusText = 'Stopping the weekly auto-pay…';
       if (hooks.rerender) hooks.rerender();

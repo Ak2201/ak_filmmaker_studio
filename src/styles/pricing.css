@@ -200,6 +200,9 @@
   .pr-faq-head { position: static; }
   .pr-tiers { grid-template-columns: 1fr; max-width: 520px; }
   .pr-tier-line { min-height: 0; }
+  /* the recommended plan (pricing-compare.json plans.pick) reads first
+     once the cards stack; the li order in the markup stays the matrix's */
+  .pr-pick { order: -1; margin-top: var(--s3); }
 }
 @media (max-width: 560px) {
   .pr-tier { padding: var(--s5); }

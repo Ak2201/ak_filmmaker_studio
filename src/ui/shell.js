@@ -877,6 +877,7 @@ function openAcctMenu(btn) {
   menu.append(h('div.sh-acct-list', {}, [
     row('a', { href: (settings && settings.href) || 'settings.html' }, 'settings', 'Settings'),
     purchase ? row('a', { href: purchase.href }, purchase.sym || 'shopping_cart', 'Purchase') : null,
+    row('a', { href: 'index.html?sample=1&open=dashboard' }, 'movie', 'Open the sample project'),
     row('button', { type: 'button', 'data-action': 'rail-help' }, 'help', 'Help & shortcuts'),
     row('button', { type: 'button', 'data-action': 'rail-whatsnew' }, 'auto_awesome', 'What’s new'),
     signedIn
@@ -2131,7 +2132,7 @@ export function mountShell() {
   syncRailAccount();
   /* Two frames: one for layout, one for the web fonts to land. The
      bar is measured, and measuring it before the brand face (Catamaran) and
-     JetBrains Mono arrive records the fallback's height. The spy runs on the
+     Onest arrive records the fallback's height. The spy runs on the
      same schedule because mountShell() is not always called after the
      page has rendered — dashboard.js mounts at import time, when #app
      is still empty, the same trap chrome.js records one level up. */

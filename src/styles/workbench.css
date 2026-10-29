@@ -233,7 +233,7 @@
   min-width: 0;
 }
 .wb-beat-no {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 600;
   color: var(--hue-deep, var(--accent));
@@ -429,7 +429,7 @@
 .wb-blank {
   padding: 0 2px;
   background: var(--paper-sunk);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
   color: var(--ink-muted);
 }

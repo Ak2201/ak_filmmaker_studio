@@ -61,7 +61,7 @@
   color: var(--hue-deep);
 }
 .ct-dept-count {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
@@ -139,7 +139,7 @@
 .ct-dept {
   flex: 0 1 11rem;
   width: auto;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--hue-deep);
 }
@@ -250,7 +250,7 @@
 .ct-pick-no {
   flex: 0 0 auto;
   min-width: 2.25rem;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
   color: var(--ink-muted);
@@ -269,7 +269,7 @@
 }
 .ct-pick-pages {
   flex: 0 0 auto;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
@@ -502,7 +502,7 @@
 }
 .ct-light-cell dd {
   margin: 2px 0 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-small);
   font-weight: 700;
   color: var(--ink);
@@ -602,7 +602,7 @@
 }
 .ct-send-call {
   flex: 0 0 auto;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
@@ -641,7 +641,7 @@
   background: var(--surface-rail);
   border: 1px solid var(--border-hair);
   border-radius: var(--sk-field-radius, var(--radius));
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
   line-height: var(--lh-body);
   color: var(--ink-body);
@@ -687,7 +687,7 @@
 }
 .ct-gl-p { margin: 0; color: var(--ink); }
 .ct-gl-small { margin: 0; font-size: var(--t-small); color: var(--ink-body); }
-.ct-gl-pin { margin: 0; font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); }
+.ct-gl-pin { margin: 0; font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); color: var(--ink-muted); }
 .ct-gl-link { font-size: var(--t-small); color: var(--accent-deep); }
 .ct-gl-safe { display: grid; gap: var(--s1); padding: var(--s3); border-radius: var(--sk-radius); background: var(--paper-sunk, var(--paper)); }
 .ct-gl-scenes { display: grid; gap: var(--s2); }
@@ -701,7 +701,7 @@
 }
 .ct-gl-no { font-family: var(--f-body); font-size: var(--t-micro); text-transform: none; color: var(--accent-deep); }
 .ct-gl-slug { font-weight: 600; color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
-.ct-gl-pg { font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); white-space: nowrap; }
+.ct-gl-pg { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); color: var(--ink-muted); white-space: nowrap; }
 .ct-gl-syn { grid-column: 1 / -1; font-size: var(--t-small); color: var(--ink-body); }
 
 @media (max-width: 720px) {

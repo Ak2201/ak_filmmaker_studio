@@ -102,12 +102,12 @@ export function passRefusal(hint, fallback) {
     has_plan: 'You already have a yearly plan, so the pass is not needed.',
     code: 'A promo code does not apply to the launch pass. Buy it without one.',
     renew_off: 'The terms of this offer changed a moment ago. Read the card again before you pay; nothing was charged.',
-    subscribed: 'Auto-pay is already on for this account. It can be cancelled in Settings, under Plan & purchases.'
+    subscribed: 'Auto-pay is already on for this account. Cancel it with Razorpay, the payment service.'
   }[hint] || fallback || 'The pass could not be bought just now. Please try again.';
 }
 
-/** "TRY IT FOR ₹49" — the one label for the pass's buy button. */
-export const passCta = (facts) => (facts && facts.price ? 'TRY IT FOR ' + facts.price : 'TRY THE WHOLE STUDIO');
+/** "Try it for ₹49" — the one label for the pass's buy button. */
+export const passCta = (facts) => (facts && facts.price ? 'Try it for ' + facts.price : 'Try the whole studio');
 
 /** The length of the pass this account bought, in days, from its own
  *  paid payment's span (§52's starts_at / ends_at), or null. */

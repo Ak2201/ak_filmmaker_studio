@@ -1687,10 +1687,13 @@ argument for asking.
   button. (It was 2px "printed matter", then 16px and pills; each was one line
   in one skin file, which is the point of the contract.)
 - **One theme, no toggle.** Sepia and desk went first, then paper (14 Oct 2026); since 28 Oct 2026 the one palette is the 8B mix: a light work surface with a dark rail and band.
-- **Serif only in three places.** Playfair Display *italic*
-  (`--f-editorial`) is the project title / cover preview and the landing
-  tagline; Courier Prime is screenplay text. A page title is Space Grotesk,
-  upright — `--face-accent` is the display face now.
+- **No serif, no mono UI face (owner, 28 Oct 2026).** Gabarito is every
+  heading and the project title / cover / landing tagline (`--f-editorial`
+  now points at `--face-display`, upright); Onest is everything else,
+  figures included (`--f-mono` / `--f-code` point at `--face-sans`; data
+  adds `font-variant-numeric: tabular-nums`). Courier Prime is screenplay
+  text only. Playfair Display, JetBrains Mono, Space Grotesk and Inter are
+  gone: no @font-face, preload or package. Token NAMES stay declared.
 - **Fonts are self-hosted** (`src/styles/fonts.css`, `@fontsource`); no page,
   CSP or worker names a Google Fonts host. The Material Symbols subset is cut
   at build time by `scripts/lib/icon-font.mjs` and FAILS THE BUILD on a name

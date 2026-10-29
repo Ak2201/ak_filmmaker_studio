@@ -33,10 +33,16 @@
 .pl-card.is-next { border-color: var(--border-strong); }
 /* The current plan: marked by its border AND its "Your plan" badge,
    never by colour alone. */
-.pl-card.is-current { border-color: var(--accent-primary); box-shadow: 0 0 0 1px var(--accent-primary); }
+.pl-card.is-current { border-color: var(--ink-muted); box-shadow: 0 0 0 1px var(--ink-muted); }
+/* THE RECOMMENDED PLAN (owner, 28 Oct 2026: promote Intermediate): the
+   brand border, its "Recommended" badge, a lift, and FIRST on a phone.
+   The DOM keeps plan order, so a screen reader still hears the tiers
+   in rank; only the phone's visual order moves it up. */
+.pl-card.is-recommended { border-color: var(--accent-primary); box-shadow: 0 0 0 1px var(--accent-primary), var(--shadow-card-hover); }
 .pl-card.is-free { background: var(--paper); }
 .pl-card-head { display: grid; gap: var(--s1); }
 .pl-tag { margin: 0; min-height: var(--h-badge); display: flex; align-items: center; }
+.pl-rec { font-weight: 600; }
 .pl-name { font-family: var(--f-display); font-size: var(--t-xl); font-weight: 700; line-height: var(--lh-tight); margin: 0; color: var(--ink); }
 .pl-blurb { margin: 0; color: var(--ink-body); font-size: var(--t-small); line-height: var(--lh-body); min-height: calc(2 * var(--lh-body) * 1em); }
 .pl-price-block { display: grid; gap: var(--s-half); padding-top: var(--s3); border-top: 1px solid var(--border-hair); }
@@ -48,7 +54,7 @@
 .pl-save { margin: 0; font-size: var(--t-tiny); font-family: var(--f-body); letter-spacing: 0; text-transform: none; color: var(--ok-deep); }
 .pl-upgrade { margin: 0; font-size: var(--t-small); color: var(--ink-body); }
 .pl-cta { display: grid; gap: var(--s2); }
-.pl-cta .k-btn { font-weight: 600; letter-spacing: .02em; min-height: 44px; }
+.pl-cta .k-btn { font-weight: 600; letter-spacing: 0; text-transform: none; min-height: 44px; }
 .pl-card-body { display: grid; gap: var(--s2); align-content: start; flex: 1 1 auto; padding-top: var(--s3); border-top: 1px solid var(--border-hair); }
 .pl-adds { display: grid; gap: var(--s2); margin: 0; }
 .pl-adds-lead { margin: 0; font-size: var(--t-small); font-weight: 600; color: var(--ink); }
@@ -56,9 +62,9 @@
 .pl-adds > .pl-check-stage:first-of-type { margin-top: 0; }
 /* A checklist: a drawn tick (a rotated corner, not a glyph, so no font
    has to carry it) in the accent as a mark. */
-.pl-check, .pl-limits { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1h); font-size: var(--t-small); color: var(--ink-body); }
-.pl-check li, .pl-limits li { position: relative; padding-left: var(--s5); line-height: var(--lh-body); }
-.pl-check li::before, .pl-limits li::before {
+.pl-check { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1h); font-size: var(--t-small); color: var(--ink-body); }
+.pl-check li { position: relative; padding-left: var(--s5); line-height: var(--lh-body); }
+.pl-check li::before {
   content: '';
   position: absolute;
   left: var(--s1);
@@ -69,8 +75,12 @@
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
-.pl-limits li.is-off { color: var(--ink-muted); }
-.pl-limits li.is-off::before { border-width: 0 0 2px 0; transform: none; width: .6em; top: .1em; left: var(--s1); border-color: var(--ink-muted); }
+/* "N more in the comparison": a link row, no tick */
+.pl-check li.pl-check-more::before { content: none; }
+.pl-check li.pl-check-more { padding-left: var(--s5); }
+.pl-check-more a { color: var(--accent-deep); text-underline-offset: 2px; }
+/* the caps, one quiet line under the bullets (plan-cards.js limitList) */
+.pl-limits { margin: var(--s1) 0 0; font-size: var(--t-tiny); line-height: var(--lh-body); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
 .pl-features { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s1) var(--s3); margin: 0; padding-top: var(--s3); border-top: 1px solid var(--border-hair); }
 .pl-features-n { margin: 0; color: var(--ink-body); font-size: var(--t-small); }
 .pl-features-n strong { font-family: var(--f-display); font-size: var(--t-base); color: var(--ink); font-variant-numeric: tabular-nums; }
@@ -164,7 +174,7 @@
 .pl-compare { margin-top: var(--s3); border: 1px solid var(--border-hair); border-radius: var(--sk-radius, var(--radius)); background: var(--paper-raised); }
 .pl-compare > summary { cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s1) var(--s3); padding: var(--s4) var(--s5); list-style: none; }
 .pl-compare > summary::-webkit-details-marker { display: none; }
-.pl-compare > summary::after { content: '+'; font-family: var(--f-mono); font-size: var(--t-lg); color: var(--ink-muted); margin-left: auto; }
+.pl-compare > summary::after { content: '+'; font-family: var(--f-body); font-size: var(--t-lg); color: var(--ink-muted); margin-left: auto; }
 .pl-compare[open] > summary::after { content: '\2212'; }
 .pl-compare > summary:focus-visible { outline: var(--focus); outline-offset: calc(-1 * var(--s1)); }
 .pl-compare-h { font-family: var(--f-display); font-size: var(--t-lg); font-weight: 700; color: var(--ink); }
@@ -191,6 +201,7 @@
   /* A tier below the one held (plan-cards.js .is-below): a one-line
      summary under the buyer's own card, never a full card above it.
      The compare table below still has every row for the curious. */
+  .pl-card.is-recommended { order: -1; }
   .pl-card.is-below { order: 1; padding: var(--s3) var(--s4); gap: var(--s2); }
   .pl-card.is-below .pl-tag,
   .pl-card.is-below .pl-blurb,
@@ -209,3 +220,5 @@
 .pl-use-note { margin: 0; font-size: var(--t-tiny); color: var(--warn-deep); }
 .pl-use.is-full { border-color: var(--warn-line); }
 @media (max-width: 720px) { .pl-usage-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* one way to the table a card: the "N more in the comparison" row when there is one */
+.pl-card:has(.pl-check-more) .pl-features-link { display: none; }

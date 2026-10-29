@@ -109,23 +109,56 @@
 .gr-intro { background: var(--paper-sunk); }
 .pu-ref { margin: 0; overflow-wrap: anywhere; }
 
-/* ---- before you pay: one year, and when a refund is given ---------- */
+/* ---- read this before you purchase (purchase.js buyTerms) ----------
+   One card, a numbered list, one fact a row: an icon in a brand-wash
+   disc, a bold head, the sentence under it (owner, 28 Oct 2026: "a nice
+   format, not a wall of text"). Two columns on a desk, one on a phone. */
 .pu-terms {
   display: grid;
-  gap: var(--s2);
-  padding: var(--s4) var(--s5);
+  gap: var(--s4);
+  padding: var(--s5);
   background: var(--paper-raised);
   border: 1px solid var(--border-hair);
   border-radius: var(--sk-radius, var(--radius));
-  max-width: var(--measure-text, 72ch);
 }
 .pu-terms > * { margin: 0; }
-.pu-terms-lead { color: var(--ink); }
-.pu-terms-sub { color: var(--ink-muted); }
-.pu-terms-list { display: grid; gap: var(--s2); padding-inline-start: var(--s5); color: var(--ink-muted); }
-.pu-terms-list strong { color: var(--ink); font-weight: 600; }
-.pu-terms a { overflow-wrap: anywhere; }
+.pu-terms-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: var(--s4) var(--s6);
+  counter-reset: pu-term;
+}
+.pu-term { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s3); align-items: start; counter-increment: pu-term; min-width: 0; }
+.pu-term-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-pill);
+  background: var(--brand-wash);
+  color: var(--brand-deep);
+}
+.pu-term-icon .k-sym { font-size: 1.25rem; }
+.pu-term-text { display: grid; gap: var(--s1); min-width: 0; color: var(--ink-body); font-size: var(--t-small); line-height: var(--lh-body); }
+.pu-term-text > p { margin: 0; }
+.pu-term-h { color: var(--ink); font-size: var(--t-base); font-weight: 600; }
+.pu-term-h::before { content: counter(pu-term) '. '; color: var(--brand-deep); font-variant-numeric: tabular-nums; }
+.pu-terms-cases { margin: var(--s1) 0 0; padding-inline-start: var(--s4); display: grid; gap: var(--s1); }
+.pu-terms-cases strong { color: var(--ink); font-weight: 600; }
+.pu-terms a { color: var(--accent-deep); text-underline-offset: 2px; overflow-wrap: anywhere; }
+.pu-terms-legal { padding-top: var(--s3); border-top: 1px solid var(--border-hair); font-size: var(--t-tiny); color: var(--ink-muted); }
 @media (max-width: 719px) { .pu-terms { padding: var(--s4); } }
+
+/* ---- your plan: the facts (purchase.js currentSummary) ------------ */
+.pu-facts { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: var(--s3) var(--s5); }
+.pu-fact { display: grid; gap: var(--s-half); min-width: 0; }
+.pu-fact > dt { font-size: var(--t-tiny); color: var(--ink-muted); }
+.pu-fact > dd { margin: 0; font-size: var(--t-small); color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pu-fact.is-soon > dd { color: var(--warn-deep, var(--ink)); font-weight: 600; }
+/* the sentence-long facts (payment, includes) take the whole row */
+.pu-fact.is-wide { grid-column: 1 / -1; }
 
 /* THE REFUND ANNOUNCEMENT (owner, 28 Oct 2026): large, first in the plan card,
    on the one page an unpaid person can reach, until they buy again. */

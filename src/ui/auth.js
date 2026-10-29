@@ -436,7 +436,7 @@ export function renderAccountBlock() {
        menu row has no room for them: the row names the offer, not the
        price, and the offer page says both. */
     const passRow = () => (passPhase(cachedPassOffer()) === 'open'
-      ? '→ ' + passCta(passMode(cachedPassOffer()) === 'renew' ? null : passFacts(cachedPassOffer())) : '→ SEE PLANS');
+      ? '→ ' + passCta(passMode(cachedPassOffer()) === 'renew' ? null : passFacts(cachedPassOffer())) : '→ See plans');
     if (g.reason === 'pending') gateRows.push(h('a.am-item', { href: 'invite.html#request', text: '→ YOUR INVITE REQUEST' }));
     else {
       const row = h('a.am-item', { href: 'invite.html', text: passRow() });

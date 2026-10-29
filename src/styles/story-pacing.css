@@ -10,7 +10,7 @@
 
 /* ---- 1. the curve ---- */
 .pc-chart { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s2); }
-.pc-axis { display: flex; flex-direction: column; justify-content: space-between; padding-block: var(--s5) 0; font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); text-align: right; }
+.pc-axis { display: flex; flex-direction: column; justify-content: space-between; padding-block: var(--s5) 0; font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); color: var(--ink-muted); text-align: right; }
 .pc-axis span { line-height: 1; transform: translateY(-50%); }
 .pc-axis span:last-child { transform: translateY(0); }
 .pc-plot {
@@ -70,7 +70,7 @@
   background: var(--surface-elevated); color: var(--ink);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  font-family: var(--f-mono); font-size: var(--t-micro); white-space: nowrap;
+  font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); white-space: nowrap;
   opacity: 0; pointer-events: none; z-index: 2;
 }
 .pc-dot:hover .pc-dot-tip, .pc-dot:focus-visible .pc-dot-tip { opacity: 1; }
@@ -113,7 +113,7 @@
 .pc-deck { margin-top: var(--s2); }
 .pc-deck-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2) var(--s4); margin-bottom: var(--s3); }
 .pc-deck-title { margin: 0; font-family: var(--f-display); font-size: var(--t-lg); font-weight: 600; letter-spacing: -0.01em; color: var(--ink); }
-.pc-deck-meta { font-size: var(--t-micro); color: var(--brand-deep); text-transform: uppercase; letter-spacing: .04em; }
+.pc-deck-meta { font-size: var(--t-micro); color: var(--brand-deep); text-transform: none; letter-spacing: 0; }
 .pc-cards { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); }
 .pc-card {
   display: grid; gap: var(--s3); align-content: start;
@@ -142,7 +142,7 @@
 .pc-passage { margin: 0; padding: var(--s2) var(--s3); border-left: var(--sk-hue-rule-w, 3px) solid var(--accent-primary); background: var(--surface-rail); border-radius: var(--radius-sm); }
 .pc-passage.is-inferred { border-left-color: var(--border-strong); }
 .pc-passage p { margin: 0; font-size: var(--t-small); line-height: 1.5; color: var(--ink-body); }
-.pc-passage .pc-passage-eb { margin-bottom: var(--s1); font-size: var(--t-micro); letter-spacing: .06em; text-transform: uppercase; color: var(--brand-deep); }
+.pc-passage .pc-passage-eb { margin-bottom: var(--s1); font-size: var(--t-micro); letter-spacing: 0; text-transform: none; color: var(--brand-deep); }
 .pc-passage.is-inferred .pc-passage-eb { color: var(--ink-muted); }
 .pc-prompt { margin: 0; font-size: var(--t-small); line-height: 1.5; color: var(--ink-muted); }
 .pc-card-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); padding-top: var(--s2); border-top: 1px solid var(--border-hair); }
@@ -178,12 +178,12 @@
   padding: var(--s2) var(--s3);
   background: var(--surface-rail); border: 1px solid var(--border-hair); border-radius: var(--sk-field-radius, var(--radius));
 }
-.pc-tune-k { flex: 1 1 auto; font-size: var(--t-micro); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-muted); }
+.pc-tune-k { flex: 1 1 auto; font-size: var(--t-micro); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 .pc-tune-v { white-space: nowrap; min-width: 4.5ch; text-align: center; color: var(--ink); }
 .pc-filter { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s4); margin-bottom: var(--s3); }
 .pc-chips { display: flex; flex-wrap: wrap; gap: var(--s2); min-width: 0; }
 .pc-filter-r { display: flex; align-items: center; gap: var(--s3); margin-left: auto; }
-.pc-deck-count { font-size: var(--t-micro); color: var(--ink-muted); text-transform: uppercase; letter-spacing: .04em; }
+.pc-deck-count { font-size: var(--t-micro); color: var(--ink-muted); text-transform: none; letter-spacing: 0; }
 
 @media (max-width: 719px) {
   /* The header's actions WRAP. They used to scroll sideways, which cut

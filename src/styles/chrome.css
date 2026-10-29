@@ -4336,21 +4336,35 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
 
 /* ---- the foot: trial clock, help, account ------------------------- */
 :root .sh-rail-trial {
+  /* a left-aligned row in the rail's own style: the label over the value
+     on the left, the link at the end, like a rail item's word and mark */
   margin: 0 0 var(--s2);
-  width: 56px;
-  padding: var(--s2) 0;
+  width: auto;
+  padding: var(--s2) var(--s3);
   border-top: 1px solid var(--border-hair);
-  gap: 2px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "label cta" "time cta";
+  align-items: center;
+  justify-items: start;
+  column-gap: var(--s3);
+  row-gap: 0;
+  text-align: left;
 }
-:root .sh-rail-trial-label { font-size: var(--t-nano); letter-spacing: 0; color: var(--ink-muted); }
-:root .sh-rail-trial-time { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); color: var(--ink); }
+:root .sh-rail-trial-label { grid-area: label; font-size: var(--t-micro); letter-spacing: 0; color: var(--ink-muted); }
+:root .sh-rail-trial-time { grid-area: time; font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-ui); font-weight: 600; color: var(--ink); }
 :root .sh-rail-trial-cta {
-  padding: 2px var(--s1);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  font-size: var(--t-nano);
+  grid-area: cta;
+  padding: var(--s1) 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-size: var(--t-micro);
+  font-weight: 600;
   color: var(--brand-deep);
+  text-decoration: none;
 }
+:root .sh-rail-trial-cta:hover { background: none; text-decoration: underline; }
 :root .sh-rail-trial.is-urgent { border-top-color: var(--danger); }
 :root .sh-rail-trial.is-urgent .sh-rail-trial-time { color: var(--danger); }
 .sh-rail-avatar {
@@ -5090,9 +5104,6 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
   }
   .sh-rail .sh-rail-tools .sh-sync { height: auto; gap: 0 var(--s3); }
   .sh-rail .sh-rail-tools .sh-sync .sh-sync-icon { font-size: 18px; }
-
-  /* the trial clock spans the rail like everything else */
-  :root .sh-rail-trial { width: auto; padding: var(--s2) var(--s3); text-align: left; }
 
   /* the account: the photo or initials, then the name */
   .sh-rail .sh-rail-account { min-height: 44px; }

@@ -344,7 +344,7 @@ export function scriptWidget(ctx) {
     scenesEl,
     h('button.add-scene-btn', { type: 'button', 'data-sg': 'script-add-scene', text: '+ ADD SCENE' }),
     h('div.editor-actions', {}, [
-      h('button.mini-btn.danger', { type: 'button', 'data-sg': 'script-clear', text: 'CLEAR SCRIPT' })
+      h('button.mini-btn.danger', { type: 'button', 'data-sg': 'script-clear', text: 'Clear script' })
     ]),
     fullGuideLink('short', 'step-08', 'The formatted preview and the Fountain / text exports are in the full guide.')
   ]);

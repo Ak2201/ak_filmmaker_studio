@@ -238,7 +238,7 @@ export function mountStepsPath(before, groups) {
 
   const wrap = h('section.st-path', { id: 'start-here', 'aria-label': 'Where to start' });
   wrap.append(
-    h('p.st-path-eyebrow', { text: 'START HERE' }),
+    h('p.st-path-eyebrow', { text: 'Start here' }),
     h('h2.st-path-title', { text: 'The spine.' }),
     h('p.st-path-deck', {
       text: 'There are ' + all + ' steps below and they are in the order you do them, '
@@ -318,7 +318,7 @@ function normaliseInlineHue(html) {
 
 const BLOCKS = {
   formula: (b) => h('div.formula-box', {}, [
-    h('div.label', { text: b.label || 'FORMULA' }),
+    h('div.label', { text: b.label || 'Formula' }),
     prose('div.eq', b.eq, b.tanglish)
   ]),
 
@@ -329,7 +329,7 @@ const BLOCKS = {
   ]),
 
   why: (b) => h('div.why-this', {}, [
-    h('div.label', { text: b.label || 'WHY THIS MATTERS' }),
+    h('div.label', { text: b.label || 'Why this matters' }),
     prose('p', b.body, b.tanglish)
   ]),
 
@@ -352,7 +352,7 @@ const BLOCKS = {
   },
 
   check: (b) => h('div.step-check', {}, [
-    h('h4', { text: b.heading || 'BEFORE MOVING ON' }),
+    h('h4', { text: b.heading || 'Before moving on' }),
     h('ul', {}, (b.items || []).map((it) =>
       h('li', { 'data-key': it.key, html: it.text, role: 'checkbox', tabindex: '0', 'aria-checked': 'false' })
     ))
@@ -477,7 +477,7 @@ export function renderStep(step, extra, ns) {
     rank
       ? h('span.st-spine-chip', {
         title: rank.note || 'One of the steps that produce a usable blueprint',
-        text: 'ESSENTIAL · ' + rank.n + ' of ' + rank.total
+        text: 'Essential · ' + rank.n + ' of ' + rank.total
       })
       : null,
     step.time ? h('div.step-time', { text: step.time }) : null
@@ -503,7 +503,7 @@ export function renderStep(step, extra, ns) {
       rank ? h('strong.st-why-lead', { text: rank.note }) : null,
       feeds
         ? h('span.st-why-feeds', {}, [
-          h('span.st-why-label', { text: 'FEEDS' }),
+          h('span.st-why-label', { text: 'Feeds' }),
           h('span', { text: feeds })
         ])
         : null

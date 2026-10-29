@@ -89,7 +89,7 @@ function useLogline() {
   loglineUndo = text;
   refreshHandoffs();
   toast('Your logline is on the Story page.', {
-    action: 'UNDO',
+    action: 'Undo',
     onAction: () => {
       const s = loadStory();
       if (loglineUndo == null) return;
@@ -167,7 +167,7 @@ function sendScenes() {
   scenesUndo = ids;
   refreshHandoffs();
   toast(plural(ids.length, 'scene') + ' added to the Breakdown.', {
-    action: 'UNDO',
+    action: 'Undo',
     onAction: () => undoScenes(ids)
   });
 }
@@ -268,7 +268,7 @@ function addLookbook() {
   lookbookUndo = run;
   refreshHandoffs();
   toast(plural(ids.length, 'reference') + ' added to the Lookbook.', {
-    action: 'UNDO',
+    action: 'Undo',
     onAction: () => {
       if (lookbookUndo !== run) return;
       lookbookUndo = null;

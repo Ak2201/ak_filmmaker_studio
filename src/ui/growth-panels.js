@@ -85,8 +85,8 @@ function referralPanel() {
   box.append(h('p.gr-lead', { text: `Share it with a friend. They get ${d.percent_off}% off any plan, and you earn ${reward} once their payment is confirmed.` }));
   box.append(h('div.gr-row', {}, [
     h('code.gr-code', { text: d.code }),
-    h('button.btn', { type: 'button', 'data-gr-action': 'copy', 'data-copy': d.code, text: 'COPY' }),
-    h('button.btn', { type: 'button', 'data-gr-action': 'copy', 'data-copy': link, 'aria-label': 'Copy a link that carries your code', text: 'COPY LINK' })
+    h('button.btn', { type: 'button', 'data-gr-action': 'copy', 'data-copy': d.code, text: 'Copy' }),
+    h('button.btn', { type: 'button', 'data-gr-action': 'copy', 'data-copy': link, 'aria-label': 'Copy a link that carries your code', text: 'Copy link' })
   ]));
   if (d.active === false) box.append(h('p.gr-msg.is-error', { role: 'status', text: 'This code is switched off at the moment, so a friend cannot use it.' }));
   box.append(h('p.gr-meta', { text: 'The link opens this page with your code already in the “Have a code?” box. Credits are paid out by hand by the studio; your own purchases cannot use your code.' }));

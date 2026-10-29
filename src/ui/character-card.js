@@ -152,9 +152,9 @@ function tiesBlock(f, view, o, id) {
     const how = h('input.cc-input.paper-field', { type: 'text', 'data-ch-rel': 'how', placeholder: 'How — sister, rival, owes him money…', 'aria-label': 'Relationship ' + (i + 1) + ': how' });
     how.value = r.how;
     rows.append(h('div.cc-tie', { 'data-ch-rel-row': String(i) }, [who, how,
-      h('button.btn.cc-x', { type: 'button', 'data-ch-action': 'tie-del', 'data-i': String(i), 'aria-label': 'Remove relationship ' + (i + 1), text: 'REMOVE' })]));
+      h('button.btn.cc-x', { type: 'button', 'data-ch-action': 'tie-del', 'data-i': String(i), 'aria-label': 'Remove relationship ' + (i + 1), text: 'Remove' })]));
   });
-  wrap.append(rows, h('button.btn.cc-add', { type: 'button', 'data-ch-action': 'tie-add', text: 'ADD A RELATIONSHIP' }));
+  wrap.append(rows, h('button.btn.cc-add', { type: 'button', 'data-ch-action': 'tie-add', text: 'Add a relationship' }));
   return wrap;
 }
 

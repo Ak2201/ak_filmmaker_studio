@@ -149,7 +149,7 @@ try {
     ok(refused === false, 'a PDF export is refused on a plan without exports');
     const hit = await waitToast(page, /Upgrade to Intermediate for ₹5,000 more/);
     ok(hit, 'the toast names Intermediate and the difference the server quotes (₹5,000, not the ₹7,999 list price): ' + JSON.stringify(await toasts(page)));
-    ok(/UPGRADE TO INTERMEDIATE/.test(await toasts(page)), 'its button says UPGRADE TO INTERMEDIATE');
+    ok(/Upgrade to Intermediate/.test(await toasts(page)), 'its button says Upgrade to Intermediate');
     allErrors.push(...errors); await ctx.close();
   }
   /* No quote: the RPC is missing. The plan is named, no figure is printed. */
@@ -529,7 +529,7 @@ try {
     const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
     await page.goto(BASE + 'dashboard.html');
     ok(await waitToast(page, /Your free trial ends in about 23 hours/), 'a day left: "ends in about 23 hours": ' + JSON.stringify(await toasts(page)));
-    ok(/CHOOSE A PLAN/.test(await toasts(page)), 'with CHOOSE A PLAN');
+    ok(/Choose a plan/.test(await toasts(page)), 'with Choose a plan');
     await page.goto(BASE + 'stripboard.html');
     await page.waitForTimeout(4000);
     ok(!/free trial ends/.test(await toasts(page)), 'the next page in the same session does not repeat it');
@@ -604,7 +604,7 @@ try {
     const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
     await page.goto(BASE + 'dashboard.html');
     ok(await waitToast(page, /Your 7-day pass ends in about 23 hours/), 'a pass with a day left: "Your 7-day pass ends in about 23 hours": ' + JSON.stringify(await toasts(page)));
-    ok(/Keep going with a yearly plan from about ₹[\d.]+ a day/.test(await toasts(page)) && /CHOOSE A PLAN/.test(await toasts(page)), 'with the yearly plans by the day (from the plan rows) and CHOOSE A PLAN');
+    ok(/Keep going with a yearly plan from about ₹[\d.]+ a day/.test(await toasts(page)) && /Choose a plan/.test(await toasts(page)), 'with the yearly plans by the day (from the plan rows) and CHOOSE A PLAN');
     ok(!/free trial/.test(await toasts(page)), 'and no trial wording');
     allErrors.push(...errors); await ctx.close();
   }
@@ -642,7 +642,7 @@ try {
     const { ctx, page, errors } = await newContext({ tok: 'tok-amy', keepWall: true });
     await page.goto(BASE + 'dashboard.html');
     await page.waitForSelector('.pg-wall [data-action="pg-buy-pass"]', { timeout: 12000 }).then(() => ok(true, 'the wall offers the pass'), () => ok(false, 'the wall offers the pass'));
-    ok(/TRY THE WHOLE STUDIO FOR ₹49 · 7 DAYS/.test(await page.textContent('.pg-wall').catch(() => '')), 'TRY THE WHOLE STUDIO FOR ₹49 · 7 DAYS');
+    ok(/Try the whole studio for ₹49 · 7 days/.test(await page.textContent('.pg-wall').catch(() => '')), 'Try the whole studio for ₹49 · 7 days');
     await page.waitForFunction(() => /^\d\d:\d\d:\d\d$|^1d /.test((document.querySelector('.pg-wall [data-pass-timer]') || {}).textContent || ''), null, { timeout: 5000 })
       .then(() => ok(true, 'with the countdown to the server deadline'), () => ok(false, 'with the countdown to the server deadline'));
     ok(!(await page.$('.pg-wall [data-action="pg-start-trial"]')), 'and no free trial button');

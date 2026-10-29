@@ -62,7 +62,7 @@ import '../styles/launcher.css';
 /* TWO derived figures, and which one a sentence quotes is not a detail.
    the heading counts the modules the MAP draws; BUILT_MODULE_COUNT is
    how many a visitor can actually open. The launcher prints both, side
-   by side ("N OF M BUILT"), under a label that says it is a map and a
+   by side ("N of m built"), under a label that says it is a map and a
    deck that says the ones still to come say so — so the total is the
    right figure here, because the qualifier is right next to it.
 
@@ -177,9 +177,9 @@ function moduleTile(m, hiddenTile, snap, at) {
     el.append(h('span.lx-mod-state.is-work', { text: state.text }));
   }
   if (m.status !== 'built') {
-    el.append(h('span.lx-flag', { text: m.status === 'partial' ? 'PARTIAL' : 'SOON' }));
+    el.append(h('span.lx-flag', { text: m.status === 'partial' ? 'Partial' : 'Soon' }));
   }
-  if (isHere) el.append(h('span.lx-mod-here', { text: 'THIS PAGE' }));
+  if (isHere) el.append(h('span.lx-mod-here', { text: 'This page' }));
 
   const item = h('li.lx-mod-cell');
   if (hiddenTile) item.hidden = true;

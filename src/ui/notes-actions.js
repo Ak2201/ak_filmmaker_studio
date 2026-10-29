@@ -115,7 +115,7 @@ function removeWithUndo(id, el) {
   Story.removeFromVault(id);
   changed({ focus });
   toast(isNote(gone) ? 'Note deleted.' : 'Clipping removed.', {
-    action: 'UNDO', onAction: () => { if (Story.restoreToVault(gone, at)) changed(); }
+    action: 'Undo', onAction: () => { if (Story.restoreToVault(gone, at)) changed(); }
   });
 }
 
@@ -150,7 +150,7 @@ function toScene(id) {
      undoAppend() takes out only what this press added (QA, 26 Oct 2026:
      the old undo put the synopsis back whole and lost a later edit). */
   toast('Added to scene ' + (sc.number || '') + '’s synopsis.', {
-    action: 'UNDO', onAction: () => {
+    action: 'Undo', onAction: () => {
       const back = undoAppend(sceneSynopsis(sc.id), before, after);
       if (back === null) { toast(CHANGED_SINCE); return; }
       Scenes.updateScene(sc.id, { synopsis: back });
@@ -171,7 +171,7 @@ export function toSynopsis(id, { control = '' } = {}) {
   const after = Story.loadStory().source;
   changed({ story: true, focus: id, control: control || '[data-nt="to-synopsis"][data-note="' + CSS.escape(id) + '"]' });
   toast('Added to the end of the synopsis.', {
-    action: 'UNDO', onAction: () => {
+    action: 'Undo', onAction: () => {
       const s = Story.loadStory();
       const back = undoAppend(s.source, before, after);
       if (back === null) { toast(CHANGED_SINCE); return; }

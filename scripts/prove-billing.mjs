@@ -65,7 +65,7 @@
      (pass) THE LAUNCH PASS (schema §61): the offer page leads with the
          server's price, countdown and cap and offers no free trial; a
          stranger buys it there (period 'pass', ₹49) and is a member on
-         Pro for 7 days; the rail says PASS ENDS IN; a second pass is
+         Pro for 7 days; the rail says Pass ends in; a second pass is
          refused; a yearly plan bought on a pass starts now and replaces
          it; the wall offers the pass first and plans only once the
          offer has ended; switched off, the old offer returns; the
@@ -1297,7 +1297,7 @@ try {
     const N = await soloContext({ tok: 'tok-ben' });
     await N.page.goto(BASE + 'invite.html');
     await N.page.waitForSelector('[data-iv-action="start-trial"]', { timeout: 12000 }).catch(() => {});
-    ok(/START MY 3 HOURS/.test(await N.page.textContent('[data-iv-action="start-trial"]').catch(() => '')), 'invite.html offers the trial in hours: START MY 3 HOURS');
+    ok(/Start my 3 hours/.test(await N.page.textContent('[data-iv-action="start-trial"]').catch(() => '')), 'invite.html offers the trial in hours: Start my 3 hours');
     ok(!(await N.page.$('.pl-card')) && !!(await N.page.$('#buy a[href="purchase.html"]')), 'invite.html draws no plan cards: it links to purchase.html, where plans are bought');
     await N.page.goto(BASE + 'purchase.html');
     await N.page.waitForSelector('#plan .pl-card', { timeout: 12000 }).catch(() => {});
@@ -1802,8 +1802,8 @@ try {
     void last;
     await page.goto(BASE + 'index.html');
     ok(await waitGate(page, 'open'), 'the studio opens');
-    await page.waitForFunction(() => { const b = document.querySelector('#studioRail .sh-rail-trial'); return b && !b.hidden && /PASS ENDS IN/.test(b.textContent); }, null, { timeout: 10000 })
-      .then(() => ok(true, 'the rail says PASS ENDS IN'), () => ok(false, 'the rail says PASS ENDS IN'));
+    await page.waitForFunction(() => { const b = document.querySelector('#studioRail .sh-rail-trial'); return b && !b.hidden && /Pass ends in/.test(b.textContent); }, null, { timeout: 10000 })
+      .then(() => ok(true, 'the rail says Pass ends in'), () => ok(false, 'the rail says Pass ends in'));
     ok(/7 days/.test(await page.textContent('#studioRail .sh-rail-trial').catch(() => '')), 'with 7 days left');
     ok(!(await page.$('.pg-wall')), 'and no wall');
 
@@ -1831,7 +1831,7 @@ try {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
     await page.goto(BASE + 'index.html');
     await page.waitForSelector('.pg-wall [data-action="pg-buy-pass"]', { timeout: 12000 }).then(() => ok(true, 'the wall offers the pass'), () => ok(false, 'the wall offers the pass'));
-    ok(/TRY THE WHOLE STUDIO FOR ₹49 · 7 DAYS/.test(await page.textContent('.pg-wall [data-action="pg-buy-pass"]').catch(() => '')), 'labelled TRY THE WHOLE STUDIO FOR ₹49 · 7 DAYS');
+    ok(/Try the whole studio for ₹49 · 7 days/.test(await page.textContent('.pg-wall [data-action="pg-buy-pass"]').catch(() => '')), 'labelled Try the whole studio for ₹49 · 7 days');
     ok(!(await page.$('.pg-wall [data-action="pg-start-trial"]')), 'and no START MY FREE TRIAL');
     /* the offer ends (the deadline passes on the server) */
     F.db.settings.pass_ends_at = new Date(Date.now() - 1000).toISOString();

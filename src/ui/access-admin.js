@@ -110,7 +110,7 @@ export function giveAccessBlock() {
     h('div', {}, [h('label', { for: 'accLength', text: 'For how long' }), len]),
     h('div', {}, [h('label', { for: 'accDays', text: 'Days' }), h('input', { id: 'accDays', name: 'days', type: 'number', min: 1, max: 3650, step: 1, value: '30' })])
   ]));
-  f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'GIVE ACCESS', disabled: S.busy ? true : null }),
+  f.append(h('div.ba-actions', {}, [h('button.btn.primary', { type: 'submit', text: 'Give access', disabled: S.busy ? true : null }),
     S.note ? h('span.ba-saved', { role: 'status', text: S.note }) : null].filter(Boolean)));
   f.append(h('p.gr-meta', { text: 'Applies now, or at the first Google sign-in. No invite code needed.' }));
   wrap.append(f);
@@ -127,7 +127,7 @@ export function giveAccessBlock() {
       h('td', { text: g.plan ? (g.plan_name || planName(g.plan)) : '—' }),
       h('td', { text: g.until ? fmtDate(g.until) : 'Until removed' }),
       h('td', { text: g.applied ? 'Yes, ' + fmtDate(g.applied_at) : (g.account_exists ? 'Not yet' : 'At first sign-in') }),
-      h('td', {}, [h('button.btn', { type: 'button', 'data-acc-action': 'revoke', 'data-email': g.email, text: 'REVOKE' })])
+      h('td', {}, [h('button.btn', { type: 'button', 'data-acc-action': 'revoke', 'data-email': g.email, text: 'Revoke' })])
     ]));
   }
   table.append(tb);
@@ -258,7 +258,7 @@ export function passesBlock() {
         h('td.gt-row-actions', {}, can_ && p.status !== 'revoked' ? [
           p.expires_at ? h('button.btn', { type: 'button', 'data-acc-action': 'extend-pass', 'data-code': p.code, 'data-days': '7', 'aria-label': 'Extend ' + formatCode(p.code) + ' by 7 days', text: '+7 DAYS' }) : null,
           p.expires_at ? h('button.btn', { type: 'button', 'data-acc-action': 'extend-pass', 'data-code': p.code, 'data-days': '30', 'aria-label': 'Extend ' + formatCode(p.code) + ' by 30 days', text: '+30 DAYS' }) : null,
-          live ? h('button.btn.danger', { type: 'button', 'data-acc-action': 'revoke-pass', 'data-code': p.code, 'aria-label': 'Revoke ' + formatCode(p.code), text: 'REVOKE' }) : null
+          live ? h('button.btn.danger', { type: 'button', 'data-acc-action': 'revoke-pass', 'data-code': p.code, 'aria-label': 'Revoke ' + formatCode(p.code), text: 'Revoke' }) : null
         ].filter(Boolean) : [])
       ]));
     }
@@ -284,7 +284,7 @@ export function sharesBlock() {
         h('td', { text: s.expires_at ? fmtDate(s.expires_at) : 'Never' }),
         h('td', {}, [pillFor(s.active ? 'active' : 'ended')]),
         h('td.gt-row-actions', {}, mayManage() && s.active ? [
-          h('button.btn.danger', { type: 'button', 'data-acc-action': 'revoke-share', 'data-id': s.id, 'aria-label': 'Revoke the share link for ' + (s.project_title || 'this film'), text: 'REVOKE' })
+          h('button.btn.danger', { type: 'button', 'data-acc-action': 'revoke-share', 'data-id': s.id, 'aria-label': 'Revoke the share link for ' + (s.project_title || 'this film'), text: 'Revoke' })
         ] : [])
       ]));
     }

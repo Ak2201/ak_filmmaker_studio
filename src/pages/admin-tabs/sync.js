@@ -45,7 +45,7 @@ function head() {
     h('span.us-spacer'),
     busy ? h('span.ad-meta', { text: 'Checking…' })
       : S.overview.at ? h('span.ad-meta', { title: absTime(S.overview.at), text: 'Checked ' + relTime(S.overview.at) }) : null,
-    h('button.btn.ad-refresh', { type: 'button', 'data-sy-refresh': '', disabled: busy ? '' : null, text: 'REFRESH' })
+    h('button.btn.ad-refresh', { type: 'button', 'data-sy-refresh': '', disabled: busy ? '' : null, text: 'Refresh' })
   ]);
 }
 

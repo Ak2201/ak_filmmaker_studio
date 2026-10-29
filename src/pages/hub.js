@@ -572,7 +572,7 @@ function renderProjectSwitcher() {
     label.textContent = current.title;
   } else {
     btn.classList.add('empty');
-    label.textContent = projects.length ? 'PICK A PROJECT' : '— NO PROJECT —';
+    label.textContent = projects.length ? 'Pick a project' : '— No project —';
   }
 
   dd.textContent = '';
@@ -634,14 +634,14 @@ function openProjectModal(editId, format) {
     titleInput.value = p.title;
     formatInput.value = p.format;
     formatInput.disabled = true;
-    submit.textContent = 'SAVE';
+    submit.textContent = 'Save';
     submit.dataset.editId = editId;
   } else {
     heading.innerHTML = 'New <em>project.</em>';
     titleInput.value = '';
     formatInput.value = 'feature';
     formatInput.disabled = false;
-    submit.textContent = 'CREATE';
+    submit.textContent = 'Create';
     delete submit.dataset.editId;
   }
   overlay.classList.add('show');

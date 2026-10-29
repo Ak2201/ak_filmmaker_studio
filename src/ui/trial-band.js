@@ -80,9 +80,9 @@ function paintRenew() {
   if (autopayFor(cp, cp.plan)) return false;
   block.dataset.mode = 'renew';
   block.replaceChildren(
-    h('span.sh-rail-trial-label', { text: 'PLAN ENDS IN' }),
+    h('span.sh-rail-trial-label', { text: 'Plan ends in' }),
     h('span.sh-rail-trial-time', { text: left === 0 ? 'today' : left + (left === 1 ? ' day' : ' days') }),
-    h('a.sh-rail-trial-cta', { href: 'purchase.html', text: 'RENEW — ADD A YEAR' }));
+    h('a.sh-rail-trial-cta', { href: 'purchase.html', text: 'Renew — add a year' }));
   block.hidden = false;
   block.classList.toggle('is-urgent', left <= 3);
   return true;
@@ -102,9 +102,9 @@ function paintPass() {
 
   block.dataset.mode = 'pass';
   block.replaceChildren(
-    h('span.sh-rail-trial-label', { text: 'PASS ENDS IN' }),
+    h('span.sh-rail-trial-label', { text: 'Pass ends in' }),
     h('span.sh-rail-trial-time', { text: ms >= 86400000 ? days + ' days' : ms < 3600000 ? 'under an hour' : hrs + (hrs === 1 ? ' hour' : ' hours') }),
-    h('a.sh-rail-trial-cta', { href: 'purchase.html', text: 'CHOOSE A YEARLY PLAN' }));
+    h('a.sh-rail-trial-cta', { href: 'purchase.html', text: 'Choose a yearly plan' }));
   block.hidden = false;
   block.classList.toggle('is-urgent', ms <= 86400000);
   armExpiry(ends);
@@ -118,7 +118,7 @@ const chipEl = () => document.querySelector('.sh-bar .sh-trial-chip');
 function fillRail(block) {
   if (block.querySelector('[role="timer"]')) return;
   block.append(
-    h('span.sh-rail-trial-label', { text: 'TRIAL ENDS IN' }),
+    h('span.sh-rail-trial-label', { text: 'Trial ends in' }),
     h('span.sh-rail-trial-time', { role: 'timer', 'aria-live': 'off', 'aria-label': 'Trial time left' }),
     h('a.sh-rail-trial-cta', { href: 'purchase.html', text: 'See plans' }),
     h('span.visually-hidden.sh-rail-trial-say', { role: 'status', 'aria-live': 'polite' })

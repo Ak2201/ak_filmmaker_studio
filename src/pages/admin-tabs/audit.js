@@ -118,8 +118,8 @@ function filterForm() {
     field('adAuditFrom', 'from', 'From', 'date'),
     field('adAuditTo', 'to', 'To', 'date'),
     h('div.ad-fld-b', {}, [
-      h('button.btn.primary', { type: 'submit', text: 'APPLY' }),
-      h('button.btn', { type: 'button', 'data-action': 'audit-clear', disabled: filtered() ? null : '', text: 'CLEAR' })
+      h('button.btn.primary', { type: 'submit', text: 'Apply' }),
+      h('button.btn', { type: 'button', 'data-action': 'audit-clear', disabled: filtered() ? null : '', text: 'Clear' })
     ])
   ]);
 }
@@ -182,12 +182,12 @@ export function render(ctx) {
       title: filtered() ? 'No rows match these filters' : 'No admin action has been recorded yet',
       body: filtered() ? 'Clear a filter to widen the search.' : 'Every admin write lands here, with a before and an after.',
       stamp: 'Checked', icon: '◷',
-      action: filtered() ? { label: 'CLEAR FILTERS', onClick: () => clearAll() } : null
+      action: filtered() ? { label: 'Clear filters', onClick: () => clearAll() } : null
     }));
   } else {
     root.append(S.view === 'table' ? tableView() : timelineView());
     if (S.error) root.append(errorState({ title: 'More rows could not load', why: S.error, onRetry: () => load({ more: true }) }));
-    if (S.hasMore) root.append(h('div.ad-audit-m', {}, [h('button.btn', { type: 'button', 'data-action': 'audit-more', disabled: S.more ? '' : null, text: S.more ? 'LOADING…' : 'LOAD MORE' })]));
+    if (S.hasMore) root.append(h('div.ad-audit-m', {}, [h('button.btn', { type: 'button', 'data-action': 'audit-more', disabled: S.more ? '' : null, text: S.more ? 'Loading…' : 'Load more' })]));
   }
   root.append(h('p.ad-meta', {}, [pill('Append-only', 'neutral', { title: 'The server refuses any update or delete of an audit row' }), ' Times are in this browser’s time zone.']));
   return root;

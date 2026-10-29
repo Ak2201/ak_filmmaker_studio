@@ -37,7 +37,7 @@ function applyProjectFilters(projects) {
 /* Progress and stage for a card, from journey.js. The percentage used
    to be filled keys over SAVED keys — the trap blueprint-fields.js is
    named for, where eleven saved fields read 100% — and the label a
-   band of that percentage ("PRE-PROD" at 50–79%) that knew nothing
+   band of that percentage ("Pre-prod" at 50–79%) that knew nothing
    about the film. Now: the declared-field percentage, and the stage.
    The OPEN project gets the full journey (guide and tools, read through
    the proxy); any other project gets the guide's reading of its blob,
@@ -156,7 +156,7 @@ function renderAdoptNotice() {
   const panel = h('div.adopt-panel', {
     role: 'region', 'aria-label': 'Projects on this device only'
   }, [
-    h('div.adopt-eyebrow', { text: 'ON THIS DEVICE ONLY' }),
+    h('div.adopt-eyebrow', { text: 'On this device only' }),
     h('div.adopt-title', {
       text: one
         ? 'One project is on this device and not in this account.'
@@ -187,7 +187,7 @@ function renderAdoptNotice() {
   panel.append(h('div.adopt-actions', {}, [
     h('button.btn.primary', {
       'data-action': 'adopt-device-projects',
-      text: one ? 'ADD IT TO THIS ACCOUNT' : 'ADD ALL ' + n + ' TO THIS ACCOUNT'
+      text: one ? 'Add it to this account' : 'Add all ' + n + ' to this account'
     })
   ]));
   panel.append(h('div.adopt-fine', {

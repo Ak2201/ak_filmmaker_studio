@@ -77,7 +77,7 @@ export function planFeaturesSection(section, st) {
   table.append(tb);
   form.append(h('div.gt-scroll', {}, [table]));
   form.append(h('div.ba-actions', {}, [
-    h('button.btn.primary', { type: 'submit', text: 'SAVE FEATURES' }),
+    h('button.btn.primary', { type: 'submit', text: 'Save features' }),
     S.saved ? h('span.ba-saved', { role: 'status', text: S.saved }) : null
   ].filter(Boolean)));
   form.append(h('p.gt-meta', { text: 'Live for everyone on the plan at their next page load.' }));

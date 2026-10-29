@@ -181,7 +181,7 @@ const MENU = {
 const SECTIONS = [
   {
     id: 'films',
-    nav: 'FILMS',
+    nav: 'Films',
     tab: 'Films',
     title: 'The Tamil Cinema <em>Craft Library.</em>',
     tocTitle: 'Tamil Cinema Craft Library',
@@ -194,7 +194,7 @@ const SECTIONS = [
   },
   {
     id: 'directors',
-    nav: 'DIRECTORS',
+    nav: 'Directors',
     tab: 'Directors',
     title: 'Director <em>Archetypes.</em>',
     tocTitle: 'Director Archetypes',
@@ -208,7 +208,7 @@ const SECTIONS = [
   },
   {
     id: 'rules',
-    nav: 'RULES',
+    nav: 'Rules',
     tab: 'Rules',
     title: `${cap(numWord(N_RULES))} <em>Rules of Thumb.</em>`,
     tocTitle: `${N_RULES} Rules of Thumb`,
@@ -222,7 +222,7 @@ const SECTIONS = [
      so openShelves() always keeps them. */
   {
     id: 'emotional-impact',
-    nav: 'EMOTIONAL IMPACT',
+    nav: 'Emotional impact',
     tab: 'Emotional impact',
     title: 'Writing for <em>Emotional Impact.</em>',
     tocTitle: 'Writing for Emotional Impact',
@@ -236,7 +236,7 @@ const SECTIONS = [
   },
   {
     id: 'save-the-cat',
-    nav: 'SAVE THE CAT',
+    nav: 'Save the Cat',
     tab: 'Save the Cat',
     title: 'Save the <em>Cat.</em>',
     tocTitle: 'Save the Cat',
@@ -251,7 +251,7 @@ const SECTIONS = [
   },
   {
     id: 'equipment',
-    nav: 'EQUIPMENT',
+    nav: 'Equipment',
     tab: 'Equipment',
     /* The estimator moved to budget.html; this section kept only the
        rate tables, and its title still advertised the calculator and
@@ -269,7 +269,7 @@ const SECTIONS = [
   },
   {
     id: 'watch',
-    nav: 'WATCH LIST',
+    nav: 'Watch list',
     tab: 'Watch list',
     title: 'Watch List <em>per Step.</em>',
     tocTitle: 'Watch List per Step',
@@ -287,7 +287,7 @@ const SECTIONS = [
      this strip cannot name one tool three ways. */
   {
     id: 'case-studies',
-    nav: 'CASE STUDIES',
+    nav: 'Case studies',
     title: 'Case <em>Studies.</em>',
     tocTitle: 'Case Studies',
     tocDesc: `${N_STUDIES} films, read beat by beat`,
@@ -300,11 +300,11 @@ const SECTIONS = [
   },
   {
     id: 'dissection',
-    nav: 'DISSECTION',
+    nav: 'Dissection',
     title: 'Film <em>Dissection.</em>',
     tocTitle: 'Film Dissection',
     tocDesc: 'A finished film taken apart, then yours',
-    count: `${N_DISSECTED} WORKED ${N_DISSECTED === 1 ? 'EXAMPLE' : 'EXAMPLES'}`,
+    count: `${N_DISSECTED} worked ${N_DISSECTED === 1 ? 'example' : 'examples'}`,
     deck: 'The blueprints build a script forwards. This runs the other way: ' +
           'start with a film that works, and name the job every sequence is doing. ' +
           'Read the worked example, then fill the same fields in about yours.',
@@ -312,12 +312,12 @@ const SECTIONS = [
   },
   {
     id: 'glossary',
-    nav: 'TERMINOLOGY',
+    nav: 'Terminology',
     tab: 'Film terminology',
     title: 'Film <em>Terminology.</em>',
     tocTitle: 'Film Terminology',
     tocDesc: 'From logline to edit sheet: every term, with examples',
-    count: 'FILM TERMINOLOGY',
+    count: 'Film terminology',
     deck: 'Every term a filmmaker meets, from logline to edit sheet, grouped by the ' +
           'stage where it matters. Each opens with a plain definition, a Tanglish line, ' +
           'an example in your favourite film and, where there is one, a short video. ' +
@@ -471,7 +471,7 @@ function renderCover() {
   return [head, h('section.cover', {}, [
     h('div', {}, [
       h('div.cover-row', {}, [
-        /* 8B pass (28 Oct 2026): the "N SHELVES" pill beside this line
+        /* 8B pass (28 Oct 2026): the "N shelves" pill beside this line
            left; the cards below are the count. */
         h('p.cover-sub', { text: blurb })
       ]),
@@ -566,7 +566,7 @@ function renderContents() {
   return h('div#library-index.lib-contents', {}, [
     h('div.section-head', {}, [
       h('div.left', {}, [
-        h('div.label', { text: 'THE LIBRARY · INDEX' }),
+        h('div.label', { text: 'The library · index' }),
         h('h2', { html: 'The library <em>index.</em>' }),
         h('p.deck', { text: 'Every shelf, and the films, directors, rate tables and watch-list steps on it, in one place. Open one to jump straight in.' })
       ]),
@@ -676,7 +676,7 @@ function renderRules() {
    ============================================================ */
 function bookCredit(c) {
   return h('aside.book-credit', { 'aria-label': 'Recommended reading' }, [
-    h('div.book-label', { text: 'RECOMMENDED READING' }),
+    h('div.book-label', { text: 'Recommended reading' }),
     h('p.book-credit-title', {}, [
       h('cite', { text: c.title }),
       h('span.book-credit-meta', { text: ` · ${c.author} · ${c.publisher}, ${c.year}` })
@@ -692,7 +692,7 @@ function bookBlock(label, children) {
 function bookExample(ex, label) {
   if (!ex) return null;
   return h('div.book-example', {}, [
-    h('div.book-label', { text: label || 'IN A STUDIED FILM' }),
+    h('div.book-label', { text: label || 'In a studied film' }),
     h('p.book-example-head', {}, [
       h('span.book-example-film', { text: ex.film }),
       ex.function ? h('span.book-example-fn', { text: ex.function }) : null
@@ -703,7 +703,7 @@ function bookExample(ex, label) {
 
 function bookChecklist(items, label) {
   return h('div.book-check', {}, [
-    h('h4.book-label', { text: label || 'APPLY IT TO YOUR SCRIPT' }),
+    h('h4.book-label', { text: label || 'Apply it to your script' }),
     h('ul', {}, items.map((t) => h('li', { text: t })))
   ]);
 }
@@ -738,12 +738,12 @@ function renderEmotionalImpact() {
       ])
     ]),
     h('div.book-cols', {}, [
-      bookBlock('WHAT IT IS', [h('p.book-p', { text: t.what })]),
-      bookBlock('WHY IT WORKS ON AN AUDIENCE', [h('p.book-p', { text: t.why })])
+      bookBlock('What it is', [h('p.book-p', { text: t.what })]),
+      bookBlock('Why it works on an audience', [h('p.book-p', { text: t.why })])
     ]),
-    bookBlock('HOW TO BUILD IT ON THE PAGE', [h('ol.book-list', {}, t.how.map((x) => h('li', { text: x })))]),
+    bookBlock('How to build it on the page', [h('ol.book-list', {}, t.how.map((x) => h('li', { text: x })))]),
     h('div.book-cols', {}, [
-      bookBlock('COMMON MISTAKES', [h('ul.book-list.book-list-x', {}, t.mistakes.map((x) => h('li', { text: x })))]),
+      bookBlock('Common mistakes', [h('ul.book-list.book-list-x', {}, t.mistakes.map((x) => h('li', { text: x })))]),
       bookExample(t.example)
     ]),
     bookChecklist(t.checklist)
@@ -800,7 +800,7 @@ function renderSaveTheCat() {
     h('h3.book-h3', { text: L.title }),
     ...L.paragraphs.map((p) => h('p.book-p', { text: p })),
     h('dl.book-defs', {}, L.qualities.flatMap((q) => [h('dt', { text: q.label }), h('dd', { text: q.text })])),
-    h('div.book-template', {}, [h('div.book-label', { text: 'A SHAPE TO START FROM' }), h('p', { text: L.template })]),
+    h('div.book-template', {}, [h('div.book-label', { text: 'A shape to start from' }), h('p', { text: L.template })]),
     h('div.book-cols', {}, L.examples.map((ex) => bookExample(ex))),
     bookChecklist(L.checklist)
   ]);
@@ -816,7 +816,7 @@ function renderSaveTheCat() {
       ]),
       h('p.book-p', { text: g.engine }),
       h('p.book-p.book-question', {}, [h('strong', { text: 'Ask yourself. ' }), g.question]),
-      bookExample({ film: g.example.film, text: g.example.text }, 'TAMIL EXAMPLE')
+      bookExample({ film: g.example.film, text: g.example.text }, 'Tamil example')
     ])))
   ]);
 
@@ -836,7 +836,7 @@ function renderSaveTheCat() {
         bookExample({ film: x.film.name, text: x.film.text })
       ])
     ]))),
-    bookChecklist(B.checklist, 'CHECK YOUR BEATS')
+    bookChecklist(B.checklist, 'Check your beats')
   ]);
 
   const BD = b.board;
@@ -850,8 +850,8 @@ function renderSaveTheCat() {
         h('p.book-board-beats', { text: r.beats })
       ]))),
     h('div.book-cols', {}, [
-      bookBlock('ON EACH CARD', [h('dl.book-defs', {}, BD.card.flatMap((c) => [h('dt', { text: c.label }), h('dd', { text: c.text })]))]),
-      bookBlock('HOW TO USE IT', [h('ol.book-list', {}, BD.steps.map((x) => h('li', { text: x })))])
+      bookBlock('On each card', [h('dl.book-defs', {}, BD.card.flatMap((c) => [h('dt', { text: c.label }), h('dd', { text: c.text })]))]),
+      bookBlock('How to use it', [h('ol.book-list', {}, BD.steps.map((x) => h('li', { text: x })))])
     ]),
     h('p.book-p.book-aside', { text: BD.studio })
   ]);
@@ -1123,7 +1123,7 @@ function termCard(t, g, byName) {
   const see = seeAlso(t, byName);
   if (see.length) {
     card.append(h('div.lib-term-see', {}, [
-      h('span.lib-term-see-label', { text: 'SEE ALSO ' }),
+      h('span.lib-term-see-label', { text: 'See also ' }),
       ...see.map((n) => h('a', { href: '#' + slugOf(byName.get(String(n).toLowerCase()).term), text: byName.get(String(n).toLowerCase()).term }))
     ]));
   }

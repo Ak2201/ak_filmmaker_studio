@@ -217,7 +217,7 @@ export async function mountMyTestimonials(host) {
   host.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-tp-revoke]');
     if (!b || !host.contains(b)) return;
-    const ok = await ask({ title: 'Take this testimonial back?', body: 'It will not be used again, and the studio is told straight away so that it takes the words off its website. This cannot be undone; you can always write a new one.', confirm: 'TAKE IT BACK', danger: true });
+    const ok = await ask({ title: 'Take this testimonial back?', body: 'It will not be used again, and the studio is told straight away so that it takes the words off its website. This cannot be undone; you can always write a new one.', confirm: 'Take it back', danger: true });
     if (!ok) return;
     b.disabled = true;
     try {

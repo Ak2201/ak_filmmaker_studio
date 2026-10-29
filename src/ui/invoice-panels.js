@@ -54,9 +54,9 @@ function table(kind, withBuyer) {
       h('td', { text: r.number }), h('td', { text: dateOf(r.issued_at) }), withBuyer ? h('td', { text: r.buyer_email || r.buyer_name }) : null,
       h('td', { text: r.plan_name }), h('td', { text: fmtMinor(r.amount_paise, r.currency === 'USD' ? 'USD' : 'INR') }),
       withBuyer ? h('td', { text: r.emailed_at ? 'Sent ' + dateOf(r.emailed_at) : 'Not sent' }) : null,
-      h('td', {}, [h('button.btn', { type: 'button', 'data-action': 'invoice-pdf', 'data-kind': kind, 'data-id': r.id, 'aria-label': 'Download PDF for ' + r.number, text: 'DOWNLOAD PDF' }),
+      h('td', {}, [h('button.btn', { type: 'button', 'data-action': 'invoice-pdf', 'data-kind': kind, 'data-id': r.id, 'aria-label': 'Download PDF for ' + r.number, text: 'Download PDF' }),
         withBuyer && r.buyer_email && r.razorpay_order_id
-          ? h('button.btn', { type: 'button', 'data-action': 'invoice-resend', 'data-id': r.id, 'aria-label': 'Resend the receipt for ' + r.number, text: 'RESEND RECEIPT' })
+          ? h('button.btn', { type: 'button', 'data-action': 'invoice-resend', 'data-id': r.id, 'aria-label': 'Resend the receipt for ' + r.number, text: 'Resend receipt' })
           : null])
     ].filter(Boolean)));
   }

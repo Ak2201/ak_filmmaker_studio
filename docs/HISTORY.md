@@ -3171,3 +3171,23 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     "Order ID". `npm run extract` would bring the stray letters back from
     `legacy/` (it overwrites steps.feature.json); fix them in the extractor's
     output again if it is ever re-run.
+
+72. **Remaining all-caps copy to sentence case (29 Oct 2026, lane caps).**
+    Typed-in-capitals labels in `steps.feature.json`, `steps.short.json` and
+    `steps.production.json` (FORMULA, RELATED:, BEFORE MOVING ON, WHY THIS
+    MATTERS, craft-lesson labels, step times, button/field labels inside raw
+    html blocks), `short.js` (stamps, festival tracker, glossary terms and
+    categories), `feature.js` (glossary terms, part marks, step badges now
+    Empty / In progress / Complete), `feature-model.js` (pitch-deck slide
+    kickers, footers, bullet prefixes, relationship-map labels, mirrored in
+    `stage-guide-widgets.js`), `audience-model.js` `resultText` (a kept
+    document's prose heading; `test:audience` changed with it). Case-only: the
+    baseline's word sets are lower-cased, so no EXPECTED row moved and no
+    data-key changed. `npm run extract` WOULD UNDO the three step JSON edits
+    (it regenerates steps.feature.json / steps.short.json from `legacy/`);
+    re-apply the same sentence-casing to its output if it is ever re-run.
+    LEFT AS THEY WERE on purpose: formula equations (`eq`, e.g. SPARK = ...),
+    screenplay conventions (slug placeholders, FADE IN/ROLL CAMERA in prose,
+    script-preview upper-casing), the AI prompts in `audience-model.js`, the
+    email-to-self body and the `# THE FILMMAKER'S BLUEPRINT` Markdown title
+    (exported file conventions, not shown in the UI), and `kit.js` (dev showcase).

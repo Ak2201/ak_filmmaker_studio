@@ -35,7 +35,7 @@
      (n) refunds (schema section 27): the customer's "Request a
          refund" is absent while the admin's switch is off and appears
          when it is on; a request is filed, not refunded; the console
-         lists it and APPROVE opens the REFUND dialog, which calls the
+         lists it and Approve opens the Refund dialog, which calls the
          rzp-refund function (admin-checked) and the fake Razorpay
          refund endpoint; a partial refund from the ledger needs a
          reason, stays pending until the webhook, and the webhook is
@@ -56,10 +56,10 @@
      (q) THE END OF A TRIAL, AND THE WAY OUT (schema section 33): a trial
          that runs out while a page is open walls it with no navigation,
          and a fresh load after expiry is one navigation and a wall that
-         stays (counted over ten seconds); the wall offers SIGN OUT, which
+         stays (counted over ten seconds); the wall offers Sign out, which
          signs out, lands on start.html and stays out, and signing back in
          works; invite.html no longer tells a lapsed member "You're in";
-         purchase.html says the trial ended and offers SIGN OUT; a
+         purchase.html says the trial ended and offers Sign out; a
          membership with no trial is offered one on the wall; two tabs:
          a plan bought in one takes the other's wall down with no focus
      (pass) THE LAUNCH PASS (schema §61): the offer page leads with the
@@ -502,7 +502,7 @@ try {
     const titles = await amy.page.$$eval('#projectsGrid .project-card:not(.new-card)', (cards) => cards.map((c) => c.textContent));
     ok(titles.length === 1 && /Dragon/.test(titles[0]) && !/My own film/.test(titles.join()), 'and it is the Dragon sample — her own film is hidden, not deleted');
     ok(await amy.page.evaluate(() => JSON.parse(localStorage.getItem('fms_studio_projects_v1')).some((p) => p.title === 'My own film')), 'the hidden film is still on the device');
-    ok(await amy.page.evaluate(() => [...document.querySelectorAll('[data-action="new-project"]')].every((el) => el.hidden || el.closest('[hidden]') || getComputedStyle(el).display === 'none')), 'no NEW PROJECT control is offered');
+    ok(await amy.page.evaluate(() => [...document.querySelectorAll('[data-action="new-project"]')].every((el) => el.hidden || el.closest('[hidden]') || getComputedStyle(el).display === 'none')), 'no New project control is offered');
     ok(!(await amy.page.$('#projectsGrid .new-card')), 'and no new-project card in the grid');
     await amy.page.goto(BASE + 'story.html');
     await amy.page.waitForSelector('.pg-lock', { timeout: 10000 }).then(() => ok(true, 'story.html (its one plan row unticked for Free) shows the plan lock'), () => ok(false, 'story.html (its one plan row unticked for Free) shows the plan lock'));
@@ -850,7 +850,7 @@ try {
     await A.page.click('#billing [data-ba-action="reload"]');
     await A.page.waitForSelector('#refunds tr[data-rreq] [data-ba-action="rreq-approve"]', { timeout: 10000 });
     ok(/ben@example\.com/.test(await A.page.textContent('#refunds tr[data-rreq]')) && /plan never showed/.test(await A.page.textContent('#refunds tr[data-rreq]')), 'the console lists the request with who and why');
-    ok((await A.page.getAttribute('#refunds [data-ba-action="rreq-approve"]', 'aria-label')) === 'Approve and refund ben@example.com', 'APPROVE carries the customer in its aria-label');
+    ok((await A.page.getAttribute('#refunds [data-ba-action="rreq-approve"]', 'aria-label')) === 'Approve and refund ben@example.com', 'Approve carries the customer in its aria-label');
     await A.page.click('#refunds [data-ba-action="rreq-approve"]');
     await A.page.waitForSelector('.rf-dialog #rfReason', { timeout: 5000 });
     ok(/ends .*plan today/.test(await A.page.textContent('.rf-dialog .rf-warn')), 'the dialog warns the refund ends the plan');
@@ -866,7 +866,7 @@ try {
     ok(F.db.rreqs[0].status === 'refunded', 'and the request is settled as refunded');
     await A.page.waitForFunction(() => /\brefunded\b/.test(document.querySelector('#refunds tr[data-rreq]')?.textContent || ''), null, { timeout: 8000 })
       .then(() => ok(true, 'the console list shows it refunded'), () => ok(false, 'the console list shows it refunded'));
-    ok(!(await A.page.$('#billing .ba-ledger button[data-ba-action="refund"][aria-label^="Refund ben@example.com"]')), 'and the ledger offers no REFUND for that payment any more');
+    ok(!(await A.page.$('#billing .ba-ledger button[data-ba-action="refund"][aria-label^="Refund ben@example.com"]')), 'and the ledger offers no Refund for that payment any more');
     await A.page.click('#billing [data-ba-action="reload"]');
     await A.page.waitForFunction(() => [...document.querySelectorAll('#billing .ba-ledger tbody tr')].some((r) => /ben@example\.com/.test(r.textContent) && /refunded/.test(r.textContent)), null, { timeout: 8000 }).catch(() => {});
     {
@@ -884,7 +884,7 @@ try {
     await A.page.waitForSelector(amyBtn, { timeout: 10000 });
     await A.page.click(amyBtn);
     await A.page.waitForSelector('.rf-dialog #rfAmount', { timeout: 5000 });
-    ok((await A.page.inputValue('#rfAmount')) === '7999', 'the ledger REFUND dialog opens at the full ₹7,999');
+    ok((await A.page.inputValue('#rfAmount')) === '7999', 'the ledger Refund dialog opens at the full ₹7,999');
     await A.page.fill('#rfAmount', '99999');
     await A.page.fill('#rfReason', 'x');
     await A.page.click('.rf-dialog button[type="submit"]');
@@ -899,7 +899,7 @@ try {
     await A.page.click('#billing [data-ba-action="reload"]');
     await A.page.waitForFunction(() => /refund pending/.test(document.querySelector('#billing .ba-ledger')?.textContent || ''), null, { timeout: 8000 })
       .then(() => ok(true, 'the ledger shows "refund pending"'), () => ok(false, 'the ledger shows "refund pending"'));
-    ok(!(await A.page.$(amyBtn)), 'and the REFUND button is gone while it is in flight (no double refund)');
+    ok(!(await A.page.$(amyBtn)), 'and the Refund button is gone while it is in flight (no double refund)');
     const dbl = await A.page.evaluate(async ([sb, tok]) => {
       const r = await fetch(sb + '/functions/v1/rzp-refund', { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ payment_id: 'payR2', reason: 'again' }) });
       return { status: r.status, body: await r.json() };
@@ -1023,7 +1023,7 @@ try {
     await amy.page.goto(BASE + 'index.html');
     await amy.page.waitForSelector('.pg-lock.pg-wall', { timeout: 12000 }).catch(() => {});
     ok(!(await amy.page.$('.pg-lock.pg-wall [data-action="pg-export"]')), 'the wall no longer offers DOWNLOAD MY WORK');
-    ok(!!(await amy.page.$('.pg-lock.pg-wall [data-auth-action="signout"]')), 'and still offers SIGN OUT');
+    ok(!!(await amy.page.$('.pg-lock.pg-wall [data-auth-action="signout"]')), 'and still offers Sign out');
 
     /* ---- THE ONE PAGE (owner, 28 Oct 2026) -------------------------
        Without the proof hook, a walled person is SENT to purchase.html. */
@@ -1167,7 +1167,7 @@ try {
       await A.page.waitForTimeout(6000);
       ok(navs.length <= 1 && !(await A.page.$('.pg-wall')), 'purchase.html after expiry: not walled, no loop');
       ok(/free trial ended/i.test(await A.page.textContent('#plan').catch(() => '')), 'and it says the free trial ended (not "Your plan: Free")');
-      ok(!!(await A.page.$('#plan [data-auth-action="signout"]')), 'with a SIGN OUT beside the plans');
+      ok(!!(await A.page.$('#plan [data-auth-action="signout"]')), 'with a Sign out beside the plans');
       ok(!!(await A.page.$('#plan .pl-card[data-plan="starter"] [data-plan-action="buy"]:not([disabled])')), 'and a plan it can actually buy');
       allErrors.push(...A.errors); await A.ctx.close();
     }
@@ -1179,18 +1179,18 @@ try {
       await A.page.waitForFunction(() => /free trial is over/i.test(document.body.textContent), null, { timeout: 12000 }).catch(() => {});
       const t = await A.page.textContent('main').catch(() => '');
       ok(/free trial is over/i.test(t) && !/You’re in/.test(t), 'invite.html tells a lapsed member the trial is over, not "You’re in"');
-      ok(!!(await A.page.$('main a[href="purchase.html"]')) && !!(await A.page.$('main [data-auth-action="signout"]')), 'and offers SEE PLANS and SIGN OUT');
+      ok(!!(await A.page.$('main a[href="purchase.html"]')) && !!(await A.page.$('main [data-auth-action="signout"]')), 'and offers See plans and Sign out');
       allErrors.push(...A.errors); await A.ctx.close();
     }
 
-    // 5. SIGN OUT from the wall, at desktop and at phone width; it stays out; signing back in works
+    // 5. Sign out from the wall, at desktop and at phone width; it stays out; signing back in works
     for (const width of [1280, 390]) {
       const A = await soloContext({ tok: 'tok-amy' });
       await A.page.setViewportSize({ width, height: 860 });
       await A.page.goto(BASE + 'index.html');
       await A.page.waitForSelector('.pg-wall [data-auth-action="signout"]', { timeout: 12000 }).catch(() => {});
       const btn = await A.page.$('.pg-wall [data-auth-action="signout"]');
-      ok(!!btn && await btn.isVisible(), `${width}px: the wall offers a visible SIGN OUT (the band and the phone bar are hidden under it)`);
+      ok(!!btn && await btn.isVisible(), `${width}px: the wall offers a visible Sign out (the band and the phone bar are hidden under it)`);
       if (!btn) { skip(`${width}px: signing out from the wall (no button)`); allErrors.push(...A.errors); await A.ctx.close(); continue; }
       const navs = navCounter(A.page);
       await btn.click();
@@ -1217,7 +1217,7 @@ try {
       allErrors.push(...A.errors); await A.ctx.close();
     }
 
-    // 6. SIGN OUT from Settings (the account pill's destination) during a RUNNING trial
+    // 6. Sign out from Settings (the account pill's destination) during a RUNNING trial
     F.reset();
     F.db.members.set(amyId, { role: 'user', disabled_at: null });
     setTrial(amyId, { minutes: 30 });
@@ -1232,7 +1232,7 @@ try {
       await A.page.waitForSelector('[data-auth-action="signout"]', { timeout: 10000 }).catch(() => {});
       await A.page.click('[data-auth-action="signout"]').catch(() => {});
       await A.page.waitForURL(/start\.html/, { timeout: 15000 }).catch(() => {});
-      ok(/start\.html/.test(A.page.url()) && !(await trialUp(A.page)), 'Settings’ SIGN OUT signs a trial user out to start.html, with no band left behind');
+      ok(/start\.html/.test(A.page.url()) && !(await trialUp(A.page)), 'Settings’ Sign out signs a trial user out to start.html, with no band left behind');
       allErrors.push(...A.errors); await A.ctx.close();
     }
 

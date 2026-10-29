@@ -7,12 +7,12 @@
       "num": "25",
       "title": "The <em>Shoot Day.</em>",
       "titlePlain": "The Shoot Day.",
-      "time": "~ EVERY DAY",
+      "time": "~ Every day",
       "deck": "Pre-production was deciding. Production is protecting those decisions from the weather, the clock and everyone's good ideas at 4pm.",
       "blocks": [
         {
           "type": "why",
-          "label": "WHY THIS MATTERS",
+          "label": "Why this matters",
           "body": "A day is lost in the first ninety minutes or not at all. Crews that start late never catch up, because the shots you drop are always the last ones on the list — and the last ones on the list are the ones you needed for the cut.",
           "tanglish": "Kaalaila late aana, andha naal poidum. Kadaisila drop panra shot thaan edit la romba theva padum."
         },
@@ -37,7 +37,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE THE UNIT MOVES",
+          "heading": "Before the unit moves",
           "items": [
             {
               "key": "ck_pr25_a",
@@ -65,12 +65,12 @@
       "num": "26",
       "title": "The <em>Continuity Log.</em>",
       "titlePlain": "The Continuity Log.",
-      "time": "~ EVERY SETUP",
+      "time": "~ Every setup",
       "deck": "The only department whose mistakes cannot be fixed in post without money. Write it down while you can still see it.",
       "blocks": [
         {
           "type": "craft",
-          "label": "96 · CRAFT LESSON",
+          "label": "96 · craft lesson",
           "trade": "A timeline you can follow without being told",
           "body": "<em>96</em> moves between school and the reunion constantly, and you are never lost — because costume, hair and light change on a rule, not a whim. Continuity is not pedantry; it is what lets an audience track two decades without a caption.",
           "tanglish": "96 la school-um reunion-um maara maara varum, aana confuse aagadhu — costume, hair, light ellam oru rule padi maarudhu."
@@ -96,7 +96,7 @@
         },
         {
           "type": "check",
-          "heading": "EVERY SETUP",
+          "heading": "Every setup",
           "items": [
             {
               "key": "ck_pr26_a",
@@ -124,12 +124,12 @@
       "num": "27",
       "title": "The <em>Dailies.</em>",
       "titlePlain": "The Dailies.",
-      "time": "~ EVERY NIGHT",
+      "time": "~ Every night",
       "deck": "Watch what you actually shot, not what you meant to shoot. The gap between the two is the film you are really making.",
       "blocks": [
         {
           "type": "why",
-          "label": "WHY THIS MATTERS",
+          "label": "Why this matters",
           "body": "A missing reaction shot costs an hour on the day and a week in the edit. Dailies exist so that the day you can still reshoot is the day you find out.",
           "tanglish": "Reaction shot miss aana, andha naal oru mani neram; edit la oru vaaram. Adhaan dailies."
         },
@@ -154,7 +154,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE ANYONE SLEEPS",
+          "heading": "Before anyone sleeps",
           "items": [
             {
               "key": "ck_pr27_a",
@@ -178,7 +178,7 @@
       "num": "28",
       "title": "The <em>Wrap.</em>",
       "titlePlain": "The Wrap.",
-      "time": "~ LAST DAY",
+      "time": "~ Last day",
       "deck": "The shoot ends. The obligations do not. Close them while people still answer your calls.",
       "blocks": [
         {
@@ -202,7 +202,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE THE UNIT DISBANDS",
+          "heading": "Before the unit disbands",
           "items": [
             {
               "key": "ck_pr28_a",
@@ -232,12 +232,12 @@
       "num": "29",
       "title": "The <em>Assembly.</em>",
       "titlePlain": "The Assembly.",
-      "time": "~ 2 WEEKS",
+      "time": "~ 2 weeks",
       "deck": "Everything, in order, too long. Resist the urge to make it good before you make it whole.",
       "blocks": [
         {
           "type": "why",
-          "label": "WHY THIS MATTERS",
+          "label": "Why this matters",
           "body": "An assembly that is honest about its length tells you what the film is. Trimming before you have seen the whole thing means cutting scenes for being slow when the real problem is three scenes later.",
           "tanglish": "Full-a paakaama cut panna, thappana scene-a vettiduven — problem munnadi illa, appuram irukkum."
         },
@@ -262,7 +262,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE THE FIRST TRIM",
+          "heading": "Before the first trim",
           "items": [
             {
               "key": "ck_po29_a",
@@ -286,12 +286,12 @@
       "num": "30",
       "title": "The <em>Picture Lock.</em>",
       "titlePlain": "The Picture Lock.",
-      "time": "~ 4 WEEKS",
+      "time": "~ 4 weeks",
       "deck": "The cut stops moving so that sound, music and colour can start. A lock that keeps slipping costs all three departments twice.",
       "blocks": [
         {
           "type": "craft",
-          "label": "VIKRAM VEDHA · CRAFT LESSON",
+          "label": "Vikram Vedha · craft lesson",
           "trade": "Structure that survives the edit",
           "body": "<em>Vikram Vedha</em>'s nested stories only work because each one lands on a reversal. In the edit that is unforgiving: shorten the wrong beat and the reversal arrives before the audience has taken the bait. Lock the structure, then trim inside it.",
           "tanglish": "Ovvoru kadhaiyum oru reversal la mudiyanum. Thappana idathula vetti-na, twist varradhukku munnadiye audience purinjiduvaanga."
@@ -317,7 +317,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE YOU CALL IT LOCKED",
+          "heading": "Before you call it locked",
           "items": [
             {
               "key": "ck_po30_a",
@@ -341,12 +341,12 @@
       "num": "31",
       "title": "The <em>Sound &amp; Music.</em>",
       "titlePlain": "The Sound & Music.",
-      "time": "~ 6 WEEKS",
+      "time": "~ 6 weeks",
       "deck": "Half the film, made last and budgeted first to be cut. Protect it: an audience forgives a soft image and never forgives muddy dialogue.",
       "blocks": [
         {
           "type": "why",
-          "label": "WHY THIS MATTERS",
+          "label": "Why this matters",
           "body": "Dialogue you cannot hear is a scene the audience leaves. Everything else in the mix — score, ambience, effects — exists to serve the line, and the mix is where a film that was working stops working, quietly.",
           "tanglish": "Dialogue kekkala na, andha scene-e poidum. Mix la thaan padam nalla irundhadhu kettu poidum."
         },
@@ -378,7 +378,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE THE FINAL MIX",
+          "heading": "Before the final mix",
           "items": [
             {
               "key": "ck_po31_a",
@@ -406,7 +406,7 @@
       "num": "32",
       "title": "The <em>Delivery.</em>",
       "titlePlain": "The Delivery.",
-      "time": "~ 2 WEEKS",
+      "time": "~ 2 weeks",
       "deck": "Colour, titles, captions, masters. The unglamorous fortnight that decides whether anyone can actually play your film.",
       "blocks": [
         {
@@ -437,7 +437,7 @@
         },
         {
           "type": "check",
-          "heading": "BEFORE YOU CALL IT FINISHED",
+          "heading": "Before you call it finished",
           "items": [
             {
               "key": "ck_po32_a",

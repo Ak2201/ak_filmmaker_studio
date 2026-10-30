@@ -102,5 +102,29 @@ ok(I.unionRevisions([{ id: 'x', date: '2' }], [{ id: 'x', date: '2' }, { id: 'y'
   ok(I.isSideCopy(g), 'a window arrival is a side copy, never the current draft');
 }
 
+// prove:script 21c: two windows saved at once, each without the other's lines.
+{
+  const base = { elements: [el('a', 'INT. FLAT - NIGHT', 'scene'), el('b', 'Ravi paces.'), el('d', 'Not tonight.', 'dialogue')], revisions: [] };
+  const A = { elements: [el('a', 'INT. FLAT - NIGHT', 'scene'), el('b', 'Ravi paces. AAA'), el('d', 'Not tonight.', 'dialogue')], revisions: [] };
+  const B = { elements: [el('a', 'INT. FLAT - NIGHT', 'scene'), el('b', 'Ravi paces.'), el('d', 'Not tonight. BBB', 'dialogue')], revisions: [] };
+  const AthenB = { elements: [el('a', 'INT. FLAT - NIGHT', 'scene'), el('b', 'Ravi paces. AAA'), el('d', 'Not tonight. BBB', 'dialogue')], revisions: [] };
+  ok(I.crossedSave(base, A.elements, B) === true, 'an arrival written without this page\'s saved edit is a crossed save');
+  ok(I.crossedSave(base, A.elements, AthenB) === false, 'one written after it (it carries the edit) is not (21b)');
+  ok(I.crossedSave(base, null, B) === false, 'a page that has not saved since it loaded crossed nothing');
+  ok(I.crossedSave(base, A.elements.concat(el('n', 'A new line.')), AthenB) === true, 'a line added here and missing there is crossed');
+  ok(I.crossedSave(base, A.elements.filter((e) => e.id !== 'd'), { elements: A.elements }) === true, 'a line cut here and still there as it was is crossed');
+  ok(I.crossedSave(base, A.elements.filter((e) => e.id !== 'd'), { elements: A.elements.filter((e) => e.id !== 'd') }) === false, 'and gone there too is not');
+
+  const lab = I.ARRIVAL_WINDOW_PREFIX + '18:40';
+  const inA = I.settleCrossed(A, B, lab), inB = I.settleCrossed(B, A, lab);
+  ok(inA.mineWon !== inB.mineWon, 'the two windows agree on which copy stays on the page');
+  ok(I.scriptSignature(inA.doc) === I.scriptSignature(inB.doc), 'and settle to the same copy, so their saves then read as the same');
+  const all = (d) => d.elements.map((e) => e.text).concat(...d.revisions.map((r) => r.elements.map((e) => e.text))).join('|');
+  ok(/AAA/.test(all(inA.doc)) && /BBB/.test(all(inA.doc)), 'nothing typed in either window is lost');
+  ok(inA.draft.name === lab && I.isSideCopy(inA.draft), 'the other copy is a side copy named for windows');
+  const again = I.settleCrossed(inA.doc, inA.mineWon ? B : A, lab);
+  ok(again.doc.revisions.filter((r) => r.id === inA.draft.id).length === 1, 'settling the same pair twice files one draft, not two');
+}
+
 console.log((fail ? '✗' : '✓') + ' test-incoming: ' + pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

@@ -106,6 +106,25 @@ async function run(width, height) {
   check(at + 'no learn <details> is left on the page', await page.$$eval('details.learn, .learn-body', (d) => d.length), 0);
   await trig.scrollIntoViewIfNeeded();
   await page.waitForTimeout(300);
+  /* The baseline must be the page at REST. story.js fills its film
+     examples in place a moment after first paint (loadFavStudiesSoon:
+     a 2.5s timer, then the studies chunk) — on a slow runner that lands
+     after the 1.5s of waiting above, and the 243px it adds below the
+     trigger at 390px was read as the explainer moving the page. So wait
+     for the signal (the studies chunk fetched), then for the document's
+     height to hold still across 20 frames with the fonts in. */
+  await page.waitForFunction(() => performance.getEntriesByType('resource').some((e) => /\/studies-[^/]*\.js$/.test(e.name)), null, { timeout: 15000 });
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    let last = -1, still = 0;
+    const t0 = performance.now();
+    while (still < 20 && performance.now() - t0 < 8000) {
+      await new Promise((r) => requestAnimationFrame(r));
+      const hgt = document.documentElement.scrollHeight;
+      still = hgt === last ? still + 1 : 0;
+      last = hgt;
+    }
+  });
 
   const where = () => page.evaluate(() => {
     const first = document.querySelector('main') && document.querySelector('main').firstElementChild;

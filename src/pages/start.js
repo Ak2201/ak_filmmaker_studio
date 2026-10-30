@@ -53,7 +53,7 @@ import '../styles/start.css';
 import { bumpOnce, bumpEvent, funnelSource, configured, optOut, priceNotice } from '../lib/funnel.js';
 import { AUTH_ERROR_KEY } from '../lib/auth-scope.js';
 import { takeAuthError, isAppPage, deviceRegion, fromDayNow, stampedFromDay, swapFigure,
-  offerFrom, ctaText, offerHref, clockText, spokenLeft, serverClock, stashPlan, dockClosed as isDockClosed, rememberDockClosed } from '../lib/start-model.js';
+  offerFrom, ctaText, offerHref, clockText, spokenLeft, stashPlan, dockClosed as isDockClosed, rememberDockClosed } from '../lib/start-model.js';
 import { pricingCurrency, readPayCurrency, guessVisitorRegion } from '../lib/region-core.js';
 import { shopView, fromDay, fmtMinor, chargeCaption } from '../lib/price-model.js';
 
@@ -145,11 +145,12 @@ let usdView = null;   // the dollar view, for a visitor shown dollars (section 6
    Nothing is drawn until BOTH replies are in (or have failed), so the
    founding card never flashes up before the pass replaces it. EVERY FIGURE
    IS THE SERVER'S: the markup holds empty slots and no digit
-   (test:marketing), and the countdown runs on the server's clock (a reply's
-   own `now` plus the local time elapsed since it arrived). With no server
-   `now` the founding offer draws no ticking clock: it says the IST day the
-   price holds until. At zero the offer is worked out again, so the card
-   moves to the next offer or goes; it never shows a deadline that passed.
+   (test:marketing), and the pass's countdown runs on the server's clock
+   (a reply's own `now` plus the local time elapsed since it arrived). The
+   founding offer draws no ticking clock at all (see drawClock): it says
+   the IST day the price holds until, "or while the founding places last".
+   At the deadline the offer is worked out again, so the card moves to the
+   next offer or goes; it never shows a deadline that passed.
 
    THE BUTTON IS THE CHECKOUT (owner, 30 Oct 2026): purchase.html?buy=<id>,
    which opens Razorpay for exactly this offer. Signed in, a plain
@@ -164,6 +165,7 @@ let usdView = null;   // the dollar view, for a visitor shown dollars (section 6
 const root = document.documentElement;
 const SURFACES = ['offerCard', 'offerDock', 'offerClose'].map(byId).filter(Boolean);
 const DOCK = byId('offerDock');
+const HEAD_CTA = document.querySelector('.mk-top .mk-btn--primary[data-open-signup]');
 const MOBILE = '(max-width: 720px)';
 
 /* Motion stands still for Playwright, the device switch (marketing.js
@@ -181,18 +183,19 @@ const offerTake = (function () {
   const set = (n, text) => { if (n.textContent !== text) n.textContent = text; };
   const show = (n, on) => { if (n.hidden === on) n.hidden = !on; };
 
+  /* the server's clock: trial_offer()'s pass, else price_notice()'s,
+     both read through pass-offer.js (marketing.js's closures) */
   function serverNow(P) {
-    const now = Date.now();
-    const t = P && P.trial && P.trial.pass;
-    const a = t ? serverClock(t.now, P.readAt, now) : null;
+    if (!P) return null;
+    const a = P.serverNow();
     if (a != null) return a;
-    return notice && notice.pass ? serverClock(notice.pass.now, noticeAt, now) : null;
+    return notice && notice.pass ? P.serverNowOf(notice.pass, noticeAt) : null;
   }
   function compute() {
     const P = passNow();
     const st = P ? P.state() : null;
     const copy = P && st ? P.copy(st) : null;
-    const off = root.dataset.purchases === 'off' || !!(P && (P.off || (P.trial && P.trial.purchase_required === false)));
+    const off = root.dataset.purchases === 'off' || !!(P && P.off);
     return { o: offerFrom(st, copy, notice, Date.now(), { serverNowMs: serverNow(P), off }), P, off };
   }
 
@@ -227,33 +230,49 @@ const offerTake = (function () {
       const href = offerHref(o);
       if (a.getAttribute('href') !== href) a.setAttribute('href', href);
       a.dataset.startBuy = o.id;
-      /* the dock's button is the short form: the bar has no room for "continue with Google" */
-      set(a, ctaText(o, s === DOCK || signedIn(), { pass: s.dataset.ctaPass, passIn: s.dataset.ctaPassIn, founding: s.dataset.ctaFounding, foundingIn: s.dataset.ctaFoundingIn }));
+      const words = { pass: s.dataset.ctaPass, passIn: s.dataset.ctaPassIn, founding: s.dataset.ctaFounding, foundingIn: s.dataset.ctaFoundingIn };
+      /* the dock's button is the short form (the bar has no room for
+         "continue with Google"), so signed out its NAME is the long form
+         (it starts with the visible words) and, on a desk, a small line
+         under it says the press goes to Google first */
+      set(a, ctaText(o, s === DOCK || signedIn(), words));
+      if (s === DOCK && !signedIn()) a.setAttribute('aria-label', ctaText(o, false, words));
+      else a.removeAttribute('aria-label');
     }
+    for (const n of s.querySelectorAll('[data-o-google]')) show(n, !!o && !signedIn());
     if (s !== DOCK) show(s, !!o);
   }
   /* the clock, every second: digits aria-hidden, the label to the minute
      (rewritten only when the minute changes, and not a live region) */
   function drawClock(o) {
-    const ms = o ? o.msLeft : null;
+    /* THE FOUNDING PRICE HAS NO TICKING CLOCK (30 Oct 2026): the server
+       also raises it when the founding places run out, which can come
+       before next_price_at, so a countdown to that instant would claim a
+       deadline it cannot promise. It says the IST day it holds until, and
+       "or while the founding places last" while there are places to count.
+       The pass (a fixed ends_at) keeps its countdown. msLeft still drives
+       the tick, so the card is worked out again at the deadline. */
+    const ms = o && o.kind === 'pass' ? o.msLeft : null;
     const clock = ms != null ? clockText(ms) : '';
     const say = ms != null ? spokenLeft(ms) : '';
-    const untilOnly = !!o && o.kind === 'founding' && ms == null;
+    const founding = !!o && o.kind === 'founding';
     for (const s of SURFACES) {
-      const ends = o && o.kind === 'pass' ? s.dataset.passEnds : s.dataset.foundingEnds;
+      const ends = s.dataset.passEnds;
+      const until = founding ? s.dataset.until + ' ' + o.until + (o.seats ? ' ' + s.dataset.untilSeats : '') : '';
       for (const p of s.querySelectorAll('[data-o-timer]')) {
         const lead = p.querySelector('[data-o-timer-lead]');
-        if (lead) set(lead, !o ? '' : untilOnly ? s.dataset.until + ' ' + o.until : ends);
+        if (lead) set(lead, !o ? '' : founding ? until : ends);
         for (const c of p.querySelectorAll('[data-o-clock]')) set(c, clock);
         if (say !== spoken) for (const c of p.querySelectorAll('[data-o-spoken]')) set(c, say ? ends + ' ' + say : '');
-        /* the dock has no lead, so a clockless founding offer draws no line there */
-        show(p, !!clock || (untilOnly && !!lead));
+        /* the dock has no lead, so the founding offer draws no line there */
+        show(p, !!clock || (founding && !!lead));
       }
     }
     spoken = say;
   }
   function draw() {
     if (!haveNotice || !havePass) return;
+    clearTimeout(giveUp);
     const { o, P, off } = compute();
     offer = o;
     const key = o ? [o.kind, o.price, o.was || '', o.left || o.seats || '', usdView ? 'usd' : ''].join('|') : 'none';
@@ -270,9 +289,16 @@ const offerTake = (function () {
       }
       /* the FAQ's trial clause: only while trials are open, no pass is
          running and purchases are required */
-      const trialOpen = !!(P && P.trial && P.trial.trial_enabled === true) && !off && !(o && o.kind === 'pass');
+      const trialOpen = !!(P && P.trialOpen) && !off && !(o && o.kind === 'pass');
       for (const n of document.querySelectorAll('[data-o-trial]')) show(n, trialOpen);
       if (o) root.dataset.offer = o.kind; else delete root.dataset.offer;
+      /* ONE PRIMARY ACTION ON THE FIRST SCREEN: while an offer shows, the
+         header's "Get started" (the sign-up door) steps down to a
+         secondary button, so the only filled button above the fold is
+         the offer's checkout. */
+      if (HEAD_CTA) { HEAD_CTA.classList.toggle('mk-btn--primary', !o); HEAD_CTA.classList.toggle('mk-btn--outline', !!o); }
+      /* decided: start.css drops the hero's reservation (see THE HERO) */
+      root.dataset.offerReady = '1';
     }
     drawClock(o);
     dockUpdate();
@@ -343,6 +369,9 @@ const offerTake = (function () {
     try { if (!startSignIn()) location.href = a.href; } catch (err) { location.href = a.href; }
   });
 
+  /* a reply that never comes must not hold the hero's reservation for
+     ever: after 5s decide with what is in (a late reply still redraws) */
+  const giveUp = setTimeout(() => { haveNotice = havePass = true; draw(); }, 5000);
   document.addEventListener('mk:pass', () => { havePass = true; drawnKey = ''; draw(); });
   if (passNow()) havePass = true;
   return {

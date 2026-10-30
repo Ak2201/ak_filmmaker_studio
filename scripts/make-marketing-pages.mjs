@@ -745,7 +745,7 @@ export function validateHome(home, { site, pages }) {
      anywhere in this block is a typed figure and fails the build. */
   const o = home.offer;
   const OFFER_KEYS = ['passTag', 'passName', 'passWhat', 'passIncl', 'foundingTag', 'foundingName', 'foundingIncl', 'unitYear', 'dayLead', 'dayTail',
-    'wasLabel', 'passEnds', 'foundingEnds', 'until', 'ctaPass', 'ctaPassIn', 'ctaFounding', 'ctaFoundingIn', 'trust', 'refund', 'dockLabel', 'close', 'fallback'];
+    'wasLabel', 'passEnds', 'until', 'untilSeats', 'ctaPass', 'ctaPassIn', 'ctaFounding', 'ctaFoundingIn', 'trust', 'refund', 'dockLabel', 'close', 'dockGoogle', 'fallback'];
   if (!o) w('offer block missing');
   else {
     const miss = OFFER_KEYS.filter((k) => typeof o[k] !== 'string' || !o[k].trim());
@@ -826,6 +826,7 @@ function offerSlots(o, { surface }) {
     <p class="st-dock-what"><b class="st-dock-name">${name}</b> <span class="st-offer-amt" data-o-price></span> <span class="st-offer-unit" data-o-unit></span></p>
     <p class="st-offer-timer st-dock-timer" data-o-timer hidden><span class="st-clock" data-o-clock aria-hidden="true"></span><span class="mk-vh" role="timer" aria-live="off" data-o-spoken></span></p>
     <a class="mk-btn mk-btn--primary mk-btn--sm st-offer-cta" href="purchase.html?buy=${OFFER_PLAN.founding}" data-start-buy="${OFFER_PLAN.founding}" data-offer-cta>${esc(o.ctaFoundingIn)}</a>
+    <p class="mk-small st-dock-google" data-o-google hidden>${esc(o.dockGoogle)}</p>
     <button class="st-dock-close" type="button" data-offer-close aria-label="${esc(o.close)}"><span aria-hidden="true">✕</span></button>
   </div>`;
   }
@@ -863,7 +864,7 @@ function offerSlots(o, { surface }) {
 }
 /* The words start.js swaps in by state and sign-in, as attributes on each
    surface (never typed into start.js). */
-const offerData = (o) => ` data-offer-state="none" data-pass-tag="${esc(o.passTag)}" data-unit-year="${esc(o.unitYear)}" data-day-lead="${esc(o.dayLead)}" data-day-tail="${esc(o.dayTail)}" data-pass-ends="${esc(o.passEnds)}" data-founding-ends="${esc(o.foundingEnds)}" data-until="${esc(o.until)}" data-cta-pass="${esc(o.ctaPass)}" data-cta-pass-in="${esc(o.ctaPassIn)}" data-cta-founding="${esc(o.ctaFounding)}" data-cta-founding-in="${esc(o.ctaFoundingIn)}"`;
+const offerData = (o) => ` data-offer-state="none" data-pass-tag="${esc(o.passTag)}" data-unit-year="${esc(o.unitYear)}" data-day-lead="${esc(o.dayLead)}" data-day-tail="${esc(o.dayTail)}" data-pass-ends="${esc(o.passEnds)}" data-until="${esc(o.until)}" data-until-seats="${esc(o.untilSeats)}" data-cta-pass="${esc(o.ctaPass)}" data-cta-pass-in="${esc(o.ctaPassIn)}" data-cta-founding="${esc(o.ctaFounding)}" data-cta-founding-in="${esc(o.ctaFoundingIn)}"`;
 
 /* The stage card's picture: its product page's own poster frame. */
 export const HOME_HERO_CLIP = 'chain';

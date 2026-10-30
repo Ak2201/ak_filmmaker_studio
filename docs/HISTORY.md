@@ -3316,3 +3316,40 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     ends in …" sits against the older "no urgency words" note in
     `priceRiseBand()`; the dollar-checkout-off refusal is inferred and not
     exercised by the fake server.
+
+    **Review pass (30 Oct 2026, same day).** Eight findings, seven fixed,
+    one in part. NOTHING MOVES WHEN THE ANSWER ARRIVES: while start.js has
+    not decided (no `html[data-offer-ready]`, under `@media (scripting:
+    enabled)`), `.st-hero-in::after` reserves the card's drawn height (a
+    pseudo-element, because `[hidden]` is `display:none !important`), the
+    desk grid is already two columns and top-aligned, and the plain "Get
+    started" keeps its place invisibly (shown by CSS after 6s if the script
+    never runs; start.js decides with what it has after 5s). Gabarito 800,
+    the public DISPLAY h1, is preloaded on the public pages only
+    (`vite.config.js`), since its late arrival re-wrapped the headline.
+    Measured with both replies 1.2s late: layout shift 0.11 → 0 at 1440 and
+    0.21 → 0 at 390. ON A PHONE THE PRESS IS ON THE FIRST SCREEN: below
+    720px `.st-hero-text` is `display: contents`, the card follows the h1,
+    and inside it the button follows the price and its terms (Pay bottom at
+    508px at both 390x844 and 390x700; was ~970). The glow turns twice on a
+    desk (≥1100px) and stands still elsewhere. While an offer shows, the
+    header's "Get started" is a secondary (outline) button. The pass reply
+    is parsed only in `pass-offer.js`: new `serverNowOf()` and
+    `offerFlags()`, exposed through marketing.js's share closures;
+    `start-model.js` `serverClock()` is gone and `test:marketing` fails a
+    `.trial`/`purchase_required`/`trial_enabled`/`.pass.now` read in
+    start.js. THE FOUNDING PRICE HAS NO TICKING CLOCK: the rise also fires
+    on `price_rises_after_buyers`, so it reads "Founding price until <day>
+    (IST) or while the founding places last" (copy `untilSeats`;
+    `foundingEnds` removed); the pass keeps its countdown. Signed out, the
+    slide-in's button is named with "continue with Google" and a desk shows
+    "Continues with a Google sign-in" under it. A `?buy=` that cannot be
+    honoured because payments are off or the account is disabled now says
+    so ("… Nothing was charged.") in `purchase.js` and `plan-cards.js`.
+    NOT DONE: a no-sign-in "Open the sample" link: none exists for a
+    signed-out visitor (the site gate admits only a demo-code pass), so the
+    hero keeps "See it on the sample feature". `prove:offer` 116 (a late
+    reply block: shift ≤ 0.05, h1 box unchanged, Pay on the first phone
+    screen); `prove:shell-a11y` now waits for the hub's own data-go
+    navigation before its goto (it aborted on "interrupted by another
+    navigation", on the base commit too).

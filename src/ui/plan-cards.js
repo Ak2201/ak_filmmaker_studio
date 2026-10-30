@@ -583,6 +583,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
         owned = !btn || target.classList.contains('is-current') || target.classList.contains('is-below');
         if (owned) buyNote = current && current !== 'free' ? 'You already have ' + planNameOf(plans, current) + '.' : '';
         else if (usdShownInr) buyNote = 'Dollar checkout isn’t open yet; you can pay in rupees.';
+        else if (btn.disabled) buyNote = (st.disabled ? 'This account cannot buy just now.' : 'Payments are not available just now.') + ' Nothing was charged.';
       }
       if (btn && st && !btn.disabled && (hooks.onSuccess || buying) && !(buying && (usdShownInr || owned))) setTimeout(() => {
         /* the row is rebuilt on every billing event, so press the LIVE button */

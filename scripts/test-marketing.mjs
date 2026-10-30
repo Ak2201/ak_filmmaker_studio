@@ -955,10 +955,10 @@ ok(/<h3 id="leads">/.test(read('privacy.html')), 'privacy.html: the leads paragr
       && SM.offerFrom(null, null, null, NOW) === null, 'a missing, malformed or falling price: no offer');
     ok(SM.offerFrom({ state: 'open', pass: {}, msLeft: null }, { open: true, price: '', length: '7 days' }, null, NOW) === null, 'a pass with no price: no offer');
     ok(SM.clockText(2 * 86400e3 + 4 * 3600e3 + 10 * 60e3 + 5e3) === '2d 04:10:05' && SM.clockText(0) === '' && SM.clockText(null) === '', 'clockText: "2d 04:10:05", nothing at zero');
-    ok(SM.serverClock('2026-10-30T13:00:00Z', NOW, NOW + 5000) === Date.parse('2026-10-30T13:00:05Z') && SM.serverClock(undefined, NOW, NOW) === null, 'serverClock: the reply\'s now plus the time since it arrived');
     const T = { pass: 'A — continue with Google', passIn: 'A', founding: 'B — continue with Google', foundingIn: 'B' };
     ok(SM.ctaText(p, false, T) === T.pass && SM.ctaText(p, true, T) === 'A' && SM.ctaText(f, false, T) === T.founding && SM.ctaText(f, true, T) === 'B', 'ctaText: the signed-out words say Google comes first');
     const sjs = read('src/pages/start.js');
+    ok(!/\.trial\b|purchase_required|trial_enabled|\.pass\.now/.test(sjs), 'start.js parses no trial_offer() field itself: pass-offer.js (through marketing.js) is the one reader');
     ok(/stashPlan\(a\.dataset\.startBuy\)/.test(sjs) && /bumpEvent\('signup', funnelSource\(\)\)/.test(sjs) && /startSignIn\(\)/.test(sjs), 'start.js: a signed-out press stashes the intent, counts signup and goes to Google');
     ok(/rememberDockClosed\(\)/.test(sjs) && /sessionStorage\.setItem\(DOCK_KEY/.test(read('src/lib/start-model.js')) && !/localStorage\.setItem/.test(sjs), 'start.js: the closed slide-in is a session flag; nothing is written to localStorage');
     ok(!/Hurry|risk-free|money-back|someone just bought/i.test(sjs + read('src/data/marketing-home.json')), 'no urgency words, guarantees or fake activity in the offer');

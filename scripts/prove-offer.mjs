@@ -12,8 +12,10 @@
                button is purchase.html?buy=pass
      founding  no open pass, a rise scheduled: Intermediate at today's
                price with the price it rises to struck beside it, the
-               founding places left, a countdown to next_price_at on the
-               server's clock, the button purchase.html?buy=indie
+               founding places left, NO ticking clock (the places can run
+               out before next_price_at) but the IST day it holds until
+               "or while the founding places last", the button
+               purchase.html?buy=indie
      neither   nothing rising, no pass: every surface hidden, the hero's
                plain door and the plans stand
      fired     next_price_at in the past: falls to nothing, and no text
@@ -26,7 +28,12 @@
    closing band, closes on its button and on Escape and stays closed
    after scrolling and a reload; at 390 it is one bar no taller than 64px
    (plus the safe-area inset), with no horizontal overflow and the last
-   footer link clickable. Throughout: no localStorage write, no page or
+   footer link clickable. While an offer shows the header's "Get
+   started" is secondary; signed out, the slide-in's button is NAMED with
+   "continue with Google" (and says so in a small line on a desk). With
+   both replies 1.2s late, nothing above the card moves (layout shift
+   <= 0.05, the h1 keeps its box) and at 390x844 and 390x700 the Pay
+   button is on the first screen. Throughout: no localStorage write, no page or
    console error, and no studio-* or supabase-* chunk.
 
    Motion is inert here (navigator.webdriver: html.st-still), so this
@@ -94,6 +101,7 @@ const EVENTS = [];
 let authHits = 0;
 async function route(r) {
   const url = new URL(r.request().url());
+  if (S.delay && /\/rpc\/(price_notice|trial_offer)$/.test(url.pathname)) await new Promise((x) => setTimeout(x, S.delay));
   const json = (body, status = 200) => r.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
   if (url.pathname === '/rest/v1/rpc/price_notice') return json(noticeBody());
   if (url.pathname === '/rest/v1/rpc/trial_offer') {
@@ -110,8 +118,7 @@ async function route(r) {
   return json(null);
 }
 
-async function context(browser, { width, signedIn = false }) {
-  const height = width >= 1100 ? 900 : 844;
+async function context(browser, { width, height = width >= 1100 ? 900 : 844, signedIn = false }) {
   const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width, height }, timezoneId: 'Asia/Kolkata' });
   await ctx.route(SB + '/**', route);
   await ctx.route(/\/purchase(\.html)?(\?|$)/, (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>checkout</title><p>checkout</p>' }));
@@ -142,6 +149,7 @@ const view = (page) => page.evaluate(() => {
     clock: txt(q('[data-o-clock]')), spoken: txt(card && card.querySelector('[data-o-spoken]')), lead: txt(q('[data-o-timer-lead]')),
     href: cta ? cta.getAttribute('href') : '', ctaText: txt(cta),
     heroPrimary: [...document.querySelectorAll('.st-hero .mk-btn--primary')].filter(vis).map(txt),
+    headPrimary: !!document.querySelector('.mk-top [data-open-signup].mk-btn--primary'),
     closeShown: vis(document.getElementById('offerClose')), dockShown: vis(document.getElementById('offerDock')),
     closeHref: (document.querySelector('#offerClose [data-offer-cta]') || {}).getAttribute?.('href') || '',
     body: document.body.innerText.replace(/\s+/g, ' ')
@@ -206,15 +214,13 @@ try {
       ok(a.was === '₹1,499', `the price it rises to is struck beside it: ${a.was}`);
       ok(a.day === 'about ₹2.19 a day', `with the per-day figure: "${a.day}"`);
       ok(a.seats === '39 of 100 founding places left', `the founding places left are the server's: "${a.seats}"`);
-      const s = secs(a.clock), want = (RISE_IN - SKEW) / 1000;
-      ok(s != null && Math.abs(s - want) <= 5 && a.lead === 'Founding price ends in', `the countdown runs on the server's clock (${a.lead} ${a.clock}; ${Math.round(want)}s on the server, ${Math.round(RISE_IN / 1000)}s on this machine)`);
+      ok(a.clock === '' && /^Founding price until \d{1,2} \w+ \(IST\) or while the founding places last$/.test(a.lead),
+        `no ticking clock (the places can run out first): it says the day it holds until, or while places last: "${a.lead}"`);
       ok(a.href === 'purchase.html?buy=indie', `the button goes to purchase.html?buy=indie (${a.href})`);
       ok(a.ctaText === 'Lock the founding price — continue with Google', `"${a.ctaText}"`);
       ok(a.heroPrimary.length === 1, 'the hero has exactly one primary action');
-      ok(!/hurry|only \d+ left|someone just|risk-free|money-back/i.test(a.body), 'no urgency words, fake activity or guarantees anywhere');
-      await c.page.waitForTimeout(2100);
-      const d = secs(a.clock) - secs((await view(c.page)).clock);
-      ok(d >= 1 && d <= 3, 'it ticks down');
+      ok(!/hurry|only \d+ left|someone just|risk-free|money-back|founding price ends in/i.test(a.body), 'no urgency words, fake activity or guarantees anywhere');
+      ok(a.headPrimary === false, 'while an offer shows, the header\'s "Get started" is a secondary button: one filled button on the first screen');
 
       /* the dock */
       ok(!(await view(c.page)).dockShown, 'the slide-in is hidden while the hero card is on screen');
@@ -225,7 +231,9 @@ try {
         const r = document.getElementById('offerDock').getBoundingClientRect();
         return { h: r.height, w: r.width, right: innerWidth - r.right, bottom: innerHeight - r.bottom, over: document.documentElement.scrollWidth > document.documentElement.clientWidth,
           pad: getComputedStyle(document.documentElement).getPropertyValue('--offer-dock-h').trim(),
-          cta: (document.querySelector('#offerDock [data-offer-cta]') || {}).getAttribute?.('href') };
+          cta: (document.querySelector('#offerDock [data-offer-cta]') || {}).getAttribute?.('href'),
+          name: (document.querySelector('#offerDock [data-offer-cta]') || {}).getAttribute?.('aria-label') || '',
+          google: (() => { const n = document.querySelector('#offerDock [data-o-google]'); return !!n && !n.hidden && n.getClientRects().length > 0; })() };
       });
       if (width <= 720) {
         ok(geo.h <= 64 && geo.w === width && geo.bottom === 0, `at ${width} it is one bottom bar, ${Math.round(geo.h)}px tall, full width`);
@@ -233,6 +241,8 @@ try {
       } else ok(geo.w <= 320 && geo.right > 0 && geo.bottom > 0, `at ${width} it is a card in the bottom right (${Math.round(geo.w)}px wide)`);
       ok(!geo.over, 'no horizontal overflow with the slide-in shown');
       ok(geo.cta === 'purchase.html?buy=indie', 'the slide-in\'s button is the same checkout');
+      ok(geo.name === 'Lock the founding price — continue with Google', `signed out, its name says Google comes first: "${geo.name}"`);
+      ok(width <= 720 ? !geo.google : geo.google, width <= 720 ? 'the phone bar keeps one row (the name says it)' : 'on a desk a small line under the button says it continues with Google');
       await c.page.evaluate(() => document.getElementById('start').scrollIntoView({ behavior: 'instant', block: 'center' }));
       await c.page.waitForFunction(() => document.getElementById('offerDock').hidden, null, { timeout: 3000 }).catch(() => {});
       const atClose = await view(c.page);
@@ -280,6 +290,7 @@ try {
       await load(c.page);
       const a = await view(c.page);
       ok(a.ctaText === 'Lock the founding price', `signed in, the button names the offer only: "${a.ctaText}"`);
+      ok(await c.page.evaluate(() => { const b = document.querySelector('#offerDock [data-offer-cta]'); const g = document.querySelector('#offerDock [data-o-google]'); return !b.hasAttribute('aria-label') && g.hidden; }), 'signed in, the slide-in says nothing of Google');
       authHits = 0;
       await Promise.all([c.page.waitForURL(/purchase/, { timeout: 8000 }).catch(() => {}), c.page.click('#offerCard [data-offer-cta]')]);
       ok(/\/purchase\.html\?buy=indie$/.test(c.page.url()) && authHits === 0, `signed in, the press opens ${new URL(c.page.url()).pathname + new URL(c.page.url()).search} with no sign-in`);
@@ -293,6 +304,7 @@ try {
       await load(c.page);
       const a = await view(c.page);
       ok(!a.shown && !a.closeShown && !a.dockShown, `${label}: every offer surface stays hidden`);
+      ok(a.headPrimary === true, `${label}: the header's "Get started" stays the filled button`);
       ok(a.heroPrimary.length === 1 && a.heroPrimary[0] === 'Get started', `${label}: the hero keeps its plain door: ${JSON.stringify(a.heroPrimary)}`);
       ok(!/founding|rises to|launch pass|₹1,499|ends in/i.test(a.body), `${label}: no text claims an offer or a rise`);
       await c.page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)); await c.page.waitForTimeout(300);
@@ -301,6 +313,29 @@ try {
       await done(c);
     }
   }
+  /* THE LATE REPLY: both answers 1.2s late. Nothing above the card may
+     move when it is drawn (layout shift <= 0.05, the h1 keeps its place
+     and width), and on a phone the Pay button is on the first screen. */
+  console.log('a late reply (1.2s)');
+  S.pass = { open: false, endsIn: PASS_LEFT }; S.rise = RISE_IN; S.delay = 1200;
+  for (const [width, height] of [[1440, 900], [390, 844], [390, 700]]) {
+    const c = await context(browser, { width, height });
+    await c.page.addInitScript(() => { window.__cls = 0; new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls += e.value; }).observe({ type: 'layout-shift', buffered: true }); });
+    await c.page.goto(BASE + 'start.html', { waitUntil: 'domcontentloaded' });
+    await c.page.waitForTimeout(400);
+    const h1 = () => c.page.evaluate(() => { const r = document.getElementById('mkH1').getBoundingClientRect(); return [Math.round(r.y), Math.round(r.width)].join(','); });
+    const was = await h1();
+    await c.page.waitForFunction(() => document.documentElement.dataset.offerReady === '1', null, { timeout: 8000 }).catch(() => {});
+    await c.page.waitForTimeout(600);
+    const g = await c.page.evaluate(() => ({ cls: window.__cls, shown: !document.getElementById('offerCard').hidden, cta: document.querySelector('#offerCard [data-offer-cta]').getBoundingClientRect().bottom }));
+    const now = await h1();
+    ok(g.shown && g.cls <= 0.05, `@${width}x${height}: the card arrives late and nothing moves (layout shift ${g.cls.toFixed(3)})`);
+    ok(was === now, `@${width}x${height}: the h1 keeps its place and width (${was} → ${now})`);
+    if (width <= 720) ok(g.cta <= height, `@${width}x${height}: the Pay button is on the first screen (bottom at ${Math.round(g.cta)}px)`);
+    await done(c);
+  }
+  S.delay = 0;
+
   console.log('global');
   ok(allWrites.filter((k) => k !== 'fms_studio_account_v1' && !/^sb-/.test(k)).length === 0, 'no localStorage write anywhere' + (allWrites.length ? ': ' + [...new Set(allWrites)].join(', ') : ''));
   ok(allChunks.length === 0, 'no studio-* or supabase-* chunk on the landing page' + (allChunks.length ? ': ' + [...new Set(allChunks)].join(', ') : ''));

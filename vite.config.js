@@ -118,7 +118,7 @@ function materialSymbols() {
    of the build rather than naming them. Dev serves the CSS unhashed
    and gets no preload, which is fine.
    ============================================================ */
-const PRELOAD_FACES = ['onest-latin-400-normal', 'gabarito-latin-700-normal'];
+const PRELOAD_FACES = ['onest-latin-400-normal', 'gabarito-latin-700-normal'];   // + Gabarito 800 on the public pages (below)
 function fontPreloads() {
   return {
     name: 'fms-font-preloads',
@@ -130,7 +130,12 @@ function fontPreloads() {
         if (/panel\.html$/.test(where)) return;
         if (!html.includes('id="app"') && !/(^|\/)(start|pricing|contact|about|product-[a-z-]+|guides|guide-[a-z-]+|compare-[a-z-]+|trust)\.html$/.test(where)) return;
         const tags = [];
-        for (const face of PRELOAD_FACES) {
+        /* the public pages' DISPLAY h1 is Gabarito 800 (two h1 tiers,
+           marketing.css): preloaded there too, or the hero headline
+           re-wraps when it arrives (a layout shift of ~0.1 at 390, 30 Oct
+           2026). The studio pages never paint 800 above the fold. */
+        const faces = html.includes('id="app"') ? PRELOAD_FACES : [...PRELOAD_FACES, 'gabarito-latin-800-normal'];
+        for (const face of faces) {
           const a = Object.values(ctx.bundle).find((f) => f.type === 'asset' && /\.woff2$/.test(f.fileName)
             && [...(f.originalFileNames || []), f.name || ''].some((n) => n.includes(face)));
           if (!a) throw new Error('fms-font-preloads: no bundled asset for ' + face + ' — did fonts.css stop declaring it?');

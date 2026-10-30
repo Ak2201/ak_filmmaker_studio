@@ -26,14 +26,68 @@
    ============================================================ */
 @property --st-glow-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
 
-/* the hero: two columns on a desk while there is a card to show */
+/* the hero: two columns on a desk while there is a card to show.
+
+   NOTHING MOVES WHEN THE ANSWER ARRIVES (30 Oct 2026). The card is drawn
+   from two server replies, so it used to appear late and push the hero
+   about (the h1 moved 60px and narrowed by 77px at 1440; layout-shift
+   0.11 there and 0.21 at 390). Now, while scripts run and start.js has
+   not yet decided (no html[data-offer-ready]), the card's box is RESERVED
+   invisibly at its drawn height, the desk grid is already two columns,
+   the text column is top-aligned (so the card's exact height can never
+   move the h1), and the plain "Get started" door keeps its place but is
+   invisible (it is the LAST thing in the text column, so it moves
+   nothing when an offer hides it). With no offer the reservation goes and
+   the door shows: a shift only in that state. A page whose script never
+   runs shows the door after 6s (CSS alone); with scripts off, none of
+   this applies and the page is the plain door, as before. */
 @media (min-width: 1100px) {
   .st-hero-in:has(> .st-offer:not([hidden])) {
-    display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--s8); align-items: center;
+    display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--s8); align-items: start;
   }
 }
-.st-hero-in > .st-offer { margin-top: var(--s7); }
+@media (scripting: enabled) and (min-width: 1100px) {
+  html:not([data-offer-ready]) .st-hero-in { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--s8); align-items: start; }
+}
+@media (scripting: enabled) {
+  /* a pseudo-element, not the card: [hidden] is display:none !important
+     here (base.css), so the card itself cannot hold the place */
+  html:not([data-offer-ready]) .st-hero-in::after { content: ''; display: block; order: 1; min-height: var(--st-offer-h); margin-bottom: var(--st-offer-gap, 0px); }
+  html:not([data-offer-ready]) .st-hero [data-o-fallback] { visibility: hidden; animation: st-late 0s linear 6s forwards; }
+}
+@keyframes st-late { to { visibility: visible; } }
+/* the founding card's drawn height (measured: 602px + its gap at 390,
+   623px at 1440); the pass card is a little shorter, which moves nothing
+   above it */
+.st-hero-in { --st-offer-h: 37.625rem; --st-offer-gap: var(--s6); }
+@media (min-width: 1100px) { .st-hero-in { --st-offer-h: 39rem; --st-offer-gap: 0px; } }
+.st-hero-in > .st-offer { margin-top: var(--s6); }
 @media (min-width: 1100px) { .st-hero-in > .st-offer { margin-top: 0; } }
+
+/* A PHONE SEES THE PRESS ON ITS FIRST SCREEN (30 Oct 2026): at 390x844
+   the Pay button sat at y≈970, under the fold. Below 720px the hero text
+   column dissolves into the hero's own column so the card follows the h1
+   directly, the sentence and the secondary link come after it, and
+   inside the card the button follows the price and its terms; what the
+   offer includes, the clock and the places left follow the button. */
+@media (max-width: 720px) {
+  .st-hero { padding-top: var(--s6); }
+  .st-hero-in { display: flex; flex-direction: column; }
+  .st-hero-text { display: contents; }
+  .st-hero-in > .st-offer { order: 1; margin-top: 0; margin-bottom: var(--s6); }
+  .st-hero .mk-sub, .st-hero .mk-cta-row { order: 2; }
+  .st-hero .mk-h1 { margin-bottom: var(--s4); font-size: clamp(2.25rem, 9vw, 2.75rem); }
+  .st-offer:not([hidden]) { display: flex; flex-direction: column; padding: var(--s5); }
+  .st-offer > * { order: 0; }
+  .st-offer > .st-offer-terms { order: 1; }
+  .st-offer > .st-offer-cta { order: 2; margin: var(--s2) 0 var(--s3); }
+  .st-offer > :is(.st-offer-timer, .st-offer-seats) { order: 3; }
+  .st-offer > .st-offer-incl { order: 4; margin: var(--s3) 0; }
+  .st-offer > .st-offer-trust { order: 5; }
+  .st-offer-price { margin-top: var(--s2); }
+  .st-offer-day { margin-bottom: var(--s3); }
+  .st-offer-terms { margin-bottom: var(--s2); }
+}
 
 .st-offer {
   position: relative; isolation: isolate; box-sizing: border-box; max-width: 32rem;
@@ -92,9 +146,16 @@
 
 @media (prefers-reduced-motion: no-preference) {
   html:not(.st-still) .st-hero-in > .st-offer:not([hidden]) { animation: st-offer-in .6s cubic-bezier(.2, .7, .2, 1) .5s both; }
-  html:not(.st-still) .st-offer:not([hidden])::before { animation: st-glow 12s linear infinite; }
   html:not(.st-still) .st-hero-in > .st-offer:not([hidden]) .st-offer-amt { animation: st-price-pop .4s var(--ease-out) .9s both; }
   html:not(.st-still) .st-dock:not([hidden]) { animation: st-dock-in .35s var(--ease-out) both; }
+}
+/* THE GLOW TURNS TWICE ON A DESK AND THEN STANDS STILL (30 Oct 2026): it
+   animates a registered angle under a 32px blur, which repaints the
+   blurred layer every frame and cannot run on the compositor. Running for
+   ever on a phone works against a fast first screen, so a phone (and any
+   width under 1100px) gets the still ring, and a desk two slow turns. */
+@media (prefers-reduced-motion: no-preference) and (min-width: 1100px) {
+  html:not(.st-still) .st-offer:not([hidden])::before { animation: st-glow 12s linear 2; }
 }
 html.st-still .st-offer::before { animation: none; }
 @keyframes st-offer-in { from { opacity: 0; transform: translateY(calc(24px * var(--motion))) scale(calc(1 - .04 * var(--motion))); } }
@@ -118,6 +179,7 @@ html.st-still .st-offer::before { animation: none; }
 .st-dock .st-offer-amt { font-size: var(--t-2xl); }
 .st-dock-timer { grid-column: 1 / -1; grid-row: 2; margin: 0; }
 .st-dock .st-offer-cta { grid-column: 1 / -1; grid-row: 3; width: 100%; white-space: normal; text-align: center; line-height: 1.2; }
+.st-dock-google { grid-column: 1 / -1; grid-row: 4; margin: calc(-1 * var(--s1)) 0 0; text-align: center; font-size: var(--t-tiny); }
 .st-dock-close {
   grid-column: 2; grid-row: 1; align-self: start; display: grid; place-items: center;
   width: 44px; height: 44px; margin: calc(-1 * var(--s2)) calc(-1 * var(--s2)) 0 0; padding: 0;
@@ -142,6 +204,7 @@ body { padding-bottom: var(--offer-dock-h, 0px); }
   .st-dock-timer { grid-column: 1; grid-row: 2; font-size: var(--t-tiny); }
   .st-dock .st-offer-cta { grid-column: 2; grid-row: 1 / span 2; width: auto; padding: 0 var(--s4); }
   .st-dock-close { grid-column: 3; grid-row: 1 / span 2; align-self: center; margin: 0; }
+  .st-dock-google { display: none; }   /* the bar has one row; the button's name says it instead */
   @media (prefers-reduced-motion: no-preference) {
     html:not(.st-still) .st-dock:not([hidden]) { animation-name: st-bar-in; }
   }

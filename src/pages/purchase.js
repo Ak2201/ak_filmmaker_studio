@@ -170,7 +170,7 @@ async function maybeBuyPass() {
   const st = billing.st;
   if (passPhase(passOfferNow) !== 'open') buyNotice = 'The launch pass has closed. Here are the plans.';
   else if (!mayBuyPass(st)) buyNotice = st && st.plan && st.plan !== 'free' && !onPass(st) ? 'You already have ' + Billing.planName(st.plan) + '.' : 'The launch pass is not available on this account. Here are the plans.';
-  else if (!Billing.paymentsConfigured() || st.disabled) buyNotice = '';
+  else if (!Billing.paymentsConfigured() || st.disabled) buyNotice = (st.disabled ? 'This account cannot buy just now.' : 'Payments are not available just now.') + ' Nothing was charged.';
   else { render(); buyPassHere(); return; }
   render();
 }

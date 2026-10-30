@@ -163,6 +163,10 @@ async function ctxAt(width, height, extra = {}) {
   if (btn) {
     await btn.click();
     await page.waitForFunction(() => JSON.parse(localStorage.getItem('fms_scenes_v1') || '{}').scenes?.length > 10, null, { timeout: 15000 }).catch(() => {});
+    /* the button carries data-go: the hub goes on to the dashboard by
+       itself, and a goto fired while it does is "interrupted by another
+       navigation". Let its own navigation land first. */
+    await page.waitForURL(/dashboard(\.html)?$/, { timeout: 8000, waitUntil: 'networkidle' }).catch(() => {});
   } else {
     await page.evaluate(() => { if (!StudioStore.currentProject()) StudioStore.createProject({ title: 'Proof', format: 'feature' }); });
   }

@@ -3,7 +3,7 @@
    The scarcity must be true: the countdown runs on the server's clock,
    fails closed on any missing field, and closes at zero or at the cap. */
 import fs from 'node:fs';
-import { readPass, passState, countdownText, passPrice, passLength, leftText } from '../src/lib/pass-offer.js';
+import { readPass, passState, serverNowOf, offerFlags, countdownText, passPrice, passLength, leftText } from '../src/lib/pass-offer.js';
 
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) pass++; else { fail++; console.log('  ✗ ' + m); } };
@@ -46,6 +46,13 @@ const p = readPass(base);
 ok(passPrice(p) === '₹49' && passLength(p) === '7 days', 'price and length: ' + passPrice(p) + ' / ' + passLength(p));
 ok(passPrice(readPass({ ...base, amount_paise: 9900 })) === '₹99', 'the console can make it ₹99');
 ok(passLength(readPass({ ...base, days: 1 })) === '1 day', 'one day is singular');
+
+/* the server's clock and the reply's switches, read here only */
+ok(serverNowOf(base, NOW, NOW + 5000) === NOW + 5000 && serverNowOf({ ...base, now: '2026-10-27T13:00:00Z' }, NOW, NOW) === NOW + 3 * 3600e3, 'serverNowOf: the block\'s now plus the local time since it arrived');
+ok(serverNowOf({ ...base, now: undefined }, NOW, NOW) === null && serverNowOf(null, NOW, NOW) === null && serverNowOf(base, NaN, NOW) === null, 'serverNowOf: no usable now is null, never the local clock');
+ok(serverNowOf(base, NOW, NOW - 1000) === NOW, 'serverNowOf: a clock that ran backwards adds nothing');
+const fl = offerFlags({ purchase_required: false, trial_enabled: true }), f0 = offerFlags(null), fs1 = offerFlags({ purchase_required: 'false', trial_enabled: 'true' });
+ok(fl.off === true && fl.trialOpen === true && f0.off === false && f0.trialOpen === false && fs1.off === false && fs1.trialOpen === false, 'offerFlags: only the booleans count; anything else is not off and no trial');
 
 /* import-free (startlib) */
 const src = fs.readFileSync(new URL('../src/lib/pass-offer.js', import.meta.url), 'utf8');

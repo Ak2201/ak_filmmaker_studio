@@ -299,14 +299,6 @@ export function clockText(msLeft) {
   return (d ? d + 'd ' : '') + two(h) + ':' + two(m) + ':' + two(sec);
 }
 
-/** The server's now at local `nowMs`, from a reply's ISO `now` read at
- *  local `readAtMs`; null when there is none. */
-export function serverClock(nowIso, readAtMs, nowMs) {
-  const t = typeof nowIso === 'string' ? Date.parse(nowIso) : NaN;
-  if (!Number.isFinite(t) || !Number.isFinite(readAtMs) || !Number.isFinite(nowMs)) return null;
-  return t + Math.max(0, nowMs - readAtMs);
-}
-
 /**
  * The offer to draw, or null.
  *   passSt   passState() from pass-offer.js (or null)
@@ -365,7 +357,7 @@ export function ctaText(offer, signedIn, texts) {
 export const offerHref = (offer) => 'purchase.html?buy=' + encodeURIComponent(offer && offer.id ? offer.id : OFFER_FOUNDING);
 
 export default {
-  OFFER_FOUNDING, seatsLeft, clockText, serverClock, offerFrom, ctaText, offerHref, DOCK_KEY, dockClosed, rememberDockClosed,
+  OFFER_FOUNDING, seatsLeft, clockText, offerFrom, ctaText, offerHref, DOCK_KEY, dockClosed, rememberDockClosed,
   passCopy, spokenLeft,
   INVITE_PLAN_KEY, REGION_KEY, deviceRegion, cleanPlanId, stashPlan, readPlanStash, clearPlanStash, takeAuthError, isAppPage, buyHref,
   validEmail, consentText, consentedVoices, voiceByline, filmByline, inr, onDate, timeLeft, risingTiers,

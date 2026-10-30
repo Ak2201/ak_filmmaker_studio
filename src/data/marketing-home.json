@@ -23,8 +23,8 @@
     "dayTail": "a day",
     "wasLabel": "rises to",
     "passEnds": "Offer ends in",
-    "foundingEnds": "Founding price ends in",
     "until": "Founding price until",
+    "untilSeats": "or while the founding places last",
     "ctaPass": "Get the launch pass — continue with Google",
     "ctaPassIn": "Get the launch pass",
     "ctaFounding": "Lock the founding price — continue with Google",
@@ -33,6 +33,7 @@
     "refund": "Purchases are final, with three exceptions",
     "dockLabel": "Launch offer",
     "close": "Close offer",
+    "dockGoogle": "Continues with a Google sign-in",
     "fallback": "Get started"
   },
   "value": {

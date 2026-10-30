@@ -257,5 +257,22 @@ const click = (el) => el.dispatchEvent(new DomEvent('click', { bubbles: true }))
   ok(berr && !/non-2xx/.test(berr.message), 'a 502 with an HTML body from rzp-order is said as a sentence — ' + (berr && berr.message));
 }
 
+/* ---- ?buy=<id>: the landing page's press, read as a buy ---- */
+{
+  eq(PM.buyParam('?buy=pass'), 'pass', '?buy=pass is read');
+  eq(PM.buyParam('?buy=a b'), '', 'a malformed id is refused');
+  eq(PM.buyParam('?buy=' + 'x'.repeat(33)), '', 'a 33-character id is refused');
+  eq(PM.wantedPlan('?buy=indie'), 'indie', 'wantedPlan reads ?buy=');
+  eq(PM.wantedPlan('?plan=pro&buy=indie'), 'pro', '?plan= wins over ?buy=');
+  ok(PM.wantsBuy('?buy=indie') && !PM.wantsBuy('?plan=indie'), 'only ?buy= is a press');
+  PM.stashPlanFromAddress('?buy=indie');
+  ok(PM.wantedPlan('') === 'indie' && PM.wantsBuy(''), 'the stash holds the plan AND that it was a buy');
+  PM.clearPlanStash();
+  PM.stashPlanFromAddress('?plan=indie');
+  ok(PM.wantedPlan('') === 'indie' && !PM.wantsBuy(''), 'a ?plan= stash is a mark, not a buy');
+  PM.clearPlanStash();
+  eq(PM.wantedPlan(''), '', 'a spent stash reads empty');
+}
+
 console.log(`${fail ? '✗' : '✓'} billing (client): ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

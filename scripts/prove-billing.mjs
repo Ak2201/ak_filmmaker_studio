@@ -2137,6 +2137,92 @@ try {
     ok(sub && sub.cancel_at_period_end && F.db.calls.includes('fn:rzp-subscribe refused subscribed') && F.db.calls.includes('fn:rzp-order starter year'), 'rzp-subscribe said subscribed (the pass runs to its end), so the year was paid once through rzp-order');
     allErrors.push(...errors); await ctx.close();
   }
+  /* ---- (buy) ?buy=<id>: the landing page's press IS the consent -------
+     One press opens the checkout, once. The address is cleaned first, so
+     a reload or Back never reopens it; a closed pass, a plan already held
+     or an unknown id gets one line (or none) and never a charge; a signed-out
+     press is held through the sign-in and forwarded by invite.html. No new
+     localStorage key anywhere. */
+  console.log('(buy) ?buy= opens the checkout once');
+  F.reset(); RZP.mode = 'pay';
+  F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
+  const orders = () => F.db.calls.filter((c) => c.startsWith('fn:rzp-order ') && !/refused|code/.test(c)).length;
+  const lsKeys = (page) => page.evaluate(() => Object.keys(localStorage).sort().join('|'));
+  {
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
+    await page.goto(BASE + 'purchase.html?buy=indie');
+    await page.waitForFunction(() => window.__rzpOpened === 1, null, { timeout: 15000 }).then(() => ok(true, '?buy=indie, signed in: the checkout opened with no second click'), () => ok(false, '?buy=indie, signed in: the checkout opened with no second click'));
+    await page.waitForFunction(() => document.querySelector('#plan .is-current'), null, { timeout: 15000 }).catch(() => {});
+    ok(orders() === 1 && F.db.calls.includes('fn:rzp-order indie year'), 'exactly one order, for Intermediate, for a year');
+    ok(!/[?&](buy|plan)=/.test(page.url()), 'the address no longer carries ?buy=: ' + page.url());
+    const before = await lsKeys(page);
+    await page.reload();
+    await page.waitForSelector('#plan .pl-card', { timeout: 12000 });
+    await page.waitForTimeout(1500);
+    ok(orders() === 1 && (await page.evaluate(() => window.__rzpOpened || 0)) === 0, 'a reload does not reopen the checkout');
+    ok(!/plan|buy|razorpay|payment/i.test(before), 'no plan, buy or payment key in localStorage: ' + before);
+    /* the plan is held now: the link only says so */
+    await page.goto(BASE + 'purchase.html?buy=indie');
+    await page.waitForSelector('#plan .pl-card', { timeout: 12000 });
+    await page.waitForSelector('#plan .pl-buy-note', { timeout: 8000 }).then(() => ok(true, 'a plan already held: one status line'), () => ok(false, 'a plan already held: one status line'));
+    ok(/You already have Intermediate\./.test(await page.textContent('#plan .pl-buy-note').catch(() => '')) && (await page.getAttribute('#plan .pl-buy-note', 'role')) === 'status', 'it reads "You already have Intermediate."');
+    await page.waitForTimeout(1200);
+    ok(orders() === 1, 'and no order was made');
+    await page.goto(BASE + 'purchase.html?buy=nonsense');
+    await page.waitForSelector('#plan .pl-card', { timeout: 12000 });
+    await page.waitForTimeout(800);
+    ok(orders() === 1 && !(await page.$('#plan .pl-buy-note')), 'an unknown id: the normal page, no line, no order');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* ?buy=pass while the pass is closed */
+    F.reset(); RZP.mode = 'pay';
+    F.db.members.set(USERS['tok-ben'].id, { role: 'user', disabled_at: null });
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben' });
+    await page.goto(BASE + 'purchase.html?buy=pass');
+    await page.waitForSelector('#plan .pl-buy-note', { timeout: 15000 }).then(() => ok(true, '?buy=pass while closed: one status line'), () => ok(false, '?buy=pass while closed: one status line'));
+    ok(/The launch pass has closed\. Here are the plans\./.test(await page.textContent('#plan .pl-buy-note').catch(() => '')), 'it says the pass has closed');
+    ok(!F.db.calls.some((c) => c.startsWith('fn:rzp-order')) && !/buy=/.test(page.url()), 'no rzp-order call, and the address is clean');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* ?buy=pass while open: once, and a reload does not repeat it */
+    F.reset(); RZP.mode = 'pay';
+    Object.assign(F.db.settings, { pass_enabled: true, pass_paise: 4900, pass_days: 7, pass_plan: 'pro', pass_ends_at: new Date(Date.now() + 3 * 86400e3).toISOString(), pass_cap: 500 });
+    F.db.members.set(USERS['tok-ben'].id, { role: 'user', disabled_at: null });
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben' });
+    await page.goto(BASE + 'purchase.html?buy=pass');
+    await page.waitForFunction(() => window.__rzpOpened === 1, null, { timeout: 20000 }).then(() => ok(true, '?buy=pass while open: the checkout opened with no second click'), () => ok(false, '?buy=pass while open: the checkout opened with no second click'));
+    await page.waitForTimeout(1500);
+    ok(F.db.calls.filter((c) => c === 'fn:rzp-order pro pass').length === 1, 'one pass order');
+    await page.reload();
+    await page.waitForTimeout(2500);
+    ok(F.db.calls.filter((c) => c === 'fn:rzp-order pro pass').length === 1, 'a reload does not order a second time');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* the landing page's stash survives the Google hop; the signed-in
+       return lands on invite.html, which forwards ?buy= and the sheet opens */
+    F.reset(); RZP.mode = 'pay';
+    F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
+    await ctx.addInitScript(() => { if (!sessionStorage.getItem('__stashed')) { sessionStorage.setItem('__stashed', '1'); sessionStorage.setItem('fms_invite_plan', JSON.stringify({ plan: 'indie', buy: true })); } });
+    await page.goto(BASE + 'invite.html');
+    await page.waitForFunction(() => window.__rzpOpened === 1, null, { timeout: 25000 }).then(() => ok(true, 'signed-out press, signed-in return: invite.html forwards ?buy=indie and the checkout opens'), () => ok(false, 'signed-out press, signed-in return: invite.html forwards ?buy=indie and the checkout opens'));
+    ok(orders() === 1, 'one order');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* signed out on purchase.html?buy=indie: pressing Google holds the buy for the tab */
+    F.reset();
+    const { ctx, page, errors } = await newContext(browser);
+    await page.goto(BASE + 'purchase.html?buy=indie');
+    await page.waitForSelector('[data-plan-signin="indie"]', { timeout: 15000 }).catch(() => {});
+    await page.evaluate(() => { document.addEventListener('click', (e) => e.preventDefault(), true); });
+    await page.click('[data-plan-signin="indie"]', { force: true }).catch(() => {});
+    { const v = await page.evaluate(() => sessionStorage.getItem('fms_purchase_plan')); ok(v === 'buy:indie', 'the press holds buy:indie in sessionStorage (no new key, nothing in localStorage): ' + v + ' at ' + page.url()); }
+    allErrors.push(...errors); await ctx.close();
+  }
 } catch (e) {
   fail++; console.log('  ✗ run aborted: ' + e.message);
 }

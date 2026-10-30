@@ -560,7 +560,10 @@ async function retryGate(btn) {
    named — plan-cards.js marks that card. The stash is spent when it is used. */
 function forwardPlan() {
   try {
-    if (takePassIntent()) { passWanted = true; return; }   // the pass is bought HERE
+    /* the pass is bought on purchase.html now: the press on the landing
+       page was the consent, so the buyer goes straight there (?buy=pass),
+       and purchase.js re-reads the offer before it opens the sheet */
+    if (takePassIntent()) { location.replace('purchase.html?buy=pass'); return; }
     const to = takeInvitePlan(!!(cloud() && cloud().getSession && cloud().getSession()));
     if (to) location.replace(to);
   } catch (e) { /* the page still offers SEE PLANS AND BUY */ }

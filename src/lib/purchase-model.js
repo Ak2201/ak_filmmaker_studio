@@ -24,23 +24,55 @@ import { offerTerms } from './offer-terms.js';
 const PLAN_STASH = 'fms_purchase_plan';
 
 const planParam = (search) => new URLSearchParams(search).get('plan');
+const ID = /^[\w-]{1,32}$/;
+/** ?buy=<id> (the landing page's offer buttons): the id, or ''. It names
+ *  a plan or 'pass' and means "open the checkout for it". */
+export function buyParam(search) {
+  try { const q = new URLSearchParams(search).get('buy'); return q && ID.test(q) ? q : ''; } catch (e) { return ''; }
+}
+/* A stash written from ?buy= reads "buy:<id>" so the intent survives the
+   Google hop in the same key (no new key); a ?plan= stash is the bare id. */
+const BUY_TAG = 'buy:';
 
-/** The plan named in the address, else the one stashed for this tab, else ''. */
+/** The plan named in the address (?plan=, then ?buy=), else the one
+ *  stashed for this tab, else ''. */
 export function wantedPlan(search) {
   try {
-    const q = planParam(search);
+    const q = planParam(search) || buyParam(search);
     if (q) return q;
-    return session.readText(PLAN_STASH) || '';
+    const v = session.readText(PLAN_STASH) || '';
+    return v.startsWith(BUY_TAG) ? v.slice(BUY_TAG.length) : v;
   } catch (e) { return ''; }
+}
+/** True when the visitor pressed a BUY (the press is the consent): ?buy=
+ *  in the address, or a tab stash that was written from one. */
+export function wantsBuy(search) {
+  try {
+    if (buyParam(search)) return true;
+    if (planParam(search)) return false;
+    return (session.readText(PLAN_STASH) || '').startsWith(BUY_TAG);
+  } catch (e) { return false; }
 }
 /** The stash is spent once its card has been marked. */
 export const clearPlanStash = () => { session.removeKey(PLAN_STASH); };
-/** Before the Google hop: hold ?plan= for the return. */
+/** Before the Google hop: hold ?plan= / ?buy= for the return. */
 export function stashPlanFromAddress(search) {
   try {
     const q = planParam(search);
-    if (q && /^[\w-]{1,32}$/.test(q)) session.writeText(PLAN_STASH, q);
+    const b = buyParam(search);
+    if (q && ID.test(q)) session.writeText(PLAN_STASH, q);
+    else if (b) session.writeText(PLAN_STASH, BUY_TAG + b);
   } catch (e) { /* ignore */ }
+}
+/** Take ?buy= and ?plan= off the address, so a reload or Back never
+ *  opens the checkout a second time. */
+export function stripBuyFromAddress() {
+  try {
+    const u = new URL(location.href);
+    if (!u.searchParams.has('buy') && !u.searchParams.has('plan')) return;
+    u.searchParams.delete('buy'); u.searchParams.delete('plan');
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+  } catch (e) { /* the address keeps it */ }
 }
 
 /* ---- the referral code in the address ----------------------------- */
@@ -184,6 +216,6 @@ export function trialStatus(st, now, canStart = false) {
 }
 
 export default {
-  wantedPlan, clearPlanStash, stashPlanFromAddress, linkCode, visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, DECK,
+  wantedPlan, buyParam, wantsBuy, stripBuyFromAddress, clearPlanStash, stashPlanFromAddress, linkCode, visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, DECK,
   planHeading, passHeading, plansPendingHeading, lapsedLine, refundNotice, trialStatus
 };

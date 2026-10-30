@@ -3273,3 +3273,46 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     `mountBeatGuide` are only mounted by `write.js`, which `write.html`
     redirects away from: leave them until the page is wired, then convert
     them to the explainer.
+
+76. **The launch offer leads the landing, and a press opens the checkout
+    (30 Oct 2026).** Owner: a visitor who needs the studio should be able
+    to buy it from the first screen. Two branches, merged on
+    `integ/launch-offer`. LANDING (`feat/launch-offer-landing`): start.html's
+    hero is a new h1 beside `#offerCard`, whose state comes from the pure
+    `offerFrom()` in `start-model.js`: an open launch pass (its price,
+    length and countdown, button `purchase.html?buy=pass`), else a
+    scheduled rise (Intermediate at today's price, the risen price struck,
+    the per-day figure, founding places LEFT, button `?buy=indie`), else
+    nothing at all, and a fired rise or any missing field is nothing. The
+    countdown runs on the server's `now`; with no `now` it prints the day
+    (IST) instead of ticking. The pass still reaches the page only through
+    `pass-offer.js` (`marketing.js` `passNow()` and `mk:pass`). Signed out,
+    the press stashes `fms_invite_plan` `{plan, buy:true}`, counts `signup`
+    and goes straight to Google. `#offerDock` slides in past the hero card,
+    hides at the closing band and footer, closes for the session (button or
+    Escape); on a phone it is one bottom bar (61px) and the space it needs
+    is `body` padding so the footer clears it. New `#value` stack and a
+    six-question `#faq` (the renewal answer is the `[data-offer-terms]`
+    slot). `#mkPass` left start.html only; the hero video moved into the
+    scroll story. Motion is CSS, every travel × `--motion`, off under
+    `html.st-still` (webdriver, OS reduce, the device switch). CHECKOUT
+    (`feat/launch-offer-checkout`): `purchase-model.js` `buyParam` /
+    `wantsBuy` / `stripBuyFromAddress`; `wantedPlan` reads `plan`, then
+    `buy`, then the stash, and a `?buy=` stash is `buy:<id>` in the existing
+    `fms_purchase_plan` (no new key). `plan-cards.js` presses the LIVE buy
+    button once (the row is rebuilt on every billing event, so an earlier
+    click hit a replaced node) and strips the address so a reload never
+    reopens it; a plan already held, or dollars shown while rupees would be
+    charged, is one status line and no order; a dismissed sheet reads "Try
+    again" and nothing reopens by itself. `purchase.js` `maybeBuyPass()`
+    re-reads the pass fresh and opens `buyPassHere()` once, or says the
+    pass has closed. `invite.js` forwards a signed-in pass intent to
+    `purchase.html?buy=pass`. Proofs: `prove:offer` (new, CI) 98,
+    `prove:billing` (buy) block, 490 in all. Integration gate: test:all
+    green (test:schema 1734 on a local PostgreSQL 16), verify all pages,
+    prove:growth 197, scroll 0 findings, nav, shell-a11y 45, legal 80,
+    test:site 415, conversion 120, gate 243 on a gated build; no
+    re-baseline. Open for the owner: the countdown text "Founding price
+    ends in …" sits against the older "no urgency words" note in
+    `priceRiseBand()`; the dollar-checkout-off refusal is inferred and not
+    exercised by the fake server.

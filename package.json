@@ -43,6 +43,7 @@
     "prove:legal": "node scripts/prove-legal.mjs",
     "prove:shell-a11y": "node scripts/prove-shell-a11y.mjs",
     "prove:explainer": "node scripts/prove-explainer.mjs",
+    "prove:offer": "node scripts/prove-offer.mjs",
     "prove:why-popup": "node scripts/prove-why-popup.mjs",
     "prove:explainer-c": "node scripts/prove-explainer-c.mjs",
     "test:beats": "node scripts/test-beats.mjs",

@@ -181,6 +181,12 @@ jobs:
       - run: npm run prove:explainer
         env:
           PROVE_DIST: dist-verify
+      # The landing page's launch offer: the hero card, the slide-in and the
+      # closing band against a faked trial_offer()/price_notice(), the
+      # server's clock, the one-press checkout, at 1440 and 390.
+      - run: npm run prove:offer
+        env:
+          PROVE_DIST: dist-verify
       - run: npm run prove:why-popup
         env:
           PROVE_DIST: dist-verify

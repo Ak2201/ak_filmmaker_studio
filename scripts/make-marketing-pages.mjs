@@ -740,8 +740,130 @@ export function validateHome(home, { site, pages }) {
   if (!ps || !ps.note || !ps.off || !ps.open || !home.hero.ctaPass) w('pass needs note, off and open, and hero.ctaPass');
   else if (/\d/.test(ps.note + ps.off + home.hero.ctaPass)) w('the pass copy types a number; every figure comes from the server');
   else if (!/\{price\}/.test(home.hero.ctaPass)) w('hero.ctaPass names the price as {price}');
+  /* THE OFFER (30 Oct 2026): the hero card, the slide-in and the closing
+     band. Copy only: every figure is a runtime slot (start.js), so a digit
+     anywhere in this block is a typed figure and fails the build. */
+  const o = home.offer;
+  const OFFER_KEYS = ['passTag', 'passName', 'passWhat', 'passIncl', 'foundingTag', 'foundingName', 'foundingIncl', 'unitYear', 'dayLead', 'dayTail',
+    'wasLabel', 'passEnds', 'foundingEnds', 'until', 'ctaPass', 'ctaPassIn', 'ctaFounding', 'ctaFoundingIn', 'trust', 'refund', 'dockLabel', 'close', 'fallback'];
+  if (!o) w('offer block missing');
+  else {
+    const miss = OFFER_KEYS.filter((k) => typeof o[k] !== 'string' || !o[k].trim());
+    if (miss.length) w('offer needs ' + miss.join(', '));
+    if (OFFER_KEYS.some((k) => /\d|₹|\$/.test(o[k] || ''))) w('the offer copy types a figure; every figure comes from the server at runtime');
+    if (!/\{length\}/.test(o.passWhat || '')) w('offer.passWhat names the length as {length}');
+    if (/free trial|risk-free|money-back|hurry|only \w+ left/i.test(OFFER_KEYS.map((k) => o[k] || '').join(' '))) w('the offer copy makes a claim it may not (free trial, risk-free, money-back, urgency words)');
+  }
+  const v = home.value;
+  if (!v || !v.h2 || !v.sub || !v.later || !v.also || !v.compare) w('value needs h2, sub, later, also and compare');
+  else if (/\d/.test(v.h2 + v.sub + v.later + v.also + v.compare)) w('the value stack types a number; its counts are derived');
+  const f = home.faq;
+  if (!f || !f.h2 || !Array.isArray(f.items) || !f.items.length) w('faq needs h2 and items');
+  else {
+    if (f.items.length > 6) w('faq: at most six questions');
+    f.items.forEach((it, i) => { if (!it.id || !it.q || !it.a) w('faq item ' + (i + 1) + ' needs id, q and a'); });
+    if (f.items.filter((it) => it.terms).length !== 1) w('faq: exactly one item carries the year-end offer-terms slot (terms: true)');
+    if (f.items.some((it) => /renews|nothing renews|one payment|cancel anytime/i.test(it.a + (it.trial || '')))) w('faq: renewal wording belongs to offer-terms.js only');
+  }
+  if (!home.closeOffer || !home.closeOffer.h2 || !home.closeOffer.sub) w('closeOffer needs h2 and sub');
   return bad;
 }
+
+/* ---- THE OFFER SURFACES (30 Oct 2026) -----------------------------------
+   One offer, three places: the hero card (#offerCard), the slide-in /
+   phone bar (#offerDock) and the closing band (#offerClose). All three are
+   HIDDEN in the markup with EMPTY runtime slots and no digit: start.js
+   picks the state (src/lib/start-model.js offerFrom) — the launch pass
+   while trial_offer().pass is open, else the founding price from
+   price_notice(), else nothing — and fills every slot from the server.
+   A crawler, verify and a reader with scripts off see the hero's plain
+   door and the plans, never an offer the server has not made.
+
+   The pass's own pieces are [data-pass-only] as well as [data-o-for="pass"],
+   so marketing.js's pass switch and test:marketing's pass rules (no figure,
+   "whole studio" only inside a pass element) cover them like every other
+   pass element. What each offer includes is derived here from
+   plan-matrix.json's card picks: the founding offer is OFFER_PLAN.founding,
+   the pass is the plan it unlocks. */
+export const OFFER_PLAN = { founding: 'indie', pass: 'pro' };
+const planLabel = (id) => (M.MATRIX.plans && M.MATRIX.plans[id]) || id;
+const planBelow = (id) => M.PAID[M.PAID.indexOf(id) - 1] || '';
+/** The offer's three bullets: what it adds, from the matrix `card` picks. */
+export function offerIncl(planId) {
+  const own = M.addedBy(planId);
+  return ((M.MATRIX.card && M.MATRIX.card[planId]) || []).slice(0, 3)
+    .map((k) => own.find((r) => r.key === k)).filter(Boolean).map((r) => M.labelOf(r));
+}
+const NAV = readJson('src/data/navigation.json');
+/** The value stack's groups for a plan: each stage of navigation.json with
+ *  the modules the plan includes (a module no plan sells has `plans: []`
+ *  in the matrix and so is never included), and, for a stage the plan
+ *  leaves out, the plan that brings it. */
+export function valueGroups(planId) {
+  const row = (id) => M.MATRIX.features.find((r) => r.key === id && r.kind === 'module');
+  return (NAV.phases || []).map((ph) => {
+    const mods = (ph.modules || []).filter((m) => { const r = row(m.id); return r && M.planHas(r, planId); }).map((m) => m.label);
+    let later = '', laterMods = [];
+    if (!mods.length) {
+      const next = M.PAID.slice(M.PAID.indexOf(planId) + 1).find((p) => (ph.modules || []).some((m) => { const r = row(m.id); return r && M.planHas(r, p); }));
+      if (next) { later = next; laterMods = (ph.modules || []).filter((m) => { const r = row(m.id); return r && M.planHas(r, next); }).map((m) => m.label); }
+    }
+    return { id: ph.id, label: ph.label, sym: ph.sym || '', mods, later, laterMods };
+  });
+}
+/** The capabilities a plan includes that are not a module (exports, Drive…). */
+export const valueAlso = (planId) => M.MATRIX.features.filter((r) => r.kind === 'capability' && !r.inverted && M.planHas(r, planId)).map((r) => M.labelOf(r));
+
+function offerSlots(o, { surface }) {
+  const lower = (id) => esc(planLabel(planBelow(id)));
+  const incl = (kind, id, text) => `<ul class="st-offer-incl" data-o-for="${kind}"${kind === 'pass' ? ' data-pass-only' : ''} hidden><li>${esc(text).replace('{plan}', lower(id))}</li>${offerIncl(id).map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`;
+  const name = `<span data-o-for="pass" data-pass-only hidden>${esc(o.passName)}</span><span data-o-for="founding" hidden>${esc(o.foundingName).replace('{plan}', esc(planLabel(OFFER_PLAN.founding)))}</span>`;
+  const price = `<p class="st-offer-price"><span class="st-offer-amt" data-o-price></span> <s class="st-offer-was" data-o-was hidden><span class="mk-vh">${esc(o.wasLabel)} </span><span data-o-was-amt></span></s> <span class="st-offer-unit" data-o-unit></span></p>`;
+  const timer = `<p class="st-offer-timer" data-o-timer hidden><span data-o-timer-lead></span> <span class="st-clock" data-o-clock aria-hidden="true"></span><span class="mk-vh" role="timer" aria-live="off" data-o-spoken></span></p>`;
+  const cta = `<a class="mk-btn mk-btn--primary mk-btn--lg st-offer-cta" href="purchase.html?buy=${OFFER_PLAN.founding}" data-start-buy="${OFFER_PLAN.founding}" data-offer-cta>${esc(o.ctaFounding)}</a>`;
+  if (surface === 'dock') {
+    return `<div class="st-dock-in">
+    <p class="st-dock-what"><b class="st-dock-name">${name}</b> <span class="st-offer-amt" data-o-price></span> <span class="st-offer-unit" data-o-unit></span></p>
+    <p class="st-offer-timer st-dock-timer" data-o-timer hidden><span class="st-clock" data-o-clock aria-hidden="true"></span><span class="mk-vh" role="timer" aria-live="off" data-o-spoken></span></p>
+    <a class="mk-btn mk-btn--primary mk-btn--sm st-offer-cta" href="purchase.html?buy=${OFFER_PLAN.founding}" data-start-buy="${OFFER_PLAN.founding}" data-offer-cta>${esc(o.ctaFoundingIn)}</a>
+    <button class="st-dock-close" type="button" data-offer-close aria-label="${esc(o.close)}"><span aria-hidden="true">✕</span></button>
+  </div>`;
+  }
+  const tag = `<p class="st-offer-tag"><span data-o-for="pass" data-pass-only hidden>${esc(o.passTag)}</span><span data-o-for="founding" hidden>${esc(o.foundingTag)}</span></p>`;
+  const what = `<p class="st-offer-what" data-o-for="pass" data-pass-only hidden>${passSlots(o.passWhat)}</p>`;
+  const terms = `<p class="st-offer-terms mk-small"><span data-o-for="pass" data-pass-only hidden>${termsSlot('pass', true)}</span><span data-o-for="founding" hidden>${termsSlot('year', true)}</span></p>`;
+  const trust = `<p class="mk-small st-offer-trust">${esc(o.trust)} <a class="mk-link mk-link--inline" href="refund.html">${esc(o.refund)}</a></p>`;
+  const day = `<p class="st-offer-day" data-o-day hidden></p>`;
+  const usd = `<p class="mk-small st-offer-usd" data-o-usd hidden></p>`;
+  const seats = `<p class="st-offer-seats" data-o-seats hidden></p>`;
+  if (surface === 'close') {
+    return `${tag}
+      <p class="st-offer-name">${name}</p>
+      ${price}
+      ${day}
+      ${usd}
+      ${timer}
+      ${seats}
+      ${cta}
+      ${trust}`;
+  }
+  return `${tag}
+    <h2 class="st-offer-name" id="stOfferName">${name}</h2>
+    ${what}
+    ${price}
+    ${day}
+    ${usd}
+    ${incl('founding', OFFER_PLAN.founding, o.foundingIncl)}
+    ${incl('pass', OFFER_PLAN.pass, o.passIncl)}
+    ${timer}
+    ${seats}
+    ${terms}
+    ${cta}
+    ${trust}`;
+}
+/* The words start.js swaps in by state and sign-in, as attributes on each
+   surface (never typed into start.js). */
+const offerData = (o) => ` data-offer-state="none" data-pass-tag="${esc(o.passTag)}" data-unit-year="${esc(o.unitYear)}" data-day-lead="${esc(o.dayLead)}" data-day-tail="${esc(o.dayTail)}" data-pass-ends="${esc(o.passEnds)}" data-founding-ends="${esc(o.foundingEnds)}" data-until="${esc(o.until)}" data-cta-pass="${esc(o.ctaPass)}" data-cta-pass-in="${esc(o.ctaPassIn)}" data-cta-founding="${esc(o.ctaFounding)}" data-cta-founding-in="${esc(o.ctaFoundingIn)}"`;
 
 /* The stage card's picture: its product page's own poster frame. */
 export const HOME_HERO_CLIP = 'chain';
@@ -751,28 +873,40 @@ export function renderHome({ site, pages, home }) {
   const media = (name) => MEDIA_BASE + name;
   const hue = (id) => (site.stages.find((s) => s.id === id) || {}).hue || '';
 
-  /* The first screen: one line, one sentence, one action, and the scene
-     chain running end to end under it (the recorder's cross-page clip).
-     Each word of the h1 is its own .st-w span (29 Oct 2026) so start.css
-     can rise them in one after another; the text and the heading's name
-     are unchanged, and with no CSS the spans are plain inline text. */
+  /* The first screen (30 Oct 2026, the conversion pass): the pain-led
+     line, one sentence and, beside them, the OFFER CARD — the launch pass
+     while it is open, else the founding price, else nothing (start.js).
+     With no offer the hero keeps its plain door ([data-o-fallback]), so it
+     always has exactly one primary action. Each word of the h1 is its own
+     .st-w span (29 Oct 2026) so start.css can rise them in one after
+     another; with no CSS the spans are plain inline text. The product
+     video moved down into the scroll story (#tools). */
+  const o = home.offer;
   const hero = `<section class="mk-hero st-hero" id="top" aria-labelledby="mkH1" data-surface="dark">
-  <div class="mk-wrap mk-hero-in">
-    <h1 class="mk-h1" id="mkH1">${home.hero.h1.split(' ').map((w) => `<span class="st-w">${esc(w)}</span>`).join(' ')}</h1>
-    <p class="mk-sub"${alt(home.hero, 'sub')}>${priceSpans(esc(home.hero.sub))}</p>
-    <div class="mk-cta-row">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-off>${esc(home.hero.cta)}</a>
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(home.hero.ctaPass)}</a>
+  <div class="mk-wrap mk-hero-in st-hero-in">
+    <div class="st-hero-text">
+      <h1 class="mk-h1" id="mkH1">${home.hero.h1.split(' ').map((w) => `<span class="st-w">${esc(w)}</span>`).join(' ')}</h1>
+      <p class="mk-sub"${alt(home.hero, 'sub')}>${priceSpans(esc(home.hero.sub))}</p>
+      <div class="mk-cta-row">
+        <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-o-fallback>${esc(o.fallback)}</a>
+        <a class="mk-link" href="#tools">${esc(home.hero.sample)}${sym('arrow_downward')}</a>
+      </div>
     </div>
-    <figure class="mk-player mk-hero-media st-hero-media" aria-label="${esc(home.hero.mediaLabel)}">
+    <article class="st-offer" id="offerCard" aria-labelledby="stOfferName"${offerData(o)} hidden>
+    ${offerSlots(o, { surface: 'card' })}
+    </article>
+  </div>
+</section>`;
+
+  /* The product video, in the scroll story's first screen. Keeps the
+     st-hero-media class start-motion.js scales on scroll. */
+  const video = `    <figure class="mk-player st-hero-media st-tools-media" aria-label="${esc(home.hero.mediaLabel)}">
       <video controls muted loop playsinline preload="none" width="1280" height="720" poster="${media(HOME_HERO_CLIP + '.webp')}" aria-label="${esc(home.hero.mediaLabel)}">
         <source src="${media(HOME_HERO_CLIP + '.webm')}" type="video/webm">
         ${esc(u.demoFallback)}
       </video>
     </figure>
-    <p class="mk-caption">${esc(home.hero.note)}</p>
-  </div>
-</section>`;
+    <p class="mk-caption st-tools-caption">${esc(home.hero.note)}</p>`;
 
   const card = (s) => {
     const h = hue(s.id);
@@ -790,6 +924,7 @@ export function renderHome({ site, pages, home }) {
   const stages = `<section class="mk-sec mk-band-a st-tools" id="tools" aria-labelledby="stToolsH">
   <div class="mk-wrap">
     <h2 class="mk-h2" id="stToolsH">${esc(home.stagesH2)}</h2>
+${video}
     <div class="st-stages grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
 ${home.stages.map(card).join('\n')}
     </div>
@@ -821,10 +956,76 @@ ${home.own.items.map((it) => `      <li class="mk-point"><span class="mk-card-ic
   </div>
 </section>`;
 
-  const closing = closeBand(home.closing.h2, `
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-off>${esc(home.closing.cta)}</a>
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(site.pass.cta)}</a>`,
-  '', '', esc(home.closing.sub));
+  /* THE VALUE STACK (#value): what the offered plan includes, by stage.
+     Derived here from navigation.json and plan-matrix.json, counts
+     included, one list per plan the offer can be; start.js shows the
+     offered one (the founding plan unless the pass is open). The price
+     line under it is a runtime slot. */
+  const v = home.value;
+  const stack = (planId, shown) => {
+    const groups = valueGroups(planId);
+    return `    <div class="st-value-plan" data-value-for="${planId}"${shown ? '' : ' hidden'}>
+      <ol class="st-value-groups">
+${groups.map((g) => `        <li class="st-value-group${g.mods.length ? '' : ' st-value-later'}"><h3 class="st-value-h"><span>${esc(g.label)}</span>${g.mods.length ? `<span class="st-value-n">${g.mods.length} ${g.mods.length === 1 ? 'tool' : 'tools'}</span>` : ''}</h3>${g.mods.length
+    ? `<ul class="st-value-mods">${g.mods.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>`
+    : (g.later ? `<p class="st-value-more">${esc(v.later).replace('{plan}', esc(planLabel(g.later)))} ${esc(g.laterMods.join(', '))}</p>` : '')}</li>`).join('\n')}
+      </ol>
+      <p class="st-value-also"><b>${esc(v.also)}</b> ${esc(valueAlso(planId).join(', '))}.</p>
+    </div>`;
+  };
+  const value = `<section class="mk-sec mk-band-b st-value" id="value" aria-labelledby="stValueH">
+  <div class="mk-wrap">
+    <h2 class="mk-h2" id="stValueH">${esc(v.h2)}</h2>
+    <p class="mk-sub">${esc(v.sub)}</p>
+${stack(OFFER_PLAN.founding, true)}
+${stack(OFFER_PLAN.pass, false)}
+    <p class="st-value-price" data-v-price hidden></p>
+    <p class="mk-more"><a class="mk-link" href="pricing.html">${esc(v.compare)}${sym('arrow_forward')}</a></p>
+  </div>
+</section>`;
+
+  /* THE FAQ (#faq): native <details>, at most six. The year-end answer
+     is a neutral line plus the EMPTY offer-terms slot; the trial clause is
+     hidden until start.js knows a trial is open and no pass is running. */
+  const fq = home.faq;
+  const answer = (it) => (it.terms
+    ? `<span data-mode-answer="neutral" data-offer-product="year">${esc(it.a)}</span> ${termsSlot('year')}<span data-mode-answer="renew" data-offer-product="year" hidden> ${esc(site.terms.renewNote)}</span>`
+    : esc(it.a))
+    + (it.trial ? `<span data-o-trial hidden> ${esc(it.trial)}</span>` : '')
+    + (it.link ? ` <a class="mk-link mk-link--inline" href="${esc(it.link)}">${esc(it.linkLabel)}</a>` : '');
+  const faqSec = `<section class="mk-sec mk-band-a st-faq" id="faq" aria-labelledby="stFaqH">
+  <div class="mk-wrap">
+    <h2 class="mk-h2" id="stFaqH">${esc(fq.h2)}</h2>
+    <div class="st-faq-list">
+${fq.items.map((it) => `      <details class="st-faq-item" id="faq-${esc(it.id)}">
+        <summary class="st-faq-q">${esc(it.q)}</summary>
+        <p class="st-faq-a">${answer(it)}</p>
+      </details>`).join('\n')}
+    </div>
+  </div>
+</section>`;
+
+  /* THE CLOSING BAND (#start): the offer again, compact (#offerClose),
+     while there is one; the plain door ([data-o-fallback]) when not. */
+  const closing = `<section class="mk-sec mk-close st-close" id="start" aria-labelledby="mkMidH" data-surface="dark">
+  <div class="mk-wrap mk-center">
+    <h2 class="mk-h2" id="mkMidH"><span data-o-fallback>${esc(home.closing.h2)}</span><span data-o-only hidden>${esc(home.closeOffer.h2)}</span></h2>
+    <p class="mk-sub"><span data-o-fallback>${esc(home.closing.sub)}</span><span data-o-only hidden>${esc(home.closeOffer.sub)}</span></p>
+    <div class="mk-cta-row mk-cta-row--center" data-o-fallback>
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(home.closing.cta)}</a>
+    </div>
+    <div class="st-offer st-offer--close" id="offerClose"${offerData(o)} hidden>
+      ${offerSlots(o, { surface: 'close' })}
+    </div>
+  </div>
+</section>`;
+
+  /* THE SLIDE-IN (desk) / BOTTOM BAR (phone): shown by start.js only while
+     there is an offer and neither the hero card nor the closing band is on
+     screen; closed, it stays closed for the session. Not modal. */
+  const dock = `<aside class="st-dock" id="offerDock" role="region" aria-label="${esc(o.dockLabel)}" data-surface="dark"${offerData(o)} hidden>
+  ${offerSlots(o, { surface: 'dock' })}
+</aside>`;
 
   const t = esc(home.meta.title), d = esc(home.meta.description);
   return `<!DOCTYPE html>
@@ -835,7 +1036,6 @@ ${home.own.items.map((it) => `      <li class="mk-point"><span class="mk-card-ic
 <title>${t}</title>
 <meta name="description" content="${d}">
 <link rel="canonical" href="https://{{brand:host}}/start">
-<link rel="preload" as="image" href="${media(HOME_HERO_CLIP + '.webp')}" fetchpriority="high">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{brand:name}}">
 <meta property="og:title" content="${t}">
@@ -867,19 +1067,23 @@ ${home.own.items.map((it) => `      <li class="mk-point"><span class="mk-card-ic
      the markup (a crawler, a link preview and a reader with scripts off get the
      whole page). src/pages/start.js adds, on top of marketing.js (header state,
      mega-menu, sign-up modal, invite-code hold): the reason a Google sign-in
-     did not complete, the landing_view count and the doorway rewrite of app
-     links under the site gate. Every figure is an fms stamp
+     did not complete, the landing_view count, the doorway rewrite of app
+     links under the site gate, and THE OFFER (#offerCard, #offerDock,
+     #offerClose: hidden here, every figure a runtime slot from the server,
+     the button straight to purchase.html?buy=<id>). Every figure is an fms stamp
      (vite.config.js startFigures()), never typed. -->
 ${header(site, pages, 'home')}
 <main id="main" class="mk st">
-${passBand(site)}
 ${hero}
 ${stages}
+${value}
 ${own}
 ${plans}
+${faqSec}
 ${closing}
 ${leadForm(site.lead, 'st')}
 </main>
+${dock}
 ${footer(site, pages, `
         <li class="st-optout"><button class="st-optout-btn" id="noCount" type="button" data-done="${esc(home.optOut.done)}">${esc(home.optOut.label)}</button></li>`)}
 ${modal(site)}

@@ -433,6 +433,7 @@ const offerSlots = (function () {
   };
 })();
 
+let shared = null;
 const launchPass = (function () {
   const band = byId('mkPass');
   let raw = null, readAt = 0, timer = 0, wasOpen = false, off = false, lastSpoken = '';
@@ -475,22 +476,49 @@ const launchPass = (function () {
     if (v.timer && !timer) timer = setInterval(apply, 1000);
     if (!v.timer) stop();
   }
+  /* THE LANDING PAGE'S SHARE (30 Oct 2026). start.js draws the launch
+     offer card from the SAME reply (no second fetch) and may not import
+     pass-offer.js itself (the start.js allowlist), so this hands it the
+     reading: the raw trial_offer() answer, when it was read, and two
+     closures over pass-offer.js, so pass-offer.js stays the one reader of
+     the pass. Announced as 'mk:pass' on every change of what is known
+     (a reply, no reply, purchases off), and kept for a late listener
+     (passNow()). */
+  function share(t) {
+    shared = {
+      trial: t && typeof t === 'object' ? t : null, readAt, off,
+      state: () => (raw && !off ? PassOffer.passState(raw, Date.now(), readAt) : { state: 'none' }),
+      copy: (st) => passCopy(st, PassOffer)
+    };
+    try { document.dispatchEvent(new CustomEvent('mk:pass', { detail: shared })); } catch (e) { /* never breaks the page */ }
+  }
   return {
     take(t) {
-      if (!t || typeof t !== 'object') return;
+      if (!t || typeof t !== 'object') { share(null); return; }
       if (t.purchase_required === false) off = true;
       raw = t.pass || null;
       readAt = Date.now();
       apply();
+      share(t);
     },
-    off() { off = true; apply(); }
+    off() { off = true; apply(); if (shared) share(shared.trial); }
   };
 })();
+/** What marketing.js knows of the launch pass right now, or null before
+ *  trial_offer() has answered (see 'mk:pass'). */
+export const passNow = () => shared;
+/** The Google sign-in, for a page that may not import start-auth.js:
+ *  false when the build has no project (let the link do its own thing). */
+export function startSignIn() {
+  if (!StartAuth.configured()) return false;
+  return StartAuth.startGoogle({ redirectTo: StartAuth.defaultRedirect() });
+}
+export const signedIn = () => SIGNED_IN;
 /* A signed-in visitor's pass button goes to the checkout page (the pass
    card is there), not through the sign-up modal. */
 if (SIGNED_IN) for (const a of $$('[data-pass-cta]')) a.setAttribute('href', 'purchase.html');
 try {
-  trialOffer().then((t) => { offerSlots.take(t); launchPass.take(t); }, () => {});
+  trialOffer().then((t) => { offerSlots.take(t); launchPass.take(t); }, () => launchPass.take(null));
 } catch (e) { /* never breaks the page */ }
 
 /* ---- 6. an invite code in the address bar ---------------------------

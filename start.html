@@ -6,7 +6,6 @@
 <title>{{brand:name}}: from first draft to final call sheet</title>
 <meta name="description" content="Write the screenplay, break it down and plan the shoot in one place. Built for indie directors, writers and line producers; your work stays in your own browser.">
 <link rel="canonical" href="https://{{brand:host}}/start">
-<link rel="preload" as="image" href="/marketing/chain.webp" fetchpriority="high">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{brand:name}}">
 <meta property="og:title" content="{{brand:name}}: from first draft to final call sheet">
@@ -38,8 +37,10 @@
      the markup (a crawler, a link preview and a reader with scripts off get the
      whole page). src/pages/start.js adds, on top of marketing.js (header state,
      mega-menu, sign-up modal, invite-code hold): the reason a Google sign-in
-     did not complete, the landing_view count and the doorway rewrite of app
-     links under the site gate. Every figure is an fms stamp
+     did not complete, the landing_view count, the doorway rewrite of app
+     links under the site gate, and THE OFFER (#offerCard, #offerDock,
+     #offerClose: hidden here, every figure a runtime slot from the server,
+     the button straight to purchase.html?buy=<id>). Every figure is an fms stamp
      (vite.config.js startFigures()), never typed. -->
 <a class="mk-skip" href="#main">Skip to content</a>
 <div class="mk-sentinel" id="mkSentinel" aria-hidden="true"></div>
@@ -102,33 +103,43 @@
   </div>
 </header>
 <main id="main" class="mk st">
-<aside class="mk-pass" id="mkPass" data-pass-band hidden aria-label="Launch offer">
-  <div class="mk-wrap mk-pass-in">
-    <p class="mk-pass-line" data-pass-live><strong class="mk-pass-tag">Launch offer</strong> <span class="mk-pass-what"><span data-pass-length></span> of the whole studio for <span data-pass-price></span></span><span class="mk-pass-terms" data-offer-wrap hidden><span class="mk-pass-sep" aria-hidden="true"> &middot; </span><span data-offer-terms data-offer-product="pass" data-offer-form="chip"></span></span><span class="mk-pass-when" data-pass-when hidden><span class="mk-pass-sep" aria-hidden="true"> &middot; </span>ends in <span class="mk-pass-timer" data-pass-timer aria-hidden="true"></span><span class="mk-vh" data-pass-spoken></span></span><span class="mk-pass-left" data-pass-left-wrap hidden><span class="mk-pass-sep" aria-hidden="true"> &middot; </span><span data-pass-left></span></span></p>
-    <p class="mk-pass-ended" data-pass-ended role="status" hidden>The launch offer has ended. The yearly plans are unchanged.</p>
-    <a class="mk-btn mk-btn--primary mk-btn--sm mk-pass-cta" href="invite.html" data-open-signup data-pass-cta><span>Try it for <span data-pass-price></span></span></a>
-  </div>
-</aside>
 <section class="mk-hero st-hero" id="top" aria-labelledby="mkH1" data-surface="dark">
-  <div class="mk-wrap mk-hero-in">
-    <h1 class="mk-h1" id="mkH1"><span class="st-w">From</span> <span class="st-w">first</span> <span class="st-w">draft</span> <span class="st-w">to</span> <span class="st-w">final</span> <span class="st-w">call</span> <span class="st-w">sheet</span></h1>
-    <p class="mk-sub">Write the screenplay, break it down and plan the shoot in one place. Your work is saved in your own browser first.</p>
-    <div class="mk-cta-row">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-off>Get started</a>
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden><span>Try the whole studio for <span data-pass-price></span></span></a>
+  <div class="mk-wrap mk-hero-in st-hero-in">
+    <div class="st-hero-text">
+      <h1 class="mk-h1" id="mkH1"><span class="st-w">From</span> <span class="st-w">script</span> <span class="st-w">to</span> <span class="st-w">shooting</span> <span class="st-w">schedule,</span> <span class="st-w">without</span> <span class="st-w">spreadsheets</span></h1>
+      <p class="mk-sub">Write the screenplay, then break it down, schedule it and print the call sheets from the same scenes. Your work is saved in your own browser first.</p>
+      <div class="mk-cta-row">
+        <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-o-fallback>Get started</a>
+        <a class="mk-link" href="#tools">See it on the sample feature<span class="sym" aria-hidden="true" translate="no">arrow_downward</span></a>
+      </div>
     </div>
-    <figure class="mk-player mk-hero-media st-hero-media" aria-label="On the sample feature: a scene moved to another shoot day, and that day's call sheet built from the board">
-      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/chain.webp" aria-label="On the sample feature: a scene moved to another shoot day, and that day's call sheet built from the board">
-        <source src="/marketing/chain.webm" type="video/webm">
-        Your browser cannot play this video.
-      </video>
-    </figure>
-    <p class="mk-caption">Shown on the sample feature, {{fms:dragon.scenes}} scenes long, which you can open and look around before you write.</p>
+    <article class="st-offer" id="offerCard" aria-labelledby="stOfferName" data-offer-state="none" data-pass-tag="Launch offer" data-unit-year="a year" data-day-lead="about" data-day-tail="a day" data-pass-ends="Offer ends in" data-founding-ends="Founding price ends in" data-until="Founding price until" data-cta-pass="Get the launch pass — continue with Google" data-cta-pass-in="Get the launch pass" data-cta-founding="Lock the founding price — continue with Google" data-cta-founding-in="Lock the founding price" hidden>
+    <p class="st-offer-tag"><span data-o-for="pass" data-pass-only hidden>Launch offer</span><span data-o-for="founding" hidden>Founding price</span></p>
+    <h2 class="st-offer-name" id="stOfferName"><span data-o-for="pass" data-pass-only hidden>The launch pass</span><span data-o-for="founding" hidden>Intermediate at the founding price</span></h2>
+    <p class="st-offer-what" data-o-for="pass" data-pass-only hidden><span data-pass-length></span> of the whole studio, every tool included</p>
+    <p class="st-offer-price"><span class="st-offer-amt" data-o-price></span> <s class="st-offer-was" data-o-was hidden><span class="mk-vh">rises to </span><span data-o-was-amt></span></s> <span class="st-offer-unit" data-o-unit></span></p>
+    <p class="st-offer-day" data-o-day hidden></p>
+    <p class="mk-small st-offer-usd" data-o-usd hidden></p>
+    <ul class="st-offer-incl" data-o-for="founding" hidden><li>Everything in Basic</li><li>Scene Breakdown</li><li>Stripboard</li><li>Budget</li></ul>
+    <ul class="st-offer-incl" data-o-for="pass" data-pass-only hidden><li>Everything in Intermediate</li><li>Call Sheets</li><li>Shoot Day</li><li>Deliverables</li></ul>
+    <p class="st-offer-timer" data-o-timer hidden><span data-o-timer-lead></span> <span class="st-clock" data-o-clock aria-hidden="true"></span><span class="mk-vh" role="timer" aria-live="off" data-o-spoken></span></p>
+    <p class="st-offer-seats" data-o-seats hidden></p>
+    <p class="st-offer-terms mk-small"><span data-o-for="pass" data-pass-only hidden><span data-offer-terms data-offer-product="pass" data-offer-form="chip"></span></span><span data-o-for="founding" hidden><span data-offer-terms data-offer-product="year" data-offer-form="chip"></span></span></p>
+    <a class="mk-btn mk-btn--primary mk-btn--lg st-offer-cta" href="purchase.html?buy=indie" data-start-buy="indie" data-offer-cta>Lock the founding price — continue with Google</a>
+    <p class="mk-small st-offer-trust">Secure checkout by Razorpay · UPI and cards · <a class="mk-link mk-link--inline" href="refund.html">Purchases are final, with three exceptions</a></p>
+    </article>
   </div>
 </section>
 <section class="mk-sec mk-band-a st-tools" id="tools" aria-labelledby="stToolsH">
   <div class="mk-wrap">
     <h2 class="mk-h2" id="stToolsH">One studio for every stage</h2>
+    <figure class="mk-player st-hero-media st-tools-media" aria-label="On the sample feature: a scene moved to another shoot day, and that day's call sheet built from the board">
+      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="/marketing/chain.webp" aria-label="On the sample feature: a scene moved to another shoot day, and that day's call sheet built from the board">
+        <source src="/marketing/chain.webm" type="video/webm">
+        Your browser cannot play this video.
+      </video>
+    </figure>
+    <p class="mk-caption st-tools-caption">Shown on the sample feature, {{fms:dragon.scenes}} scenes long, which you can open and look around before you write.</p>
     <div class="st-stages grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
       <article class="mk-card st-stage hue-library" id="stage-writing" aria-labelledby="st-h-writing">
         <img class="st-shot" src="/marketing/writing.webp" width="1280" height="720" alt="" loading="lazy" decoding="async">
@@ -169,6 +180,34 @@
     </div>
   </div>
 </section>
+<section class="mk-sec mk-band-b st-value" id="value" aria-labelledby="stValueH">
+  <div class="mk-wrap">
+    <h2 class="mk-h2" id="stValueH">What you get</h2>
+    <p class="mk-sub">Every tool reads the same scenes, so nothing is typed twice.</p>
+    <div class="st-value-plan" data-value-for="indie">
+      <ol class="st-value-groups">
+        <li class="st-value-group"><h3 class="st-value-h"><span>Story</span><span class="st-value-n">2 tools</span></h3><ul class="st-value-mods"><li>Story</li><li>Idea Vault</li></ul></li>
+        <li class="st-value-group"><h3 class="st-value-h"><span>Screenplay</span><span class="st-value-n">4 tools</span></h3><ul class="st-value-mods"><li>Screenplay Writer</li><li>Drafts</li><li>Title Page</li><li>Import Screenplay</li></ul></li>
+        <li class="st-value-group"><h3 class="st-value-h"><span>Pre-Production</span><span class="st-value-n">16 tools</span></h3><ul class="st-value-mods"><li>Scene Breakdown</li><li>Scene List</li><li>Elements</li><li>Auto-Tag</li><li>Screen Time</li><li>Cast Matrix</li><li>Shot List</li><li>Storyboard</li><li>Locations</li><li>Shoot Calendar</li><li>Stripboard</li><li>Day Out of Days</li><li>Sides</li><li>Budget</li><li>Cast &amp; Crew</li><li>Production Reports</li></ul></li>
+        <li class="st-value-group st-value-later"><h3 class="st-value-h"><span>Production</span></h3><p class="st-value-more">With Pro: Shoot Day, Call Sheets</p></li>
+        <li class="st-value-group st-value-later"><h3 class="st-value-h"><span>Post-Production</span></h3><p class="st-value-more">With Pro: Edit Log, Deliverables</p></li>
+      </ol>
+      <p class="st-value-also"><b>Also included:</b> New projects, Screenplay import, PDF exports, Google Drive backup.</p>
+    </div>
+    <div class="st-value-plan" data-value-for="pro" hidden>
+      <ol class="st-value-groups">
+        <li class="st-value-group"><h3 class="st-value-h"><span>Story</span><span class="st-value-n">2 tools</span></h3><ul class="st-value-mods"><li>Story</li><li>Idea Vault</li></ul></li>
+        <li class="st-value-group"><h3 class="st-value-h"><span>Screenplay</span><span class="st-value-n">4 tools</span></h3><ul class="st-value-mods"><li>Screenplay Writer</li><li>Drafts</li><li>Title Page</li><li>Import Screenplay</li></ul></li>
+        <li class="st-value-group"><h3 class="st-value-h"><span>Pre-Production</span><span class="st-value-n">16 tools</span></h3><ul class="st-value-mods"><li>Scene Breakdown</li><li>Scene List</li><li>Elements</li><li>Auto-Tag</li><li>Screen Time</li><li>Cast Matrix</li><li>Shot List</li><li>Storyboard</li><li>Locations</li><li>Shoot Calendar</li><li>Stripboard</li><li>Day Out of Days</li><li>Sides</li><li>Budget</li><li>Cast &amp; Crew</li><li>Production Reports</li></ul></li>
+        <li class="st-value-group"><h3 class="st-value-h"><span>Production</span><span class="st-value-n">2 tools</span></h3><ul class="st-value-mods"><li>Shoot Day</li><li>Call Sheets</li></ul></li>
+        <li class="st-value-group"><h3 class="st-value-h"><span>Post-Production</span><span class="st-value-n">2 tools</span></h3><ul class="st-value-mods"><li>Edit Log</li><li>Deliverables</li></ul></li>
+      </ol>
+      <p class="st-value-also"><b>Also included:</b> New projects, Screenplay import, PDF exports, Google Drive backup, AI tools (your own key), Remove branding.</p>
+    </div>
+    <p class="st-value-price" data-v-price hidden></p>
+    <p class="mk-more"><a class="mk-link" href="pricing.html">Compare every plan<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a></p>
+  </div>
+</section>
 <section class="mk-sec mk-band-b st-own" id="local-first" aria-labelledby="stOwnH">
   <div class="mk-wrap">
     <h2 class="mk-h2" id="stOwnH">Your work stays yours</h2>
@@ -194,13 +233,54 @@
     </div>
   </div>
 </section>
-<section class="mk-sec mk-close" id="start" aria-labelledby="mkMidH" data-surface="dark">
+<section class="mk-sec mk-band-a st-faq" id="faq" aria-labelledby="stFaqH">
+  <div class="mk-wrap">
+    <h2 class="mk-h2" id="stFaqH">Questions before you buy</h2>
+    <div class="st-faq-list">
+      <details class="st-faq-item" id="faq-private">
+        <summary class="st-faq-q">Is my script private?</summary>
+        <p class="st-faq-a">Your work is saved in your own browser first. Sync to your other devices is optional, and yours to switch off. <a class="mk-link mk-link--inline" href="privacy.html">Read the Privacy Policy</a></p>
+      </details>
+      <details class="st-faq-item" id="faq-offline">
+        <summary class="st-faq-q">Does it work offline and on my phone?</summary>
+        <p class="st-faq-a">Yes. Install it like an app on a phone or a computer. The shoot day view is built for a phone on set, and your work is on the device, so it keeps working without a signal.</p>
+      </details>
+      <details class="st-faq-item" id="faq-year">
+        <summary class="st-faq-q">What happens when the year ends?</summary>
+        <p class="st-faq-a"><span data-mode-answer="neutral" data-offer-product="year">A plan runs for a year from the day you buy it. Its terms are shown on the plans page and at checkout, before you pay.</span> <span data-offer-terms data-offer-product="year"></span><span data-mode-answer="renew" data-offer-product="year" hidden> Your price is locked while you stay, and cancelling takes two taps.</span></p>
+      </details>
+      <details class="st-faq-item" id="faq-refunds">
+        <summary class="st-faq-q">Can I get a refund?</summary>
+        <p class="st-faq-a">Purchases are final, with three exceptions that are not discretionary: a duplicate or erroneous charge, a payment for a plan that was never activated on your account, and any refund the law of India requires. <a class="mk-link mk-link--inline" href="refund.html">Read the Refund Policy</a></p>
+      </details>
+      <details class="st-faq-item" id="faq-currency">
+        <summary class="st-faq-q">Do I pay in rupees or dollars?</summary>
+        <p class="st-faq-a">In India you pay in rupees. Elsewhere, prices are shown in US dollars where they are available, and the rupee amount Razorpay charges is always shown before you pay.</p>
+      </details>
+      <details class="st-faq-item" id="faq-try">
+        <summary class="st-faq-q">Can I see it before I pay?</summary>
+        <p class="st-faq-a">Yes. Each stage above shows the tool working on the sample feature, and the plans page compares every feature.<span data-o-trial hidden> While trials are open, the page after you sign in offers one before you buy.</span></p>
+      </details>
+    </div>
+  </div>
+</section>
+<section class="mk-sec mk-close st-close" id="start" aria-labelledby="mkMidH" data-surface="dark">
   <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkMidH">Open the studio and write scene one</h2>
-    <p class="mk-sub">Sign up with Google to start. Every tool reads the same scenes.</p>
-    <div class="mk-cta-row mk-cta-row--center">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-off>Get started</a>
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden><span>Try it for <span data-pass-price></span></span></a>
+    <h2 class="mk-h2" id="mkMidH"><span data-o-fallback>Open the studio and write scene one</span><span data-o-only hidden>Start the film this week</span></h2>
+    <p class="mk-sub"><span data-o-fallback>Sign up with Google to start. Every tool reads the same scenes.</span><span data-o-only hidden>The checkout opens with this offer in it, after a Google sign-in if you need one.</span></p>
+    <div class="mk-cta-row mk-cta-row--center" data-o-fallback>
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
+    </div>
+    <div class="st-offer st-offer--close" id="offerClose" data-offer-state="none" data-pass-tag="Launch offer" data-unit-year="a year" data-day-lead="about" data-day-tail="a day" data-pass-ends="Offer ends in" data-founding-ends="Founding price ends in" data-until="Founding price until" data-cta-pass="Get the launch pass — continue with Google" data-cta-pass-in="Get the launch pass" data-cta-founding="Lock the founding price — continue with Google" data-cta-founding-in="Lock the founding price" hidden>
+      <p class="st-offer-tag"><span data-o-for="pass" data-pass-only hidden>Launch offer</span><span data-o-for="founding" hidden>Founding price</span></p>
+      <p class="st-offer-name"><span data-o-for="pass" data-pass-only hidden>The launch pass</span><span data-o-for="founding" hidden>Intermediate at the founding price</span></p>
+      <p class="st-offer-price"><span class="st-offer-amt" data-o-price></span> <s class="st-offer-was" data-o-was hidden><span class="mk-vh">rises to </span><span data-o-was-amt></span></s> <span class="st-offer-unit" data-o-unit></span></p>
+      <p class="st-offer-day" data-o-day hidden></p>
+      <p class="mk-small st-offer-usd" data-o-usd hidden></p>
+      <p class="st-offer-timer" data-o-timer hidden><span data-o-timer-lead></span> <span class="st-clock" data-o-clock aria-hidden="true"></span><span class="mk-vh" role="timer" aria-live="off" data-o-spoken></span></p>
+      <p class="st-offer-seats" data-o-seats hidden></p>
+      <a class="mk-btn mk-btn--primary mk-btn--lg st-offer-cta" href="purchase.html?buy=indie" data-start-buy="indie" data-offer-cta>Lock the founding price — continue with Google</a>
+      <p class="mk-small st-offer-trust">Secure checkout by Razorpay · UPI and cards · <a class="mk-link mk-link--inline" href="refund.html">Purchases are final, with three exceptions</a></p>
     </div>
   </div>
 </section>
@@ -222,6 +302,14 @@
   </div>
 </section>
 </main>
+<aside class="st-dock" id="offerDock" role="region" aria-label="Launch offer" data-surface="dark" data-offer-state="none" data-pass-tag="Launch offer" data-unit-year="a year" data-day-lead="about" data-day-tail="a day" data-pass-ends="Offer ends in" data-founding-ends="Founding price ends in" data-until="Founding price until" data-cta-pass="Get the launch pass — continue with Google" data-cta-pass-in="Get the launch pass" data-cta-founding="Lock the founding price — continue with Google" data-cta-founding-in="Lock the founding price" hidden>
+  <div class="st-dock-in">
+    <p class="st-dock-what"><b class="st-dock-name"><span data-o-for="pass" data-pass-only hidden>The launch pass</span><span data-o-for="founding" hidden>Intermediate at the founding price</span></b> <span class="st-offer-amt" data-o-price></span> <span class="st-offer-unit" data-o-unit></span></p>
+    <p class="st-offer-timer st-dock-timer" data-o-timer hidden><span class="st-clock" data-o-clock aria-hidden="true"></span><span class="mk-vh" role="timer" aria-live="off" data-o-spoken></span></p>
+    <a class="mk-btn mk-btn--primary mk-btn--sm st-offer-cta" href="purchase.html?buy=indie" data-start-buy="indie" data-offer-cta>Lock the founding price</a>
+    <button class="st-dock-close" type="button" data-offer-close aria-label="Close offer"><span aria-hidden="true">✕</span></button>
+  </div>
+</aside>
 <footer class="mk-foot" id="mkFoot" data-surface="dark">
   <div class="mk-wrap">
     <div class="mk-foot-grid">

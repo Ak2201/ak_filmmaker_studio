@@ -44,15 +44,18 @@
       figure from price_notice('USD'). No answer: the stamped rupees
       stand. The charge currency is said on pricing.html and at checkout,
       where the price is.
+   6. THE OFFER (30 Oct 2026): the hero card, the slide-in / phone bar and
+      the closing band, from the same two replies (see section 6).
    ============================================================ */
-import './marketing.js';
+import { passNow, startSignIn, signedIn } from './marketing.js';
 import './start-motion.js';   // the scroll story (29 Oct 2026): motion + device-motion only
 import '../styles/start.css';
-import { bumpOnce, optOut, priceNotice } from '../lib/funnel.js';
+import { bumpOnce, bumpEvent, funnelSource, configured, optOut, priceNotice } from '../lib/funnel.js';
 import { AUTH_ERROR_KEY } from '../lib/auth-scope.js';
-import { takeAuthError, isAppPage, deviceRegion, fromDayNow, stampedFromDay, swapFigure } from '../lib/start-model.js';
+import { takeAuthError, isAppPage, deviceRegion, fromDayNow, stampedFromDay, swapFigure,
+  offerFrom, ctaText, offerHref, clockText, spokenLeft, serverClock, stashPlan, dockClosed as isDockClosed, rememberDockClosed } from '../lib/start-model.js';
 import { pricingCurrency, readPayCurrency, guessVisitorRegion } from '../lib/region-core.js';
-import { shopView, fromDay } from '../lib/price-model.js';
+import { shopView, fromDay, fmtMinor, chargeCaption } from '../lib/price-model.js';
 
 const byId = (id) => document.getElementById(id);
 
@@ -124,15 +127,240 @@ function sayFrom(fig) {
   if (was) document.title = swapFigure(TITLE0, was, fig);
 }
 const TITLE0 = document.title;
+let usdView = null;   // the dollar view, for a visitor shown dollars (section 6 reads it)
+
+/* ---- 6. THE OFFER (30 Oct 2026) ------------------------------------------
+   One offer, three surfaces: the hero card (#offerCard), the slide-in on a
+   desk / the bottom bar on a phone (#offerDock), and the closing band
+   (#offerClose). Which offer is start-model.js offerFrom()'s to say, from
+   the two replies this page already has:
+
+     - trial_offer(), read by marketing.js and handed over as 'mk:pass'
+       (passNow()): its pass is read ONLY through pass-offer.js, inside
+       marketing.js's closures. An open pass is the offer.
+     - price_notice(), section 5: with no open pass, a scheduled rise for
+       the founding plan that is still ahead is the offer, at today's price.
+     - neither: every surface stays hidden and the plans stand.
+
+   Nothing is drawn until BOTH replies are in (or have failed), so the
+   founding card never flashes up before the pass replaces it. EVERY FIGURE
+   IS THE SERVER'S: the markup holds empty slots and no digit
+   (test:marketing), and the countdown runs on the server's clock (a reply's
+   own `now` plus the local time elapsed since it arrived). With no server
+   `now` the founding offer draws no ticking clock: it says the IST day the
+   price holds until. At zero the offer is worked out again, so the card
+   moves to the next offer or goes; it never shows a deadline that passed.
+
+   THE BUTTON IS THE CHECKOUT (owner, 30 Oct 2026): purchase.html?buy=<id>,
+   which opens Razorpay for exactly this offer. Signed in, a plain
+   navigation. Signed out, the intent is stashed (fms_invite_plan, the
+   existing key) and the press goes straight to Google; invite.js forwards
+   the returning buyer to purchase.html?buy=<id>. Counted as 'signup' only:
+   checkout_start and purchase are counted downstream.
+
+   No storage write but two session flags: the plan stash on a press, and
+   fms_offer_dock_closed when the slide-in is closed (session only, in no
+   registry). textContent only: nothing here builds markup. */
+const root = document.documentElement;
+const SURFACES = ['offerCard', 'offerDock', 'offerClose'].map(byId).filter(Boolean);
+const DOCK = byId('offerDock');
+const MOBILE = '(max-width: 720px)';
+
+/* Motion stands still for Playwright, the device switch (marketing.js
+   sets html.ma-off) and the OS setting: start.css keys every offer
+   animation off html:not(.st-still). */
+try {
+  if (navigator.webdriver || root.classList.contains('ma-off') || matchMedia('(prefers-reduced-motion: reduce)').matches) root.classList.add('st-still');
+} catch (e) { root.classList.add('st-still'); }
+
+const offerTake = (function () {
+  let notice = null, noticeAt = 0, haveNotice = false, havePass = false;
+  let offer = null, timer = 0, spoken = null, drawnKey = '';
+  let dockClosed = isDockClosed();
+
+  const set = (n, text) => { if (n.textContent !== text) n.textContent = text; };
+  const show = (n, on) => { if (n.hidden === on) n.hidden = !on; };
+
+  function serverNow(P) {
+    const now = Date.now();
+    const t = P && P.trial && P.trial.pass;
+    const a = t ? serverClock(t.now, P.readAt, now) : null;
+    if (a != null) return a;
+    return notice && notice.pass ? serverClock(notice.pass.now, noticeAt, now) : null;
+  }
+  function compute() {
+    const P = passNow();
+    const st = P ? P.state() : null;
+    const copy = P && st ? P.copy(st) : null;
+    const off = root.dataset.purchases === 'off' || !!(P && (P.off || (P.trial && P.trial.purchase_required === false)));
+    return { o: offerFrom(st, copy, notice, Date.now(), { serverNowMs: serverNow(P), off }), P, off };
+  }
+
+  function drawSurface(s, o) {
+    const kind = o ? o.kind : 'none';
+    s.dataset.offerState = kind;
+    for (const n of s.querySelectorAll('[data-o-for]')) show(n, n.dataset.oFor === kind);
+    for (const n of s.querySelectorAll('[data-o-price]')) set(n, o ? o.price : '');
+    for (const n of s.querySelectorAll('[data-o-unit]')) set(n, !o ? '' : o.kind === 'pass' ? o.unit : s.dataset.unitYear);
+    for (const n of s.querySelectorAll('[data-o-was]')) {
+      const on = !!o && o.kind === 'founding';
+      show(n, on);
+      const amt = n.querySelector('[data-o-was-amt]');
+      if (amt) set(amt, on ? o.was : '');
+    }
+    for (const n of s.querySelectorAll('[data-o-day]')) {
+      const on = !!o && o.kind === 'founding';
+      set(n, on ? s.dataset.dayLead + ' ' + o.day + ' ' + s.dataset.dayTail : '');
+      show(n, on);
+    }
+    for (const n of s.querySelectorAll('[data-o-usd]')) {
+      const r = o && o.kind === 'founding' && usdView && usdView.currency === 'USD' ? usdView.plans[o.plan] : null;
+      const t = r && r.minor > 0 ? fmtMinor(r.minor, 'USD') + ' ' + s.dataset.unitYear + ' in US dollars · ' + chargeCaption(usdView, o.paise) : '';
+      set(n, t); show(n, !!t);
+    }
+    for (const n of s.querySelectorAll('[data-o-seats]')) {
+      const t = !o ? '' : o.kind === 'pass' ? o.left : o.seats;
+      set(n, t || ''); show(n, !!t);
+    }
+    for (const a of s.querySelectorAll('[data-offer-cta]')) {
+      if (!o) continue;
+      const href = offerHref(o);
+      if (a.getAttribute('href') !== href) a.setAttribute('href', href);
+      a.dataset.startBuy = o.id;
+      /* the dock's button is the short form: the bar has no room for "continue with Google" */
+      set(a, ctaText(o, s === DOCK || signedIn(), { pass: s.dataset.ctaPass, passIn: s.dataset.ctaPassIn, founding: s.dataset.ctaFounding, foundingIn: s.dataset.ctaFoundingIn }));
+    }
+    if (s !== DOCK) show(s, !!o);
+  }
+  /* the clock, every second: digits aria-hidden, the label to the minute
+     (rewritten only when the minute changes, and not a live region) */
+  function drawClock(o) {
+    const ms = o ? o.msLeft : null;
+    const clock = ms != null ? clockText(ms) : '';
+    const say = ms != null ? spokenLeft(ms) : '';
+    const untilOnly = !!o && o.kind === 'founding' && ms == null;
+    for (const s of SURFACES) {
+      const ends = o && o.kind === 'pass' ? s.dataset.passEnds : s.dataset.foundingEnds;
+      for (const p of s.querySelectorAll('[data-o-timer]')) {
+        const lead = p.querySelector('[data-o-timer-lead]');
+        if (lead) set(lead, !o ? '' : untilOnly ? s.dataset.until + ' ' + o.until : ends);
+        for (const c of p.querySelectorAll('[data-o-clock]')) set(c, clock);
+        if (say !== spoken) for (const c of p.querySelectorAll('[data-o-spoken]')) set(c, say ? ends + ' ' + say : '');
+        /* the dock has no lead, so a clockless founding offer draws no line there */
+        show(p, !!clock || (untilOnly && !!lead));
+      }
+    }
+    spoken = say;
+  }
+  function draw() {
+    if (!haveNotice || !havePass) return;
+    const { o, P, off } = compute();
+    offer = o;
+    const key = o ? [o.kind, o.price, o.was || '', o.left || o.seats || '', usdView ? 'usd' : ''].join('|') : 'none';
+    if (key !== drawnKey) {
+      drawnKey = key;
+      for (const s of SURFACES) drawSurface(s, o);
+      for (const n of document.querySelectorAll('[data-o-fallback]')) show(n, !o);
+      for (const n of document.querySelectorAll('[data-o-only]')) show(n, !!o);
+      const plan = o ? o.plan : 'indie';
+      for (const n of document.querySelectorAll('[data-value-for]')) show(n, n.dataset.valueFor === plan);
+      for (const n of document.querySelectorAll('[data-v-price]')) {
+        const t = !o ? '' : o.kind === 'pass' ? o.price + ' ' + o.unit : o.price + ' a year, about ' + o.day + ' a day';
+        set(n, t); show(n, !!t);
+      }
+      /* the FAQ's trial clause: only while trials are open, no pass is
+         running and purchases are required */
+      const trialOpen = !!(P && P.trial && P.trial.trial_enabled === true) && !off && !(o && o.kind === 'pass');
+      for (const n of document.querySelectorAll('[data-o-trial]')) show(n, trialOpen);
+      if (o) root.dataset.offer = o.kind; else delete root.dataset.offer;
+    }
+    drawClock(o);
+    dockUpdate();
+    const ticking = !!o && o.msLeft != null;
+    if (ticking && !timer) timer = setInterval(draw, 1000);
+    if (!ticking && timer) { clearInterval(timer); timer = 0; }
+  }
+
+  /* ---- the slide-in: past the hero card, and neither the closing band
+     nor the footer on screen. Not on load, not modal, closed for good
+     (this session) by its close button or Escape. */
+  const seen = new Map();
+  function dockWanted() {
+    if (!offer || dockClosed || !DOCK) return false;
+    const card = byId('offerCard');
+    if (!card || card.hidden) return false;
+    if (card.getBoundingClientRect().bottom > 0) return false;   // not scrolled past it yet
+    for (const v of seen.values()) if (v) return false;          // the closing band or the footer is on screen
+    return true;
+  }
+  function dockUpdate() {
+    if (!DOCK) return;
+    const want = dockWanted();
+    show(DOCK, want);
+    let h = 0;
+    try { if (want && matchMedia(MOBILE).matches) h = Math.ceil(DOCK.getBoundingClientRect().height); } catch (e) { /* */ }
+    const v = h + 'px';
+    if (root.style.getPropertyValue('--offer-dock-h') !== v) root.style.setProperty('--offer-dock-h', v);
+  }
+  function closeDock() {
+    if (!DOCK) return;
+    const inside = DOCK.contains(document.activeElement);
+    dockClosed = true;
+    rememberDockClosed();
+    dockUpdate();
+    if (inside) {
+      const main = byId('main');
+      if (main) { if (!main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1'); main.focus({ preventScroll: true }); }
+    }
+  }
+  if (DOCK) {
+    DOCK.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-offer-close]')) closeDock(); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' || DOCK.hidden || root.classList.contains('mk-modal-open')) return;
+      const a = document.activeElement;
+      if (DOCK.contains(a) || !a || a === document.body || a === root || a === byId('main')) { e.preventDefault(); closeDock(); }
+    });
+    const watch = [byId('offerCard'), byId('offerClose'), document.querySelector('.mk-foot')].filter(Boolean);
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver((es) => {
+        for (const x of es) if (x.target.id !== 'offerCard') seen.set(x.target, x.isIntersecting);
+        dockUpdate();
+      });
+      watch.forEach((n) => io.observe(n));
+    } else addEventListener('scroll', dockUpdate, { passive: true });
+    try { matchMedia(MOBILE).addEventListener('change', dockUpdate); } catch (e) { /* */ }
+  }
+
+  /* ---- the button: straight to the checkout for this offer ----------- */
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest && e.target.closest('[data-offer-cta]');
+    if (!a || e.defaultPrevented || signedIn()) return;            // signed in: the href is the checkout
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;   // a new tab: the href does what was asked
+    if (!configured()) return;                                     // no project: purchase.html asks for the sign-in itself
+    e.preventDefault();
+    stashPlan(a.dataset.startBuy);
+    bumpEvent('signup', funnelSource());
+    try { if (!startSignIn()) location.href = a.href; } catch (err) { location.href = a.href; }
+  });
+
+  document.addEventListener('mk:pass', () => { havePass = true; drawnKey = ''; draw(); });
+  if (passNow()) havePass = true;
+  return {
+    notice(n) { notice = n && typeof n === 'object' ? n : null; noticeAt = Date.now(); haveNotice = true; draw(); },
+    redraw() { drawnKey = ''; draw(); }
+  };
+})();
+
 try {
   const usdAsk = pricingCurrency({ override: readPayCurrency(), chosen: deviceRegion(), guess: guessVisitorRegion() }) === 'USD'
     ? priceNotice('USD') : null;
   priceNotice().then((notice) => {
     sayFrom(fromDayNow(notice));
+    offerTake.notice(notice);
     if (!usdAsk) return;
     usdAsk.then((usd) => {
       const view = shopView('USD', usd);
-      if (view.currency === 'USD') sayFrom(fromDay(view));
+      if (view.currency === 'USD') { sayFrom(fromDay(view)); usdView = view; offerTake.redraw(); }
     }, () => {});
-  }, () => {});
-} catch (e) { /* the stamped rupees stand */ }
+  }, () => offerTake.notice(null));
+} catch (e) { offerTake.notice(null); /* the stamped rupees stand */ }

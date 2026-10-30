@@ -179,6 +179,8 @@ jobs:
       # Explainers ("What is a …?") open over the page — kit modal on a
       # desk, bottom sheet on a phone — trap focus, write nothing.
       - run: npm run prove:explainer
+        env:
+          PROVE_DIST: dist-verify
       - run: npm run prove:why-popup
         env:
           PROVE_DIST: dist-verify

@@ -57,7 +57,7 @@ export function takeInvitePlan(signedIn) {
   if (!v || !v.buy || !signedIn) return null;
   clearPlanStash();
   const plan = v.plan ? cleanPlanId(v.plan) : '';
-  return 'purchase.html' + (plan ? '?plan=' + encodeURIComponent(plan) : '');
+  return 'purchase.html' + (plan ? '?buy=' + encodeURIComponent(plan) : '');
 }
 
 /* ---- what the page says ------------------------------------------ */

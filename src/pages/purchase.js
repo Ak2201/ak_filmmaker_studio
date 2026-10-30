@@ -67,7 +67,7 @@ import { passPhase, passFacts, mayBuyPass, passCta, onPass, passTerms, passMode 
 import { offerTerms, renewsText, cancelledText } from '../lib/offer-terms.js';
 import { stashPlan } from '../lib/start-model.js';
 import { bindPassTimers, passClock } from '../lib/plan-gate.js';
-import { wantedPlan } from '../lib/purchase-model.js';
+import { wantedPlan, wantsBuy, stripBuyFromAddress, clearPlanStash } from '../lib/purchase-model.js';
 
 const app = document.getElementById('app');
 const cloud = () => window.StudioCloud || null;
@@ -107,7 +107,10 @@ let billing = { plans: null, st: null, error: '', missing: false, loading: false
 
 /* ---- the launch pass ------------------------------------------------- */
 let passOfferNow = null;   // { raw, readAt } | null — null shows no pass at all
-const pass = { busy: false, msg: '', bad: false };
+const pass = { busy: false, msg: '', bad: false, again: false };
+/* ?buy=pass, refused: one status line above the cards, nothing charged. */
+let buyNotice = '';
+let passAuto = false;
 let shownModes = null;   // the §62 modes last drawn (the deck and terms follow them)
 function loadPass(fresh = false) {
   Billing.passOffer({ fresh }).then((o) => {
@@ -137,7 +140,7 @@ function passCard(st, signedIn) {
     h('p.pu-pass-p', { text: passBody(f) }),
     passClock(),
     h('div.pu-actions', {}, [signedIn
-      ? h('button.k-btn.k-btn--primary', { type: 'button', 'data-pu-action': 'buy-pass', disabled: pass.busy || !Billing.paymentsConfigured() || (st && st.disabled) ? true : null, text: pass.busy ? 'Opening…' : passCta(renewing ? null : f) })
+      ? h('button.k-btn.k-btn--primary', { type: 'button', 'data-pu-action': 'buy-pass', disabled: pass.busy || !Billing.paymentsConfigured() || (st && st.disabled) ? true : null, text: pass.busy ? 'Opening…' : pass.msg && pass.again ? 'Try again' : passCta(renewing ? null : f) })
       : h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', 'data-pu-action': 'pass-intent', text: passCta(renewing ? null : f) })]),
     pass.msg ? h('p.pl-status' + (pass.bad ? '.gt-error' : ''), { role: pass.bad ? 'alert' : 'status', text: pass.msg }) : null
   ]);
@@ -151,9 +154,29 @@ function passBody(f) {
   if (m === 'renew') return base + ' Cancel it any time with Razorpay, the payment service, and you keep the days already paid for; your work stays either way.';
   return base + ' When the ' + f.length + ' end, choose a yearly plan below, or don’t: your work stays.';
 }
+/* ?buy=pass (the landing page's offer card): the press WAS the consent,
+   so the sheet opens once, with no second click. First the live offer is
+   re-read (never the landing page's figure), then the address and the
+   stash are spent so a reload or Back never reopens it. A closed offer,
+   or an account that may not buy it, gets one line and no charge; the
+   sheet itself shows the server's price, which is the one charged. */
+async function maybeBuyPass() {
+  if (passAuto || wantedPlan(location.search) !== 'pass' || !wantsBuy(location.search)) return;
+  const c = cloud();
+  if (!c || !c.getSession || !c.getSession() || !billing.st) return;   // signed out: the card's Google button is the press
+  passAuto = true;
+  stripBuyFromAddress(); clearPlanStash();
+  try { passOfferNow = await Billing.passOffer({ fresh: true }); shownModes = Billing.cachedModes(); } catch (e) { /* the offer read before */ }
+  const st = billing.st;
+  if (passPhase(passOfferNow) !== 'open') buyNotice = 'The launch pass has closed. Here are the plans.';
+  else if (!mayBuyPass(st)) buyNotice = st && st.plan && st.plan !== 'free' && !onPass(st) ? 'You already have ' + Billing.planName(st.plan) + '.' : 'The launch pass is not available on this account. Here are the plans.';
+  else if (!Billing.paymentsConfigured() || st.disabled) buyNotice = '';
+  else { render(); buyPassHere(); return; }
+  render();
+}
 async function buyPassHere(btn) {
   if (pass.busy) return;
-  pass.busy = true; pass.msg = ''; pass.bad = false;
+  pass.busy = true; pass.msg = ''; pass.bad = false; pass.again = false;
   render();
   try {
     await Billing.buyPass({ accountId: billing.st && billing.st.account_id, shownMode: passMode(passOfferNow), onStatus: (t) => { pass.msg = t; render(); } });
@@ -161,7 +184,7 @@ async function buyPassHere(btn) {
     refreshInvoices();
   } catch (e) {
     pass.msg = (e && e.message) || 'The pass could not be bought just now. Please try again.';
-    pass.bad = !(e && e.code === 'dismissed');
+    pass.bad = !(e && e.code === 'dismissed'); pass.again = true;   // the card stays; the button says Try again, nothing reopens by itself
     if (e && (e.hint === 'closed' || e.code === 'closed' || e.hint === 'renew_off' || e.code === 'terms')) loadPass(true);
   } finally {
     pass.busy = false;
@@ -278,6 +301,7 @@ async function refreshBilling() {
   billing = { ...got, loading: false };
   if (ok) refreshRefundRequest();
   render();
+  if (ok) maybeBuyPass();
 }
 
 
@@ -551,6 +575,7 @@ function planSection() {
     h('h3.pu-h3', { text: buyer ? 'Renew or move up' : 'Choose a plan' }),
     buyer ? null : h('p.bd-sub', { text: deck() })
   ].filter(Boolean)));
+  if (buyNotice) sec.append(h('p.pl-status.pl-buy-note', { role: 'status', text: buyNotice }));
   { const pc = passCard(st, true); if (pc) sec.append(pc); }
   sec.append(currencyBlock());
   const view = currentView();

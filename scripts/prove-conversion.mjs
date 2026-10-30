@@ -329,13 +329,24 @@ try {
     if (want) {
       await page.evaluate(() => window.StudioPDF.stage({ scope: 'board' }));
       await page.emulateMedia({ media: 'print' });
+      /* CI run 374 missed the line in the PDF text while every staging check
+         passed: print a PDF only once the faces are loaded and the line is laid
+         out, never straight after the stage on a slow runner. */
+      await page.evaluate(async () => {
+        try { await document.fonts.ready; } catch (e) { /* */ }
+        for (let t = 0; t < 40; t++) {
+          const el = document.getElementById('pdf-made-with');
+          if (el && el.getBoundingClientRect().height > 0) break;
+          await new Promise((r) => setTimeout(r, 100));
+        }
+      });
       const pdf = await page.pdf({ format: 'A4', landscape: true });
       await page.emulateMedia({ media: 'screen' });
       await page.evaluate(() => window.StudioPDF.unstage());
       const { extractLayoutText } = await import('../src/lib/pdf-text.js');
       let text = '';
       try { const r = await extractLayoutText(pdf); text = JSON.stringify(r); } catch (e) { text = 'ERR ' + e.message; }
-      ok(text.includes('Made with') && text.includes(BRAND.host), 'a real page.pdf() of the stripboard carries the line in its text');
+      ok(text.includes('Made with') && text.includes(BRAND.host), 'a real page.pdf() of the stripboard carries the line in its text' + (text.includes('Made with') && text.includes(BRAND.host) ? '' : ': ' + text.slice(0, 300) + ' … ' + text.slice(-300)));
     }
     allErrors.push(...errors); await ctx.close();
   }

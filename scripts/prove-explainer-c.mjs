@@ -97,11 +97,11 @@ async function run(width, height) {
      (plan-gate OFF_BY_DEFAULT), so its section is a hidden tab: the
      cards are in the DOM and the button is pressed from script. */
   await page.goto(url('library.html'), { waitUntil: 'networkidle' });
-  await page.waitForSelector('#libTerms .lib-term-more', { timeout: 15000, state: 'attached' });
+  await page.waitForSelector('#libTerms .lib-term-open', { timeout: 15000, state: 'attached' });
   check(at + 'no <details> on a term card', await page.$$eval('#libTerms details', (d) => d.length), 0);
-  const termName = await page.$eval('#libTerms .lib-term-more', (b) => b.closest('.lib-term').querySelector('.lib-term-name').firstChild.textContent.trim());
+  const termName = await page.$eval('#libTerms .lib-term-open', (b) => b.closest('.lib-term').querySelector('.lib-term-name').firstChild.textContent.trim());
   await page.evaluate(() => { window.__writes.length = 0; });
-  await page.$eval('#libTerms .lib-term-more', (b) => b.click());
+  await page.$eval('#libTerms .lib-term-open', (b) => b.click());
   await ready();
   check(at + 'term card: the title is the term', await title(), termName);
   check(at + 'term card: it carries the definition', await page.$eval(DIALOG, (d) => !!d.querySelector('.learn-def') && /\bnull\b/.test(d.textContent) === false), true);

@@ -96,7 +96,7 @@ async function run(width, height) {
   await page.waitForSelector('main > section.st-step', { timeout: 15000, state: 'attached' });
   await page.waitForTimeout(1200);
 
-  const trig = page.locator('main .learn-q:visible').first();
+  const trig = page.locator('main .learn-pill:visible').first();
   check(at + 'a learn trigger is on the page', await trig.count(), 1);
   if (!(await trig.count())) {
     console.log('        on the page:', JSON.stringify(await page.evaluate(() => [...document.querySelectorAll('.learn, [data-learn]')].slice(0, 2).map((e) => { let a = e; while (a && a.getClientRects().length === 0 && a.parentElement && a.parentElement.getClientRects().length === 0) a = a.parentElement; return e.dataset.learn + ' hidden at ' + (a && a.outerHTML.slice(0, 160)); })).catch(() => [])), errors);
@@ -128,12 +128,12 @@ async function run(width, height) {
 
   const where = () => page.evaluate(() => {
     const first = document.querySelector('main') && document.querySelector('main').firstElementChild;
-    const t = document.querySelector('main .learn-q');
+    const t = document.querySelector('main .learn-pill');
     const doc = (el) => el ? Math.round(el.getBoundingClientRect().top + scrollY) : null;
     return { first: doc(first), trigger: doc(t), height: document.documentElement.scrollHeight, scroll: Math.round(scrollY) };
   });
   const before = await where();
-  const question = (await trig.textContent()).trim();
+  const question = (await trig.locator('.learn-pill-label').textContent()).trim();
   await page.evaluate(() => { window.__writes.length = 0; });
 
   await trig.click();
@@ -228,7 +228,7 @@ async function run(width, height) {
   await page.keyboard.press('Escape');
   await page.waitForTimeout(400);
   check(at + 'Escape closes it', await page.$$eval(OPEN, (d) => d.length), 0);
-  check(at + 'focus is back on the trigger', await page.evaluate(() => document.activeElement && document.activeElement.matches('main .learn-q')), true);
+  check(at + 'focus is back on the trigger', await page.evaluate(() => document.activeElement && document.activeElement.matches('main .learn-pill')), true);
   const after = await where();
   check(at + 'nothing moved after closing', after, before);
 
@@ -238,7 +238,7 @@ async function run(width, height) {
   await page.locator('[data-explainer] button', { hasText: /^Close$/ }).click();
   await page.waitForTimeout(400);
   check(at + 'the Close button closes it', await page.$$eval(OPEN, (d) => d.length), 0);
-  check(at + 'focus is back on the trigger after Close', await page.evaluate(() => document.activeElement && document.activeElement.matches('main .learn-q')), true);
+  check(at + 'focus is back on the trigger after Close', await page.evaluate(() => document.activeElement && document.activeElement.matches('main .learn-pill')), true);
 
   /* the frame LISTENS to the width: crossing 720px while open moves the
      same body into the other frame, and it still closes cleanly */

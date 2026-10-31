@@ -46,6 +46,7 @@
     "prove:offer": "node scripts/prove-offer.mjs",
     "prove:why-popup": "node scripts/prove-why-popup.mjs",
     "prove:explainer-c": "node scripts/prove-explainer-c.mjs",
+    "prove:pills": "node scripts/prove-pills.mjs",
     "test:beats": "node scripts/test-beats.mjs",
     "test:pacing": "node scripts/test-story-pacing.mjs",
     "test:tanglish": "node scripts/test-tanglish.mjs",

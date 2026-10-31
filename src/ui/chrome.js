@@ -100,6 +100,7 @@ import './blueprint-drawer-mount.js';
    window for the few callers outside the module graph. */
 import Dialog from './dialog.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
+import './learn-places.js';   // the "What is …?" pills under newcomer terms
 import './ports-view.js';   // what this UI plugs into the logic layer's ports
 if (typeof window !== 'undefined') window.StudioDialog = Dialog;
 

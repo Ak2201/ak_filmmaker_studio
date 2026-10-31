@@ -1,29 +1,40 @@
-/* Learn (src/ui/learn.js): ONE quiet inline trigger that opens the
+/* Learn (src/ui/learn.js): ONE pill trigger (the kit pill, learn-pill.js) that opens the
    explainer (src/ui/explainer.js) over the page. Nothing expands in
    place, so the page never moves under the writer (owner, 29 Oct 2026).
    The body classes below are styled wherever they are drawn: inside the
    explainer, and on the library's term cards (termBody()).
    Tokens only; shape from the skin. */
-.learn.learn-q {
-  display: flex;
+.learn.learn-pill {
+  display: inline-flex;
   align-items: center;
+  gap: var(--s1);
   width: fit-content;
   max-width: 100%;
-  min-height: 1.5rem;
+  min-height: 32px;
   margin: var(--s2) 0;
-  padding: 0;
-  background: none;
-  border: 0;
+  padding: 0 var(--s3) 0 var(--s2);
+  background: var(--brand-wash);
+  color: var(--brand-deep);
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-pill);
   font: inherit;
   font-size: var(--t-tiny);
-  color: var(--ink-muted);
+  font-weight: 600;
+  line-height: 1.25;
   text-align: left;
-  text-decoration: underline dotted;
-  text-underline-offset: 3px;
   cursor: pointer;
+  transition: background-color 120ms, color 120ms, transform 120ms;
 }
-.learn.learn-q:hover { color: var(--ink); }
-.learn.learn-q:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; border-radius: var(--sk-radius, var(--radius)); }
+.learn-pill-ic { font-size: 18px; line-height: 1; flex: none; }
+.learn-pill-label { min-width: 0; overflow-wrap: anywhere; }
+.learn.learn-pill:hover { background: var(--brand); color: var(--brand-on); }
+.learn.learn-pill:active { transform: scale(calc(1 - (1 - var(--sk-press, 0.97)) * var(--motion, 1))); }
+.learn.learn-pill:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
+.learn.learn-pill--sm { min-height: 28px; font-size: var(--t-micro); padding: 0 var(--s2) 0 var(--s1); margin: var(--s1) 0; }
+.learn.learn-pill--sm .learn-pill-ic { font-size: 16px; }
+@media (pointer: coarse) {
+  .learn.learn-pill, .learn.learn-pill--sm { min-height: 44px; padding-block: var(--s1); }
+}
 
 .learn-def { color: var(--ink); }
 .learn-tn { color: var(--ink-muted); font-style: italic; }
@@ -49,3 +60,8 @@
 @media print {
   .learn { display: none !important; }
 }
+
+/* Several topics for one section sit in one wrapping row (at most two
+   pills in a region, then a "More:" row of small ones). */
+.learn-row { display: flex; flex-wrap: wrap; gap: 0 var(--s2); align-items: center; }
+.learn-slot:empty { display: none; }

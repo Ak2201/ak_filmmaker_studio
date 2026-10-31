@@ -487,7 +487,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
          marked on the way back (stashed in the capture listener below).
          Outline here; the recommended plan's is made the one filled
          button once the row is built. No data-plan-action: nothing buys. */
-      act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--secondary', { type: 'button', 'data-auth-action': 'google', 'data-plan-signin': p.id, text: 'Sign in to buy ' + name }));
+      act.append(h('button.k-btn.k-btn--lg.k-btn--block.k-btn--secondary', { type: 'button', 'data-auth-action': 'google', 'data-plan-signin': p.id, 'aria-label': 'Continue with Google to buy ' + name, text: 'Continue with Google' }));
     } else if (canBuy) {
       if (!buyable.length) nextCard = card;
       buyable.push(p.id);

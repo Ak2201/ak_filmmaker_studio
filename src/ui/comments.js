@@ -231,9 +231,9 @@ function cloudStateHTML() {
       + '<button type="button" class="cmt-btn" data-cmt-action="connect">Connect an account</button></p>';
   }
   if (!signedIn()) {
-    return '<p class="cmt-state">Sign in to read and post shared comments. Your private note '
+    return '<p class="cmt-state">Continue with Google to read and post shared comments. Your private note '
       + 'above is saved either way.'
-      + '<button type="button" class="cmt-btn" data-cmt-action="signin">Sign in</button></p>';
+      + '<button type="button" class="cmt-btn" data-cmt-action="signin">Continue with Google</button></p>';
   }
   if (!projectId()) {
     return '<p class="cmt-state">Open a project before commenting — a thread belongs to a film.</p>';

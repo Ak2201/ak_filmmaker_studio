@@ -63,8 +63,8 @@ export function boardGate(facts = {}) {
   }
   if (!facts.signedIn) {
     return { ok: false, state: 'signedout',
-      text: 'Sign in with Google first. Drawn frames are saved to your own Google Drive, never in this browser.',
-      href: 'settings.html#account', hrefLabel: 'Sign in' };
+      text: 'Continue with Google first. Drawn frames are saved to your own Google Drive, never in this browser.',
+      href: 'settings.html#account', hrefLabel: 'Continue with Google' };
   }
   if (!facts.connected) {
     return { ok: false, state: 'noconnect',

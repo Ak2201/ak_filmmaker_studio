@@ -496,7 +496,7 @@ function render() {
   } else if (!signedIn) {
     /* A filmmaker who lands here by accident is told where their films
        are, rather than being asked for an administrator's account. */
-    body = h('div.ad-body', {}, [state('signin', 'Sign in', 'Use an administrator’s Google account.',
+    body = h('div.ad-body', {}, [state('signin', 'Continue with Google', 'Use an administrator’s Google account.',
       [button({ label: 'Continue with Google', variant: 'primary', attrs: { 'data-auth-action': 'google' } })],
       h('p.ad-meta', {}, ['For studio administrators. Looking for your films? ', h('a', { href: 'index.html', text: 'Go to the Studio' }), '.']))]);
   } else if (!st && stError) {

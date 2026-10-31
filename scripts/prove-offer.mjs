@@ -220,7 +220,7 @@ try {
       ok(a.ctaText === 'Lock the founding price — continue with Google', `"${a.ctaText}"`);
       ok(a.heroPrimary.length === 1, 'the hero has exactly one primary action');
       ok(!/hurry|only \d+ left|someone just|risk-free|money-back|founding price ends in/i.test(a.body), 'no urgency words, fake activity or guarantees anywhere');
-      ok(a.headPrimary === false, 'while an offer shows, the header\'s "Get started" is a secondary button: one filled button on the first screen');
+      ok(a.headPrimary === false, 'while an offer shows, the header\'s "Continue with Google" is a secondary button: one filled button on the first screen');
 
       /* the dock */
       ok(!(await view(c.page)).dockShown, 'the slide-in is hidden while the hero card is on screen');
@@ -304,8 +304,8 @@ try {
       await load(c.page);
       const a = await view(c.page);
       ok(!a.shown && !a.closeShown && !a.dockShown, `${label}: every offer surface stays hidden`);
-      ok(a.headPrimary === true, `${label}: the header's "Get started" stays the filled button`);
-      ok(a.heroPrimary.length === 1 && a.heroPrimary[0] === 'Get started', `${label}: the hero keeps its plain door: ${JSON.stringify(a.heroPrimary)}`);
+      ok(a.headPrimary === true, `${label}: the header's "Continue with Google" stays the filled button`);
+      ok(a.heroPrimary.length === 1 && a.heroPrimary[0] === 'Continue with Google', `${label}: the hero keeps its plain door: ${JSON.stringify(a.heroPrimary)}`);
       ok(!/founding|rises to|launch pass|₹1,499|ends in/i.test(a.body), `${label}: no text claims an offer or a rise`);
       await c.page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)); await c.page.waitForTimeout(300);
       ok(!(await view(c.page)).dockShown, `${label}: no slide-in anywhere on the page`);

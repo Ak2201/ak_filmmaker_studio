@@ -86,7 +86,7 @@ import '../styles/settings.css';
 import '../styles/kit-scope.css';   /* the kit's look for the legacy .btn / fields the account, invite and key modules draw */
 
 import StudioUI from '../ui/chrome.js';
-import { pageHeader, eyebrow as kitEyebrow, button } from '../ui/kit/index.js';
+import { pageHeader, eyebrow as kitEyebrow, button, kGoogleBtn } from '../ui/kit/index.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate, commitMain } from '../lib/dom.js';
 /* The provider table. The key area is composed by ai-panel.js; this
@@ -642,9 +642,9 @@ function renderCloudSync() {
   if (sw) { sec.append(sw); return sec; }
   sec.append(h('p.st-note', { text: signedIn
     ? 'Cloud sync is not available in this build.'
-    : 'Sign in to turn on cloud sync. Everything works without an account; your projects stay on this device.' }));
+    : 'Continue with Google to turn on cloud sync. Everything works without an account; your projects stay on this device.' }));
   if (!signedIn && c && c.isConfigured && c.isConfigured()) {
-    sec.append(h('p', {}, [h('button.k-btn.k-btn--primary', { type: 'button', 'data-action': 'plan-sign-in', text: 'Sign in' })]));
+    sec.append(h('p', {}, [kGoogleBtn({ action: false, attrs: { 'data-action': 'plan-sign-in' } })]));
   }
   return sec;
 }
@@ -865,10 +865,10 @@ function consolePointer() {
 function renderAccountMine() {
   const c = window.StudioCloud;
   const signedIn = !!(c && c.getSession && c.getSession());
-  const sec = section('you', 'You', signedIn ? 'Your account.' : 'Sign in.',
+  const sec = section('you', 'You', signedIn ? 'Your account.' : 'Continue with Google.',
     signedIn
       ? 'You are signed in. Signing in is what lets your films sync between devices and be shared.'
-      : 'Everything works without an account. Signing in adds sync between devices and sharing.');
+      : 'Everything works without an account. An account adds sync between devices and sharing; new or returning, it is the same button.');
   const slot = h('div#accountBlockHost');
   const make = AuthUI['renderAccountBlock'];   // not a named import: that export belongs to another lane and may not exist yet
   let block = null;
@@ -881,7 +881,7 @@ function renderAccountMine() {
   else if (signedIn) slot.append(h('p', { text: 'Signed in as ' + ((c.getUserEmail && c.getUserEmail()) || 'your Google account') + '.' }));
   else if (c && c.isConfigured && c.isConfigured()) {
     slot.append(h('p.hint', { text: 'You are not signed in. Your projects are saved on this device either way.' }));
-    slot.append(h('p', {}, [h('button.k-btn.k-btn--primary', { type: 'button', 'data-action': 'plan-sign-in', text: 'Sign in' })]));
+    slot.append(h('p', {}, [kGoogleBtn({ action: false, attrs: { 'data-action': 'plan-sign-in' } })]));
   } else {
     slot.append(h('p.hint', { text: 'This build is not connected to a cloud project, so there is no account to sign in to.' }));
   }

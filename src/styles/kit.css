@@ -1352,3 +1352,20 @@ details.k-panel--collapsible > summary.k-panel-head .k-panel-meta { margin-left:
   .k-stat-strip .k-stat-value { font-size: var(--t-lg); }
   .k-stat-strip .k-stat-note { display: none; }
 }
+
+/* ============================================================
+   THE GOOGLE BUTTON (one way in, 31 Oct 2026)
+   The G is public/google-g.svg (an <img>: no colour is declared here
+   and none may be). The button sits on a white or --surface ground
+   with ink text; a dark band gets the white-filled variant below.
+   ============================================================ */
+.gbtn { gap: var(--s2); }
+.gbtn-g { display: block; width: 18px; height: 18px; flex: none; }
+.gbtn-l { white-space: nowrap; }
+.k-btn.gbtn { background: var(--surface-card, var(--surface)); color: var(--ink); }
+.k-btn.gbtn:hover { background: var(--surface-hover); }
+@media (max-width: 719px) {
+  /* the studio pill: the G alone, a 44px target; the label stays for assistive tech */
+  .gbtn--mark { min-width: var(--tap-min); padding-inline: 0; }
+  .gbtn--mark .gbtn-l { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}

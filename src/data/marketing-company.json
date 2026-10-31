@@ -1,7 +1,7 @@
 {
   "_": "Copy for contact.html and about.html, rendered by scripts/make-marketing-pages.mjs (renderContact, renderAbout) inside the same header, footer and sign-up modal as the product pages. Nothing here names the product, the host or the support address: the generator stamps {{brand:...}}. NO PERSONAL NAME anywhere (brand.json 'seller' is empty by the owner's decision): the About page is signed by the team. Every claim is one already made in README.md, src/data/marketing-*.json or the legal pages. The Contact form sends nothing: it builds a mailto: link and the visitor's own mail app does the sending (src/pages/company.js).",
   "cta": {
-    "start": "Get started",
+    "start": "Continue with Google",
     "startOpen": "Open the studio",
     "plans": "See plans"
   },

@@ -461,6 +461,8 @@ logs and in any error report that captures a URL. And `connect-src` in
 **both** `vercel.json` and `netlify.toml` must name a new provider's origin
 in the same commit, or the browser refuses the request before it leaves.
 
+**The Google G is brand artwork in `public/google-g.svg`** (owner, 31 Oct 2026: ONE way in, "Continue with Google", everywhere; `src/lib/google-button.js` + the kit's `kGoogleBtn`). The grep below cannot see it and no CSS or JS may recolour it or name its blue (`test:marketing` fails on `#4285F4` in `src/`).
+
 Anything else is a bug. To check:
 
 ```bash

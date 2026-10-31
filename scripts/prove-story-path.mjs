@@ -392,6 +392,9 @@ await page.waitForTimeout(300);
 await page.keyboard.type('A second step');
 await page.waitForTimeout(800);
 const sid = (await story()).outline[0].id;
+/* A step's controls are on its OPEN card (the Beat Sheet's views, 31 Oct
+   2026): the caret in its text opens it, as a writer's click would. */
+await page.focus(`#stStep_${sid}`);
 await page.focus(`select[data-st-field="step-beat"][data-step="${sid}"]`);
 await page.keyboard.press('ArrowDown');
 await page.waitForTimeout(400);

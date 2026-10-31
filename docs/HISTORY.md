@@ -3353,3 +3353,54 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     screen); `prove:shell-a11y` now waits for the hub's own data-go
     navigation before its goto (it aborted on "interrupted by another
     navigation", on the base commit too).
+
+77. **The Beat Sheet in two views: Lanes and Spine (31 Oct 2026).** Owner
+    item 4 of the 31 Oct brief: design B "Beat lanes" and design C "Spine
+    flowchart", switchable at runtime, every step feature kept, the data
+    unchanged. `src/pages/story.js` `renderOutline()` now draws
+    `renderLanes()` (one equal-height column per beat, `clamp(22rem, 62vh,
+    40rem)`, an act ribbon and an act-coloured top rule, a long beat
+    scrolling inside its own `[data-drop-beat]` list; below 720px 85%-wide
+    lanes with mandatory snap, Previous / Next beat and "Beat N of 16") or
+    `renderSpine()` (numbered stations zig-zagging either side of one line
+    at 900px and over, on the left edge below it; act breaks as labelled
+    stops; "+N more" past three steps, memory only, auto-open for the
+    open, focused or new card; a collapsed station opens after 500ms of a
+    drag hovering it). The Unassigned bin is the last lane / station.
+    `src/styles/beat-views.css` holds both; story.css lost the old card grid.
+
+    DECISIONS. (1) The step's editor stays IN the card in both views (the
+    owner allowed "in place or in a side/bottom editor"): the spec's lanes
+    side panel would have been a second copy of the text field, and the
+    caret / arrival guarantees `prove:beat-sync` and `prove:story-coedit`
+    encode are about THAT field. The card is compact closed (text clamped
+    to three lines, controls not drawn) and open shows every old control
+    plus Move left / Move right (or previous / next beat). (2) Opening is
+    the edit button or the caret in the text; one card is open at a time;
+    Escape closes it and leaves the keyboard on the card. (3) The view
+    switch sits on the coverage line, right of it, not inside the picker's
+    box, so a short film (no picker) has it too. (4) Acts come from the
+    framework's own `act` (`outlineByBeat` already derived it). (5) The
+    Dragon sample's Fun and Games holds 13 steps, not 6: the proof reads
+    the counts from the data.
+
+    THE CONTRACT KEPT. No key and no data-key changed; `beatView` is one
+    field in the existing device blob. `[data-step-row]`, `#stStep_<id>`,
+    `.st-ol-n`, the colour strip's `::before`, every `data-st` the proofs
+    and the handlers read, `[data-beat-card]` with its three direct
+    children, `.st-unplaced`, the More craft boxes, the AI pills and the
+    picker are where they were. `Story.moveStep()` (pure, `test:story`) is
+    the one move a drag, Alt+arrows and the arrow buttons call; the lanes'
+    and each list's scroll position is kept across a redraw (a colour
+    pressed in the tenth lane no longer jumps the board to the first).
+    Three proofs that pressed a control on a card nobody had opened now
+    put the caret in the step first, as a writer would (`prove:story-path`
+    one line, `prove:notes` one line, `prove:story-coedit` a helper); and
+    `refocusStep()` opens a closed card before focusing one of its
+    controls, which the notes proof's "focus after Remove" check caught.
+    `prove:beat-views` 83 (verify job): both views, the pref as the only
+    write, idle zero, equal lanes, inside scroll, alternate stations, +N
+    more, edit/colour/move saving only text/colour/stamp, Alt+arrows with
+    the live region, the buttons, drag across lanes and on the spine
+    matching the buttons, Escape with no write, locked, reduced motion,
+    1440/1100/390 overflow and AA, no page errors.

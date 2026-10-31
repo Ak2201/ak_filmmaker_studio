@@ -149,6 +149,7 @@
     "prove:story-path": "node scripts/prove-story-path.mjs",
     "prove:notes": "node scripts/prove-notes.mjs",
     "prove:beat-sync": "node scripts/prove-beat-sync.mjs",
+    "prove:beat-views": "node scripts/prove-beat-views.mjs",
     "prove:dialogs": "node scripts/prove-dialogs.mjs",
     "test:dialogs": "node scripts/check-dialogs.mjs",
     "test:pagefile": "node scripts/test-page-file.mjs",

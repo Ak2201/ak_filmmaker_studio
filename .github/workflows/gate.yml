@@ -115,6 +115,8 @@ jobs:
       # (HISTORY 67). All read this job's gate-off dist/.
       - run: npm run prove:notes
       - run: npm run prove:beat-sync
+      # The Beat Sheet's two views, Lanes and Spine (owner, 31 Oct 2026).
+      - run: npm run prove:beat-views
       - run: npm run prove:story-coedit
       - run: npm run prove:visual
       - run: npm run prove:board-frames

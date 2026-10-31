@@ -167,4 +167,57 @@ export function displacedCopy(fresh, savedEls) {
   return null;
 }
 
-export default { scriptSignature, incomingAction, displacedCopy, unionRevisions, keepBoth, takeTheirs, isSideCopy, issuedColour, issuedCount, revisionLabel, ARRIVAL_PREFIX, ARRIVAL_WINDOW_PREFIX, YOURS_PREFIX };
+/* TWO WINDOWS SAVED AT ONCE (prove:script 21c, intermittent). Both
+   debounces fired within a millisecond or two of each other, so neither
+   page was mid-save when the other's copy arrived — and each copy was
+   written WITHOUT the other's in it. The window whose write landed last
+   in storage saw nothing (its storage still read as its own copy); the
+   other found nothing unsaved, loaded that copy, and its writer's lines
+   left the screen AND storage, with no draft and no toast. "Nothing
+   unsaved here" is not enough to load: the arrival must also CARRY what
+   this page saved.
+
+     crossedSave(base, saved, fresh)
+       true when a line this page changed since `base` (the copy it last
+       loaded or received) — edited, added or cut, by element id — is not
+       on `fresh` the way this page saved it: the other window wrote
+       without having seen this page's save.
+     settleCrossed(mine, fresh, label)
+       one copy on screen and the other kept whole as a side copy. The
+       SAME answer in both windows, whichever of them notices: the copy
+       with the larger signature stays on the page, and the side copy's
+       id is derived from its lines, so two windows that both settle file
+       one draft, not two, and their saves then read as the same copy. */
+const lineSig = (els) => JSON.stringify((els || []).map((e) => [e.id, e.type, String(e.text ?? '')]));
+export function crossedSave(base, saved, fresh) {
+  if (!Array.isArray(saved) || !fresh) return false;
+  const was = new Map(((base && base.elements) || []).map((e) => [e.id, e]));
+  const now = new Map((fresh.elements || []).map((e) => [e.id, e]));
+  const same = (a, b) => !!a && !!b && a.type === b.type && String(a.text ?? '') === String(b.text ?? '');
+  const ids = new Set();
+  for (const e of saved) {
+    ids.add(e.id);
+    if (same(was.get(e.id), e)) continue;          // a line this page did not touch
+    if (!same(now.get(e.id), e)) return true;      // edited or added here, not on the arrival
+  }
+  for (const [id, e] of was) {
+    if (ids.has(id)) continue;                     // cut here…
+    if (same(now.get(id), e)) return true;         // …and still on the arrival as it was
+  }
+  return false;
+}
+function hashOf(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(36);
+}
+export function settleCrossed(mine, fresh, label) {
+  const a = lineSig(mine && mine.elements), b = lineSig(fresh && fresh.elements);
+  const mineWon = a >= b;
+  const [won, lost] = mineWon ? [mine, fresh] : [fresh, mine];
+  const draft = { ...makeRevision((lost && lost.elements) || [], label), id: 'w-x' + hashOf(mineWon ? b : a) };
+  const revs = unionRevisions(mine && mine.revisions, fresh && fresh.revisions).filter((r) => r.id !== draft.id);
+  return { doc: { ...won, revisions: capArrivals(revs.concat(draft)) }, mineWon, draft };
+}
+
+export default { scriptSignature, incomingAction, displacedCopy, crossedSave, settleCrossed, unionRevisions, keepBoth, takeTheirs, isSideCopy, issuedColour, issuedCount, revisionLabel, ARRIVAL_PREFIX, ARRIVAL_WINDOW_PREFIX, YOURS_PREFIX };

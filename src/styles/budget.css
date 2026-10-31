@@ -107,9 +107,6 @@
 .bud-est-body.k-panel-body { padding: 0; display: grid; }
 .bud-est-body > .hint { padding: var(--s3) var(--s4); }
 .bud-est-body > .bud-who { padding: 0 var(--s4) var(--s3); }
-.bud-who > summary { cursor: pointer; width: fit-content; font-size: var(--t-small); font-weight: 600; color: var(--accent-deep); }
-.bud-who > summary:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-primary); outline-offset: 2px; }
-.bud-who > .hint { margin: var(--s2) 0 0; }
 .bud-est-body > .calc-actions { padding: var(--s3) var(--s4); border-top: 1px solid var(--border-hair); }
 
 /* Narrow (phones, and a narrow tab): one column, each field labelled. */
@@ -627,7 +624,6 @@ p.cx-hint { margin: 0; }
    row while closed; an opened one takes the full width for its body. */
 .bud-learn-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s1) var(--s4); margin-block: var(--s3); }
 .bud-learn-row > .learn { margin: 0; }
-.bud-learn-row > .learn[open] { flex-basis: 100%; }
 
 /* The currency note (src/ui/budget.js currencyNote()): drawn only when a
    budget with money in it is not in the film's currency. A warning wash

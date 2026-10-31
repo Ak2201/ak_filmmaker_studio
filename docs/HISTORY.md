@@ -3248,3 +3248,108 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     Cost: start.html's JS 48.4 KB -> 59.4 KB raw (20.4 -> 25.0 KB gzip),
     CSS +3.0 KB raw (+0.7 KB gzip). `test:marketing` holds start-motion.js
     to motion, motion/mini and device-motion.js.
+
+75. **Explainers open as a pop-up (29 Oct 2026).** Owner: every in-place
+    explainer ("What is a logline?", the format guide, "What is a step
+    outline?", stage-guide "Why it matters", glossary terms, the
+    format-note "Why?") opens over the page instead of expanding in it, so
+    it never pushes the work around. `src/ui/explainer.js` `openExplainer()`
+    is the one door: at 721px and over it is `dialog.js`'s kit modal (the
+    sign-out dialog's frame), at 720px and below the phone's bottom sheet
+    through `mobile-nav.js` `openSheet()`. Content is title, definition,
+    film example, "Why it matters", up to two click-to-load video facades
+    and Close. Escape closes, focus is trapped (`modal-focus.js`) and
+    returns to the trigger; the body is built once on open, and a window
+    crossing 720px moves the same node between frames. `learn()` returns a
+    trigger button. It writes nothing to storage and never uses a native
+    dialog. Proofs: `prove:explainer` (and `-c`). Re-baselined once: bodies
+    now build on open, so a few words left baselined pages; zero data-key
+    movement. Final QA found no defect. Left as is: (1) the sheet query is
+    `(max-width: 720px)` to match chrome.js `MAB_QUERY` and the bottom bar,
+    so the two never disagree at exactly 720px; (2) the video facade already
+    has a scrim, the overlap seen was the external thumbnail's own lettering;
+    (3) the Film terminology shelf is `OFF_BY_DEFAULT` (`glossary`), so its
+    triggers are unreachable until a plan sells it; (4) `keysPanel` and
+    `mountBeatGuide` are only mounted by `write.js`, which `write.html`
+    redirects away from: leave them until the page is wired, then convert
+    them to the explainer.
+
+76. **The launch offer leads the landing, and a press opens the checkout
+    (30 Oct 2026).** Owner: a visitor who needs the studio should be able
+    to buy it from the first screen. Two branches, merged on
+    `integ/launch-offer`. LANDING (`feat/launch-offer-landing`): start.html's
+    hero is a new h1 beside `#offerCard`, whose state comes from the pure
+    `offerFrom()` in `start-model.js`: an open launch pass (its price,
+    length and countdown, button `purchase.html?buy=pass`), else a
+    scheduled rise (Intermediate at today's price, the risen price struck,
+    the per-day figure, founding places LEFT, button `?buy=indie`), else
+    nothing at all, and a fired rise or any missing field is nothing. The
+    countdown runs on the server's `now`; with no `now` it prints the day
+    (IST) instead of ticking. The pass still reaches the page only through
+    `pass-offer.js` (`marketing.js` `passNow()` and `mk:pass`). Signed out,
+    the press stashes `fms_invite_plan` `{plan, buy:true}`, counts `signup`
+    and goes straight to Google. `#offerDock` slides in past the hero card,
+    hides at the closing band and footer, closes for the session (button or
+    Escape); on a phone it is one bottom bar (61px) and the space it needs
+    is `body` padding so the footer clears it. New `#value` stack and a
+    six-question `#faq` (the renewal answer is the `[data-offer-terms]`
+    slot). `#mkPass` left start.html only; the hero video moved into the
+    scroll story. Motion is CSS, every travel × `--motion`, off under
+    `html.st-still` (webdriver, OS reduce, the device switch). CHECKOUT
+    (`feat/launch-offer-checkout`): `purchase-model.js` `buyParam` /
+    `wantsBuy` / `stripBuyFromAddress`; `wantedPlan` reads `plan`, then
+    `buy`, then the stash, and a `?buy=` stash is `buy:<id>` in the existing
+    `fms_purchase_plan` (no new key). `plan-cards.js` presses the LIVE buy
+    button once (the row is rebuilt on every billing event, so an earlier
+    click hit a replaced node) and strips the address so a reload never
+    reopens it; a plan already held, or dollars shown while rupees would be
+    charged, is one status line and no order; a dismissed sheet reads "Try
+    again" and nothing reopens by itself. `purchase.js` `maybeBuyPass()`
+    re-reads the pass fresh and opens `buyPassHere()` once, or says the
+    pass has closed. `invite.js` forwards a signed-in pass intent to
+    `purchase.html?buy=pass`. Proofs: `prove:offer` (new, CI) 98,
+    `prove:billing` (buy) block, 490 in all. Integration gate: test:all
+    green (test:schema 1734 on a local PostgreSQL 16), verify all pages,
+    prove:growth 197, scroll 0 findings, nav, shell-a11y 45, legal 80,
+    test:site 415, conversion 120, gate 243 on a gated build; no
+    re-baseline. Open for the owner: the countdown text "Founding price
+    ends in …" sits against the older "no urgency words" note in
+    `priceRiseBand()`; the dollar-checkout-off refusal is inferred and not
+    exercised by the fake server.
+
+    **Review pass (30 Oct 2026, same day).** Eight findings, seven fixed,
+    one in part. NOTHING MOVES WHEN THE ANSWER ARRIVES: while start.js has
+    not decided (no `html[data-offer-ready]`, under `@media (scripting:
+    enabled)`), `.st-hero-in::after` reserves the card's drawn height (a
+    pseudo-element, because `[hidden]` is `display:none !important`), the
+    desk grid is already two columns and top-aligned, and the plain "Get
+    started" keeps its place invisibly (shown by CSS after 6s if the script
+    never runs; start.js decides with what it has after 5s). Gabarito 800,
+    the public DISPLAY h1, is preloaded on the public pages only
+    (`vite.config.js`), since its late arrival re-wrapped the headline.
+    Measured with both replies 1.2s late: layout shift 0.11 → 0 at 1440 and
+    0.21 → 0 at 390. ON A PHONE THE PRESS IS ON THE FIRST SCREEN: below
+    720px `.st-hero-text` is `display: contents`, the card follows the h1,
+    and inside it the button follows the price and its terms (Pay bottom at
+    508px at both 390x844 and 390x700; was ~970). The glow turns twice on a
+    desk (≥1100px) and stands still elsewhere. While an offer shows, the
+    header's "Get started" is a secondary (outline) button. The pass reply
+    is parsed only in `pass-offer.js`: new `serverNowOf()` and
+    `offerFlags()`, exposed through marketing.js's share closures;
+    `start-model.js` `serverClock()` is gone and `test:marketing` fails a
+    `.trial`/`purchase_required`/`trial_enabled`/`.pass.now` read in
+    start.js. THE FOUNDING PRICE HAS NO TICKING CLOCK: the rise also fires
+    on `price_rises_after_buyers`, so it reads "Founding price until <day>
+    (IST) or while the founding places last" (copy `untilSeats`;
+    `foundingEnds` removed); the pass keeps its countdown. Signed out, the
+    slide-in's button is named with "continue with Google" and a desk shows
+    "Continues with a Google sign-in" under it. A `?buy=` that cannot be
+    honoured because payments are off or the account is disabled now says
+    so ("… Nothing was charged.") in `purchase.js` and `plan-cards.js`.
+    NOT DONE: a no-sign-in "Open the sample" link: none exists for a
+    signed-out visitor (the site gate admits only a demo-code pass), so the
+    hero keeps "See it on the sample feature". `prove:offer` 116 (a late
+    reply block: shift ≤ 0.05, h1 box unchanged, Pay on the first phone
+    screen); `prove:shell-a11y` now waits for the hub's own data-go
+    navigation before its goto (it aborted on "interrupted by another
+    navigation", on the base commit too).

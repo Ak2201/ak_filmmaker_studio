@@ -73,7 +73,7 @@ import { errorSentence } from '../lib/gate.js';
 import Billing, { priceFor, cap, planName, normalisePromo, UPGRADE_ONCE } from '../lib/billing.js';
 import { ask } from './dialog.js';
 import PlanGate, { CAPABILITIES, OFF_BY_DEFAULT } from '../lib/plan-gate.js';
-import { wantedPlan as wantedPlanFrom, clearPlanStash, stashPlanFromAddress } from '../lib/purchase-model.js';
+import { wantedPlan as wantedPlanFrom, buyParam, wantsBuy, stripBuyFromAddress, clearPlanStash, stashPlanFromAddress } from '../lib/purchase-model.js';
 import { SUPPORT_EMAIL } from '../lib/brand.js';
 import { onPass } from '../lib/pass-view.js';
 import { offerTerms, renewsText, cancelledText } from '../lib/offer-terms.js';
@@ -90,6 +90,11 @@ const day = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocal
 const daysTo = (iso) => Math.ceil((new Date(iso) - Date.now()) / 86400000);
 let busyPlan = '';
 let statusText = '';
+/* A ?buy= that could not be honoured, said once above the cards. */
+let buyNote = '';
+/* The card whose sheet was dismissed or failed: its button says Try again. */
+let failedPlan = '';
+const planNameOf = (plans, id) => { const p = (plans || []).find((x) => x.id === id); return (p && p.name) || planName(id); };
 /* Which card the status belongs to: it is drawn under THAT card's
    button, where the reader pressed. At the foot of the row it sat
    1,000-3,500px below the button and nobody saw why nothing happened. */
@@ -494,6 +499,7 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
       const auto = mode === 'renew';
       const label = busyPlan === p.id ? 'Opening…'
         : confirming.id === p.id ? 'Payment received — confirming…'
+        : failedPlan === p.id ? 'Try again'
         : renew || lapsedHere ? (auto ? 'Continue ' + name + ' — start auto-pay' : 'Renew ' + name + ' — add a year')
         : first ? (auto ? 'Buy ' + name : 'Buy ' + name + ' — 1 year') : 'Upgrade to ' + name;
       /* secondary here; the ONE filled button is chosen once the row is built */
@@ -556,16 +562,39 @@ export function planCards(plans, st, { onBuy, onSuccess, rerender, compact = fal
     const target = row.querySelector(`.pl-card[data-plan="${CSS.escape(want)}"]`);
     if (target) {
       pickedDone = true;
+      const buying = wantsBuy(location.search);   // read BEFORE the stash is spent
       clearPlanStash();
       picked = { id: want, why: wantedFor() };
       markPicked(row);
       setTimeout(() => { if (target.isConnected) target.scrollIntoView({ block: 'center', behavior: 'auto' }); }, 0);
       const btn = target.querySelector('[data-plan-action="buy"]');
-      if (btn && st && !btn.disabled && hooks.onSuccess) setTimeout(() => { if (btn.isConnected) btn.click(); }, 400);
+      /* ?buy= is the visitor's press on the landing page: it opens the
+         sheet ONCE, from the live card (the price on it was just drawn
+         from the server's rows). The address and the stash are spent
+         first, so a reload or Back never opens it again. Where the card
+         cannot be bought, or the dollar price is shown but rupees are
+         charged, ONE status line says so and nothing is charged. */
+      const usdShownInr = !!(usd && shop && shop.charge !== 'USD');
+      let owned = false;
+      if (buying && st) {
+        stripBuyFromAddress();
+        /* a plan held, or a lower one, is never bought by a link (the held
+           plan's own RENEW button is the buyer's to press) */
+        owned = !btn || target.classList.contains('is-current') || target.classList.contains('is-below');
+        if (owned) buyNote = current && current !== 'free' ? 'You already have ' + planNameOf(plans, current) + '.' : '';
+        else if (usdShownInr) buyNote = 'Dollar checkout isn’t open yet; you can pay in rupees.';
+        else if (btn.disabled) buyNote = (st.disabled ? 'This account cannot buy just now.' : 'Payments are not available just now.') + ' Nothing was charged.';
+      }
+      if (btn && st && !btn.disabled && (hooks.onSuccess || buying) && !(buying && (usdShownInr || owned))) setTimeout(() => {
+        /* the row is rebuilt on every billing event, so press the LIVE button */
+        const live = document.querySelector(`.pl-card[data-plan="${CSS.escape(want)}"] [data-plan-action="buy"]`);
+        if (live && !live.disabled) live.click();
+      }, 400);
     }
   }
   else if (picked.id) markPicked(row);
   loadUpgradeQuotes(st, buyable);
+  if (buyNote) wrap.append(h('p.pl-status.pl-buy-note', { role: 'status', text: buyNote }));
   if (statusText && !row.querySelector('.pl-status')) wrap.append(h('p.pl-status', { role: 'status', text: statusText }));
   if (!preview && !Billing.paymentsConfigured()) wrap.append(h('p.pl-note', { text: 'Payments are not available yet. Please check back soon.' }));
   if (st && st.disabled) wrap.append(h('p.pl-note', { text: 'This account has been disabled by an administrator, so it cannot buy a plan.' }));
@@ -755,7 +784,8 @@ document.addEventListener('click', (e) => {
   if (!g) return;
   /* a signed-out card's own button holds ITS plan; any other sign-in, ?plan= */
   const id = g.dataset.planSignin;
-  stashPlanFromAddress(id && /^[\w-]{1,32}$/.test(id) ? '?plan=' + encodeURIComponent(id) : location.search);
+  /* a card pressed on a ?buy=<same id> address stays a buy */
+  stashPlanFromAddress(id && /^[\w-]{1,32}$/.test(id) && buyParam(location.search) !== id ? '?plan=' + encodeURIComponent(id) : location.search);
 }, true);
 
 /* PURCHASE SUCCESS. What unlocked is read from the same matrix the
@@ -874,7 +904,7 @@ delegate(document, 'click', '[data-plan-action="buy"]', async (e, el) => {
       }
     }
   }
-  busyPlan = planId; statusText = ''; statusPlan = planId;
+  busyPlan = planId; statusText = ''; statusPlan = planId; failedPlan = ''; buyNote = '';
   if (hooks.rerender) hooks.rerender();
   try {
     const q = appliedQuote(planId);
@@ -888,6 +918,7 @@ delegate(document, 'click', '[data-plan-action="buy"]', async (e, el) => {
     if (hooks.onSuccess) { try { hooks.onSuccess(justBought); } catch (e) { /* redirect is a convenience */ } }
   } catch (err) {
     statusText = err && err.message ? err.message : 'The payment did not complete.';
+    failedPlan = planId;   // the card stays; its button offers Try again, nothing reopens by itself
     if (err && err.afterPayment && err.unconfirmed) confirming = { id: planId, at: billingKey(lastSt) };
   } finally {
     busyPlan = '';

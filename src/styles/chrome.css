@@ -1755,71 +1755,27 @@ body:not(.rail-shown) .save-indicator:not(.error):not(.in-band) .si-msg {
 .gloss:hover::after,
 .gloss:focus-visible::after { opacity: 1; }
 
-.glossary-popover {
-  position: fixed;
-  z-index: var(--z-overlay);
-  max-width: var(--popover-w);
-  padding: var(--s3) var(--s4);
-  background: var(--panel);
-  color: var(--panel-ink);
-  border-left: 3px solid var(--panel-gilt);
-  border-radius: var(--sk-radius, var(--radius));
-  box-shadow: var(--shadow-modal);
-  font-family: var(--f-body);
-  font-size: var(--t-small);
-  line-height: var(--lh-snug);
-  opacity: 0;
-  transform: translateY(calc(var(--s1) * var(--motion)));
-  pointer-events: none;
-  transition: opacity var(--speed) var(--ease-out), transform var(--speed) var(--ease-out);
-}
-.glossary-popover.show { opacity: 1; transform: translateY(0); }
-.glossary-popover .gp-term {
-  margin-bottom: var(--s2);
-  font-family: var(--f-body);
-  font-size: var(--t-micro);
-  letter-spacing: 0;
-  font-weight: 700;
-  text-transform: none;
-  color: var(--panel-gilt);
-}
-.glossary-popover .gp-tn {
-  margin-top: var(--s2);
-  padding-top: var(--s2);
-  border-top: 1px solid var(--panel-hair);
-  font-size: var(--t-tiny);
-  color: var(--panel-muted);
-}
-
-/* Worked examples from the four anchor films. The popover is a dark
-   panel in every theme, so these read against --panel-ink like the
-   definition above them. */
-.glossary-popover .gp-examples {
-  margin-top: var(--s3);
-  padding-top: var(--s2);
-  border-top: 1px solid var(--panel-hair);
+/* The body of a term's explainer (ui/learn.js termBody): drawn inside
+   the pop-up and on the library's term cards, so it lives here. */
+.learn-term { display: grid; gap: var(--s3); font-size: var(--t-small); color: var(--ink-body); }
+.learn-term .learn-tn { color: var(--ink-muted); font-style: italic; }
+.learn-term .learn-ex-film { color: var(--ink); }
+.learn-ex-more {
   display: grid;
   gap: var(--s2);
+  margin: var(--s2) 0 0;
+  padding: 0;
+  list-style: none;
 }
-.glossary-popover .gp-example {
-  font-size: var(--t-tiny);
-  line-height: var(--lh-snug);
-  color: var(--panel-ink);
-}
-.glossary-popover .gp-film {
-  font-family: var(--f-body);
-  font-size: var(--t-micro);
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--panel-gilt);
-}
+.learn-ex-more li { padding-left: var(--s3); border-left: var(--sk-hue-rule-w, 2px) solid var(--rule-hair, var(--rule)); }
+.learn-term .vid-block { margin: 0; }
 
 /* The in-prose affordance. Dotted underline rather than a link colour —
    these sit inside body copy and should invite a hover, not compete
    with the real links around them. */
 .glossary-term {
   border-bottom: 1px dotted var(--accent);
-  cursor: help;
+  cursor: pointer;
 }
 .glossary-term:hover,
 .glossary-term:focus-visible {
@@ -2024,8 +1980,7 @@ body:not(.rail-shown) .save-indicator:not(.error):not(.in-band) .si-msg {
   .shortcut-sheet,
   .cm-card,
   .toast,
-  .save-indicator,
-  .glossary-popover { transform: none !important; }
+  .save-indicator { transform: none !important; }
 }
 
 /* ============================================================

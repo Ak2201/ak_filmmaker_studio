@@ -311,7 +311,8 @@ function renderStepper(s) {
 }
 
 /* The words under every step's title are explained with the favourite
-   film, in a closed box (src/ui/learn.js — null for a topic with no
+   film, behind a "What is …?" that opens the explainer over the page
+   (src/ui/learn.js — null for a topic with no
    content yet, so it is filtered before append). */
 const LEARN_TOPIC = { idea: 'idea', logline: 'logline', bible: 'story-bible', outline: 'step-outline', synopsis: 'synopsis' };
 const learnBox = (topic) => {

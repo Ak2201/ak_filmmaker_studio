@@ -433,6 +433,7 @@ const offerSlots = (function () {
   };
 })();
 
+let shared = null;
 const launchPass = (function () {
   const band = byId('mkPass');
   let raw = null, readAt = 0, timer = 0, wasOpen = false, off = false, lastSpoken = '';
@@ -475,22 +476,55 @@ const launchPass = (function () {
     if (v.timer && !timer) timer = setInterval(apply, 1000);
     if (!v.timer) stop();
   }
+  /* THE LANDING PAGE'S SHARE (30 Oct 2026). start.js draws the launch
+     offer card from the SAME reply (no second fetch) and may not import
+     pass-offer.js itself (the start.js allowlist), so this hands it the
+     reading as closures over pass-offer.js, never the raw reply, so
+     pass-offer.js stays the one reader of the pass: the pass's state and
+     copy, the server's clock (from this reply's pass, or from any other
+     pass block the page holds, e.g. price_notice()'s), and the reply's two
+     switches through offerFlags(). Announced as 'mk:pass' on every change
+     of what is known (a reply, no reply, purchases off), and kept for a
+     late listener (passNow()). */
+  let flags = PassOffer.offerFlags(null);
+  function share() {
+    shared = {
+      off: off || flags.off, trialOpen: flags.trialOpen,
+      state: () => (raw && !off ? PassOffer.passState(raw, Date.now(), readAt) : { state: 'none' }),
+      copy: (st) => passCopy(st, PassOffer),
+      serverNow: () => (raw ? PassOffer.serverNowOf(raw, readAt, Date.now()) : null),
+      serverNowOf: (block, at) => PassOffer.serverNowOf(block, at, Date.now())
+    };
+    try { document.dispatchEvent(new CustomEvent('mk:pass', { detail: shared })); } catch (e) { /* never breaks the page */ }
+  }
   return {
     take(t) {
-      if (!t || typeof t !== 'object') return;
-      if (t.purchase_required === false) off = true;
+      if (!t || typeof t !== 'object') { share(); return; }
+      flags = PassOffer.offerFlags(t);
+      if (flags.off) off = true;
       raw = t.pass || null;
       readAt = Date.now();
       apply();
+      share();
     },
-    off() { off = true; apply(); }
+    off() { off = true; apply(); if (shared) share(); }
   };
 })();
+/** What marketing.js knows of the launch pass right now, or null before
+ *  trial_offer() has answered (see 'mk:pass'). */
+export const passNow = () => shared;
+/** The Google sign-in, for a page that may not import start-auth.js:
+ *  false when the build has no project (let the link do its own thing). */
+export function startSignIn() {
+  if (!StartAuth.configured()) return false;
+  return StartAuth.startGoogle({ redirectTo: StartAuth.defaultRedirect() });
+}
+export const signedIn = () => SIGNED_IN;
 /* A signed-in visitor's pass button goes to the checkout page (the pass
    card is there), not through the sign-up modal. */
 if (SIGNED_IN) for (const a of $$('[data-pass-cta]')) a.setAttribute('href', 'purchase.html');
 try {
-  trialOffer().then((t) => { offerSlots.take(t); launchPass.take(t); }, () => {});
+  trialOffer().then((t) => { offerSlots.take(t); launchPass.take(t); }, () => launchPass.take(null));
 } catch (e) { /* never breaks the page */ }
 
 /* ---- 6. an invite code in the address bar ---------------------------

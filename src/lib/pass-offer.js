@@ -67,6 +67,25 @@ export function passState(raw, nowMs = Date.now(), readAtMs = nowMs) {
   return { state: 'open', pass, msLeft, left: pass.cap != null ? pass.left : null };
 }
 
+/** The SERVER's clock at local time `nowMs`: a block's `now` (a `pass`
+ *  block from trial_offer() or price_notice()) read at local `readAtMs`,
+ *  plus the local time elapsed since. null when the block has no usable
+ *  `now`, so a caller never counts down on the visitor's clock by mistake. */
+export function serverNowOf(raw, readAtMs, nowMs = Date.now()) {
+  const t = raw && typeof raw === 'object' ? time(raw.now) : null;
+  if (t == null || !Number.isFinite(readAtMs) || !Number.isFinite(nowMs)) return null;
+  return t + Math.max(0, nowMs - readAtMs);
+}
+
+/** The two switches on a trial_offer() reply, read here so no page parses
+ *  the reply itself: `off` (purchases are not required, so nothing is for
+ *  sale) and `trialOpen` (trials are enabled). Anything not exactly a
+ *  boolean reads as the cautious answer: not off, no trial. */
+export function offerFlags(reply) {
+  const r = reply && typeof reply === 'object' && !Array.isArray(reply) ? reply : {};
+  return { off: r.purchase_required === false, trialOpen: r.trial_enabled === true };
+}
+
 const two = (n) => String(n).padStart(2, '0');
 
 /** "3d 04:12:09", "04:12:09" under a day; '' for null. */
@@ -96,4 +115,4 @@ export function leftText(st) {
   return st.left + ' of ' + st.pass.cap + ' left';
 }
 
-export default { readPass, passState, countdownText, passPrice, passLength, leftText };
+export default { readPass, passState, serverNowOf, offerFlags, countdownText, passPrice, passLength, leftText };

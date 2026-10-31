@@ -358,12 +358,7 @@ const EXPECTED = /* every earlier row was emptied by the 27 Oct 2026 re-baseline
   "breakdown": {},
   "feature": {},
   "short": {},
-  "library": {
-    /* 29 Oct 2026: two Tanglish notes in films.json had stray Tamil and Arabic letters inside Latin words (vெறum, vெளiyey, uللe); now plain verum, veliyey, ulle */
-    "றum": "stray Tamil letters removed from 'verum'",
-    "ளiyey": "stray Tamil letters removed from 'veliyey'",
-    "uللe": "stray Arabic letters removed from 'ulle'"
-  },
+  "library": /* emptied by the 29 Oct 2026 explainer re-baseline, which absorbed the Tanglish clean-up rows */ {},
   "budget": {},
   "dashboard": {},
   "preprod": {},
@@ -445,22 +440,7 @@ const EXPECTED = /* every earlier row was emptied by the 27 Oct 2026 re-baseline
   invite: /* emptied by the 27 Oct 2026 re-baseline after merging the full-app QA with auto-renew */ {},
   admin: {},
   vault: /* emptied by the 27 Oct 2026 re-baseline after merging the full-app QA with auto-renew */ {},
-  purchase: /* emptied by the 27 Oct 2026 re-baseline after merging the full-app QA with auto-renew */ {
-    /* Purchase redesign (28 Oct 2026): the page deck said "Choose a plan for
-       a year, and find your invoices and refund requests in the same place",
-       which the plans heading and the section names repeat; it is one short
-       line now ("Your plan, the plans you can buy, and your invoices"). */
-    find: 'purchase redesign: the deck no longer repeats what the sections say',
-    requests: 'purchase redesign: the deck no longer repeats what the sections say',
-    /* QA r2b (29 Oct 2026): the currency and the term are said ONCE, beside
-       the switch. Gone: the intro line "…your invoices, in one place", the
-       signed-out list's "confirmed at checkout", and "so sign in with Google
-       first" (now "A plan belongs to an account: sign in with Google…"). */
-    place: 'purchase r2b: the intro line that restated the page\'s headings is gone',
-    confirmed: 'purchase r2b: the signed-out price list became the plan cards; the currency line beside the switch says what is charged',
-    first: 'purchase r2b: the signed-out line is shorter ("A plan belongs to an account: sign in with Google…")',
-    so: 'purchase r2b: the signed-out line is shorter ("A plan belongs to an account: sign in with Google…")'
-  }
+  purchase: /* emptied by the 29 Oct 2026 explainer re-baseline, which absorbed the redesign and r2b rows */ {}
 };
 /* The 26 Oct 2026 `currency` / `rupee` allowance (budget rail icon) was absorbed by the 27 Oct 2026 re-baseline. */
 

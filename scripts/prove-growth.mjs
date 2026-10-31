@@ -703,7 +703,21 @@ try {
     const DAYS3 = 3 * 86400e3 + 4 * 3600e3 + 12 * 60e3;   // 3d 04:12:xx
     PASS.on = true; PASS.open = true; PASS.cap = null; PASS.left = null;
     PASS.ends = new Date(Date.now() + DAYS3).toISOString();
-    for (const [file, w] of [['start.html', 1280], ['pricing.html', 390], ['product-writing.html', 1280]]) {
+    /* start.html carries no band since 30 Oct 2026: its hero OFFER CARD is
+       the pass there (prove:offer has the whole of it). Here: the card is the
+       hero's one primary action and names the server's price. */
+    {
+      const c = await context(browser, { width: 1280 });
+      await c.page.goto(BASE + 'start.html'); await c.page.waitForLoadState('networkidle');
+      await c.page.waitForFunction(() => !(document.getElementById('offerCard') || {}).hidden, null, { timeout: 8000 }).catch(() => {});
+      const hero = await c.page.evaluate(() => [...document.querySelectorAll('.st-hero .mk-btn--primary')].filter((n) => !n.closest('[hidden]')).map((n) => n.textContent.trim()));
+      ok(hero.length === 1 && hero[0] === 'Get the launch pass — continue with Google', 'start.html: the hero asks for the pass first: ' + JSON.stringify(hero));
+      const price = await c.page.evaluate(() => (document.querySelector('#offerCard [data-o-price]') || {}).textContent || '');
+      ok(price === '₹' + PASS.paise / 100, `start.html: the offer card names the server's price (${price})`);
+      ok(!(await passView(c.page)).found, 'start.html: and no launch band beside it');
+      allErrors.push(...c.errors); await c.ctx.close();
+    }
+    for (const [file, w] of [['pricing.html', 390], ['product-writing.html', 1280]]) {
       const c = await context(browser, { width: w });
       await c.page.goto(BASE + file); await c.page.waitForLoadState('networkidle');
       await c.page.waitForFunction(() => !(document.getElementById('mkPass') || {}).hidden, null, { timeout: 8000 }).catch(() => {});
@@ -721,10 +735,6 @@ try {
       if (file === 'pricing.html') {
         ok(a.strip && /₹49 for 7 days, the whole studio/.test(a.stripText || ''), 'pricing.html: the pass strip above the cards: "' + (a.stripText || '').slice(0, 90) + '"');
         ok(await c.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'pricing.html: no horizontal overflow at 390px with the band shown');
-      }
-      if (file === 'start.html') {
-        const hero = await c.page.evaluate(() => [...document.querySelectorAll('.st-hero .mk-btn')].filter((n) => !n.closest('[hidden]')).map((n) => n.textContent.trim()));
-        ok(hero.length === 1 && hero[0] === 'Try the whole studio for ₹49', 'start.html: the hero asks for the pass first: ' + JSON.stringify(hero));
       }
       allErrors.push(...c.errors); await c.ctx.close();
     }
@@ -749,7 +759,7 @@ try {
     PASS.cap = null; PASS.left = null; PASS.ends = null;
     {
       const c = await context(browser);
-      await c.page.goto(BASE + 'start.html'); await c.page.waitForLoadState('networkidle');
+      await c.page.goto(BASE + 'product-writing.html'); await c.page.waitForLoadState('networkidle');
       await c.page.waitForFunction(() => !(document.getElementById('mkPass') || {}).hidden, null, { timeout: 8000 }).catch(() => {});
       const v = await passView(c.page);
       ok(v.shown && !v.timerShown && !/ends in/.test(v.line), 'no deadline: the band shows the pass and draws no timer: "' + v.line + '"');
@@ -773,12 +783,15 @@ try {
     PASS.ends = new Date(Date.now() + DAYS3).toISOString(); PASS.open = false;
     for (const label of ['closed', 'absent']) {
       if (label === 'absent') PASS.on = false;
-      const c = await context(browser);
-      await c.page.goto(BASE + 'start.html'); await c.page.waitForLoadState('networkidle'); await c.page.waitForTimeout(500);
-      const v = await passView(c.page);
-      ok(v.found && !v.shown && v.passOnly === 0 && v.passOff > 0, `pass ${label}: the band stays hidden, nothing of the pass is shown, the fallback stands`);
-      ok(!/₹49|7 days|free trial(?!\?)/.test(v.body.replace(/Is there a free trial\?/g, '')), `pass ${label}: no pass figure and no free trial anywhere on the page`);
-      allErrors.push(...c.errors); await c.ctx.close();
+      for (const file of ['product-writing.html', 'start.html']) {
+        const c = await context(browser);
+        await c.page.goto(BASE + file); await c.page.waitForLoadState('networkidle'); await c.page.waitForTimeout(500);
+        const v = await passView(c.page);
+        if (file === 'start.html') ok(await c.page.evaluate(() => document.getElementById('offerCard').dataset.offerState !== 'pass') && v.passOnly === 0, `pass ${label}: start.html's offer card does not offer the pass`);
+        else ok(v.found && !v.shown && v.passOnly === 0 && v.passOff > 0, `pass ${label}: the band stays hidden, nothing of the pass is shown, the fallback stands`);
+        ok(!/₹49|7 days|free trial(?!\?)/.test(v.body.replace(/Is there a free trial\?/g, '')), `pass ${label} ${file}: no pass figure and no free trial anywhere on the page`);
+        allErrors.push(...c.errors); await c.ctx.close();
+      }
     }
     /* purchases not required: nothing is being sold, so no pass */
     PASS.on = true; PASS.open = true;
@@ -786,8 +799,10 @@ try {
     F.db.settings.purchase_required = false;
     {
       const c = await context(browser);
-      await c.page.goto(BASE + 'start.html'); await c.page.waitForLoadState('networkidle'); await c.page.waitForTimeout(500);
+      await c.page.goto(BASE + 'product-writing.html'); await c.page.waitForLoadState('networkidle'); await c.page.waitForTimeout(500);
       ok(!(await passView(c.page)).shown, 'purchases not required: the band stays hidden');
+      await c.page.goto(BASE + 'start.html'); await c.page.waitForLoadState('networkidle'); await c.page.waitForTimeout(500);
+      ok(await c.page.evaluate(() => document.getElementById('offerCard').hidden && document.getElementById('offerDock').hidden), 'purchases not required: start.html draws no offer card');
       allErrors.push(...c.errors); await c.ctx.close();
     }
     if (hadReq) F.db.settings.purchase_required = wasReq; else delete F.db.settings.purchase_required;
@@ -807,7 +822,7 @@ try {
       const answers = [...document.querySelectorAll('[data-mode-answer]')].map((n) => ({ mode: n.dataset.modeAnswer, shown: !n.hidden }));
       const bandChip = document.querySelector('#mkPass [data-offer-wrap]');
       return { year: slots('year'), pass: slots('pass'), answers,
-        bandChip: bandChip && vis(bandChip) ? t(bandChip).replace(/^· /, '') : '',
+        bandChip: bandChip && vis(bandChip) ? t(bandChip).replace(/^· /, '') : (() => { const c = document.querySelector('#offerCard [data-offer-terms][data-offer-product="pass"]'); return c && vis(c) ? t(c) : ''; })(),
         faq: (() => { const dd = document.querySelector('dd[data-mode-faq]'); if (!dd) return null; const s = [...dd.querySelectorAll('[data-mode-answer]')].find((n) => !n.hidden); return s ? s.dataset.modeAnswer + ':' + t(s).slice(0, 40) : 'none'; })(),
         text: document.body.innerText.replace(/\s+/g, ' ') };
     });
@@ -824,7 +839,7 @@ try {
       for (const file of ['start.html', 'pricing.html', 'product-writing.html']) {
         const c = await context(browser);
         await c.page.goto(BASE + file); await c.page.waitForLoadState('networkidle');
-        await c.page.waitForFunction(() => !(document.getElementById('mkPass') || {}).hidden, null, { timeout: 8000 }).catch(() => {});
+        await c.page.waitForFunction(() => !(document.getElementById('mkPass') || document.getElementById('offerCard') || {}).hidden, null, { timeout: 8000 }).catch(() => {});
         const v = await termsView(c.page);
         const want = (slot, words) => slot.text === (words ? (slot.chip ? words : words + '.') : '');
         ok(v.year.length > 0 && v.year.every((s) => want(s, w.year)), `${mode} ${file}: every plan terms slot (${v.year.length}) reads "${w.year || '(empty)'}": ${JSON.stringify([...new Set(v.year.map((s) => s.text))])}`);

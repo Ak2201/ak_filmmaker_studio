@@ -76,17 +76,18 @@
   to   { opacity: 1; transform: none; }
 }
 .fg-note-msg { margin: 0; flex: 1 1 14rem; min-width: 0; color: var(--ink); }
-.fg-why { flex: 1 1 100%; min-width: 0; order: 3; }
-.fg-why > summary {
+.fg-why { flex: 1 1 100%; min-width: 0; order: 3; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s1) var(--s3); }
+.fg-why-btn {
+  padding: 0;
+  background: none;
+  border: 0;
   cursor: pointer;
-  width: fit-content;
   font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: 0;
-  text-transform: none;
   color: var(--accent-deep);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
-.fg-why > p { margin: var(--s1) 0 0; color: var(--ink-body); max-width: var(--sk-deck-measure, 60ch); }
 .fg-got {
   padding: 0 var(--s2);
   background: transparent;

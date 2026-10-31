@@ -131,6 +131,19 @@ function clearNote(row) {
   old.remove();
 }
 
+/* "Why?" opens the explainer over the page (owner, 29 Oct 2026), so the
+   script lines below the note never move. Nothing is written. */
+function whyButton(f) {
+  const btn = h('button.fg-why-btn', { type: 'button', 'aria-haspopup': 'dialog', text: COPY.panel.whyLabel });
+  btn.addEventListener('click', () => {
+    import('./explainer.js').then(({ openExplainer }) => openExplainer({
+      title: f.message, eyebrow: 'Format note', returnTo: btn,
+      build: (body) => body.replaceChildren(h('p', { text: f.why }))
+    })).catch((e) => console.warn('[format-guide] explainer', e));
+  });
+  return btn;
+}
+
 function showNote(row, f) {
   const old = row.querySelector(':scope > .fg-note');
   if (old && old.dataset.rule === f.ruleId) return;     // already saying it
@@ -138,11 +151,7 @@ function showNote(row, f) {
   const id = 'fg-note-' + (++noteSeq);
   const note = h('div.fg-note.is-' + f.severity, { id, role: 'note', 'data-rule': f.ruleId }, [
     h('p.fg-note-msg', { text: f.message }),
-    h('details.fg-why', {}, [
-      h('summary', { text: COPY.panel.whyLabel }),
-      h('p', { text: f.why }),
-      learn(LEARN_FOR[typeOf(row)])
-    ].filter(Boolean)),
+    h('div.fg-why', {}, [whyButton(f), learn(LEARN_FOR[typeOf(row)])].filter(Boolean)),
     h('button.fg-got', { type: 'button', 'data-action': 'fg-dismiss', 'data-rule': f.ruleId, text: COPY.panel.gotIt })
   ]);
   row.append(note);

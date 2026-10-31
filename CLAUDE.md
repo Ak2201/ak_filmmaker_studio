@@ -136,6 +136,7 @@ npm run prove:scroll      # every root page scrolls right at 1440/1100/390: nest
 #   the end reachable above fixed chrome, locks at rest, sticky, fragments, wheel (item 45;
 #   reads dist by default, CI runs it with PROVE_DIST=dist-verify after build:verify)
 npm run test:contact      # contact.html's pure form model: validation and the mailto (item 48)
+npm run prove:explainer   # learn() opens a pop-up over story.html at 1440/390: focus trap, Escape, nothing moves, no writes
 npm run prove:legal       # privacy/terms/refund inside the window under the fixed header, at 5 widths
 #   (PROVE_DIST=dist-verify after build:verify; in CI)
 # Playwright in a sandbox: the bundled browser build may be missing and `playwright install`
@@ -230,7 +231,9 @@ src/
              section-menu.js ← the ONE navigation control (side menu,
                        strip, phone Sections sheet); tabs.js builds on it
              mobile-nav.js ← the phone's bottom bar + Go-to / Tools sheets
-             learn.js ← learn(): the topic panel, built on first open
+             learn.js ← learn(): a "What is …?" button that opens
+                       explainer.js (kit modal / phone sheet) OVER the
+                       page; nothing expands in place (owner, 29 Oct 2026)
              story-bible.js ← the Story Bible: characters, conflict, stakes, theme, world
              stage-guide.js ← mountStageGuide(): a stage's blueprint steps, in the stage
              project-switcher.js ← the band's project switcher (CORE)
@@ -1534,6 +1537,8 @@ numbered as they are in the history.
 | 71 | Round 2 and 2b, final fix pass (28–29 Oct 2026) | Done; gate green except the sandbox-proxy proofs; **§65 not run live** | HISTORY items 70–71; `docs/LIVE-STEPS-2026-10-29.md`. Fonts: Gabarito + Onest only, `Glyph Fallback` carries arrows, ✕, ⋯ and the symbol blocks. Auto-pay is cancelled at the mandate, never in the app (wording only in `offer-terms.js`). The Dragon sample is open to everyone and never syncs (`cloud.js`). Purchase page: the comparison lives in the page (`#plCompare`), and "N more in the comparison" comes from `cardMore()` in `plan-matrix.js` for BOTH the studio and the public cards. A selected fill is `--brand-wash`/`--brand`, never a phase hue. |
 | 72 | Gaps round (29 Oct 2026) | Done; gate green | HISTORY item 72. A sample is stamped `sample: '<id>'` on its project entry (field, no new key); `sample-project.js` decides what is a sample (stamp, or title plus seed scene ids), so a user's own "Dragon" syncs. Remaining caps copy is sentence case (`extract` would undo it). `.k-seg` and `.tabs-tab` use `--sk-field-radius`. `exportPDF()` loads the print faces before `print()` (`prove:print-fonts`, not in CI; U+2713 has no fallback face). Call-sheet marketing media re-recorded. |
 | 74 | Landing scroll story (29 Oct 2026) | Done; gate green | HISTORY item 74. `src/pages/start-motion.js` (imported by start.js; motion, motion/mini, device-motion only) + the scroll-story block in `start.css`. Hero words are `.st-w` spans from `renderHome()`, risen by CSS. Video scale and the reveals are `scroll()`-linked; the stage stack is CSS sticky (1100x700 and up, never on phones or under either reduce switch) and the script only dims the cards and draws the line. The gap between stacked cards is the later card's TOP margin (a bottom margin pushes the stack off early). A focused card comes to the front. Off under webdriver, so check it by hand with `navigator.webdriver` deleted. marketing.js's calm motion skips a page with `.st-hero`. |
+| 75 | Explainers as a pop-up (29 Oct 2026) | Done; gate green except the sandbox-proxy proofs | HISTORY item 75. Every in-place explainer opens in ONE pop-up through `openExplainer()` in `src/ui/explainer.js`; `learn()` returns a trigger button, never a disclosure. Kit modal above 720px, the mobile-nav bottom sheet at 720px and below (same query as `MAB_QUERY`); body built once on open, up to two video facades, focus trapped and returned, Escape closes, no storage writes, no native dialog. `prove:explainer` (and `-c`). New help must call `learn()`/`openExplainer()`, never expand in place. |
+| 76 | Launch offer on the landing + `?buy=` checkout (30 Oct 2026) | Done; gate green | HISTORY item 76. `offerFrom()` (start-model.js, pure) picks pass / founding / nothing, and a missing field or fired rise is nothing; the countdown runs on the server's `now` only; the pass is still read only through `pass-offer.js`. `?buy=<id>` opens the checkout ONCE from the live button, then strips the address (a reload never reorders); a held plan or a currency mismatch is a status line, never an order; a `?buy=` stash is `buy:<id>` in `fms_purchase_plan`, no new key. start.html must stay off the studio CORE (`prove:offer` checks the chunks). The hero RESERVES the card's place until `html[data-offer-ready]` (nothing moves when the replies land; a late-reply block in `prove:offer`); the founding offer never ticks (the places can end it first). |
 
 **What is live and what is not** — the one list to trust, re-established
 by ASKING on 8 Oct 2026 rather than reading: schema §1–§14 have run on

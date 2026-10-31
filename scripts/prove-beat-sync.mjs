@@ -56,6 +56,53 @@ const raw = () => page.evaluate(() => [localStorage.getItem('fms_story_v1'), loc
 const go = async (p) => { await page.goto(url(p), { waitUntil: 'networkidle' }); await page.waitForTimeout(700); };
 const undo = async () => { await page.click('.toast-host button:has-text("Undo"), .toast-host button:has-text("UNDO")'); await page.waitForTimeout(400); };
 
+/* What the Story page shows when a step field is not there, so a miss
+   names its cause (wrong step, no project, the outline gone, a page that
+   never drew) instead of a bare 30s timeout. */
+const storyState = (pg) => pg.evaluate(() => ({
+  url: location.pathname + location.hash,
+  ready: document.readyState,
+  steps: [...document.querySelectorAll('[id^="stStep_"]')].map((e) => e.id + (e.closest('[hidden]') ? ' (hidden)' : '')),
+  project: (() => { try { return window.StudioStore.currentProjectId(); } catch (e) { return 'n/a'; } })(),
+  outline: (() => { try { return (JSON.parse(localStorage.getItem('fms_story_v1')) || {}).outline.map((x) => x.id + ':' + x.beat); } catch (e) { return String(e); } })(),
+  main: ((document.querySelector('main') || {}).textContent || '').replace(/\s+/g, ' ').slice(0, 400)
+})).catch((e) => String(e));
+const stepField = async (pg, sel = '#stStep_s1') => {
+  try { await pg.waitForSelector(sel, { state: 'visible', timeout: 15000 }); }
+  catch (e) { console.log('        ' + sel + ' is not on the page:', JSON.stringify(await storyState(pg)), errors); }
+};
+/* The sample is written (and the hub may navigate) a while after the
+   click: on a loaded runner, past a fixed 1.5s, and the story read back
+   as null. Wait for its story and scenes to be in storage. */
+const sampleReady = async (pg) => {
+  for (let t = 0; t < 80; t++) {
+    const ok = await pg.evaluate(() => {
+      try {
+        const s = JSON.parse(localStorage.getItem('fms_story_v1') || 'null');
+        const d = JSON.parse(localStorage.getItem('fms_scenes_v1') || 'null');
+        return !!(s && (s.outline || []).length && d && (d.scenes || []).length);
+      } catch (e) { return false; }
+    }).catch(() => false);   // the hub navigating mid-read
+    if (ok) { await pg.waitForLoadState('networkidle').catch(() => {}); return; }
+    await pg.waitForTimeout(250);
+  }
+  throw new Error('the sample project never reached storage');
+};
+/* Typed text reaches storage through a debounce and then the sync to the
+   other side; on a slow runner a keystroke alone can take most of a
+   second. Read the stored pair until it is what the check wants, or 10s
+   have gone, and let the check judge the last reading. A stale field
+   that saved over the edit never comes right, so this waits for an
+   arrival and forgives nothing. */
+const storedAs = async (read, want) => {
+  let got;
+  for (const t0 = Date.now(); Date.now() - t0 < 10000; await page.waitForTimeout(200)) {
+    got = await read();
+    if (JSON.stringify(got) === JSON.stringify(want)) break;
+  }
+  return got;
+};
+
 const LONG = ('The chain store opens across the road and its prices undercut every shelf Ravi has stocked for thirty years; '
   + 'his customers drift away one by one, his son wants to sell, and the landlord calls twice a week. ').repeat(2).trim();
 const CUT = LONG.slice(0, 277).trimEnd() + '…';
@@ -109,7 +156,7 @@ check('bin: the step says its scene is in the bin', await page.evaluate(() => {
 }), ['Its scene is in the bin.', true]);
 
 /* ---- a step edit reaches its scene ----------------------------------- */
-await page.fill('#stStep_s1', 'The chain arrives in town, with a brass band.');
+await stepField(page); await page.fill('#stStep_s1', 'The chain arrives in town, with a brass band.');
 await page.waitForTimeout(1000);
 check('push: the step edit is the scene’s synopsis', (await scene('sc1')).synopsis, 'The chain arrives in town, with a brass band.');
 
@@ -178,6 +225,7 @@ await undo();
 check('scene side: Undo restores both', [(await step('s1')).text, (await scene('sc1')).synopsis], ['Mine.', 'Theirs.']);
 
 await go('story.html#path-outline');
+await stepField(page);
 check('conflict: the step row offers the scene’s text', await page.evaluate(() => {
   const n = document.querySelector('[data-step-row="s1"] .ss-note');
   return n ? [n.querySelector('span').textContent, [...n.querySelectorAll('button')].map((b) => b.textContent.trim())] : null;
@@ -262,7 +310,7 @@ await tabB.click('#scene-sc1 [data-action="sl-toggle"]');
 await tabB.focus('#scene-sc1 textarea[data-scene-field="synopsis"]');
 await setHidden(tabB, true);
 await go('story.html#path-outline');
-await page.fill('#stStep_s1', 'Original line. The step writer adds a whole new paragraph of beat.');
+await stepField(page); await page.fill('#stStep_s1', 'Original line. The step writer adds a whole new paragraph of beat.');
 await page.waitForTimeout(1000);
 await setHidden(tabB, false);
 await tabB.waitForTimeout(300);
@@ -273,7 +321,10 @@ check('tab switch: the focused field shows the other tab’s edit, still focused
 await tabB.keyboard.press('End');
 await tabB.keyboard.type(' Scene note.');
 await tabB.waitForTimeout(1000);
-check('tab switch: the next keystroke keeps the other tab’s edit', (await step('s1')).text, 'Original line. The step writer adds a whole new paragraph of beat. Scene note.');
+{
+  const want = 'Original line. The step writer adds a whole new paragraph of beat. Scene note.';
+  check('tab switch: the next keystroke keeps the other tab’s edit', await storedAs(async () => (await step('s1')).text, want), want);
+}
 await tabB.close();
 
 /* ---- two windows side by side, BOTH visible (no visibilitychange) ---- */
@@ -298,7 +349,7 @@ const seedOne = async () => {
   await winA.click('#scene-sc1 [data-action="sl-toggle"]');
   await winA.focus('#scene-sc1 textarea[data-scene-field="synopsis"]');
   await go('story.html#path-outline');
-  await page.fill('#stStep_s1', 'One. The step writer adds a long new beat in the other window.');
+  await stepField(page); await page.fill('#stStep_s1', 'One. The step writer adds a long new beat in the other window.');
   await page.waitForTimeout(1200);
   check('two windows: the open scene field is redrawn with the step’s edit, still focused', await winA.evaluate(() => {
     const t = document.querySelector('#scene-sc1 textarea[data-scene-field="synopsis"]');
@@ -307,8 +358,8 @@ const seedOne = async () => {
   await winA.keyboard.press('End');
   await winA.keyboard.type(' Scene note.');
   await winA.waitForTimeout(1200);
-  check('two windows: the stale field never saves over the step window’s edit', [(await step('s1')).text, (await scene('sc1')).synopsis],
-    ['One. The step writer adds a long new beat in the other window. Scene note.', 'One. The step writer adds a long new beat in the other window. Scene note.']);
+  const want = ['One. The step writer adds a long new beat in the other window. Scene note.', 'One. The step writer adds a long new beat in the other window. Scene note.'];
+  check('two windows: the stale field never saves over the step window’s edit', await storedAs(async () => [(await step('s1')).text, (await scene('sc1')).synopsis], want), want);
   await winA.close();
 }
 {
@@ -329,8 +380,8 @@ const seedOne = async () => {
   await winA.keyboard.press('Control+End');   // the end of the text, not of a wrapped line
   await winA.keyboard.type(' More.');
   await winA.waitForTimeout(1200);
-  check('two windows: the stale step field never saves over the scene window’s edit', [(await scene('sc1')).synopsis, (await step('s1')).text],
-    ['One. Rewritten in the scene window. More.', 'One. Rewritten in the scene window. More.']);
+  const want = ['One. Rewritten in the scene window. More.', 'One. Rewritten in the scene window. More.'];
+  check('two windows: the stale step field never saves over the scene window’s edit', await storedAs(async () => [(await scene('sc1')).synopsis, (await step('s1')).text], want), want);
   await winA.close();
 }
 
@@ -391,6 +442,7 @@ check('phone: the scene list with a choice fits', await page.evaluate(() => [!!d
   await p2.waitForTimeout(700);
   await p2.click('[data-action="sample-project"]');
   await p2.waitForTimeout(1500);
+  await sampleReady(p2);
   const notes = [];
   for (const pg of ['story.html#path-outline', 'breakdown.html#scenes']) {
     await p2.goto(url(pg), { waitUntil: 'networkidle' });
@@ -413,6 +465,7 @@ check('phone: the scene list with a choice fits', await page.evaluate(() => [!!d
   await p3.waitForTimeout(700);
   await p3.click('[data-action="sample-project"]');
   await p3.waitForTimeout(1500);
+  await sampleReady(p3);
   const sc0 = await p3.evaluate(() => {
     const all = JSON.parse(localStorage.getItem('fms_studio_projects_v1'));
     for (const p of (Array.isArray(all) ? all : (all.projects || []))) p.format = 'short';
@@ -462,7 +515,12 @@ check('phone: the scene list with a choice fits', await page.evaluate(() => [!!d
   await go('index.html');
   await setNote('A letter arrives.');
   await winA.waitForTimeout(600);
-  check('beat note: a note written in another window shows without a reload', await shown(winA), 'Your beat note: \u201cA letter arrives.\u201d');
+  {
+    const want = 'Your beat note: \u201cA letter arrives.\u201d';
+    const got = await storedAs(() => shown(winA), want);   // the storage event and the repaint, on a slow runner
+    if (got !== want) console.log('        the Story window:', JSON.stringify(await storyState(winA)));
+    check('beat note: a note written in another window shows without a reload', got, want);
+  }
   await winA.focus('#stStep_s1');
   await setNote('The letter is a summons.');
   await winA.waitForTimeout(600);

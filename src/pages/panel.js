@@ -67,7 +67,7 @@ function renderNotExtension() {
 function renderGatekeeper() {
   const main = h('main#main.pn-main');
   main.append(head('Step 1 of 3', 'Enter Invite / Screening Pass Code',
-    'Have an invite or screening pass code? Enter it here. A screening pass opens one film read-only, without an account. No code? Sign in with Google to start your trial or buy a plan.'));
+    'Have an invite or screening pass code? Enter it here. A screening pass opens one film read-only, without an account. No code? Continue with Google to start your trial or buy a plan.'));
   const form = h('form.gt-code', { 'data-pn-form': 'code', autocomplete: 'off' });
   form.append(h('label.gt-label', { for: 'pnCode', text: 'Code' }));
   form.append(h('input#pnCode.gt-input', { type: 'text', autocapitalize: 'characters', spellcheck: 'false', maxlength: 40, placeholder: 'XXXX-XXXX-XXXX' }));
@@ -86,9 +86,9 @@ function renderGatekeeper() {
 
 function renderSignIn() {
   const main = h('main#main.pn-main');
-  main.append(head('Step 2 of 3', 'Sign in with Google.',
+  main.append(head('Step 2 of 3', 'Continue with Google.',
     'Your code is held for ten minutes and spent only once Google has said who you are.'));
-  main.append(h('button.btn.primary', { type: 'button', 'data-pn': 'google', disabled: ui.busy, text: ui.busy ? 'Waiting for Google…' : 'Sign in with Google' }));
+  main.append(h('button.btn.primary', { type: 'button', 'data-pn': 'google', disabled: ui.busy, text: ui.busy ? 'Waiting for Google…' : 'Continue with Google' }));
   main.append(h('button.btn', { type: 'button', 'data-pn': 'back', text: 'Use a different code' }));
   if (ui.error) main.append(h('p.gt-error', { role: 'alert', text: ui.error }));
   return main;

@@ -92,19 +92,11 @@
 /* ------------------------------------------------------------
    THE GOOGLE BUTTON
    ------------------------------------------------------------
-   Deliberately NOT Google's four-colour mark. This studio has one
-   palette per theme and four raw brand hexes in the middle of it
-   would be the only unthemed thing on the page — and would trip
-   the raw-colour rule in CLAUDE.md. The glyph inherits
-   currentColor, so it reads correctly in paper, sepia and ink.
+   One way in (31 Oct 2026): the kit's kGoogleBtn, whose G is the image
+   public/google-g.svg. No colour is declared here; the mark is never
+   recoloured. The modal's button is full width with a little air above.
    ------------------------------------------------------------ */
-.cm-btn.google .g-mark {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-}
-.cm-btn.google .g-mark svg { display: block; }
+.cm-gbtn { margin-top: var(--s3); }
 
 /* The label is its own element so a busy state can swap the words
    without disturbing the mark beside it. */

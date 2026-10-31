@@ -43,6 +43,7 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, commitMain } from '../lib/dom.js';
 import { pageHeader } from '../ui/kit/page-header.js';
+import { kGoogleBtn } from '../ui/kit/google-btn.js';
 import { listPriceBlock } from '../ui/list-prices.js';
 import { trialLength } from '../lib/trial-time.js';
 import { perDay, LIST_PRICE } from '../lib/plans.js';
@@ -251,7 +252,7 @@ function passSection(signedIn) {
       : h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', 'data-iv-action': 'pass-intent', text: passCta(terms.mode === 'renew' ? null : f) })
   ]));
   if (signedIn) t.append(h('p.bd-sub', { id: 'passMsg', role: 'status', 'aria-live': 'polite', text: '' }));
-  else t.append(legalLine('You sign in with Google first; the payment comes after. By continuing you agree to the '));
+  else t.append(legalLine('You continue with Google first; the payment comes after. By continuing you agree to the '));
   return t;
 }
 
@@ -288,7 +289,7 @@ function render() {
       'Code ' + formatCode(getCodePass().code) + ' opened this browser. Your work is saved here; an account would back it up and let you pick it up elsewhere.');
     sec.append(h('div.iv-actions', {}, [
       h('a.k-btn.k-btn--primary', { href: 'index.html', text: 'Go to the studio' }),
-      h('button.k-btn.k-btn--secondary', { type: 'button', 'data-auth-action': 'google', text: 'Sign in with Google' }),
+      kGoogleBtn(),
       h('button.k-btn.k-btn--secondary', { type: 'button', 'data-iv-action': 'forget-code', text: 'Forget this code' })
     ]));
     body.append(sec);
@@ -296,8 +297,8 @@ function render() {
     /* HELD, NOT SPENT. The code is in this browser and worth a seven-day
        trial; a trial is counted against a person, so it is waiting for
        an account. One button, and it says what pressing it does. */
-    const sec = section('through', 'Your code', 'Sign in to spend your code.',
-      'Code ' + formatCode(getCodePass().code) + ' is held in this browser. Sign in with Google and it is redeemed on your account, with the free trial it carries. Nothing on this device changes.');
+    const sec = section('through', 'Your code', 'Continue with Google to use your code.',
+      'Code ' + formatCode(getCodePass().code) + ' is held in this browser. Continue with Google and it is redeemed on your account, with the free trial it carries. Nothing on this device changes.');
     sec.append(h('div.iv-actions', {}, [
       h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', text: 'Continue with Google' }),
       h('button.k-btn.k-btn--secondary', { type: 'button', 'data-iv-action': 'forget-code', text: 'Forget this code' })
@@ -330,7 +331,7 @@ function render() {
       /* The LENGTH belongs in the deck, not in the heading: "Start your
          30 minutes free trial" is not a sentence anybody says. */
       const t = section('trial', 'Free trial', 'Start your free trial.',
-        'The whole studio, on the Dragon and The Dark Knight sample films' + (len ? ', for ' + len : '') + '. No card, nothing to install. Sign in and it begins.');
+        'The whole studio, on the Dragon and The Dark Knight sample films' + (len ? ', for ' + len : '') + '. No card, nothing to install. Continue with Google and it begins.');
       t.append(h('div.iv-actions', {}, [
         h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', text: 'Continue with Google' })
       ]));

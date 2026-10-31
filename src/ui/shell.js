@@ -52,6 +52,7 @@
    else here, so there is no second, unfiltered view of the map. */
 import { h, delegate } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
+import { kGoogleBtn } from './kit/google-btn.js';
 import Store from '../lib/store.js';
 import { openPalette } from './palette.js';
 import { installTabs } from './tabs.js';
@@ -866,6 +867,9 @@ function openAcctMenu(btn) {
       h('span.sh-acct-name', { text: 'Not signed in' }),
       h('span.sh-acct-email', { text: 'Your work is saved on this device.' })
     ])]));
+    /* ONE WAY IN: the Google button sits directly under the "Not signed in"
+       block, ahead of the list. The phone Tools sheet borrows this menu. */
+    menu.append(h('div.sh-acct-signin', {}, [kGoogleBtn({ block: true, action: 'pill', class: 'sh-acct-gbtn' })]));
   }
   const row = (tag, attrs, sym, label) => {
     const el = h(tag + '.sh-acct-item', { role: 'menuitem', ...attrs });
@@ -880,9 +884,7 @@ function openAcctMenu(btn) {
     row('a', { href: 'index.html?sample=1&open=dashboard' }, 'movie', 'Open the sample project'),
     row('button', { type: 'button', 'data-action': 'rail-help' }, 'help', 'Help & shortcuts'),
     row('button', { type: 'button', 'data-action': 'rail-whatsnew' }, 'auto_awesome', 'What’s new'),
-    signedIn
-      ? row('button', { type: 'button', 'data-auth-action': 'signout' }, 'logout', 'Sign out')
-      : row('button', { type: 'button', 'data-auth-action': 'pill' }, 'login', 'Sign in')
+    signedIn ? row('button', { type: 'button', 'data-auth-action': 'signout' }, 'logout', 'Sign out') : null
   ]));
   document.body.append(menu);
   const r = btn.getBoundingClientRect();

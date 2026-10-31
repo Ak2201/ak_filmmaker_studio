@@ -555,7 +555,7 @@ try {
     await page.waitForSelector('#through', { timeout: 10000 });
     ok(/invite\.html/.test(page.url()), 'opening an invite link stays on the doorway: ' + page.url());
     ok(!/code=/.test(page.url()), 'the code is gone from the address bar');
-    ok(/spend your code/i.test(await page.textContent('#through')), 'which says the code is held and offers Google');
+    ok(/use your code/i.test(await page.textContent('#through')), 'which says the code is held and offers Google');
     ok(!!(await page.evaluate(() => JSON.parse(localStorage.getItem('fms_invite_code_v1') || 'null'))), 'the code is held in this browser');
     ok(await page.evaluate(() => sessionStorage.getItem('fms_sitegate_pass')) == null, 'with no site-gate pass: holding is not being through');
     await page.goto(BASE + 'breakdown.html');
@@ -884,7 +884,28 @@ try {
        for the first time. Nothing else in this repository would point
        at it. THIS IS THE ONLY CHECK THAT CATCHES THAT DRIFT. Do not
        delete it, and do not relax it to "something was requested". */
-    const btn = await page.$('[data-start-auth="google"]:visible');
+    /* ONE WAY IN (31 Oct 2026): the header holds exactly one auth button, it
+       is "Continue with Google" with the 18px decorative G, no visible
+       control is labelled sign in / log in / sign up / get started, and
+       the label passes AA against its own fill. */
+    const hdr = await page.evaluate(() => {
+      const top = document.querySelector('.mk-top');
+      const btns = [...top.querySelectorAll('a.gbtn')];
+      const b = btns[0];
+      const img = b && b.querySelector('img.gbtn-g');
+      const lum = (c) => { const m = c.match(/[\d.]+/g).map(Number).slice(0, 3).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]; };
+      let ratio = 0;
+      if (b) { const cs = getComputedStyle(b); const l1 = lum(cs.color), l2 = lum(cs.backgroundColor); ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05); }
+      const bad = [...document.querySelectorAll('a, button')].filter((n) => n.offsetParent !== null && /^(sign in|log in|sign up|get started)$/i.test(n.textContent.trim())).map((n) => n.textContent.trim());
+      return { n: btns.length, text: b ? b.textContent.trim() : '', w: img ? parseFloat(getComputedStyle(img).width) : 0, alt: img ? img.getAttribute('alt') : null, ratio, bad };
+    });
+    ok(hdr.n === 1 && hdr.text === 'Continue with Google', 'the public header holds exactly one auth button, "Continue with Google": ' + JSON.stringify(hdr));
+    ok(hdr.w === 18 && hdr.alt === '', 'its G image is 18px wide with an empty alt');
+    ok(hdr.ratio >= 4.5, 'its label passes AA (' + hdr.ratio.toFixed(2) + ':1)');
+    ok(hdr.bad.length === 0, 'no visible link or button reads sign in / log in / sign up / get started: ' + hdr.bad.join(','));
+    await page.click('.mk-top [data-open-signup]');
+    await page.waitForSelector('#mkSignup:not([hidden])', { timeout: 5000 }).catch(() => {});
+    const btn = await page.$('#mkGoogle:visible');
     ok(!!btn, 'start.html carries a Continue with Google control ([data-start-auth="google"])');
     if (!btn) {
       skip('the authorize URL: origin and path, provider, redirect_to, scopes (no button to click)');

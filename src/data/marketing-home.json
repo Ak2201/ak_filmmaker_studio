@@ -4,7 +4,7 @@
     "h1": "From script to shooting schedule, without spreadsheets",
     "sub": "Write the screenplay, then break it down, schedule it and print the call sheets from the same scenes. Your work is saved in your own browser first.",
     "note": "Shown on the sample feature, {{fms:dragon.scenes}} scenes long, which you can open and look around before you write.",
-    "cta": "Get started",
+    "cta": "Continue with Google",
     "ctaPass": "Try the whole studio for {price}",
     "mediaLabel": "On the sample feature: a scene moved to another shoot day, and that day's call sheet built from the board",
     "sample": "See it on the sample feature"
@@ -34,7 +34,7 @@
     "dockLabel": "Launch offer",
     "close": "Close offer",
     "dockGoogle": "Continues with a Google sign-in",
-    "fallback": "Get started"
+    "fallback": "Continue with Google"
   },
   "value": {
     "_": "The value stack (#value): what the offered plan includes, in the five stages. The module names and every count are derived at build time from navigation.json and plan-matrix.json (modules no plan sells are left out); never type a list or a count here.",
@@ -152,14 +152,14 @@
         "id": "try",
         "q": "Can I see it before I pay?",
         "a": "Yes. Each stage above shows the tool working on the sample feature, and the plans page compares every feature.",
-        "trial": "While trials are open, the page after you sign in offers one before you buy."
+        "trial": "While trials are open, the page after you continue with Google offers one before you buy."
       }
     ]
   },
   "closing": {
     "h2": "Open the studio and write scene one",
-    "sub": "Sign up with Google to start. Every tool reads the same scenes.",
-    "cta": "Get started"
+    "sub": "Continue with Google to start. Every tool reads the same scenes.",
+    "cta": "Continue with Google"
   },
   "meta": {
     "title": "{{brand:name}}: from first draft to final call sheet",

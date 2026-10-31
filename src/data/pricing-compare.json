@@ -25,7 +25,7 @@
     "pickFlag": "Recommended for filmmakers",
     "pick": "indie",
     "buy": "Buy {name}",
-    "buySignIn": "Sign in",
+    "buySignIn": "Continue with Google",
     "alt": "or try it first: {length} for {price}",
     "altOpen": "or open the studio",
     "noteHtml": "Yearly list prices in Indian rupees, for one year from the day you buy, paid through Razorpay and confirmed at checkout with the plan's terms. {planTerms} The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href=\"refund.html\">Refund and Cancellation Policy</a>, so compare what each plan includes below before you buy.",
@@ -66,7 +66,7 @@
   },
   "close": {
     "h": "See the studio filled in before you decide",
-    "cta": "Get started"
+    "cta": "Continue with Google"
   },
   "groups": [
     { "id": "basics",  "label": "Account basics",       "keys": ["new_projects", "exports", "drive_backup", "extension"] },

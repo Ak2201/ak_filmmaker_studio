@@ -160,7 +160,6 @@ html.mk-modal-open { overflow: hidden; }
 .mk-nav-link:hover, .mk-nav-link[aria-current="page"] { color: var(--ink); background: var(--surface-hover); }
 .mk-nav-prod .sym { font-size: 1.25em; transition: transform var(--speed) var(--ease); }
 .mk-nav-item[data-open] .mk-nav-prod .sym { transform: rotate(180deg); }
-.mk-nav-login { display: none; }
 .mk-top-end { display: flex; align-items: center; gap: var(--s2); margin-left: auto; flex: none; }
 /* doubled class: marketing.js gives it role="button", and base.css's touch
    rule `[role="button"] { display: inline-flex }` would otherwise tie and
@@ -344,7 +343,7 @@ html.mk-modal-open { overflow: hidden; }
 .mk-modal-offer { margin: 0 0 var(--s5); max-width: none; font-size: var(--t-base); line-height: 1.5; color: var(--ink-body); }
 .mk-msg { min-height: 1.4em; margin: var(--s3) 0 0; max-width: none; font-size: var(--t-small); color: var(--ink-body); }
 .mk-msg.mk-bad { color: var(--danger); }
-.mk-modal-terms, .mk-modal-have { margin: var(--s3) 0 0; max-width: none; font-size: var(--t-small); color: var(--ink-muted); line-height: 1.5; }
+.mk-modal-terms { margin: var(--s3) 0 0; max-width: none; font-size: var(--t-small); color: var(--ink-muted); line-height: 1.5; }
 .mk-modal-card a:not(.mk-btn) { color: var(--brand-deep); text-underline-offset: 3px; }
 
 /* ---- narrow ---------------------------------------------------------- */
@@ -355,8 +354,6 @@ html.mk-modal-open { overflow: hidden; }
 }
 @media (max-width: 899px) {
   .mk-burger.mk-burger { display: grid; }
-  .mk-end-login { display: none; }
-  .mk-nav-login { display: inline-flex; order: -2; }   /* first in the phone sheet, not below the fold */
   .mk-nav-pricing { order: -1; }                       /* the conversion link next, above the product groups */
   .mk-nav {
     display: none; position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; align-items: stretch;
@@ -536,3 +533,22 @@ html.ma-off *, html.ma-off ::before, html.ma-off ::after { animation: none !impo
    at 1440) for the home page and the product pages, PAGE TITLE (60px)
    for every other marketing page, pricing included; legal pages 48px. */
 .mk-hero.pr-hero .mk-h1, .mk-hero.co-hero .mk-h1 { font-size: clamp(2.25rem, 5vw, 3.75rem); }
+
+/* ---- the one Google button (31 Oct 2026) ------------------------------
+   mk-btn--primary wears the brand fill; the mark is an <img> of
+   public/google-g.svg, so it sits on a white chip to stay on its own
+   colours (never recoloured, and never on the violet directly). */
+.mk-btn.gbtn { gap: var(--s2); }
+.mk-btn.gbtn .gbtn-g { width: 18px; height: 18px; flex: none; padding: 3px; box-sizing: content-box; margin-left: -6px; background: var(--brand-on); border-radius: var(--radius-pill); }
+.mk-btn.gbtn .gbtn-l { white-space: nowrap; }
+/* the header holds the brand, the one button and the menu on a phone: the
+   label stays (it must not truncate), so the button tightens instead */
+@media (max-width: 480px) {
+  .mk-top-google.mk-btn { padding: 0 var(--s3); font-size: var(--t-tiny); gap: var(--s1); }
+  .mk-top-google.mk-btn .gbtn-g { margin-left: -4px; }
+}
+@media (max-width: 480px) {
+  .mk-top-in { padding-inline: var(--s3); gap: var(--s1); }
+  .mk-top .mk-brand { font-size: var(--t-base); gap: var(--s1h); min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mk-top-end { gap: var(--s1); }
+}

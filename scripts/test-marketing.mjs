@@ -300,7 +300,7 @@ for (const id of IDS) {
        inside the hidden card and the [data-o-fallback] door outside it. */
     const cardEl = (heroSec.match(/<article class="st-offer" id="offerCard"[\s\S]*?<\/article>/) || [''])[0];
     const heroOutside = heroSec.replace(cardEl, '');
-    ok((heroOutside.match(/<a class="mk-btn mk-btn--primary[^"]*"[^>]*>/g) || []).length === 1 && /<a class="mk-btn mk-btn--primary[^"]*"[^>]*data-o-fallback/.test(heroOutside), tag + 'outside the offer card the hero has one primary action, the plain door, marked [data-o-fallback]');
+    ok((heroOutside.match(/<a class="(?:gbtn )?mk-btn mk-btn--primary[^"]*"[^>]*>/g) || []).length === 1 && /<a class="gbtn mk-btn mk-btn--primary[^"]*"[^>]*data-o-fallback/.test(heroOutside), tag + 'outside the offer card the hero has one primary action, the plain door, marked [data-o-fallback]');
     ok((cardEl.match(/<a class="mk-btn mk-btn--primary[^"]*"[^>]*>/g) || []).length === 1, tag + 'the offer card has exactly one primary action');
     const surfaces = { offerCard: cardEl, offerDock: (html.match(/<aside class="st-dock" id="offerDock"[\s\S]*?<\/aside>/) || [''])[0], offerClose: (html.match(/<div class="st-offer st-offer--close" id="offerClose"[\s\S]*?<\/div>\s*<\/div>\s*<\/section>/) || [''])[0] };
     for (const [id, el] of Object.entries(surfaces)) {
@@ -392,7 +392,7 @@ for (const id of IDS) {
     ok(!/testimonial|\brated\b|★|trusted by|\bcustomers?\b/i.test(html), tag + 'no rating, testimonial or customer claim');
     for (const p of personal) ok(!html.includes(p), tag + 'no personal name');
     /* the call to action: the landing page's door, and the plans */
-    const trial = [...html.matchAll(/<a class="mk-btn mk-btn--primary mk-btn--lg" href="invite\.html" data-open-signup[^>]*>([^<]*)<\/a>/g)].map((m) => m[1]);
+    const trial = [...html.matchAll(/<a class="gbtn mk-btn mk-btn--primary mk-btn--lg" href="invite\.html" data-open-signup[^>]*><img[^>]*><span class="gbtn-l">([^<]*)<\/span><\/a>/g)].map((m) => m[1]);
     ok(trial.length >= 1 && trial.every((t) => t === inputs.company.cta.start), tag + 'the primary CTA is "' + inputs.company.cta.start + '" through the sign-up door (invite.html, data-open-signup), as on start.html');
     ok(!/free trial/i.test(inputs.company.cta.start), tag + 'the primary CTA promises no trial (purchases off drops that promise, and a trial can be switched off)');
     ok(new RegExp(`<a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing\\.html">${inputs.company.cta.plans}</a>`).test(html), tag + 'the secondary CTA "' + inputs.company.cta.plans + '" goes to pricing.html');
@@ -965,18 +965,33 @@ ok(/<h3 id="leads">/.test(read('privacy.html')), 'privacy.html: the leads paragr
   }
 }
 
-/* ---- one verb per action ------------------------------------------
-   The studio says "Sign in" everywhere, so the public header and modal do
-   too ("Sign up" stays: it is a different act). No control labelled "Log in",
-   and the phone menu puts Pricing straight after it (order, not DOM). */
+/* ---- one way in (31 Oct 2026) -------------------------------------
+   Every "sign in / log in / sign up / get started" that leads to auth is
+   ONE button, "Continue with Google" (googleBtnHTML, the G is
+   public/google-g.svg and no CSS or JS names its colours). The header
+   holds exactly one auth button and the modal no "Already have an
+   account" line. */
+const RETIRED = /^(sign in|sign up|log in|get started)$/i;
 for (const [file, html] of Object.entries(files)) {
   if (!/\.html$/.test(file)) continue;
-  const labels = [...html.matchAll(/>\s*(Log in[^<]*)</g)].map((m) => m[1].trim())
-    .concat([...html.matchAll(/data-off-text="(Log in[^"]*)"/g)].map((m) => m[1]));
-  ok(labels.length === 0, file + ': no control or heading labelled "Log in" [' + labels.join(' | ') + ']');
+  const labels = [...html.matchAll(/<(?:a|button)\b[^>]*>\s*(?:<img[^>]*>)?\s*(?:<span[^>]*>)?([^<]*)</g)].map((m) => m[1].trim()).filter((t) => RETIRED.test(t))
+    .concat([...html.matchAll(/data-(?:off|open)-text="([^"]*)"/g)].map((m) => m[1]).filter((t) => RETIRED.test(t)));
+  ok(labels.length === 0, file + ': no button, link or modal labelled sign in / sign up / log in / get started [' + labels.join(' | ') + ']');
+  ok(!/Already have an account/.test(html), file + ': no "Already have an account" line');
+  const head = (html.match(/<header class="mk-top"[\s\S]*?<\/header>/) || [''])[0];
+  if (head) {
+    ok((head.match(/<a class="gbtn /g) || []).length === 1 && !/mk-nav-login|mk-end-login/.test(head), file + ': the header holds exactly one auth button');
+    ok(/<img class="gbtn-g" src="\/google-g\.svg" width="18" height="18" alt="" aria-hidden="true">/.test(head), file + ': the header G is the 18px decorative image');
+  }
   ok(!/See the plans/.test(html), file + ': the plans CTA reads "See plans"');
 }
-ok(/\.mk-nav-login \{[^}]*order: -2/.test(read('src/styles/marketing.css')) && /\.mk-nav-pricing \{ order: -1/.test(read('src/styles/marketing.css')), 'marketing.css: the phone menu orders Sign in, then Pricing, above the product groups');
+ok(fs.existsSync(path.join(ROOT, 'public/google-g.svg')), 'public/google-g.svg exists');
+{
+  const bad = [];
+  (function walk(p) { for (const n of fs.readdirSync(p)) { const q = path.join(p, n); if (fs.statSync(q).isDirectory()) walk(q); else if (/\.(css|js)$/.test(n) && /#4285F4/i.test(fs.readFileSync(q, 'utf8'))) bad.push(q); } })(path.join(ROOT, 'src'));
+  ok(bad.length === 0, 'no .css or .js names the Google blue (the mark lives in public/google-g.svg) [' + bad.join(', ') + ']');
+}
+ok(/\.mk-nav-pricing \{ order: -1/.test(read('src/styles/marketing.css')), 'marketing.css: the phone menu puts Pricing above the product groups');
 ok(/class="mk-nav-link mk-nav-pricing" href="pricing\.html"/.test(files[PRICING_FILE]), 'the header marks the Pricing link for the phone order');
 
 console.log(`\ntest:marketing: ${pass} passed, ${fail} failed${FIXTURE ? ' (fixture copy; media existence NOT checked)' : ''}`);

@@ -628,6 +628,24 @@ export function moveOutlineStep(story, id, { delta, beat, at } = {}) {
   return false;
 }
 
+/** Put a step at `index` among the steps of `beatKey` — one call for
+ *  every way the Beat Sheet moves a step (a drag in either view, the
+ *  keyboard, the buttons). `index` counts the beat's OTHER steps (the
+ *  moved one left out), so 0 is the top and anything past the end
+ *  appends. Same beat and same place: nothing moves. Returns true when
+ *  anything moved. Pure over the story object, like the rest. */
+export function moveStep(story, id, beatKey, index) {
+  const list = ensureOutline(story);
+  const st = list.find((x) => x.id === id);
+  if (!st || !parseBeat(beatKey)) return false;
+  const others = list.filter((x) => x.beat === beatKey && x.id !== id).length;
+  const at = Number.isInteger(index) ? Math.max(0, Math.min(index, others)) : others;
+  if (beatKey !== st.beat) return moveOutlineStep(story, id, { beat: beatKey, at: at < others ? at : undefined });
+  const same = list.filter((x) => x.beat === st.beat);
+  if (same.indexOf(st) === at) return false;
+  return moveOutlineStep(story, id, { at: at < others ? at : others });
+}
+
 /** The outline as the page draws it, in a framework.
  *    beats[]   = { beat, key, act, steps: [step + n] }
  *    unplaced  = steps whose beat is not in this framework, each with

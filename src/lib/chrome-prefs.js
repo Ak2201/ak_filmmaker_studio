@@ -77,7 +77,19 @@ export function readShotView() {
 }
 export const saveShotView = (view) => updateDevicePrefs({ shotView: view && typeof view === 'object' ? view : undefined });
 
+/* ---- how the Beat Sheet is looked at (story.html) ------------------
+   `beatView` inside the same device blob: 'lanes' (design B, the
+   default) or 'spine' (design C). A way of looking at the outline, not
+   the outline — so it never goes into fms_story_v1, and it is written
+   on a click only. Anything else reads back as 'lanes'. */
+export const BEAT_VIEWS = ['lanes', 'spine'];
+export function readBeatView() {
+  const v = readDevicePrefs().beatView;
+  return BEAT_VIEWS.includes(v) ? v : 'lanes';
+}
+export const saveBeatView = (view) => updateDevicePrefs({ beatView: BEAT_VIEWS.includes(view) ? view : undefined });
+
 export default {
   readDevicePrefs, updateDevicePrefs, motionReduced, saveMotionPref, brandingPrefOff, saveBrandingOff, touchThemePref, tourActive,
-  readShotView, saveShotView
+  readShotView, saveShotView, readBeatView, saveBeatView
 };

@@ -188,6 +188,29 @@ eq(S.updateOutlineStep(os, st3.id, { text: 'Her brother is already gone, and so 
 const tmp = S.addOutlineStep(os, { beat: K('debate'), text: 'temp' });
 ok(S.removeOutlineStep(os, tmp.id) && !os.outline.some((x) => x.id === tmp.id), 'remove a step');
 
+// moveStep: the one move every Beat Sheet view calls (drag, keys, buttons).
+{
+  const ms = { ...S.blankStory(), framework: 'save_the_cat' };
+  const a = S.addOutlineStep(ms, { beat: K('catalyst'), text: 'a' });
+  const b = S.addOutlineStep(ms, { beat: K('catalyst'), text: 'b' });
+  const c = S.addOutlineStep(ms, { beat: K('catalyst'), text: 'c' });
+  const m = S.addOutlineStep(ms, { beat: K('midpoint'), text: 'm' });
+  const ids = (k) => S.outlineByBeat(ms).beats.find((r) => r.key === K(k)).steps.map((x) => x.text).join('');
+  ok(!S.moveStep(ms, a.id, K('catalyst'), 0), 'moveStep: same beat, same place moves nothing');
+  ok(S.moveStep(ms, a.id, K('catalyst'), 2), 'moveStep: to the end of its own beat');
+  eq(ids('catalyst'), 'bca', 'moveStep: index counts the other steps');
+  ok(S.moveStep(ms, a.id, K('catalyst'), 0) && ids('catalyst') === 'abc', 'moveStep: back to the top');
+  ok(S.moveStep(ms, b.id, K('midpoint'), 0), 'moveStep: into another beat, at the top');
+  eq([ids('catalyst'), ids('midpoint')], ['ac', 'bm'], 'moveStep: landed first, left the old beat');
+  ok(S.moveStep(ms, c.id, K('midpoint'), 99), 'moveStep: an index past the end appends');
+  eq(ids('midpoint'), 'bmc', 'moveStep: appended');
+  ok(S.moveStep(ms, m.id, K('midpoint')), 'moveStep: no index appends in its own beat');
+  eq(ids('midpoint'), 'bcm', 'moveStep: m last');
+  ok(!S.moveStep(ms, m.id, 'midpoint', 0) && !S.moveStep(ms, 'nope', K('midpoint'), 0), 'moveStep: a bare beat or an unknown step is refused');
+  eq(ms.outline.length, 4, 'moveStep: nothing lost, nothing added');
+  ok(ms.outline.every((x) => Object.keys(x).every((k) => ['id', 'beat', 'text', 'u'].includes(k))), 'moveStep: no new field on a step');
+}
+
 // Switching format is a view change: nothing is lost, nothing written.
 const beforeSwitch = JSON.stringify(os);
 const hj = S.outlineByBeat(os, 'heros_journey');

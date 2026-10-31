@@ -68,6 +68,7 @@ import '../styles/ai.css';
 import '../styles/story.css';
 import '../styles/pdf.css';
 import '../styles/beat-color.css';   // a step's label colour (owner, 24 Oct 2026)
+import '../styles/beat-views.css';   // the Beat Sheet's Lanes and Spine (owner, 31 Oct 2026)
 
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
@@ -101,7 +102,9 @@ import { askDanger } from '../ui/dialog.js';
 import { SAMPLES, DEFAULT_SAMPLE, sampleById } from '../lib/samples.js';
 import { showOnly, stepFooter, wireStepper, landUnderMenu } from '../ui/stepper.js';
 import { buildSectionMenu, updateSectionMenu } from '../ui/section-menu.js';
-import { pageHeader, button, statStrip } from '../ui/kit/index.js';
+import { pageHeader, button, statStrip, segmented } from '../ui/kit/index.js';
+import { readBeatView, saveBeatView } from '../lib/chrome-prefs.js';   // the Beat Sheet's view, a device pref
+import { wireBeatDrag } from '../ui/beat-drag.js';   // drag a step by its grip, in either view
 import { actionMenu } from '../ui/actionbar.js';
 import Store from '../lib/store.js';
 import { isDisabledEverywhere, refresh as refreshPlan } from '../lib/plan-gate.js';
@@ -133,6 +136,9 @@ let lastSend = null;      // the scene ids the last send created
 let focusStep = '';       // an outline step whose field takes focus next
 let links = new Map();    // stepId -> { action, sceneId, binned } (Story.linkStates), set once per draw
 let sceneText = new Map();   // sceneId -> synopsis, set once per draw
+let beatView = readBeatView();   // 'lanes' | 'spine' (fms_studio_prefs_v1 `beatView`, written on a click only)
+let openStep = '';       // the Beat Sheet card whose controls are open (memory)
+let rovingStep = '';     // the card holding the Beat Sheet's one roving tab stop (memory)
 
 /* The story as the page sees it: the framework in force is the writer's
    choice once made, else the format's suggestion — never a toolbar
@@ -169,6 +175,8 @@ function syncScenes() {
 function refocusStep(id, acts) {
   const q = (act) => document.querySelector(`[data-st="${act}"][data-step="${CSS.escape(id)}"]:not([disabled])`);
   const el = acts.map(q).find(Boolean) || document.getElementById('stStep_' + id);
+  /* a control on a closed card is not drawn: open the card first, or the focus lands on <body> */
+  if (el && !el.matches('textarea') && el.closest('li.st-card:not(.is-open)')) setOpenCard(id);
   if (el) el.focus({ preventScroll: true });
   return !!el;
 }
@@ -694,9 +702,20 @@ function renderOutline(s) {
       h('button.st-link', { type: 'button', 'data-st': 'unlock', text: 'Unlock to edit' })
     ]));
   }
-  sec.append(h('p.st-coverage', { role: 'status' }, [
-    h('strong', { text: `${o.covered} of ${o.beatsTotal} beats have a step` }),
-    ` · ${o.withText} step${o.withText === 1 ? '' : 's'} written` + (o.unplaced.length ? ` · ${o.unplaced.length} unassigned` : '')
+  sec.append(h('div.st-bv-bar', {}, [
+    h('p.st-coverage', { role: 'status' }, [
+      h('strong', { text: `${o.covered} of ${o.beatsTotal} beats have a step` }),
+      ` · ${o.withText} step${o.withText === 1 ? '' : 's'} written` + (o.unplaced.length ? ` · ${o.unplaced.length} unassigned` : '')
+    ]),
+    /* the view switch: written on a click only (verify's idle-write check) */
+    h('div.st-bv-switch', {}, [
+      h('span.st-bv-label', { id: 'stBvLabel', text: 'View:' }),
+      segmented({
+        name: 'beat-view', action: 'beat-view', value: beatView, quiet: true,
+        options: [{ value: 'lanes', label: 'Lanes', icon: 'view_week' }, { value: 'spine', label: 'Spine', icon: 'timeline' }],
+        attrs: { 'aria-labelledby': 'stBvLabel', id: 'stBeatView' }
+      })
+    ])
   ]));
   /* The blueprint's own beat answers beside the beats: the feature's
      step 08 under Save the Cat!, the short's step 04 under its five. */
@@ -707,74 +726,18 @@ function renderOutline(s) {
     fw.beats.forEach((b) => opts.push(h('option', { value: Story.qualifyBeat(fw.id, b.id), text: b.label, selected: Story.qualifyBeat(fw.id, b.id) === sel })));
     return opts;
   };
-  const list = h('ol.st-ol-beats');
-  let act = null;
-  for (const r of o.beats) {
-    const li = h('li.st-ol-beat' + (r.steps.length ? '' : '.is-empty'), { 'data-beat-card': r.key });
-    const head = h('div.st-ol-head', {}, [
-      h('h3.st-ol-name', { text: r.beat.label }),
-      notesPin({ beat: r.key, label: r.beat.label }),
-      h('span.st-beat-at', { text: (r.act !== act ? 'Act ' + r.act + ' · ' : '') + '~' + pct(r.beat.at) })
-    ]);
-    act = r.act;
-    li.append(head);
-    li.append(h('p.st-beat-prompt', { text: r.beat.prompt }));
-    if (bp) {
-      const v = IO.blueprintBeatText(bpNs, r.beat.id, bp);
-      if (v) li.append(h('p.st-ol-bp', {}, [h('span.st-example-k', { text: 'Your beat note: ' }), '“' + v + '”']));
-    }
-    if (r.steps.length) {
-      const ol = h('ol.st-ol-steps', { start: String(r.steps[0].n) });
-      r.steps.forEach((st, i) => ol.append(renderStepRow(st, beatOpts(st.beat), i === 0, i === r.steps.length - 1, false, locked)));
-      li.append(ol);
-    }
-    const acts = h('div.st-ol-actions');
-    if (!locked) acts.append(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'step-add', 'data-beat': r.key, 'aria-label': 'Add a step to ' + r.beat.label, text: 'Add a step' }));
-    /* AI suggestions for this beat: the AI Desk's 'story-steps' task.
-       The writer ticks the ones to keep and Accept adds them under this
-       beat through commit() — the same save as ADD A STEP. */
-    if (!locked) {
-      const pill = aiPill({
-        label: 'Suggest steps for ' + r.beat.label, tasks: ['story-steps'],
-        ctx: { identity: 'beat:' + r.key, beatKey: r.key, getStory: story, commit, format: projectFormat }
-      });
-      if (pill) acts.append(pill);
-    }
-    if (acts.children.length) li.append(acts);
-    list.append(li);
-  }
-  /* the board: the beat cards in a grid and, when steps wait unassigned,
-     the Unassigned bin beside them (story.css); an empty bin sits under
-     the board, so the place exists before anything is in it */
-  const board = h('div.st-ol-board' + (o.unplaced.length ? '.has-holding' : ''));
-  board.append(list);
-  sec.append(board);
-
-  const un = h('section.st-unplaced' + (o.unplaced.length ? '' : '.is-empty'), { 'aria-label': 'Unassigned steps' });
-  un.append(h('h3.st-ol-name', { text: 'Unassigned' + (o.unplaced.length ? ' · ' + o.unplaced.length : '') }));
-  if (!o.unplaced.length) {
-    un.append(h('p.st-muted', { text: 'Nothing waiting. A step written under another beat sheet lands here, kept as it is, until you file it under one of the ' + fw.short + ' beats.' }));
-    sec.append(un);
-  } else {
-    un.append(h('p.st-muted', { text: short
-      ? 'These steps were written under another beat sheet before this film kept to the five beats. They are kept as they are; file each one under one of the five.'
-      : 'These steps were written under another beat sheet. They are kept as they are; file them under one of the ' + fw.short + ' beats, or switch the beat sheet back to see them where they were.' }));
-    if (o.unplaced.some((u) => u.suggest) && !locked) {
-      un.append(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'file-all', text: 'File all by position' }));
-    }
-    const ol = h('ol.st-ol-steps', { start: String(o.unplaced[0].n) });
-    o.unplaced.forEach((st) => {
-      const row = renderStepRow(st, beatOpts(''), true, true, true, locked);
-      const meta = h('p.st-ol-from', { text: st.from ? 'Written under ' + st.from.fw.short + ': ' + st.from.beat.label : 'Written under a beat that no longer exists' });
-      row.insertBefore(meta, row.children[1] || null);
-      if (st.suggest && !locked) {
-        row.querySelector('.st-ol-ctl').prepend(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'step-file', 'data-step': st.id, text: 'File under ' + st.suggest.label }));
-      }
-      ol.append(row);
-    });
-    un.append(ol);
-    board.append(un);
-  }
+  /* The two views of one outline (owner, 31 Oct 2026): design B "Lanes"
+     — one equal-height column per beat, a long beat scrolling inside its
+     own column — and design C "Spine" — numbered stations alternating
+     either side of one line, act breaks as labelled stops, "+N more"
+     past three steps. Same model, same step card, same handlers; the
+     choice is `beatView` in the device prefs (chrome-prefs.js). */
+  const ctx = { fw, locked, short, bp, bpNs, beatOpts, keys: o.beats.map((r) => r.key), labels: o.beats.map((r) => r.beat.label) };
+  sec.append(beatView === 'spine' ? renderSpine(o, ctx) : renderLanes(o, ctx));
+  /* one roving stop over the cards: the last card the keyboard was on,
+     else the first */
+  const cards = [...sec.querySelectorAll('li.st-card')];
+  if (cards.length && !cards.some((c) => c.tabIndex === 0)) cards[0].tabIndex = 0;
 
   /* More craft, closed: the blueprint's own beat notes (they show on the
      cards above), then the feature's Setups & payoffs and Timeline, then
@@ -790,6 +753,205 @@ function renderOutline(s) {
       [h('p.st-muted', { text: 'The numbered outline above is the one the synopsis and the screenplay read. This is the free-text version from the blueprint, kept as you wrote it.' })],
       { boxId: 'st-more-free' }));
   return sec;
+}
+
+/* ---- the two Beat Sheet views ----------------------------------
+   Both draw every beat with the SAME direct children the page already
+   reads off a beat (`[data-beat-card]` > .st-ol-head, .st-beat-prompt,
+   .st-ol-bp — refreshBeatNotes() patches the last), one list of step
+   cards per beat that is also the drop target (`[data-drop-beat]`),
+   and the Unassigned steps last. No beat card, list or card is a fact
+   about the film: nothing here is stored but the view itself. */
+
+const beatCount = (n) => n + ' step' + (n === 1 ? '' : 's');
+
+function beatParts(r, ctx, act) {
+  const parts = [
+    h('div.st-ol-head', {}, [
+      h('h3.st-ol-name', { text: r.beat.label }),
+      h('span.st-beat-count', { text: beatCount(r.steps.length) }),
+      notesPin({ beat: r.key, label: r.beat.label }),
+      h('span.st-beat-at', { text: (r.act !== act ? 'Act ' + r.act + ' · ' : '') + '~' + pct(r.beat.at) })
+    ]),
+    h('p.st-beat-prompt', { text: r.beat.prompt, title: r.beat.prompt })
+  ];
+  if (ctx.bp) {
+    const v = IO.blueprintBeatText(ctx.bpNs, r.beat.id, ctx.bp);
+    if (v) parts.push(h('p.st-ol-bp', {}, [h('span.st-example-k', { text: 'Your beat note: ' }), '“' + v + '”']));
+  }
+  return parts;
+}
+
+/* The beat's list of cards; `hideFrom` hides every card from that index
+   on (the spine's "+N more"). */
+function beatSteps(r, ctx, i, hideFrom = Infinity) {
+  const ol = h('ol.st-ol-steps.st-bv-steps', { 'data-drop-beat': r.key, 'aria-label': 'Steps in ' + r.beat.label });
+  if (r.steps.length) ol.setAttribute('start', String(r.steps[0].n));
+  r.steps.forEach((st, k) => {
+    const card = renderStepRow(st, ctx.beatOpts(st.beat), k === 0, k === r.steps.length - 1, false, ctx.locked, {
+      prev: i > 0 ? ctx.labels[i - 1] : '', next: i < ctx.keys.length - 1 ? ctx.labels[i + 1] : ''
+    });
+    if (k >= hideFrom) card.hidden = true;
+    ol.append(card);
+  });
+  return ol;
+}
+
+function beatActions(r, ctx) {
+  const acts = h('div.st-ol-actions');
+  if (ctx.locked) return acts;
+  acts.append(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'step-add', 'data-beat': r.key, 'aria-label': 'Add a step to ' + r.beat.label, text: 'Add a step' }));
+  /* AI suggestions for this beat: the AI Desk's 'story-steps' task.
+     The writer ticks the ones to keep and Accept adds them under this
+     beat through commit() — the same save as ADD A STEP. */
+  const pill = aiPill({
+    label: 'Suggest steps for ' + r.beat.label, tasks: ['story-steps'],
+    ctx: { identity: 'beat:' + r.key, beatKey: r.key, getStory: story, commit, format: projectFormat }
+  });
+  if (pill) acts.append(pill);
+  return acts;
+}
+
+/* The Unassigned steps: written under another beat sheet, kept as they
+   are. Never a drop target — a step is filed by choosing its beat. */
+function unplacedParts(o, ctx) {
+  const parts = [h('h3.st-ol-name', { text: 'Unassigned' + (o.unplaced.length ? ' · ' + o.unplaced.length : '') })];
+  if (!o.unplaced.length) {
+    parts.push(h('p.st-muted', { text: 'Nothing waiting. A step written under another beat sheet lands here, kept as it is, until you file it under one of the ' + ctx.fw.short + ' beats.' }));
+    return parts;
+  }
+  parts.push(h('p.st-muted', { text: ctx.short
+    ? 'These steps were written under another beat sheet before this film kept to the five beats. They are kept as they are; file each one under one of the five.'
+    : 'These steps were written under another beat sheet. They are kept as they are; file them under one of the ' + ctx.fw.short + ' beats, or switch the beat sheet back to see them where they were.' }));
+  if (o.unplaced.some((u) => u.suggest) && !ctx.locked) {
+    parts.push(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'file-all', text: 'File all by position' }));
+  }
+  const ol = h('ol.st-ol-steps.st-bv-steps', { start: String(o.unplaced[0].n), 'aria-label': 'Unassigned steps' });
+  o.unplaced.forEach((st) => {
+    const row = renderStepRow(st, ctx.beatOpts(''), true, true, true, ctx.locked);
+    const meta = h('p.st-ol-from', { text: st.from ? 'Written under ' + st.from.fw.short + ': ' + st.from.beat.label : 'Written under a beat that no longer exists' });
+    row.insertBefore(meta, row.querySelector('.st-ol-text'));
+    if (st.suggest && !ctx.locked) {
+      row.querySelector('.st-ol-ctl').prepend(h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'step-file', 'data-step': st.id, text: 'File under ' + st.suggest.label }));
+    }
+    ol.append(row);
+  });
+  parts.push(ol);
+  return parts;
+}
+
+/* Design B: lanes. Each beat a fixed-width column, all the same height,
+   an act ribbon above; a long beat scrolls inside its own column. On a
+   phone the columns snap one at a time, with Previous / Next beat. */
+function renderLanes(o, ctx) {
+  const box = h('div.st-bl', { 'data-view': 'lanes' });
+  const n = o.beats.length + 1;
+  box.append(h('div.st-bl-nav', {}, [
+    button({ label: 'Previous beat', icon: 'arrow_back', variant: 'secondary', size: 'sm', attrs: { 'data-st': 'lane-prev' } }),
+    h('span.st-bl-pos', { role: 'status', text: 'Beat 1 of ' + n }),
+    button({ label: 'Next beat', iconAfter: 'arrow_forward', variant: 'secondary', size: 'sm', attrs: { 'data-st': 'lane-next' } })
+  ]));
+  const scroll = h('div.st-bl-scroll', { tabindex: '0', role: 'region', 'aria-label': 'Beat lanes. Scroll sideways for every beat.' });
+  const track = h('ol.st-bl-track');
+  let act = null;
+  o.beats.forEach((r, i) => {
+    const first = r.act !== act;
+    const lane = h('li.st-bl-lane' + (r.steps.length ? '' : '.is-empty'), { 'data-beat-card': r.key, 'data-act': String(r.act) });
+    lane.append(h('div.st-bl-ribbon' + (first ? '.is-first' : ''), { 'data-act': String(r.act), 'aria-hidden': first ? null : 'true', text: first ? 'Act ' + r.act : '' }));
+    lane.append(...beatParts(r, ctx, act));
+    act = r.act;
+    lane.append(beatSteps(r, ctx, i));
+    lane.append(beatActions(r, ctx));
+    track.append(lane);
+  });
+  track.append(h('li.st-bl-lane.st-bl-lane--un.st-unplaced' + (o.unplaced.length ? '' : '.is-empty'), { 'aria-label': 'Unassigned steps' }, [
+    h('div.st-bl-ribbon', { 'aria-hidden': 'true' }), ...unplacedParts(o, ctx)
+  ]));
+  scroll.append(track);
+  box.append(scroll);
+  /* "Beat 3 of 16" follows the scroll (a phone's one-at-a-time lanes) */
+  let raf = 0;
+  scroll.addEventListener('scroll', () => {
+    if (raf) return;
+    raf = requestAnimationFrame(() => { raf = 0; laneIndicator(box); });
+  }, { passive: true });
+  return box;
+}
+
+/* Which lane the lanes scroller is at, and the indicator. */
+function laneAt(box) {
+  const sc = box.querySelector('.st-bl-scroll');
+  const lanes = [...box.querySelectorAll('.st-bl-lane')];
+  if (!sc || !lanes.length) return { sc, lanes, i: 0 };
+  const left = sc.getBoundingClientRect().left;
+  let i = lanes.findIndex((l) => l.getBoundingClientRect().right - left > 8);
+  if (i < 0) i = lanes.length - 1;
+  return { sc, lanes, i };
+}
+function laneIndicator(box) {
+  const pos = box.querySelector('.st-bl-pos');
+  if (!pos) return;
+  const { lanes, i } = laneAt(box);
+  const t = 'Beat ' + (i + 1) + ' of ' + lanes.length;
+  if (pos.textContent !== t) pos.textContent = t;
+}
+const reducedMotion = () => {
+  try { return matchMedia('(prefers-reduced-motion: reduce)').matches || getComputedStyle(document.documentElement).getPropertyValue('--motion').trim() === '0'; } catch (e) { return false; }
+};
+function laneStep(dir) {
+  const box = document.querySelector('.st-bl');
+  if (!box) return;
+  const { sc, lanes, i } = laneAt(box);
+  const to = lanes[Math.max(0, Math.min(lanes.length - 1, i + dir))];
+  if (!sc || !to) return;
+  sc.scrollTo({ left: to.offsetLeft - lanes[0].offsetLeft, behavior: reducedMotion() ? 'instant' : 'smooth' });
+}
+
+/* Design C: the spine. One line; numbered stations alternate left and
+   right on a desk (the spine at the left edge below 900px); an act
+   break is a labelled stop; a beat past three steps shows three and
+   "+N more". */
+const SPINE_SHOWN = 3;
+const spineOpen = new Set();   // beats whose every card shows (memory, never stored)
+function renderSpine(o, ctx) {
+  const box = h('div.st-sp', { 'data-view': 'spine' });
+  const spine = h('ol.st-sp-spine');
+  let act = null;
+  o.beats.forEach((r, i) => {
+    if (r.act !== act) spine.append(h('li.st-sp-act', { 'data-act': String(r.act) }, [h('span', { text: 'Act ' + r.act })]));
+    const holds = r.steps.some((x) => x.id === openStep || x.id === focusStep || x.id === rovingStep);
+    const all = spineOpen.has(r.key) || holds || r.steps.length <= SPINE_SHOWN;
+    const st = h('li.st-sp-station' + (r.steps.length ? '' : '.is-empty'), { 'data-beat-card': r.key, 'data-side': i % 2 ? 'r' : 'l', 'data-act': String(r.act) });
+    st.append(h('span.st-sp-num', { 'aria-hidden': 'true', text: String(i + 1) }));
+    st.append(...beatParts(r, ctx, act));
+    act = r.act;
+    st.append(beatSteps(r, ctx, i, all ? Infinity : SPINE_SHOWN));
+    if (r.steps.length > SPINE_SHOWN) {
+      const more = r.steps.length - SPINE_SHOWN;
+      st.append(h('button.k-btn.k-btn--ghost.k-btn--sm.st-sp-more', {
+        type: 'button', 'data-st': 'beat-more', 'data-beat': r.key, 'aria-expanded': String(all),
+        'data-more': String(more), text: all ? 'Show fewer' : '+' + more + ' more'
+      }));
+    }
+    st.append(beatActions(r, ctx));
+    spine.append(st);
+  });
+  spine.append(h('li.st-sp-station.st-sp-station--un.st-unplaced' + (o.unplaced.length ? '' : '.is-empty'), { 'aria-label': 'Unassigned steps', 'data-side': 'r' }, [
+    h('span.st-sp-num', { 'aria-hidden': 'true', text: '·' }), ...unplacedParts(o, ctx)
+  ]));
+  box.append(spine);
+  return box;
+}
+
+/* Show every card of a spine station, or only the first three, without
+   a redraw (a field being typed in keeps its caret). */
+function setStationOpen(key, open) {
+  if (open) spineOpen.add(key); else spineOpen.delete(key);
+  const st = document.querySelector(`.st-sp-station[data-beat-card="${CSS.escape(key)}"]`);
+  if (!st) return;
+  st.querySelectorAll('.st-bv-steps > li.st-card').forEach((c, k) => { c.hidden = !open && k >= SPINE_SHOWN; });
+  const b = st.querySelector('.st-sp-more');
+  if (b) { b.setAttribute('aria-expanded', String(open)); b.textContent = open ? 'Show fewer' : '+' + b.getAttribute('data-more') + ' more'; }
 }
 
 /* A sent step whose scene changed too, or went to the bin: the choice,
@@ -814,11 +976,37 @@ function stepSyncNote(st, locked = false) {
   return null;
 }
 
-function renderStepRow(st, opts, first, last, unplaced = false, locked = false) {
+/* One step, as a card — the same card in both views. Closed it is the
+   number, the colour strip, the text (three lines) and the sync note;
+   OPEN (a press on its edit button, or the caret in its text) it shows
+   every control the step row always had: the five colours, up and
+   down, the neighbouring beats, move to beat, remove. Which card is
+   open is memory (`openStep`), never stored. A locked outline draws no
+   grip and no controls, and the text is read-only. */
+function renderStepRow(st, opts, first, last, unplaced = false, locked = false, nav = {}) {
   const color = Story.stepColor(st);
-  const li = h('li.st-ol-step' + (color ? '.bc-strip.bc-' + color : ''), { 'data-step-row': st.id, 'data-color': color || null });
+  const open = !locked && openStep === st.id;
+  const li = h('li.st-ol-step.st-card' + (color ? '.bc-strip.bc-' + color : '') + (open ? '.is-open' : ''), {
+    'data-step-row': st.id, 'data-color': color || null, tabindex: rovingStep === st.id ? '0' : '-1'
+  });
   const fid = 'stStep_' + st.id;
-  li.append(h('label.st-ol-n', { for: fid, text: 'Step ' + st.n }));
+  const l = st.sceneId ? links.get(st.id) : null;
+  const badge = !st.sceneId ? null
+    : l && l.action === 'conflict' ? h('span.st-card-badge.is-warn', { text: 'Scene differs' })
+    : l && l.action === 'gone' ? h('span.st-card-badge.is-warn', { text: 'Scene gone' })
+    : h('span.st-card-badge', { text: 'Has a scene' });
+  li.append(h('div.st-card-top', {}, [
+    locked ? null : h('button.st-grip', {
+      type: 'button', 'data-st': 'step-grip', 'data-step': st.id,
+      'aria-label': 'Move step ' + st.n + '. Drag, or use the arrow buttons.', title: 'Drag to move'
+    }, [h('span.sym', { 'aria-hidden': 'true', translate: 'no', text: 'drag_indicator' })]),
+    h('label.st-ol-n', { for: fid, text: 'Step ' + st.n }),
+    badge,
+    locked ? null : h('button.st-card-open', {
+      type: 'button', 'data-st': 'step-open', 'data-step': st.id, 'aria-expanded': String(open),
+      'aria-label': (open ? 'Close the controls of step ' : 'Edit step ') + st.n, title: open ? 'Close' : 'Colour, move or remove'
+    }, [h('span.sym', { 'aria-hidden': 'true', translate: 'no', text: open ? 'close' : 'edit_note' })])
+  ].filter(Boolean)));
   const ta = paperGrow(paperTextarea('#' + fid + '.st-text.st-ol-text', { rows: 2, 'data-st-field': 'step-text', 'data-step': st.id, placeholder: 'What happens?', readonly: locked ? '' : null }));
   ta.value = st.text;
   li.append(ta);
@@ -833,9 +1021,20 @@ function renderStepRow(st, opts, first, last, unplaced = false, locked = false) 
       type: 'button', 'data-st': 'step-color', 'data-step': st.id, 'data-color': c,
       'aria-pressed': String(color === c), 'aria-label': COLOR_LABEL[c], title: color === c ? COLOR_LABEL[c] + ' (press to clear)' : COLOR_LABEL[c]
     }))));
+  const iconBtn = (act, icon, label, disabled) => h('button.k-btn.k-btn--ghost.k-btn--sm.k-btn--icon.st-x', {
+    type: 'button', 'data-st': act, 'data-step': st.id, disabled: !!disabled, 'aria-label': label, title: label
+  }, [h('span.sym', { 'aria-hidden': 'true', translate: 'no', text: icon })]);
   if (!unplaced) {
-    ctl.append(h('button.k-btn.k-btn--ghost.k-btn--sm.st-x', { type: 'button', 'data-st': 'step-up', 'data-step': st.id, disabled: first, 'aria-label': 'Move step ' + st.n + ' up', text: 'Up' }));
-    ctl.append(h('button.k-btn.k-btn--ghost.k-btn--sm.st-x', { type: 'button', 'data-st': 'step-down', 'data-step': st.id, disabled: last, 'aria-label': 'Move step ' + st.n + ' down', text: 'Down' }));
+    const moves = h('div.st-ol-moves', { role: 'group', 'aria-label': 'Move step ' + st.n });
+    moves.append(iconBtn('step-up', 'arrow_upward', 'Move step ' + st.n + ' up', first));
+    moves.append(iconBtn('step-down', 'arrow_downward', 'Move step ' + st.n + ' down', last));
+    const side = beatView === 'lanes';
+    moves.append(iconBtn('step-prev-beat', 'arrow_back',
+      nav.prev ? (side ? 'Move step ' + st.n + ' left, to ' : 'Move step ' + st.n + ' to the previous beat, ') + nav.prev : 'No beat before this one', !nav.prev));
+    moves.append(iconBtn('step-next-beat', 'arrow_forward',
+      nav.next ? (side ? 'Move step ' + st.n + ' right, to ' : 'Move step ' + st.n + ' to the next beat, ') + nav.next : 'No beat after this one', !nav.next));
+    moves.lastChild.classList.add('st-x-beat'); moves.children[2].classList.add('st-x-beat');
+    ctl.append(moves);
   }
   ctl.append(h('select.st-retag', { 'data-st-field': 'step-beat', 'data-step': st.id, 'aria-label': 'Move step ' + st.n + ' to another beat' }, opts));
   ctl.append(h('button.k-btn.k-btn--ghost.k-btn--sm.st-x', { type: 'button', 'data-st': 'step-del', 'data-step': st.id, 'aria-label': 'Remove step ' + st.n, text: 'Remove' }));
@@ -1178,6 +1377,27 @@ function renderPacing(s) {
 
 /* ---- the page ------------------------------------------------- */
 
+/* The Beat Sheet's own scrollers (the lanes, each beat's list) are new
+   elements after a redraw and would start at 0: a colour pressed in the
+   tenth lane jumped the board back to the first. Kept across the draw. */
+function boardScroll() {
+  const sc = document.querySelector('#path-outline .st-bl-scroll');
+  const lists = {};
+  document.querySelectorAll('#path-outline [data-drop-beat]').forEach((l) => { if (l.scrollTop) lists[l.getAttribute('data-drop-beat')] = l.scrollTop; });
+  return { left: sc ? sc.scrollLeft : 0, lists };
+}
+function restoreBoardScroll(b) {
+  if (!b) return;
+  const sc = document.querySelector('#path-outline .st-bl-scroll');
+  if (sc && b.left) sc.scrollLeft = b.left;
+  for (const [k, top] of Object.entries(b.lists)) {
+    const l = document.querySelector(`#path-outline [data-drop-beat="${CSS.escape(k)}"]`);
+    if (l) l.scrollTop = top;
+  }
+  const box = document.querySelector('#path-outline .st-bl');
+  if (box) laneIndicator(box);
+}
+
 /* Re-entrancy guard. Removing a focused textarea fires `change` on
    blur, from INSIDE replaceChildren, and that handler renders. A nested
    replaceChildren then finds its old children already gone and throws.
@@ -1196,7 +1416,8 @@ function render() {
   const wasId = was && was.id && /^(INPUT|TEXTAREA|SELECT)$/.test(was.tagName) && app.contains(was) ? was.id : '';
   const top0 = wasId ? was.getBoundingClientRect().top : 0;
   const spot = focusSpot(was);
-  try { preservingFocus(draw); keepFocus(spot); } finally {
+  const board = boardScroll();
+  try { preservingFocus(draw); restoreBoardScroll(board); keepFocus(spot); } finally {
     if (wasId) {
       const now = document.activeElement;
       if (now && now.id === wasId) {
@@ -1668,6 +1889,7 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
       /* The redraw replaced the button: focus its twin on the moved step
          (the other arrow once this one is disabled at an end), never <body>. */
       refocusStep(id, [act, act === 'step-up' ? 'step-down' : 'step-up']);
+      announceMove(id);
     }
   } else if (act === 'step-del') {
     const id = el.getAttribute('data-step');
@@ -1826,6 +2048,196 @@ function scrollToOffset(from) {
   }
 }
 
+/* ---- the Beat Sheet views: open a card, move a step, the keyboard ----
+   Every move — a drag in either view, Alt+arrow, the arrow buttons —
+   goes through Story.moveStep(), saves through commit() like Up and
+   Down always did, puts the keyboard back on the moved card (never
+   <body>) and says where the step went in one polite live region. */
+const outlineCards = () => [...document.querySelectorAll('#path-outline li.st-card')];
+const cardOf = (id) => document.querySelector(`#path-outline li.st-card[data-step-row="${CSS.escape(id)}"]`);
+const stepNo = (card) => ((card.querySelector('.st-ol-n') || {}).textContent || '').replace(/^Step\s*/, '');
+
+function setOpenCard(id) {
+  openStep = id || '';
+  for (const c of outlineCards()) {
+    const on = !!id && c.getAttribute('data-step-row') === id;
+    if (c.classList.contains('is-open') === on) continue;
+    c.classList.toggle('is-open', on);
+    const b = c.querySelector(':scope > .st-card-top > .st-card-open');
+    if (!b) continue;
+    b.setAttribute('aria-expanded', String(on));
+    b.setAttribute('aria-label', (on ? 'Close the controls of step ' : 'Edit step ') + stepNo(c));
+    b.title = on ? 'Close' : 'Colour, move or remove';
+    const icon = b.querySelector('.sym'); if (icon) icon.textContent = on ? 'close' : 'edit_note';
+  }
+}
+function setRoving(id) {
+  rovingStep = id || '';
+  for (const c of outlineCards()) c.tabIndex = c.getAttribute('data-step-row') === id ? 0 : -1;
+}
+function focusCard(el) {
+  if (!el) return false;
+  el.focus({ preventScroll: true });
+  el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
+  return true;
+}
+
+function beatLive(text) {
+  let r = document.getElementById('stBeatLive');
+  if (!r) { r = h('div#stBeatLive.visually-hidden', { role: 'status', 'aria-live': 'polite' }); document.body.append(r); }
+  r.textContent = '';
+  setTimeout(() => { r.textContent = text; }, 40);
+}
+function whereIs(id) {
+  const s = story();
+  const o = Story.outlineByBeat(s, s.framework);
+  for (let i = 0; i < o.beats.length; i++) {
+    const k = o.beats[i].steps.findIndex((x) => x.id === id);
+    if (k >= 0) return { o, i, k, r: o.beats[i], st: o.beats[i].steps[k] };
+  }
+  return null;
+}
+function announceMove(id) {
+  const w = whereIs(id);
+  if (w) beatLive(`Step ${w.st.n} moved to ${w.r.beat.label}, position ${w.k + 1} of ${w.r.steps.length}`);
+}
+
+/* Move a step to `index` among the steps of `beatKey`, then put the
+   keyboard back: `refocus(id)` when given, else the moved card. */
+function moveStepTo(id, beatKey, index, refocus) {
+  flushAutosave();   // a keystroke on its debounce belongs to the step being moved
+  const s = story();
+  if (s.outlineLockedAt || !Story.moveStep(s, id, beatKey, index)) return false;
+  rovingStep = id;
+  commit(s);
+  if (!(refocus && refocus(id))) focusCard(cardOf(id));
+  announceMove(id);
+  return true;
+}
+/* Within its beat by `delta`, or to the neighbouring beat (`dir`), appended. */
+function nudgeStep(id, { delta = 0, dir = 0 } = {}, refocus) {
+  const w = whereIs(id);
+  if (!w) return false;
+  if (dir) {
+    const to = w.o.beats[w.i + dir];
+    return to ? moveStepTo(id, to.key, undefined, refocus) : false;
+  }
+  const k = w.k + delta;
+  if (k < 0 || k >= w.r.steps.length) return false;
+  return moveStepTo(id, w.r.key, k, refocus);
+}
+
+delegate(document, 'click', '[data-action="beat-view"]', (e, el) => {
+  const v = el.getAttribute('data-value');
+  if (!v || v === beatView) return;
+  flushAutosave();
+  beatView = v;
+  saveBeatView(v);   // the one write a switch makes
+  render();
+  /* The pressed half was replaced: the keyboard goes to its twin. */
+  const back = document.querySelector(`#stBeatView [data-value="${CSS.escape(v)}"]`);
+  if (back) back.focus({ preventScroll: true });
+  beatLive(v === 'spine' ? 'Spine view' : 'Lanes view');
+});
+
+delegate(document, 'click', '#path-outline [data-st]', (e, el) => {
+  const act = el.getAttribute('data-st');
+  const id = el.getAttribute('data-step');
+  if (act === 'step-open') {
+    const open = openStep !== id;
+    setOpenCard(open ? id : '');
+    setRoving(id);
+    if (!open) focusCard(cardOf(id));
+  } else if (act === 'step-grip') {
+    if (beatDrag.justDragged()) return;
+    setOpenCard(id);
+    setRoving(id);
+  } else if (act === 'step-prev-beat' || act === 'step-next-beat') {
+    nudgeStep(id, { dir: act === 'step-prev-beat' ? -1 : 1 }, (x) => refocusStep(x, [act, act === 'step-prev-beat' ? 'step-next-beat' : 'step-prev-beat']));
+  } else if (act === 'beat-more') {
+    setStationOpen(el.getAttribute('data-beat'), el.getAttribute('aria-expanded') !== 'true');
+  } else if (act === 'lane-prev' || act === 'lane-next') {
+    laneStep(act === 'lane-prev' ? -1 : 1);
+  }
+});
+
+document.addEventListener('focusin', (e) => {
+  const card = e.target.closest && e.target.closest('#path-outline li.st-card');
+  if (!card) return;
+  const id = card.getAttribute('data-step-row');
+  if (rovingStep !== id || card.tabIndex !== 0) setRoving(id);
+  /* the caret in a step's text opens its card: the controls are there when wanted */
+  if (e.target.matches('textarea.st-ol-text') && !e.target.readOnly && openStep !== id) setOpenCard(id);
+});
+
+const ARROW = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+document.addEventListener('keydown', (e) => {
+  const card = e.target.closest && e.target.closest('#path-outline li.st-card');
+  if (!card || e.defaultPrevented) return;
+  const id = card.getAttribute('data-step-row');
+  const onCard = e.target === card;
+  const typing = /^(TEXTAREA|SELECT|INPUT)$/.test(e.target.tagName);
+  if (e.key === 'Escape' && card.classList.contains('is-open')) {
+    e.preventDefault();
+    e.stopPropagation();
+    flushAutosave();
+    setOpenCard('');
+    focusCard(card);
+    return;
+  }
+  const dir = ARROW[e.key];
+  /* Alt+arrows move the step (on the card or one of its buttons; a text
+     field and the select keep their own keys). */
+  if (dir && e.altKey && !e.ctrlKey && !e.metaKey && !typing) {
+    if (card.closest('.st-unplaced')) return;
+    e.preventDefault();
+    const act = e.target.getAttribute && e.target.getAttribute('data-st');
+    const refocus = onCard || !act ? null : (x) => refocusStep(x, [act]);
+    if (dir === 'up' || dir === 'down') nudgeStep(id, { delta: dir === 'up' ? -1 : 1 }, refocus);
+    else nudgeStep(id, { dir: dir === 'left' ? -1 : 1 }, refocus);
+    return;
+  }
+  if (!onCard || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    setOpenCard(id);
+    const ta = card.querySelector('textarea.st-ol-text');
+    if (ta) ta.focus({ preventScroll: true });
+    return;
+  }
+  const list = card.parentElement;
+  const inList = [...list.children].filter((c) => c.matches('li.st-card') && !c.hidden);
+  const k = inList.indexOf(card);
+  let to = null;
+  if (beatView === 'spine' && (dir === 'up' || dir === 'down')) {
+    const all = outlineCards().filter((c) => !c.hidden);
+    to = all[all.indexOf(card) + (dir === 'up' ? -1 : 1)] || null;
+  } else if (dir === 'up') to = inList[k - 1] || null;
+  else if (dir === 'down') to = inList[k + 1] || null;
+  else if (e.key === 'Home') to = inList[0];
+  else if (e.key === 'End') to = inList[inList.length - 1];
+  else if ((dir === 'left' || dir === 'right') && beatView === 'lanes') {
+    const lanes = [...document.querySelectorAll('#path-outline .st-bl-lane')];
+    const lane = lanes[lanes.indexOf(card.closest('.st-bl-lane')) + (dir === 'left' ? -1 : 1)];
+    if (lane) {
+      const there = [...lane.querySelectorAll('li.st-card')];
+      to = there[Math.min(k, there.length - 1)] || lane.querySelector('[data-st="step-add"], button, [tabindex="0"]');
+      if (to && !to.matches('li.st-card')) { e.preventDefault(); focusCard(to); return; }
+    }
+  } else return;
+  e.preventDefault();
+  if (to) { setRoving(to.getAttribute('data-step-row')); focusCard(to); }
+});
+
+/* Drag a step by its grip, in either view (src/ui/beat-drag.js): the
+   drop lands through the same moveStepTo() as the keys and buttons. */
+const beatDrag = wireBeatDrag({
+  root: () => document.getElementById('path-outline'),
+  locked: () => !!story().outlineLockedAt,
+  onDrop: (id, beatKey, index) => moveStepTo(id, beatKey, index),
+  onHoverCollapsed: (key) => setStationOpen(key, true)
+});
+
 delegate(document, 'change', '[data-st-field]', (e, el) => {
   const f = el.getAttribute('data-st-field');
   const s = story();
@@ -1849,6 +2261,7 @@ delegate(document, 'change', '[data-st-field]', (e, el) => {
       /* The step's card was redrawn under its new beat: keep the keyboard on its select. */
       const sel = document.querySelector(`select[data-st-field="step-beat"][data-step="${CSS.escape(id)}"]`);
       if (sel) sel.focus({ preventScroll: true });
+      announceMove(id);
     }
   } else if (f === 'tension') {
     Story.setTension(s, s.framework, el.getAttribute('data-beat'), el.value);

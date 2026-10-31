@@ -301,23 +301,6 @@ main:has(> .lib-sec) > .tabs { margin-inline: var(--gutter); }
 }
 .lib-term-alias { font-weight: 400; color: var(--ink-muted); }
 .lib-term-def { color: var(--ink-body); max-width: var(--sk-deck-measure, 60ch); }
-.lib-term-more {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  min-height: 1.75rem;
-  padding: 0;
-  background: none;
-  border: 0;
-  font: inherit;
-  cursor: pointer;
-  font-size: var(--t-tiny);
-  color: var(--accent-deep);
-  text-decoration: underline dotted;
-  text-underline-offset: 3px;
-}
-.lib-term-more:hover { color: var(--ink); }
-.lib-term-more:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-deep); outline-offset: 2px; border-radius: var(--sk-radius, var(--radius)); }
 .lib-term-see { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); align-items: baseline; }
 .lib-term-see a { font-size: var(--t-tiny); color: var(--accent-deep); text-decoration: underline; text-underline-offset: 3px; }
 .lib-term:target { border-color: var(--accent-deep); }

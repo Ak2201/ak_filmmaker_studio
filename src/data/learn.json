@@ -1,5 +1,5 @@
 {
-  "_about": "Learn-in-place topics (src/ui/learn.js). POINTERS, not copies: `glossary` is a term in glossary.json (the definition, the Tanglish line and a worked example in each of the four films live there), `steps` are blueprint steps as `<ns>/<step id>` (their approved videos and their 'why this matters' text are read from the step JSON at open time), `videos` are extra videos.json join keys. `term` is the display word in the summary; `question` overrides the generated 'What is a <term>?'.",
+  "_about": "Learn-in-place topics (src/ui/learn.js). POINTERS, not copies: `glossary` is a term in glossary.json (the definition, the Tanglish line and a worked example in each of the four films live there), `steps` are blueprint steps as `<ns>/<step id>` (their approved videos and their 'why this matters' text are read from the step JSON at open time), `videos` are extra videos.json join keys. `term` is the display word in the summary; `question` overrides the generated 'What is a <term>?'. `text` is a topic's own plain-language words, shown first, for a term the glossary does not hold (sides, one-liner, who can see a budget). `pill` overrides the label on the trigger; `exempt` marks a label that is not a 'What is...?' question. When a topic has both, `pill` is the short label on the trigger and `question` stays the explainer's title.",
   "topics": [
     {
       "id": "idea",
@@ -307,7 +307,8 @@
         "feature/step-13"
       ],
       "videos": [],
-      "question": "What does CONT'D mean?"
+      "question": "What does CONT'D mean?",
+      "pill": "What is CONT'D?"
     },
     {
       "id": "breakdown",
@@ -405,6 +406,7 @@
       "id": "coverage",
       "term": "coverage",
       "glossary": "coverage",
+      "text": "Coverage has two meanings. On set, it is every angle you film of a scene so the editor has choices. For a script, a coverage report is a reader's short written summary and verdict on it.",
       "steps": [],
       "videos": []
     },
@@ -438,7 +440,8 @@
       "glossary": "scene number",
       "steps": [],
       "videos": [],
-      "question": "What starts a new scene, and how are scenes numbered?"
+      "question": "What starts a new scene, and how are scenes numbered?",
+      "pill": "What is a scene number?"
     },
     {
       "id": "breakdown-categories",
@@ -458,7 +461,8 @@
         "feature/step-18"
       ],
       "videos": [],
-      "question": "Props or set dressing: what is the difference?"
+      "question": "Props or set dressing: what is the difference?",
+      "pill": "What are props and set dressing?"
     },
     {
       "id": "sfx-vfx",
@@ -466,7 +470,8 @@
       "glossary": "special effects",
       "steps": [],
       "videos": [],
-      "question": "Special effects or visual effects: what is the difference?"
+      "question": "Special effects or visual effects: what is the difference?",
+      "pill": "What are special and visual effects?"
     },
     {
       "id": "blocking-diagram",
@@ -492,7 +497,8 @@
       "glossary": "line producer",
       "steps": [],
       "videos": [],
-      "question": "Who owns what: producer, line producer, first AD?"
+      "question": "Who owns what: producer, line producer, first AD?",
+      "pill": "What are the production roles?"
     },
     {
       "id": "schedule-budget",
@@ -502,7 +508,8 @@
         "feature/step-23"
       ],
       "videos": [],
-      "question": "Why do schedule and budget move together?"
+      "question": "Why do schedule and budget move together?",
+      "pill": "What is the schedule and budget link?"
     },
     {
       "id": "camera-to-cloud",
@@ -535,6 +542,54 @@
       "steps": [],
       "videos": [],
       "question": "What is a checksum?"
+    },
+    {
+      "id": "character-profile",
+      "term": "character profile",
+      "pill": "What is a character profile?",
+      "glossary": "character profile",
+      "steps": [
+        "feature/step-12",
+        "short/step-11"
+      ],
+      "videos": [],
+      "text": "A character profile is one page about one person in your story: who they are, what they want, what they are afraid of and how they will change. You fill it in so that you know them before you write what they say. Example: before writing a scene with the hero's mother, write down what she wants from her son and what she never says aloud."
+    },
+    {
+      "id": "sides",
+      "term": "sides",
+      "pill": "What are sides?",
+      "steps": [],
+      "videos": [],
+      "text": "Sides are the few script pages a cast member needs for one shoot day, usually the scenes they are in, printed small so they can be carried on set. They save the team from handing the whole script to everyone and let actors rehearse exactly what is being filmed. Example: for a day with scenes 12 and 14, the actor in scene 14 gets only those two scenes as their sides."
+    },
+    {
+      "id": "one-liner",
+      "term": "one-liner",
+      "pill": "What is a one-liner?",
+      "steps": [],
+      "videos": [],
+      "text": "A one-liner is a schedule listing with a single line for each scene: its number, where it happens, day or night, who is in it and how long it is. It lets a producer see the whole shoot on one or two pages without reading the script. Example: 'Scene 7, INT. KITCHEN, NIGHT, Meena and Ravi, 1 and 3/8 pages'."
+    },
+    {
+      "id": "breakdown-elements",
+      "term": "breakdown elements",
+      "pill": "What are breakdown elements?",
+      "glossary": "script breakdown",
+      "steps": [
+        "feature/step-23"
+      ],
+      "videos": [],
+      "text": "Breakdown elements are the things a scene needs in order to be filmed: cast, props, costumes, vehicles, extras, locations and special effects. They are pulled out of the script so each department knows what to bring. Example: a scene where a character drives to a wedding needs a car, a wedding costume, a few extras and a decorated hall."
+    },
+    {
+      "id": "budget-visibility",
+      "term": "budget visibility",
+      "pill": "Who can see this budget?",
+      "exempt": true,
+      "steps": [],
+      "videos": [],
+      "text": "This explains who sees your budget once it is saved online. It is private to you unless you share the film."
     }
   ]
 }

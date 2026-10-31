@@ -94,6 +94,7 @@ import {
   indexTerms, termsInStage, seeAlso, termSearchText
 } from '../lib/library-model.js';
 import { termBody } from '../ui/learn.js';
+import { learnInline } from '../ui/learn-pill.js';
 
 /* The glossary is a 150 KB source and the library's only heavy one, so the
    page does not import it: Film terminology and the search both ask for it
@@ -1118,23 +1119,18 @@ function termCard(t, g, byName) {
   /* Opens the shared explainer over the page (owner, 29 Oct 2026), not
      a <details> that pushed the cards below it down. The body is the
      same termBody() it always was, built on each open. */
-  const more = h('button.lib-term-more', {
-    type: 'button', 'aria-haspopup': 'dialog', text: 'Tanglish, example, video'
+  const more = learnInline({
+    label: 'Tanglish, example, video', size: 'sm', exempt: true, extraClass: 'lib-term-open',
+    heading: t.term, eyebrow: 'Film terminology', onClose: () => { termOpen = ''; },
+    build: (body) => termBody(t, { glossary: g }).then((el) => {
+      body.replaceChildren(h('div.learn-def', { text: t.def || '' }), el);
+    }).catch(() => {
+      body.replaceChildren(h('div.learn-wait', { text: 'Could not load the examples.' }));
+    })
   });
-  more.addEventListener('click', () => {
-    termOpen = termId(t.term);
-    import('../ui/explainer.js').then(({ openExplainer }) => openExplainer({
-      title: t.term,
-      eyebrow: 'Film terminology',
-      returnTo: more,
-      onClose: () => { termOpen = ''; },
-      build: (body) => termBody(t, { glossary: g }).then((el) => {
-        body.replaceChildren(h('div.learn-def', { text: t.def || '' }), el);
-      }).catch(() => {
-        body.replaceChildren(h('div.learn-wait', { text: 'Could not load the examples.' }));
-      })
-    })).catch((e) => console.warn('[library] explainer', e));
-  });
+  /* termOpen: the term whose explainer is up, so a link click and its
+     hashchange open it once. */
+  more.addEventListener('click', () => { termOpen = termId(t.term); });
   card.append(head, h('div.lib-term-def', { text: t.def || '' }), more);
   const see = seeAlso(t, byName);
   if (see.length) {
@@ -1182,7 +1178,7 @@ function openTermFromHash(id) {
   const want = id || (location.hash || '').replace(/^#/, '');
   if (!want || want.indexOf('term-') !== 0 || want === termOpen) return;
   const el = document.getElementById(want);
-  const b = el && el.querySelector('.lib-term-more');
+  const b = el && el.querySelector('.lib-term-open');
   if (b) b.click();
 }
 

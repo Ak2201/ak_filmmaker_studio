@@ -314,11 +314,16 @@ function renderStepper(s) {
    film, behind a "What is …?" that opens the explainer over the page
    (src/ui/learn.js — null for a topic with no
    content yet, so it is filtered before append). */
-const LEARN_TOPIC = { idea: 'idea', logline: 'logline', bible: 'story-bible', outline: 'step-outline', synopsis: 'synopsis' };
+const LEARN_TOPIC = { idea: 'idea', logline: 'logline', bible: ['story-bible', 'character-profile'], outline: ['beat-sheet', 'step-outline'], synopsis: 'synopsis' };
 const learnBox = (topic) => {
   let el = null;
   try { el = learn(topic); } catch (e) { el = null; }   // no film given: the project's favourite
   return el;
+};
+/* A step may name two topics (at most two pills in a region): a row. */
+const learnRow = (topics) => {
+  const els = [].concat(topics || []).map(learnBox).filter(Boolean);
+  return els.length > 1 ? h('div.learn-row', {}, els) : (els[0] || null);
 };
 /* A Bible or blueprint write changes which steps have something in
    them, and the page is not redrawn for a field (that would cost the
@@ -344,7 +349,7 @@ const stepHead = (id, title, lead) => [
   h('p.bd-eyebrow', { text: 'Step ' + stepNow(id).pos + ' of ' + pathNow().length }),
   h('h2.bd-h2', { text: title }),
   lead ? h('p.bd-sub', { text: lead }) : null,
-  learnBox(LEARN_TOPIC[id])
+  learnRow(LEARN_TOPIC[id])
 ].filter(Boolean);
 /* A film's own words for a step (the favourite film, chosen in Settings).
    The films are imported a moment after first paint (fav-film.js), so the

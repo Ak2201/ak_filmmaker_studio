@@ -77,6 +77,7 @@ async function run(width, height) {
   await page.waitForTimeout(800);
   const trig = page.locator('.why-pop .why-open:visible').first();
   check(at + 'a Why-this-matters trigger shows', await trig.count(), 1);
+  check(at + 'the trigger is the pill', await trig.evaluate((b) => b.classList.contains('learn') && b.classList.contains('learn-pill')), true);
   check(at + 'its words are not shown in place', await page.$$eval('.why-pop .why-body', (a) => a.every((e) => e.getClientRects().length === 0)), true);
   await trig.scrollIntoViewIfNeeded();
   const words = await trig.evaluate((b) => b.closest('.why-pop').querySelector('.why-body p').textContent.trim().slice(0, 40));

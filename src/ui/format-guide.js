@@ -37,6 +37,7 @@ import COPY from '../data/format-rules.json';
 import { checkScript, checkAround } from '../lib/format-rules.js';
 import { h, delegate } from '../lib/dom.js';
 import { learn } from './learn.js';
+import { learnInline } from './learn-pill.js';
 import { WRITE_PREFS_KEY, readWritePrefs, writeWritePrefs, readGuideDismissed, saveGuideDismissed } from '../lib/write-prefs.js';
 import '../styles/format-guide.css';
 import { indiaContentShown } from './india-content.js';
@@ -134,14 +135,7 @@ function clearNote(row) {
 /* "Why?" opens the explainer over the page (owner, 29 Oct 2026), so the
    script lines below the note never move. Nothing is written. */
 function whyButton(f) {
-  const btn = h('button.fg-why-btn', { type: 'button', 'aria-haspopup': 'dialog', text: COPY.panel.whyLabel });
-  btn.addEventListener('click', () => {
-    import('./explainer.js').then(({ openExplainer }) => openExplainer({
-      title: f.message, eyebrow: 'Format note', returnTo: btn,
-      build: (body) => body.replaceChildren(h('p', { text: f.why }))
-    })).catch((e) => console.warn('[format-guide] explainer', e));
-  });
-  return btn;
+  return learnInline({ label: COPY.panel.whyLabel, size: 'sm', exempt: true, title: f.message, heading: f.message, eyebrow: 'Format note', text: f.why });
 }
 
 function showNote(row, f) {

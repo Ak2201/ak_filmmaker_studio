@@ -4,7 +4,9 @@
    learn(topicId, { film }) → HTMLButtonElement | null
 
    Drop the result where a beginner might stop and ask "what is
-   this?". It is ONE quiet line, a button. Pressing it opens the
+   this?". It is the kit PILL (learn-pill.js), the same on every page:
+   a help icon and the question. A topic may carry `text` (its own
+   words, no glossary term) and `pill` (the label). Pressing it opens the
    explainer (src/ui/explainer.js) OVER the page — the kit modal on a
    desk, the bottom sheet on a phone — and never expands in place, so
    the work under it does not move (owner, 29 Oct 2026; it was a
@@ -37,7 +39,7 @@
 import TOPICS from '../data/learn.json';
 import { h } from '../lib/dom.js';
 import { termId } from '../lib/library-search.js';
-import '../styles/learn.css';
+import { pillEl } from './learn-pill.js';
 
 const LIST = Array.isArray(TOPICS && TOPICS.topics) ? TOPICS.topics : [];
 const BY_ID = new Map(LIST.map((t) => [t.id, t]));
@@ -48,6 +50,7 @@ const WHY_MAX = 260;
 export function topic(id) { return BY_ID.get(id) || null; }
 
 function summaryText(t) {
+  if (t.pill) return t.pill;
   if (t.question) return t.question;
   const w = String(t.term || t.id);
   return 'What is ' + (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w + '?';
@@ -174,6 +177,7 @@ async function fill(body, t, opts, live) {
 
   const more = linkFor(t);
   const kids = [
+    t.text ? h('div.learn-def', { text: t.text }) : null,
     term ? h('div.learn-def', { text: term.def }) : null,
     term && term.tanglish ? h('div.learn-tn', { lang: 'ta-Latn', text: term.tanglish }) : null,
     slot,
@@ -227,18 +231,17 @@ export async function termBody(term, opts = {}) {
   ].filter(Boolean));
 }
 
-/** @returns {HTMLButtonElement|null} the trigger, or null for an unknown topic */
+/** @returns {HTMLButtonElement|null} the trigger (the kit pill), or null for an unknown topic.
+    opts.size 'sm' is for field labels and term cards. */
 export function learn(topicId, opts = {}) {
   const t = topic(topicId);
   if (!t) return null;
   const o = opts || {};
-  const btn = h('button.learn.learn-q', {
-    type: 'button', 'data-learn': t.id, 'aria-haspopup': 'dialog', text: summaryText(t)
-  });
+  const btn = pillEl({ label: summaryText(t), size: o.size, topic: t.id, exempt: !!t.exempt });
   btn.addEventListener('click', () => {
     const live = { open: true, off: null };
     import('./explainer.js').then(({ openExplainer }) => openExplainer({
-      title: summaryText(t),
+      title: t.question || summaryText(t),
       returnTo: btn,
       onClose: () => {
         live.open = false;

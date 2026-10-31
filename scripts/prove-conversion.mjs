@@ -345,8 +345,40 @@ try {
       await page.evaluate(() => window.StudioPDF.unstage());
       const { extractLayoutText } = await import('../src/lib/pdf-text.js');
       let text = '';
-      try { const r = await extractLayoutText(pdf); text = JSON.stringify(r); } catch (e) { text = 'ERR ' + e.message; }
-      ok(text.includes('Made with') && text.includes(BRAND.host), 'a real page.pdf() of the stripboard carries the line in its text' + (text.includes('Made with') && text.includes(BRAND.host) ? '' : ': ' + text.slice(0, 300) + ' … ' + text.slice(-300)));
+      try { const r = await extractLayoutText(pdf); text = r.text || ''; } catch (e) { text = 'ERR ' + e.message; }
+      /* CI run 379 read "M ade with FilmMakerStudio" here: extractLayoutText
+         is the SCREENPLAY reader, and it places every text run on a Courier
+         column grid (0.6em cells). This line is proportional Onest, centred,
+         and Chromium wrote its "M" as a run of its own; whether the next run
+         rounds to the column after "M" or one past it depends on where the
+         centred line starts, which moves with the width of the random
+         referral code. So the reader's spaces are not the PDF's text.
+         Reproduced locally: the old comparison missed 6 of 42 loaded runs,
+         every miss "M ade with" on page 2 (the codes that missed are wide
+         ones, M and W); this one passed all 18 runs of a batch in which the
+         old one missed once. Compared with every whitespace run
+         removed on both sides, and against the WHOLE line (name, dash and
+         host), which is stricter than the two words it checked before.
+         ("NO PROJECT OPEN" in that log is expected: this check opens the
+         stripboard with no project; the line prints either way.) */
+      const squash = (x) => String(x).replace(/\s+/g, '');
+      const wantLine = 'Made with ' + BRAND.name + ' — ' + BRAND.host;
+      const has = squash(text).includes(squash(wantLine));
+      let seen = '';
+      if (!has) {
+        seen = JSON.stringify(await page.evaluate(() => {
+          const S = window.StudioStore || {};
+          let pointer = null; try { pointer = Object.keys(localStorage).filter((k) => /current_project/.test(k)).map((k) => k + '=' + localStorage.getItem(k)); } catch (e) { /* */ }
+          /* The plan as the page shows it: plan-gate's wall says which plan. */
+          const wall = document.querySelector('.pg-lock');
+          const plan = { wall: wall ? wall.textContent.replace(/\s+/g, ' ').trim().slice(0, 80) : null,
+            exports: window.StudioPlan ? window.StudioPlan.allowed('exports') : '(no StudioPlan)' };
+          return { url: location.href, current: S.currentProjectId ? S.currentProjectId() : '(no StudioStore)', pointer,
+            projects: S.listProjects ? S.listProjects().map((p) => p.id + ':' + p.title) : '(no StudioStore)', plan };
+        }).catch((e) => ({ evalError: e.message })));
+      }
+      const near = (text.match(/.{0,20}ade.{0,90}/) || [''])[0];
+      ok(has, 'a real page.pdf() of the stripboard carries the line in its text' + (has ? '' : ': ' + JSON.stringify(near) + ' | page: ' + seen + ' | text: ' + JSON.stringify(text.slice(0, 200)) + ' … ' + JSON.stringify(text.slice(-200))));
     }
     allErrors.push(...errors); await ctx.close();
   }

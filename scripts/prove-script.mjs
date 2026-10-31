@@ -67,7 +67,19 @@ function ok(cond, label, extra) {
 }
 
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+/* NO SERVICE WORKER (CI runs 361/362/366/379). With the app's worker live
+   in this context, a loaded runner now and then got a module chunk the
+   worker was answering back as net::ERR_ABORTED (caught: leave-prompt.js
+   on screenplay.html; the drafts entry chunk on drafts.html in a bare
+   navigation loop). One failed chunk and the module graph never runs:
+   readyState "complete", no StudioStore, an empty #app, which the checks
+   after it read as "the project was lost". It was not: the pointer still
+   named the project (run 379's own log). Six runs at once on two cores:
+   worker allowed, 4 of about 40 runs stopped on a page whose script never
+   ran; blocked, 0 of 24. This proof is about the Writer and Drafts, not
+   the worker (prove:sw is), so it runs without one, like the proofs that
+   already pass serviceWorkers: 'block'. */
+const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 900 } });
 /* Count script saves, and make print() observable without a dialog. */
 await ctx.addInitScript(() => {
   window.__writes = [];
@@ -85,6 +97,11 @@ const page = await ctx.newPage();
    unsaved draft changes; Chromium logs that it held back the panel. */
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
+/* A module the page could not fetch leaves it with no script at all and
+   no pageerror ("Failed to load resource" is filtered below): keep the
+   last few failed requests for the 23e/23f diagnostics. */
+const failedReqs = [];
+page.on('requestfailed', (r) => { failedReqs.push(r.url().replace(/^https?:\/\/[^/]+/, '') + ' ' + ((r.failure() || {}).errorText || '')); if (failedReqs.length > 12) failedReqs.shift(); });
 page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|beforeunload/.test(m.text())) errors.push('console: ' + m.text()); });
 
 const url = (p) => `http://localhost:${PORT}/${p}`;
@@ -861,7 +878,7 @@ await page.setViewportSize({ width: 1280, height: 900 });
   await tabW.close();
 
   /* j) a refused save never reads "Autosaved" */
-  const qctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const qctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 900 } });
   await qctx.addInitScript(() => { window.__origSet = Storage.prototype.setItem; if (location.pathname.includes('screenplay')) IDBFactory.prototype.open = function () { throw new Error('blocked'); }; });
   const q = await qctx.newPage();
   await q.goto(url('index.html'), { waitUntil: 'networkidle' });
@@ -885,7 +902,7 @@ await page.setViewportSize({ width: 1280, height: 900 });
 /* ---- 22 QA round 3 (27 Oct 2026): touch targets, sheet rows, one button language --
    Each assertion failed before its fix. */
 {
-  const tctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const tctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const t = await tctx.newPage();
   await t.goto(url('index.html'), { waitUntil: 'networkidle' });
   await t.evaluate(() => {
@@ -1024,10 +1041,13 @@ await page.setViewportSize({ width: 1280, height: 900 });
   const seenState = () => page.evaluate(() => {
     const S = window.StudioStore || {};
     let pointer = null; try { pointer = Object.keys(localStorage).filter((k) => /current_project/.test(k)).map((k) => k + '=' + localStorage.getItem(k)); } catch (e) { /* */ }
-    return { url: location.href, current: S.currentProjectId && S.currentProjectId(), pointer,
-      projects: S.listProjects && S.listProjects().map((p) => p.id + ':' + p.title),
+    let list = null; try { list = (JSON.parse(localStorage.getItem('fms_studio_projects_v1') || '[]') || []).map((p) => p.id + ':' + p.title); } catch (e) { /* */ }
+    return { url: location.href, readyState: document.readyState, store: typeof window.StudioStore,
+      sw: !!(navigator.serviceWorker && navigator.serviceWorker.controller),
+      current: S.currentProjectId ? S.currentProjectId() : '(no StudioStore)', pointer, list,
+      projects: S.listProjects ? S.listProjects().map((p) => p.id + ':' + p.title) : '(no StudioStore)',
       main: (document.querySelector('main') || document.body).innerText.slice(0, 400) };
-  });
+  }).then((st) => Object.assign(st, { errors: errors.slice(-5), failed: failedReqs.slice() }));
   /* e) drafts.html: the action buttons keep keyboard focus across the redraw */
   await fresh('Proof Draft Focus', FOUR);
   await page.goto(url('drafts.html'), { waitUntil: 'networkidle' });

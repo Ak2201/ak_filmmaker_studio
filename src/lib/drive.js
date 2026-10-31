@@ -132,8 +132,12 @@ export function forgetToken() { _token = null; }
 
    That last point is the reason this is an addition rather than a
    replacement. Supabase returns `provider_token` on the sign-in
-   response ONLY and persists nothing, so after a reload there is
-   nothing to adopt and the silent GIS mint is the only way back. */
+   response only. supabase-js DOES persist it (and, in drive mode,
+   `provider_refresh_token`) inside its stored session until the first
+   refresh; cloud.js strips both from that stored copy right after the
+   sign-in is handled (stripStoredProviderTokens), so after a reload
+   there is nothing to adopt and the token source or the silent GIS
+   mint is the way back. */
 export function adoptToken(value, expiresInSeconds) {
   if (typeof value !== 'string' || !value) return false;
   const ttl = (Number(expiresInSeconds) || 3600) * 1000;

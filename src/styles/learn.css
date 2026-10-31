@@ -64,4 +64,7 @@
 /* Several topics for one section sit in one wrapping row (at most two
    pills in a region, then a "More:" row of small ones). */
 .learn-row { display: flex; flex-wrap: wrap; gap: 0 var(--s2); align-items: center; }
-.learn-slot:empty { display: none; }
+.learn-slot:empty:not([data-learn-place]) { display: none; }
+/* The placed slot's reserved height lives in chrome.css: this sheet
+   arrives WITH the pill, too late to hold its room. */
+

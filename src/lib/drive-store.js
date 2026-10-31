@@ -176,7 +176,7 @@ export function createDriveStore(opts) {
     if (res.status < 200 || res.status >= 300) throw fail(res, what);
     return res;
   }
-  const LIST_FIELDS = 'nextPageToken,files(id,name,mimeType,parents,appProperties,headRevisionId,modifiedTime,trashed,capabilities/canEdit,capabilities/canComment,owners/emailAddress,ownedByMe)';
+  const LIST_FIELDS = 'nextPageToken,files(id,name,mimeType,parents,appProperties,headRevisionId,modifiedTime,createdTime,trashed,capabilities/canEdit,capabilities/canComment,owners/emailAddress,ownedByMe)';
   async function list(q, fields) {
     const out = [];
     let pageToken;
@@ -298,6 +298,7 @@ export function createDriveStore(opts) {
       format: (f.appProperties && f.appProperties.fms_format) || 'feature',
       title: f.name,
       modifiedTime: f.modifiedTime,
+      createdTime: f.createdTime,
       owned: f.ownedByMe !== false,
       owner: f.owners && f.owners[0] ? f.owners[0].emailAddress : '',
       role: f.ownedByMe !== false ? 'owner'
@@ -324,6 +325,18 @@ export function createDriveStore(opts) {
       const f = await createFolder(String(m.title || 'Untitled Project').slice(0, 200), root,
         { fms_kind: 'project', fms_pid: m.id, fms_format: m.format || 'feature', fms_v: LAYOUT_VERSION });
       folderId = f.id;
+      /* TWO DEVICES CAN CREATE AT ONCE (review, 31 Oct 2026): each found
+         nothing and made one. Look again and converge on the oldest of
+         this account's folders for the film; ours is still empty, so
+         when it loses it is simply trashed. Both sides pick the same. */
+      try {
+        const rows = (await list(appProp('fms_kind', 'project') + ' and ' + appProp('fms_pid', m.id) + ' and trashed = false', 'files(id,createdTime,ownedByMe)'))
+          .filter((r) => r.ownedByMe !== false);
+        if (rows.length > 1) {
+          rows.sort((a, b) => (Date.parse(a.createdTime || '') || 0) - (Date.parse(b.createdTime || '') || 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+          if (rows[0].id !== folderId) { const mine = folderId; folderId = rows[0].id; await trashProject(mine).catch(() => {}); }
+        }
+      } catch (e) { /* the folder just made is still a folder */ }
     }
     const p = ps(m.id);
     p.folderId = folderId; p.role = 'owner';
@@ -371,6 +384,15 @@ export function createDriveStore(opts) {
   function adoptFolder(pid, folderId, role) {
     const p = ps(pid);
     if (p.folderId === folderId && p.role === role) return p;
+    /* A DIFFERENT folder is a different set of files (review, 31 Oct
+       2026): keeping the old folder's file ids and hashes made the
+       first pull of the new one read "clean here" and overwrite local
+       edits with no salvage. Forget them, so that pull has no base and
+       a difference is kept as a conflict copy. */
+    if (p.folderId && p.folderId !== folderId) {
+      p.files = {};
+      for (const k of ['metaId', 'metaRev', 'commentsId', 'commentsRev', 'privateId', 'framesId']) delete p[k];
+    }
     p.folderId = folderId; p.role = role || p.role || 'owner';
     changed();
     return p;

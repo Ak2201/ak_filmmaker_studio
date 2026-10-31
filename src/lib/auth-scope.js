@@ -64,17 +64,29 @@ export function googleQueryParams(o) {
   return out;
 }
 
-/* Has this device recorded the Drive grant? Read raw from the one
-   device-local key that holds it, so start.html (which has no store.js)
-   answers the same as the studio. A throw reads as "no". */
+/* Has this device recorded the Drive grant FOR THIS ACCOUNT? Read raw
+   from the one device-local key that holds it, so start.html (which has
+   no store.js) answers the same as the studio. A throw reads as "no".
+
+   PER ACCOUNT, never "any account here" (review, 31 Oct 2026): on a
+   shared browser, account A's grant made B's sign-in skip the consent
+   screen, so Google issued B no refresh token, the server stored none,
+   and B's Drive saves stopped after an hour. `uid` defaults to the
+   account this device last signed in as (`fms_studio_account_v1`,
+   read raw — the same read store.js makes); with no account known the
+   answer is "no", and the sign-in asks for consent. A user who picks a
+   DIFFERENT account at Google's chooser is caught after the return:
+   cloud.js asks the server whether that account has a token. */
 export const DRIVE_STATE_KEY_NAME = 'fms_drive_sync_v1';
-export function driveGrantRecorded(raw) {
+export const ACCOUNT_KEY_NAME = 'fms_studio_account_v1';
+export function driveGrantRecorded(raw, uid) {
   try {
-    const text = raw != null ? raw : (typeof localStorage !== 'undefined' ? localStorage.getItem(DRIVE_STATE_KEY_NAME) : null);
+    const ls = typeof localStorage !== 'undefined' ? localStorage : null;
+    const who = uid != null ? String(uid) : String((ls && ls.getItem(ACCOUNT_KEY_NAME)) || '').trim();
+    if (!who) return false;
+    const text = raw != null ? raw : (ls ? ls.getItem(DRIVE_STATE_KEY_NAME) : null);
     const st = JSON.parse(text || '{}') || {};
-    /* `store` is per account id (drive-project-sync.js): any account
-       on this device that recorded the grant counts. */
-    const accts = st.store && typeof st.store === 'object' ? Object.values(st.store) : [];
-    return accts.some((a) => !!(a && typeof a === 'object' && a.granted));
+    const a = st.store && typeof st.store === 'object' ? st.store[who] : null;
+    return !!(a && typeof a === 'object' && a.granted);
   } catch (e) { return false; }
 }

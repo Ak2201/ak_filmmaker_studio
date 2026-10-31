@@ -49,6 +49,25 @@ export function commentItem(row) {
 }
 const asList = (x) => (Array.isArray(x) ? x : x == null ? [] : [x]);
 
+const GONE = Symbol('gone');
+
+/** A project whose migration was under way and is no longer listed by
+ *  drive_migrate_list has had its server row deleted: drive_migrate_finish
+ *  committed and the reply was lost (or the film was deleted). Left
+ *  `done: false`, migrating() held it out of Drive sync for good. Marks
+ *  each one done and returns their ids, so the caller can attach the
+ *  folder. Call it with every answer of the list, an empty one too. */
+export function reconcileFinished(state, list) {
+  const listed = new Set(asList(list).map((r) => r && (r.project_id || r.id)).filter(Boolean));
+  const out = [];
+  for (const [pid, m] of Object.entries(state || {})) {
+    if (!m || typeof m !== 'object' || m.done || listed.has(pid)) continue;
+    m.done = true; m.at = m.at || new Date().toISOString(); m.reconciled = true;
+    out.push(pid);
+  }
+  return out;
+}
+
 export class MigrationStopped extends Error {
   constructor(msg, extra) { super(msg); this.name = 'MigrationStopped'; Object.assign(this, extra || {}); }
 }
@@ -97,12 +116,20 @@ export async function runMigration(o) {
       save();
 
       const verified = new Map();
+      /* A ROW THAT IS GONE IS NOT AN EMPTY ROW (review, 31 Oct 2026).
+         The list said it existed; if the read now answers null, another
+         device or browser profile of this account moved it meanwhile
+         (navigator.locks covers one browser only). Writing `{}` here put
+         an empty file over the real Drive copy and then emptied this
+         device's local copy to match. Gone means already moved: nothing
+         is written, nothing is applied. */
       const verify = async (scope) => {
         for (let attempt = 0; attempt < 2; attempt++) {
           checkpoint();
           say('copy', { scope });
           const data = await o.rpc('drive_migrate_read', { p_project: pid, p_scope: scope });
-          const value = data == null ? {} : data;
+          if (data == null) { m.scopes[scope] = 'deleted'; verified.delete(scope); save(); return GONE; }
+          const value = data;
           const put = await ds.putScope(pid, scope, value);
           m.scopes[scope] = 'written'; save();
           const text = await readBack(pid, scope, put.id);
@@ -131,14 +158,23 @@ export async function runMigration(o) {
         await verify(scope);
       }
 
-      /* comments */
+      /* comments — read by a reader that THROWS on an error and pages
+         past the server's row cap (o.listComments), and checked against
+         the list's own count: an empty or short read recorded here would
+         make every later run skip this step and fail at finish. */
       checkpoint();
       if (m.comments !== 'deleted') {
         say('comments');
         const rows = asList(await o.listComments(pid));
+        if (Number.isInteger(row.comments) && rows.length < row.comments) {
+          throw new MigrationStopped('Only ' + rows.length + ' of ' + row.comments + ' comments could be read, so nothing was deleted from the server.', { scope: 'comments' });
+        }
         const items = rows.map(commentItem);
         if (items.length) {
-          await ds.updateComments(pid, (cur) => cur.concat(items));
+          /* By id: a rerun (after a short delete, say) replaces its
+             earlier copy of a comment rather than adding a second one. */
+          const ids = new Set(items.map((x) => x.id));
+          await ds.updateComments(pid, (cur) => cur.filter((x) => !ids.has(x.id)).concat(items));
           const back = await ds.readComments(pid);
           const byId = new Map(back.items.map((x) => [x.id, x]));
           for (const it of items) {
@@ -166,16 +202,25 @@ export async function runMigration(o) {
         m.frames = 'done'; save();
       }
 
-      /* collaborators */
+      /* collaborators — a share Google refused is KEPT in
+         m.pendingShares and retried on every run, and the project is not
+         finished while one is left: finish deletes project_collaborators,
+         the only record of who the teammate was and what they could do. */
       checkpoint();
       if (!m.shared) {
         say('share');
-        const people = asList(await o.rpc('drive_migrate_collaborators', { p_project: pid }));
+        const people = Array.isArray(m.pendingShares) ? m.pendingShares
+          : asList(await o.rpc('drive_migrate_collaborators', { p_project: pid })).filter((p) => p && p.email).map((p) => ({ email: p.email, role: p.role }));
+        const left = [];
         for (const p of people) {
-          if (!p || !p.email) continue;
           try { await ds.share(m.folderId, p.email, ROLE_MAP[p.role] || 'view'); }
-          catch (e) { errors.push({ pid, step: 'share', email: p.email, status: e.status || 0 }); }
+          catch (e) { left.push(p); errors.push({ pid, step: 'share', email: p.email, status: e.status || 0 }); }
         }
+        if (left.length) {
+          m.pendingShares = left; save();
+          throw new MigrationStopped('Google Drive would not share this film with ' + left.map((p) => p.email).join(', ') + ', so it stays on the server for now and the share is tried again next time.', { step: 'share' });
+        }
+        delete m.pendingShares;
         m.shared = true; save();
       }
 
@@ -187,19 +232,34 @@ export async function runMigration(o) {
           say('delete', { scope });
           const gone = await o.rpc('drive_migrate_delete_scope', { p_project: pid, p_scope: scope, p_data: verified.get(scope) });
           if (gone === true || (Array.isArray(gone) && gone[0] === true)) { m.scopes[scope] = 'deleted'; save(); break; }
-          if (attempt >= 2) throw new MigrationStopped('The server copy of ' + scope + ' kept changing while it was being moved; it is still on the server.', { scope });
-          /* The row changed after it was read: copy and verify it again. */
+          /* False means changed OR already gone; the re-read tells them
+             apart (verify answers GONE and writes nothing). */
           m.scopes[scope] = 'written'; save();
-          await verify(scope);
+          if ((await verify(scope)) === GONE) break;
+          if (attempt >= 2) throw new MigrationStopped('The server copy of ' + scope + ' kept changing while it was being moved; it is still on the server.', { scope });
         }
       }
       if (m.comments !== 'deleted') {
-        if ((m.commentIds || []).length) await o.rpc('drive_migrate_delete_comments', { p_project: pid, p_ids: m.commentIds });
+        const ids = m.commentIds || [];
+        const n = ids.length ? await o.rpc('drive_migrate_delete_comments', { p_project: pid, p_ids: ids }) : 0;
+        /* A short count: the server kept a parent whose reply this run
+           never saw. Read the comments again next time (the copy in
+           comments.json is merged by id, so nothing doubles). */
+        if (typeof n === 'number' && n < ids.length) {
+          delete m.comments; delete m.commentIds; save();
+          throw new MigrationStopped('A comment was answered while the film was moving, so its thread stays on the server until the next run copies the reply.', { scope: 'comments' });
+        }
         m.comments = 'deleted'; save();
       }
       checkpoint();
       say('finish');
-      await o.rpc('drive_migrate_finish', { p_project: pid });
+      try { await o.rpc('drive_migrate_finish', { p_project: pid }); }
+      catch (e) {
+        /* "rows remain": something reappeared, or a step above recorded
+           more than it did — clear the comment step so it is re-read. */
+        if (e && e.code === 'P0001') { delete m.comments; delete m.commentIds; save(); }
+        throw e;
+      }
       m.done = true; m.at = new Date().toISOString(); save();
       done++;
       say('done');
@@ -213,4 +273,4 @@ export async function runMigration(o) {
   return { done, total, frames: framesLeft, errors };
 }
 
-export default { runMigration, framesIn, commentItem, ROLE_MAP, MigrationStopped };
+export default { runMigration, reconcileFinished, framesIn, commentItem, ROLE_MAP, MigrationStopped };

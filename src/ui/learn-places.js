@@ -29,19 +29,27 @@ const PLACES = [
 
 let queued = false;
 const done = new WeakSet();   // an anchor is tried once: a topic that draws nothing must not loop
+/* ONE sweep per frame, not one per row (review, 31 Oct 2026): the
+   observer watches the whole document for the life of every page, so
+   eight querySelectorAll calls a frame was the cost of a page that has
+   none of these sections. */
+const ALL = PLACES.map(([sel]) => sel).join(', ');
 function place() {
   queued = false;
-  for (const [sel, topicId] of PLACES) {
-    for (const sub of document.querySelectorAll(sel)) {
-      if (done.has(sub)) continue;
-      done.add(sub);
-      const slot = h('div.learn-slot', { 'data-learn-place': topicId });
-      sub.after(slot);
-      import('./learn.js').then(({ learn }) => {
-        const pill = learn(topicId);
-        if (pill) slot.replaceChildren(pill); else slot.remove();
-      }).catch(() => slot.remove());
-    }
+  for (const sub of document.querySelectorAll(ALL)) {
+    if (done.has(sub)) continue;
+    done.add(sub);
+    const row = PLACES.find(([sel]) => sub.matches(sel));
+    if (!row) continue;
+    const topicId = row[1];
+    /* The slot reserves the pill's height (learn.css), so the pill
+       arriving a dynamic import later moves nothing below it. */
+    const slot = h('div.learn-slot', { 'data-learn-place': topicId });
+    sub.after(slot);
+    import('./learn.js').then(({ learn }) => {
+      const pill = learn(topicId);
+      if (pill) slot.replaceChildren(pill); else slot.remove();
+    }).catch(() => slot.remove());
   }
 }
 function schedule() {

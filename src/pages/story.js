@@ -743,6 +743,7 @@ function renderOutline(s) {
      else the first */
   const cards = [...sec.querySelectorAll('li.st-card')];
   if (cards.length && !cards.some((c) => c.tabIndex === 0)) cards[0].tabIndex = 0;
+  cardStops(cards);
 
   /* More craft, closed: the blueprint's own beat notes (they show on the
      cards above), then the feature's Setups & payoffs and Timeline, then
@@ -850,10 +851,12 @@ function unplacedParts(o, ctx) {
    phone the columns snap one at a time, with Previous / Next beat. */
 function renderLanes(o, ctx) {
   const box = h('div.st-bl', { 'data-view': 'lanes' });
-  const n = o.beats.length + 1;
+  const n = o.beats.length;
   box.append(h('div.st-bl-nav', {}, [
     button({ label: 'Previous beat', icon: 'arrow_back', variant: 'secondary', size: 'sm', attrs: { 'data-st': 'lane-prev' } }),
-    h('span.st-bl-pos', { role: 'status', text: 'Beat 1 of ' + n }),
+    /* Not a live region: it changes on every scroll frame. The lane
+       itself names its act and beat for a reader. */
+    h('span.st-bl-pos', { text: n ? 'Beat 1 of ' + n : 'Unassigned' }),
     button({ label: 'Next beat', iconAfter: 'arrow_forward', variant: 'secondary', size: 'sm', attrs: { 'data-st': 'lane-next' } })
   ]));
   const scroll = h('div.st-bl-scroll', { tabindex: '0', role: 'region', 'aria-label': 'Beat lanes. Scroll sideways for every beat.' });
@@ -862,7 +865,10 @@ function renderLanes(o, ctx) {
   o.beats.forEach((r, i) => {
     const first = r.act !== act;
     const lane = h('li.st-bl-lane' + (r.steps.length ? '' : '.is-empty'), { 'data-beat-card': r.key, 'data-act': String(r.act) });
-    lane.append(h('div.st-bl-ribbon' + (first ? '.is-first' : ''), { 'data-act': String(r.act), 'aria-hidden': first ? null : 'true', text: first ? 'Act ' + r.act : '' }));
+    /* Every lane names its act (review, 31 Oct 2026): printed on the
+       first lane only, a reader scrolled into an act had nothing but a
+       border colour to go on, and acts 3 and 4 share one. */
+    lane.append(h('div.st-bl-ribbon' + (first ? '.is-first' : ''), { 'data-act': String(r.act), text: first ? 'Act ' + r.act : 'Act ' + r.act + ', continued' }));
     lane.append(...beatParts(r, ctx, act));
     act = r.act;
     lane.append(beatSteps(r, ctx, i));
@@ -897,7 +903,8 @@ function laneIndicator(box) {
   const pos = box.querySelector('.st-bl-pos');
   if (!pos) return;
   const { lanes, i } = laneAt(box);
-  const t = 'Beat ' + (i + 1) + ' of ' + lanes.length;
+  const beats = lanes.filter((l) => !l.classList.contains('st-bl-lane--un')).length;
+  const t = lanes[i] && lanes[i].classList.contains('st-bl-lane--un') ? 'Unassigned' : 'Beat ' + (i + 1) + ' of ' + beats;
   if (pos.textContent !== t) pos.textContent = t;
 }
 const reducedMotion = () => {
@@ -2075,10 +2082,28 @@ function setOpenCard(id) {
     b.title = on ? 'Close' : 'Colour, move or remove';
     const icon = b.querySelector('.sym'); if (icon) icon.textContent = on ? 'close' : 'edit_note';
   }
+  cardStops();
 }
 function setRoving(id) {
   rovingStep = id || '';
   for (const c of outlineCards()) c.tabIndex = c.getAttribute('data-step-row') === id ? 0 : -1;
+  cardStops();
+}
+/* ONE TAB STOP MEANS ONE (review, 31 Oct 2026): the card was roving but
+   its grip, edit button and text stayed in the tab order, so a 15-beat
+   sheet was three or more stops per step. Only the roving card and the
+   open one keep their controls tabbable; every other card's are -1
+   (still clickable, and reached by the arrow keys, Enter and the card's
+   own stop). The open card's colour/move controls are hidden when it
+   closes, so they need nothing. */
+const CARD_CONTROLS = ':scope > .st-card-top > .st-grip, :scope > .st-card-top > .st-card-open, :scope > textarea.st-ol-text';
+function cardStops(cards = outlineCards()) {
+  for (const c of cards) {
+    const on = c.tabIndex === 0 || c.classList.contains('is-open');
+    for (const el of c.querySelectorAll(CARD_CONTROLS)) {
+      if (on) el.removeAttribute('tabindex'); else el.tabIndex = -1;
+    }
+  }
 }
 function focusCard(el) {
   if (!el) return false;

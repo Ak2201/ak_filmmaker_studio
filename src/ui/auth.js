@@ -691,7 +691,7 @@ export async function saveConfig() {
   toastOk('Connected. Continue with Google below.');
   m.querySelector('#cmConfigBlock').hidden = true;
   m.querySelector('#cmAuthBlock').hidden = false;
-  m.querySelector('#cmHeading').innerHTML = 'Sign <em>in.</em>';
+  m.querySelector('#cmHeading').innerHTML = 'Continue with <em>Google.</em>';
 }
 
 export async function startGoogle() {

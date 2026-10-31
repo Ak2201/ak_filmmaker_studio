@@ -4,7 +4,7 @@
    npm run test:drive-store
    ============================================================ */
 import { createDriveStore, canonicalHash, canonicalize, mergeCommentItems, resolveConflict, COMMENT_PREFIX } from '../src/lib/drive-store.js';
-import { runMigration, framesIn } from '../src/lib/drive-migrate.js';
+import { runMigration, framesIn, reconcileFinished } from '../src/lib/drive-migrate.js';
 import { createFakeDrive } from './fake-drive.mjs';
 
 let pass = 0, fail = 0;
@@ -348,6 +348,114 @@ async function migrationScenario(opts) {
   ok(!res.error && server.finished && calls.filter((c) => c === 'drive_migrate_read:scenes').length === 2, 'a delete refused because the row changed re-reads and re-verifies that scope');
   const sc = fake.byProp('fms_scope', 'scenes')[0];
   ok(JSON.parse(sc.content).changed === true, 'and Drive holds the changed copy');
+}
+
+/* ---- review fixes, 31 Oct 2026 ---- */
+/* Two devices, one account: A moves `scenes` fully; B runs with the list it
+   fetched before A's delete. B must not write {} over Drive, nor empty its
+   own local copy, nor say the copy is "still on the server". */
+{
+  fake.reset();
+  const server = { data: { scenes: { scenes: [{ id: 's1', slug: 'INT. HOUSE' }] } }, finished: false, deletedComments: [] };
+  const rpcFor = () => async (name, args) => {
+    switch (name) {
+      case 'drive_migrate_read': return server.data[args.p_scope] == null ? null : server.data[args.p_scope];
+      case 'drive_migrate_delete_scope': if (server.data[args.p_scope] == null || canonicalize(server.data[args.p_scope]) !== canonicalize(args.p_data)) return false; delete server.data[args.p_scope]; return true;
+      case 'drive_migrate_collaborators': return [];
+      case 'drive_migrate_delete_comments': return 0;
+      case 'drive_migrate_finish': if (Object.keys(server.data).length) throw Object.assign(new Error('rows remain'), { code: 'P0001' }); server.finished = true; return {};
+      default: throw new Error('unexpected rpc ' + name);
+    }
+  };
+  const staleList = [{ project_id: P1, title: 'Old Film', format: 'feature', scopes: ['scenes'], comments: 0 }];
+  const dsA = storeFor(AMY, {}), dsB = storeFor(AMY, {});
+  // B read the list and the row, then stalls; A runs to the end.
+  const resA = await runMigration({ rpc: rpcFor(), ds: dsA, state: {}, list: staleList, hash: canonicalHash, listComments: async () => [] }).catch((e) => ({ error: e }));
+  ok(!resA.error && server.finished, 'two devices: A moves the film');
+  const localB = { scenes: JSON.stringify({ scenes: [{ id: 's1', slug: 'INT. HOUSE' }] }) };
+  const resB = await runMigration({ rpc: rpcFor(), ds: dsB, state: {}, list: staleList, hash: canonicalHash, listComments: async () => [],
+    applyLocal: async (pid, scope, v) => { localB[scope] = JSON.stringify(v); } }).catch((e) => ({ error: e }));
+  const head = fake.byProp('fms_scope', 'scenes').filter((f) => !f.trashed).map((f) => JSON.parse(f.content));
+  ok(head.length >= 1 && head.every((v) => v.scenes && v.scenes.length === 1), 'two devices: B never writes {} over the moved Drive copy (' + JSON.stringify(head) + ')');
+  ok(JSON.parse(localB.scenes).scenes.length === 1, 'two devices: B keeps its local copy');
+  ok(!resB.error || !/still on the server/.test(resB.error.message), 'two devices: B does not claim the copy is still on the server (' + (resB.error && resB.error.message) + ')');
+}
+/* A finish that commits and then loses its reply: the next list no longer
+   names the project, and the record must still end up done. */
+{
+  const state = { [P1]: { localId: P1, scopes: { scenes: 'deleted' }, comments: 'deleted', folderId: 'F1', done: false } };
+  const fixed = reconcileFinished(state, []);
+  ok(fixed.length === 1 && state[P1].done === true, 'a lost finish reply: the unlisted project is reconciled to done');
+  const st2 = { [P1]: { localId: P1, scopes: {}, done: false } };
+  ok(reconcileFinished(st2, [{ project_id: P1 }]).length === 0 && st2[P1].done === false, 'a project still listed is left to the run');
+}
+/* A short comment delete (a reply posted meanwhile) clears the comment step,
+   so the next run reads the comments again instead of failing at finish forever. */
+{
+  const { res, state } = await (async () => {
+    fake.reset();
+    const st = {};
+    const server = { data: { scenes: { scenes: [] } }, comments: [{ id: 'c1', body: 'a', created_at: '2026-10-01T00:00:00Z' }, { id: 'c2', body: 'b', parent_id: 'c1', created_at: '2026-10-01T00:00:00Z' }] };
+    const r = await runMigration({
+      rpc: async (name, args) => {
+        switch (name) {
+          case 'drive_migrate_read': return server.data[args.p_scope] ?? null;
+          case 'drive_migrate_delete_scope': delete server.data[args.p_scope]; return true;
+          case 'drive_migrate_collaborators': return [];
+          case 'drive_migrate_delete_comments': return 1;   // the parent was kept
+          case 'drive_migrate_finish': throw Object.assign(new Error('rows remain'), { code: 'P0001' });
+        }
+      },
+      ds: storeFor(AMY, {}), state: st, list: [{ project_id: P1, title: 'X', scopes: ['scenes'], comments: 2 }], hash: canonicalHash,
+      listComments: async () => server.comments
+    }).catch((e) => ({ error: e }));
+    return { res: r, state: st };
+  })();
+  ok(res.error && state[P1].comments !== 'deleted' && !state[P1].commentIds, 'a short comment delete is retried next run, never recorded as done');
+}
+/* A comment read that comes back short of the list's count stops the run. */
+{
+  fake.reset();
+  const st = {};
+  const res = await runMigration({
+    rpc: async (name, args) => (name === 'drive_migrate_read' ? { a: 1 } : name === 'drive_migrate_collaborators' ? [] : true),
+    ds: storeFor(AMY, {}), state: st, list: [{ project_id: P1, title: 'X', scopes: ['scenes'], comments: 3 }], hash: canonicalHash,
+    listComments: async () => []
+  }).catch((e) => ({ error: e }));
+  ok(res.error && !st[P1].comments, 'an empty comment read against a count of 3 stops before anything is deleted');
+}
+/* A share Drive refuses is kept and retried; finish never runs while one is pending. */
+{
+  fake.reset();
+  const st = {};
+  const calls = [];
+  const ds = storeFor(AMY, {});
+  const realShare = ds.share;
+  let refuse = true;
+  ds.share = async (...a) => { if (refuse) throw Object.assign(new Error('domain policy'), { status: 403 }); return realShare(...a); };
+  const server = { data: { scenes: { a: 1 } } };
+  const rpc = async (name, args) => {
+    calls.push(name);
+    switch (name) {
+      case 'drive_migrate_read': return server.data[args.p_scope] ?? null;
+      case 'drive_migrate_delete_scope': delete server.data[args.p_scope]; return true;
+      case 'drive_migrate_collaborators': return [{ email: BEN, role: 'edit' }];
+      case 'drive_migrate_delete_comments': return 0;
+      case 'drive_migrate_finish': return {};
+    }
+  };
+  const list = [{ project_id: P1, title: 'X', scopes: ['scenes'], comments: 0 }];
+  const r1 = await runMigration({ rpc, ds, state: st, list, hash: canonicalHash, listComments: async () => [] }).catch((e) => ({ error: e }));
+  ok(r1.error && !calls.includes('drive_migrate_finish') && !st[P1].shared && st[P1].pendingShares && st[P1].pendingShares[0].email === BEN, 'a refused share is kept, and finish does not run');
+  refuse = false;
+  const r2 = await runMigration({ rpc, ds, state: st, list, hash: canonicalHash, listComments: async () => [] }).catch((e) => ({ error: e }));
+  ok(!r2.error && st[P1].done && st[P1].shared && !st[P1].pendingShares && calls.filter((c) => c === 'drive_migrate_collaborators').length === 1, 'the next run retries the kept share, then finishes');
+}
+/* A different folder for the same film forgets the old file ids. */
+{
+  const d = storeFor(AMY, { [P1]: { folderId: 'OLDFOLDER123', role: 'edit', files: { scenes: { id: 'x', hash: 'h', rev: 'r' } }, metaId: 'm' } });
+  d.adoptFolder(P1, 'NEWFOLDER456', 'edit');
+  ok(Object.keys(d.state[P1].files).length === 0 && !d.state[P1].metaId, 'adoptFolder with a new folder resets the file record (first pull has no base)');
 }
 
 console.log(fail ? `\n✗ ${fail} of ${pass + fail} drive-store checks failed` : `✓ all ${pass} drive-store checks pass`);

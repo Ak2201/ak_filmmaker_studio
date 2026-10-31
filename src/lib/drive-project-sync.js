@@ -44,7 +44,7 @@
 import Store, { rawGet, rawSet } from './store.js';
 import Drive from './drive.js';
 import { createDriveStore, DriveError, STUDIO_ROLE, BUDGET_SCOPES, canonicalHash } from './drive-store.js';
-import { runMigration } from './drive-migrate.js';
+import { runMigration, reconcileFinished } from './drive-migrate.js';
 import { callPort } from './ports.js';
 import { BRAND } from './brand.js';
 /* The view (src/ui/drive-ui.js) through a port: logic never imports the
@@ -69,6 +69,30 @@ let _capHeld = false;
 let _reconnectShown = false;
 let _refusedToldAt = 0;
 let _migrating = null;
+/* NOTHING MOVES UNTIL THE SERVER HAS SAID WHAT IT STILL HOLDS (review,
+   31 Oct 2026). Sign-in starts the project pull, the local upload and
+   the migration side by side; before drive_migrate_list answered,
+   migrating(pid) was false for a film still on the server, so the pull
+   pushed this device's copy into a new folder and the migration then
+   wrote the server copy over it. Every Drive push and pull waits for
+   the first answer; what asked meanwhile is in _held and runs after. */
+let _listKnown = false;
+let _listResolve = null;
+const _listP = new Promise((r) => { _listResolve = r; });
+const _held = new Set();
+function markListKnown() {
+  if (_listKnown) return;
+  _listKnown = true;
+  _listResolve();
+  releaseHeld();
+}
+/* Resolves once the list has answered (or failed); asks for it if no
+   run is under way, so nothing waits on a sign-in hook that never ran. */
+function knowList() {
+  if (!_listKnown && !_migrating) migrateServer().catch(() => {});
+  return _listP;
+}
+const _owner = new Map();    // pid -> 'me' | 'other' | 'none' (this page)
 const _timers = new Map();   // pid::scope -> { t, first }
 const _chains = new Map();   // pid::scope -> promise (one push at a time)
 const _comments = new Map(); // pid -> { items, at }
@@ -165,7 +189,7 @@ function driveFailed(e, what) {
       : 'Could not save to Google Drive: ' + why + '. Your work is kept on this device.', 'error', 5000);
   }
 }
-function askReconnect() {
+export function askReconnect() {
   say('ERROR', 'Drive needs you to sign in again — your work is kept on this device');
   if (_reconnectShown) return;
   _reconnectShown = true;
@@ -188,6 +212,7 @@ function migrating(pid) { const m = migrateState()[pid]; return !!(m && !m.done)
 function eligible(pid) {
   if (!pid || !C.allowed()) return false;
   if (C.isSample(pid)) return false;
+  if (!_listKnown) { _held.add(pid); knowList(); return false; }
   if (migrating(pid)) return false;
   return !!entryOf(pid);
 }
@@ -225,8 +250,10 @@ async function ensureFolderNow(pid) {
   }
   const e = entryOf(pid);
   if (!e || C.isSample(pid)) return null;
+  if (!_listKnown) await knowList();
   const s = store();
   const found = await s.findProjectFolder(pid);
+  if (!found && !(await mayCreateFolder(pid))) return null;
   if (!found) {
     const cap = await planCap();
     if (cap !== null) {
@@ -245,14 +272,46 @@ async function ensureFolderNow(pid) {
   return folderId;
 }
 
+/* NEVER A FOLDER FOR SOMEBODY ELSE'S FILM (review, 31 Oct 2026). A
+   teammate's film shared in the server era sits in this account's list
+   with no owner recorded. drive.file cannot see the owner's folder, so
+   find-or-create made a NEW one here — a fork, counted against this
+   plan, that the owner never saw. A folder is made only for a film this
+   account owns on the server, one it migrated, or one that never
+   reached the server at all (made on this device). A film the server
+   says is someone else's, or one that synced once and is gone from the
+   server (its owner moved it to Drive), waits — local — for the owner's
+   shared folder to be picked. An unanswered check waits too. */
+async function mayCreateFolder(pid) {
+  if (migrateState()[pid]) return true;
+  /* Never exchanged with the server: made on this device, so ours. */
+  if (!(C.everSynced && C.everSynced(pid))) return true;
+  let who = _owner.get(pid);
+  if (!who) {
+    who = C.serverOwner ? await C.serverOwner(pid) : 'unknown';
+    if (who !== 'unknown') _owner.set(pid, who);
+  }
+  /* 'none' after a sync: the row went, and a film this account moved
+     would have had its folder found above — its owner moved it. */
+  if (who === 'none') who = 'other';
+  if (who === 'me') return true;
+  if (pid === Store.currentProjectId()) {
+    say('ERROR', who === 'other'
+      ? 'Saved on this device — waiting for the owner to move this film to Google Drive and share it with you'
+      : 'Saved on this device — could not check who owns this film');
+  }
+  return false;
+}
+
 /** The studio index: every project folder this account can see, merged
  *  into the project list, then each one pulled. */
 export async function pullProjectList() {
   if (!C.allowed()) return;
+  if (!_listKnown) await knowList();
   try {
     const s = store();
     await s.ensureRoot();
-    const rows = await s.listProjects();
+    const rows = oneFolderPerFilm(await s.listProjects());
     _ownedCount = rows.filter((r) => r.owned).length;
     for (const r of rows) {
       if (C.isSample(r.pid) || migrating(r.pid)) continue;
@@ -304,7 +363,20 @@ const pageName = (scope) => PAGE[scope] || ('the ' + scope.replace(/_/g, ' '));
 export async function pullProjectData(pid) {
   return pullProject(pid);
 }
+/* Two folders can carry one fms_pid (a fork made before the ownership
+   check, or two devices racing a create). One is kept, every time the
+   same one, so the entry stops flipping between them: the folder this
+   account does NOT own (the real owner's, shared in) over its own, then
+   the oldest. */
+function oneFolderPerFilm(rows) {
+  const best = new Map();
+  const rank = (r) => [r.owned ? 1 : 0, Date.parse(r.createdTime || '') || Infinity, r.folderId];
+  const before = (a, b) => { const x = rank(a), y = rank(b); for (let i = 0; i < 3; i++) { if (x[i] < y[i]) return true; if (x[i] > y[i]) return false; } return false; };
+  for (const r of rows) { const cur = best.get(r.pid); if (!cur || before(r, cur)) best.set(r.pid, r); }
+  return rows.filter((r) => best.get(r.pid) === r);
+}
 async function pullProject(pid) {
+  if (!_listKnown && pid && C.allowed()) await knowList();   // waits, never skips
   if (!eligible(pid)) return;
   const folderId = folderOf(pid);
   if (!folderId) { if (writable(pid) || !roleOf(pid)) { if (await ensureFolder(pid)) await sweepDirty(pid); } return; }
@@ -323,9 +395,20 @@ async function pullProject(pid) {
     if (!key) continue;
     if (COEDIT_SCOPES.has(scope) && ce) { try { Store.notify('cloud:incoming', { projectId: pid, scope }); } catch (e) { /* a page's listener */ } }
     const raw = rawGet(key + '__' + pid);
+    const before = s.state[pid] && s.state[pid].files && s.state[pid].files[scope] ? Object.assign({}, s.state[pid].files[scope]) : null;
     let r;
     try { r = await s.pullScopeInto(pid, scope, raw, remote, { coEdit: ce && COEDIT_SCOPES.has(scope) }); }
     catch (e) { driveFailed(e, scope); continue; }
+    /* A WRITE HERE DURING THE PULL (review fix, 31 Oct 2026): the pull
+       decided on the copy it read before its download, so applying its
+       answer would overwrite that write unseen. Put the agreed copy
+       back as it was, so the push that write scheduled meets the newer
+       remote as a conflict (merged or kept), and apply nothing. */
+    if (rawGet(key + '__' + pid) !== raw) {
+      const st = s.state[pid];
+      if (st && st.files) { if (before) st.files[scope] = before; else delete st.files[scope]; saveAccountState(s.state); }
+      continue;
+    }
     if (apply(pid, scope, r)) { applied++; scopes.push(scope); }
     if (r.action === 'merged') kept++;
   }
@@ -363,6 +446,7 @@ async function pullProject(pid) {
 }
 /* Every local scope that differs from the agreed copy goes up. */
 async function sweepDirty(pid, idx) {
+  if (!_listKnown && pid && C.allowed()) await knowList();
   if (!pid || !eligible(pid) || !writable(pid)) return;
   const s = store();
   for (const [key, scope] of Object.entries(C.SCOPE_BY_KEY)) {
@@ -385,7 +469,9 @@ function lateFiles(pid, n) {
    PUSH
    ------------------------------------------------------------ */
 export function onSaved(pid, scope) {
-  if (!eligible(pid)) return;
+  /* Before the list has answered a save is still timed (pushNow waits
+     for the answer), never dropped. */
+  if (!_listKnown ? !(pid && C.allowed() && !C.isSample(pid)) : !eligible(pid)) return;
   const k = pid + '::' + scope;
   const cur = _timers.get(k);
   const first = cur ? cur.first : Date.now();
@@ -413,6 +499,7 @@ function pushOne(pid, scope, opts) {
   return next;
 }
 async function pushNow(pid, scope, opts) {
+  if (!_listKnown) await knowList();
   if (!eligible(pid)) return;
   const key = C.KEY_BY_SCOPE[scope];
   if (!key) return;
@@ -751,6 +838,18 @@ export async function migrateServer() {
       try { list = await C.rpc('drive_migrate_list'); }
       catch (e) { return { done: 0, total: 0, skipped: (e && e.code) || 'unreachable' }; }
       list = Array.isArray(list) ? list : [];
+      {
+        /* Settle the record before anything else may move: a finish
+           whose reply was lost, and an entry for every film still on
+           the server, so migrating() is true for it from now on. */
+        const all0 = readAll();
+        const mig0 = all0.migrate && typeof all0.migrate === 'object' ? all0.migrate : {};
+        const fixed = reconcileFinished(mig0, list);
+        for (const r of list) { const pid = r && (r.project_id || r.id); if (pid && !mig0[pid]) mig0[pid] = { localId: pid, scopes: {}, done: false }; }
+        writePart('migrate', mig0);
+        for (const pid of fixed) finishProject(pid, mig0[pid]);
+        markListKnown();
+      }
       if (!list.length) return { done: 0, total: 0 };
       _paused = false;
       let ui = null;
@@ -764,9 +863,9 @@ export async function migrateServer() {
           rpc: C.rpc, ds: s, state: mig, list,
           save: () => writePart('migrate', mig),
           hash: canonicalHash,
-          listComments: (pid) => C.listCommentsServer(pid),
+          listComments: (pid) => (C.migrationComments ? C.migrationComments(pid) : C.listCommentsServer(pid)),
           shouldStop: () => _paused,
-          onProgress: (p) => { if (ui) ui.update(p); if (p.step === 'done') finishProject(p.pid, mig[p.pid]); },
+          onProgress: (p) => { if (ui) ui.update(p); if (p.step === 'done') { finishProject(p.pid, mig[p.pid]); pullProject(p.pid).catch(() => {}); } },
           applyLocal: (pid, scope, value) => applyMigrated(pid, scope, value, list.find((r) => (r.project_id || r.id) === pid))
         });
         if (ui) ui.done(res);
@@ -783,10 +882,24 @@ export async function migrateServer() {
         return await navigator.locks.request('fms-drive-migrate', { ifAvailable: true }, async (lock) => (lock ? run() : { done: 0, total: 0, locked: true }));
       }
       return await run();
-    } finally { _migrating = null; }
+    } finally {
+      _migrating = null;
+      /* The list never answered (offline, server down): do not hold
+         Drive for the rest of the page — the local-first rule wins. */
+      markListKnown();
+    }
   })();
   return _migrating;
 }
+/* THE MIGRATED COPY IS NOT ALWAYS THE NEWER ONE (review, 31 Oct 2026).
+   An edit made offline, or refused by the server, before the switch
+   flipped exists only here — queued ops carry no data, and drive mode
+   never sends that queue. So a local copy with unsent work in it is
+   LEFT IN PLACE: it differs from the file just written, so the sweep
+   after the migration pushes it over that revision (which Drive keeps).
+   Only when the server copy is the newer one does it replace the local
+   one; a local copy that was merely the last one received from the
+   server is replaced silently, anything else is salvaged and said. */
 async function applyMigrated(pid, scope, value, row) {
   const key = C.KEY_BY_SCOPE[scope];
   if (!key) return;
@@ -799,9 +912,19 @@ async function applyMigrated(pid, scope, value, row) {
     let same = false;
     try { same = (await canonicalHash(JSON.parse(local))) === (await canonicalHash(value)); } catch (e) { same = false; }
     if (same) return;
-    C.salvage(pid, scope, local);
+    if (C.localAhead && C.localAhead(pid, scope)) return;
+    if (!(C.isServerCopy && C.isServerCopy(pid, scope, local))) {
+      C.salvage(pid, scope, local);
+      C.toast('The studio server had a newer copy of ' + pageName(scope) + '; this device’s version is kept in Settings → Sync → Recovered copies.', 'info', 6000);
+    }
   }
   C.applyingRemote(() => rawSet(nsKey, text));
+}
+/* What asked to move before the list answered: pulled (and swept) now. */
+function releaseHeld() {
+  const pids = [..._held];
+  _held.clear();
+  for (const pid of pids) if (!migrating(pid)) pullProject(pid).catch(() => {});
 }
 function finishProject(pid, m) {
   if (!m || !m.folderId) return;
@@ -810,7 +933,7 @@ function finishProject(pid, m) {
 }
 
 export default {
-  init, status, markGranted, pullProjectList, pullProjectData, uploadProjects, onSaved, flushAll, pending,
+  init, status, markGranted, askReconnect, pullProjectList, pullProjectData, uploadProjects, onSaved, flushAll, pending,
   attachToCurrentProject, onProjectsChanged, listComments, createComment, updateCommentStatus, deleteComment,
   getProjectRole, shareByEmail, listShares, revokeShare, createShare, handleDriveLink, openShared,
   budgetPrivacy, setBudgetPrivate, deleteOwnedCloudProjects, exportScreening, attachScreening, revokeScreening,

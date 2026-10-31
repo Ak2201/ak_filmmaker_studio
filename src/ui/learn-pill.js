@@ -15,6 +15,12 @@
    caller supplies (text or build). The explainer is a dynamic import on
    press, so a page with thirty pills pays for thirty buttons.
 
+   TWO SIZES, ONE RULE (review, 31 Oct 2026). `md` wherever the pill sits
+   under a page, section or panel header or subtitle (learn-places.js,
+   the budget's "Who can see this budget?"); `sm` only INSIDE a card, a
+   field row or running content (a term card, a format note, a step's
+   "Why this matters"). Both are 44px under a coarse pointer.
+
    A label is a question starting "What is / What are"; the few that are
    not (Why?, Who can see this budget?) say so with `exempt`, which
    prove:explainer reads. Nothing here writes storage.

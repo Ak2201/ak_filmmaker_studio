@@ -455,10 +455,10 @@ for (const [w, hgt] of [[1100, 900], [390, 844]]) {
         return { ratio: lane.getBoundingClientRect().width / sc.clientWidth, snap: getComputedStyle(sc).scrollSnapType, nav: getComputedStyle(document.querySelector('.st-bl-nav')).display, pos: document.querySelector('.st-bl-pos').textContent };
       });
       truthy('390 lanes: a lane is 85% of the scroller and snaps one at a time', Math.abs(g.ratio - 0.85) < 0.03 && /x mandatory/.test(g.snap) && g.nav === 'flex', g);
-      check('390 lanes: the indicator starts at beat 1', g.pos, 'Beat 1 of 16');
+      check('390 lanes: the indicator starts at beat 1', g.pos, 'Beat 1 of 15');
       await page.click('[data-st="lane-next"]');
       await page.waitForTimeout(900);
-      check('390 lanes: Next beat moves one lane', await page.$eval('.st-bl-pos', (p) => p.textContent), 'Beat 2 of 16');
+      check('390 lanes: Next beat moves one lane', await page.$eval('.st-bl-pos', (p) => p.textContent), 'Beat 2 of 15');
       const tgt = await page.evaluate(() => [...document.querySelectorAll('.st-grip, .st-card-open, [data-st="lane-next"]')].filter((b) => b.getClientRects().length).every((b) => b.getBoundingClientRect().height >= 24));
       check('390 lanes: the grips and buttons are real targets', tgt, true);
       const bad = await contrastFails(page, '#path-outline'); truthy('390 lanes: text meets AA', !bad.length, bad.slice(0, 6));

@@ -372,6 +372,20 @@ export function continueFromSample() {
   go(1);
 }
 
+/** The hub, when ?sample=1&tour=1 could NOT open the sample: drop the
+ *  parameter (so a reload does not wait again) and draw step 1's card,
+ *  which offers the sample button. Without this the tour sat active at
+ *  step 0 with nothing on the page but the error toast. */
+export function stayOnFirstStep() {
+  try {
+    const u = new URL(location.href);
+    if (u.searchParams.has('tour')) { u.searchParams.delete('tour'); history.replaceState(null, '', u.pathname + u.search + u.hash); }
+  } catch (e) { /* ignore */ }
+  const t = readTour();
+  if (!t.active || t.step !== 0 || !booted) return;   // not booted: boot draws it
+  if (STEPS[0].page === pageId()) showStep(0); else showChip(0);
+}
+
 function wire() {
   if (keyWired) return;
   keyWired = true;
@@ -537,4 +551,4 @@ function refreshStep() {
   if (t.active && pop && STEPS[t.step].id === 'sample') showStep(t.step, { focus: false });
 }
 
-export default { boot, startTour, resumeTour, resumable, continueFromSample, dismissTour, readTour, firstWeekFacts, pageId, TOUR_KEY, TOUR_START_URL };
+export default { boot, startTour, resumeTour, resumable, continueFromSample, stayOnFirstStep, dismissTour, readTour, firstWeekFacts, pageId, TOUR_KEY, TOUR_START_URL };

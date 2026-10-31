@@ -394,7 +394,16 @@ function openSampleFromURL() {
   /* ?sample=1 is Dragon (start.html's link); ?sample=<id> is that one. */
   const want = params.get('sample');
   const sample = want === '1' ? sampleById(DEFAULT_SAMPLE) : sampleById(want);
-  if (!sample) return;
+  if (!sample) {
+    /* `?tour=1` with no sample (a stale bookmark): nothing here will move
+       the tour on, so drop the parameter and let tour.js draw step 1. */
+    if (params.get('tour') === '1') {
+      params.delete('tour');
+      const q0 = params.toString();
+      try { history.replaceState(null, '', location.pathname + (q0 ? '?' + q0 : '') + location.hash); } catch (e) { /* ignore */ }
+    }
+    return;
+  }
   params.delete('sample');
   const q = params.toString();
   try { history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash); } catch (e) { /* ignore */ }
@@ -406,13 +415,15 @@ function openSampleFromURL() {
   /* `tour=1` is the tour's own start (src/ui/tour.js TOUR_START_URL, and
      cloud.js on an account's first ever sign-in): once the sample is the
      open film, the tour moves on to its next page by itself. A sample
-     that did not open leaves the tour on its first step, whose card
-     offers the button again. The parameter stays in the address until
-     the tour navigates on, so tour.js's boot knows not to draw step 1. */
+     that did not open leaves the tour on its first step, and
+     stayOnFirstStep() draws that step's card, which offers the button
+     again. The parameter stays in the address until then, so tour.js's
+     boot knows not to draw step 1 meanwhile. */
   const touring = params.get('tour') === '1';
   reopenOrOpenSample(sample.id, toDashboard && !touring).then(() => {
-    if (!touring || !findSampleProject(sample.id)) return;
-    import('../ui/tour.js').then((m) => m.continueFromSample()).catch(() => { /* offline: the card on Home still offers it */ });
+    if (!touring) return;
+    const opened = !!findSampleProject(sample.id);
+    import('../ui/tour.js').then((m) => (opened ? m.continueFromSample() : m.stayOnFirstStep())).catch(() => { /* offline: the card on Home still offers it */ });
   });
 }
 

@@ -312,6 +312,18 @@ function loadDrive() {
       allowed: () => !!(session && syncAllowed()),
       coEditingEnabled,
       listCommentsServer: (pid) => _listCommentsServer(pid),
+      migrationComments: (pid) => _migrationComments(pid),
+      serverOwner: (pid) => _serverOwner(pid),
+      /* For the migration's local copy: unsent work here (a queued
+         upsert, or a local clock past the last exchange), the copy last
+         exchanged with the server, and whether this film ever was. */
+      localAhead: (pid, scope) => {
+        if (_readQueue().some((o) => o && o.kind === 'upsert' && o.projectId === pid && o.scope === scope && _ownsOp(o))) return true;
+        const row = _readMeta()[_metaId(pid, scope)];
+        return !!(row && row.local && row.local > (row.remote || 0));
+      },
+      isServerCopy: (pid, scope, raw) => _isServerCopy(pid, scope, raw),
+      everSynced: (pid) => Object.entries(_readMeta()).some(([k, r]) => k.startsWith(pid + '::') && r && r.remote),
       planLimitToast: (msg) => planLimitToast(msg, { carry: false }),
       setSyncEnabled,
       userEmail: () => getUserEmail(),
@@ -343,30 +355,73 @@ async function googleTokenCall(action, extra) {
   if (res.status === 409 && body && body.code === 'regrant') {
     throw Object.assign(new Error('Google Drive needs you to sign in again.'), { code: 'regrant' });
   }
-  if (!res.ok) throw Object.assign(new Error('The token service answered ' + res.status + (body && body.error ? ': ' + body.error : '')), { status: res.status });
+  if (!res.ok) throw Object.assign(new Error('The token service answered ' + res.status + (body && body.error ? ': ' + body.error : '')), { status: res.status, code: (body && body.code) || undefined });
   return body || {};
 }
 async function mintGoogleToken() {
-  const b = await googleTokenCall('mint');
-  return { access_token: b.access_token, expires_in: b.expires_in };
+  try {
+    const b = await googleTokenCall('mint');
+    return { access_token: b.access_token, expires_in: b.expires_in };
+  } catch (e) {
+    /* No grant stored for this account (404 no_token): the local record
+       is wrong, so clear it and ask for the one sign-in that fixes it.
+       The one-hour GIS path still runs behind this (drive.js). */
+    if (e && e.code === 'no_token' && _drive) { _drive.markGranted(false); _drive.askReconnect(); }
+    throw e;
+  }
+}
+/* THE REFRESH TOKEN LEAVES THE BROWSER (review, 31 Oct 2026). supabase-js
+   persists the whole sign-in session, provider tokens included, under
+   `sb-<ref>-auth-token` until its first refresh rewrites it — up to an
+   hour of a long-lived Google refresh token in localStorage. Once the
+   function has it (or the attempt is over), both provider tokens are
+   removed from the stored copy; the access token stays in memory only,
+   which is what drive.js adopts. Chunked keys (`.0`, `.1`) are left
+   alone: the SDK only chunks when a cookie store asks it to. */
+function stripStoredProviderTokens() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !/^sb-.+-auth-token$/.test(k)) continue;
+      const raw = Store.rawGet(k);
+      let o; try { o = JSON.parse(raw); } catch (e) { continue; }
+      if (!o || typeof o !== 'object') continue;
+      let hit = false;
+      for (const t of [o, o.currentSession]) {
+        if (!t || typeof t !== 'object') continue;
+        for (const f of ['provider_token', 'provider_refresh_token']) if (f in t) { delete t[f]; hit = true; }
+      }
+      if (hit) Store.rawSet(k, JSON.stringify(o));
+    }
+  } catch (e) { /* storage that throws holds nothing to strip */ }
+  if (session && 'provider_refresh_token' in session) { try { delete session.provider_refresh_token; } catch (e) { /* frozen */ } }
 }
 /* After a sign-in (or a restored session) in drive mode: hand the
-   refresh token to the server once, then move whatever the server
-   still holds into Drive, then answer a ?drive= link. */
+   refresh token to the server, then move whatever the server still
+   holds into Drive, then answer a ?drive= link.
+
+   PER ACCOUNT. A refresh token present is ALWAYS stored ('store' is an
+   upsert), whatever this device recorded — it may be stale after "sign
+   out everywhere". With none present and no record for THIS account,
+   the server is asked; an account it holds no token for is told to
+   reconnect rather than left on the one-hour path. A record that is
+   wrong is corrected by the first mint (404 no_token). */
 async function afterDriveSignIn() {
   if (_mode !== 'drive' || !session) return;
   const D = await loadDrive();
   try {
     const rt = session.provider_refresh_token;
-    if (rt && !driveGrantRecorded()) {
+    if (rt) {
       await googleTokenCall('store', { refresh_token: rt });
       D.markGranted(true);
-    } else if (!driveGrantRecorded()) {
+    } else if (!driveGrantRecorded(null, session.user && session.user.id)) {
       const st = await supabase.rpc('google_token_status');
       const row = st && !st.error ? (Array.isArray(st.data) ? st.data[0] : st.data) : null;
       if (row && row.has_token) D.markGranted(true);
+      else if (row) { D.markGranted(false); D.askReconnect(); }
     }
   } catch (e) { console.warn('[StudioCloud] google-token store', e && e.message); }
+  finally { stripStoredProviderTokens(); }
   try { await D.migrateServer(); } catch (e) { /* reported inside */ }
   D.handleDriveLink();
 }
@@ -1557,7 +1612,13 @@ export async function signOut(opts) {
   // and BEFORE the session goes: the RPC needs the JWT to say whose.
   await Gate.release();
   if (everywhere) {
-    try { const { revokeGoogleGrant } = await import('./google-token.js'); await revokeGoogleGrant(); } catch (e) { /* never blocks the sign-out */ }
+    try {
+      const { revokeGoogleGrant } = await import('./google-token.js');
+      await revokeGoogleGrant();
+      /* The server's grant is gone, so this device's record of it is
+         wrong now: the next sign-in must ask for consent again. */
+      if (_mode === 'drive') { try { (await loadDrive()).markGranted(false); } catch (e) { /* nothing recorded */ } }
+    } catch (e) { /* never blocks the sign-out */ }
   }
   try {
     await supabase.auth.signOut(everywhere ? { scope: 'global' } : undefined);
@@ -2702,6 +2763,37 @@ export async function listComments(projectId, scope, fieldKey) {
 }
 /* The server's comment rows: the Supabase path, and the migration's
    source (drive-migrate.js builds comments.json from these). */
+/* Who owns a film on the server, for drive mode deciding whether it may
+   make a Drive folder for it: 'me', 'other' (a teammate's film, shared
+   with this account in the server era), 'none' (no row: never synced,
+   or moved to Drive and deleted), or 'unknown' (the read failed). */
+async function _serverOwner(projectId) {
+  try {
+    const sb = await ensureClient();
+    if (!sb || !session) return 'unknown';
+    const { data, error } = await sb.from('projects').select('owner_id').eq('id', projectId).limit(1);
+    if (error) return 'unknown';
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return 'none';
+    return row.owner_id === session.user.id ? 'me' : 'other';
+  } catch (e) { return 'unknown'; }
+}
+/* The migration's own reader (drive-migrate.js): EVERY comment row of a
+   film, paged past PostgREST's row cap, ordered by id so pages cannot
+   overlap, and an error THROWS — the UI reader above answers [] on an
+   error, which a migration would have recorded as "no comments". */
+async function _migrationComments(projectId) {
+  const sb = await ensureClient();
+  if (!sb) throw new Error('The studio is not connected to its server.');
+  const PAGE = 500, out = [];
+  for (let from = 0; from < 200000; from += PAGE) {
+    const { data, error } = await sb.from('comments').select('*').eq('project_id', projectId).order('id').range(from, from + PAGE - 1);
+    if (error) throw error;
+    out.push(...(data || []));
+    if (!data || data.length < PAGE) return out;
+  }
+  return out;
+}
 async function _listCommentsServer(projectId, scope, fieldKey) {
   if (!supabase) return [];
   let q = supabase.from('comments').select('*').eq('project_id', projectId);

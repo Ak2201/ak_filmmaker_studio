@@ -104,6 +104,7 @@ import { errorSentence } from '../lib/gate.js';
 import { planFeaturesSection, wirePlanFeatures } from '../ui/plan-features.js';
 import { purchasesSwitchBlock, accessAdminSection, wireAccessAdmin, purchasesRequiredNow } from '../ui/access-admin.js';
 import { coEditSwitchBlock } from '../ui/coedit-admin.js';
+import { storageModeBlock } from '../ui/storage-admin.js';
 import { billingAdminSection, wireBillingAdmin, billingSnapshot } from '../ui/billing-admin.js';
 import { invoiceAdminSection } from '../ui/invoice-panels.js';
 import { growthAdminSection, wireGrowthAdmin, growthSnapshot } from '../ui/growth-admin.js';
@@ -388,6 +389,7 @@ function peopleTab(st) {
     adminSection(block, st, { part: 'members' }),
     accessAdminSection(block, st),
     coEditSwitchBlock(() => renderSoon()),
+    storageModeBlock(() => renderSoon()),
     ov.data ? signedInBlock() : null,
     ov.data ? organisationsBlock() : null
   ]);

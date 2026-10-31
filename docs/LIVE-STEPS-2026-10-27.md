@@ -96,18 +96,21 @@ history) also stays; it holds no app data.
    be undone.
 2. **Checksums.** Run each part on its own, pasted base64 per the paste rule
    (step 1), and compare the editor's SHA-256 with these before pressing Run.
-   Each part is cut out of the file byte-exact with the awk line:
+   Each part is cut out of the file byte-exact with the awk line. (Recomputed
+   31 Oct 2026: the purge now also knows §66's `google_tokens` and
+   `account_profile`, keeping the keeper's rows; it works before or after
+   §66.)
 
    ```bash
    F=supabase/schema/patches/purge-test-data-2026-10-27.sql
    shasum -a 256 $F
-   # 3c0f93a492e624315ea3d7950e801b3fa64efe15a5112603071ec81524fea94b  (whole file)
+   # 80d5e06f7bd815f5b8d0b6411ed8e6b9575b0eeaf3837c82f84840b877256988  (whole file)
    awk '/^-- @@ PART 1 BEGIN/,/^-- @@ PART 1 END/' $F | shasum -a 256
-   # c442776e217d6de59359a80bb835b7f14d7baa3d431f73ec3efea838ae747a6b  PREVIEW
+   # ab562ad65f0b1635462950ef5604cba62853ca09b3180570ee6d3b13f101b152  PREVIEW
    awk '/^-- @@ PART 2 BEGIN/,/^-- @@ PART 2 END/' $F | shasum -a 256
-   # 8aa1d5728363e1fd5c837f0c663a64209a902f74559ae1515fcef001b8567838  PURGE
+   # 7b1dca8ceb778b0ab199b6c95537f3f8817f4ed8e9d65bf75a862938974fb094  PURGE
    awk '/^-- @@ PART 3 BEGIN/,/^-- @@ PART 3 END/' $F | shasum -a 256
-   # 5d076d0f2849658b606e143e33bb554b97f5b4a8bbfa69028909f4abd1431c3e  READ-BACK
+   # f7ce0e2c82a28e5e3301db5e74181d69cd979d30c5f89a6720363e93153e3bab  READ-BACK
    awk '/^-- @@ PART 2 BEGIN/,/^-- @@ PART 2 END/' $F | base64   # what you paste
    ```
 

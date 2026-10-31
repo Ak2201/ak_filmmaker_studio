@@ -36,6 +36,7 @@ import { fmtMinor } from '../lib/price-model.js';
 import { trialLength } from '../lib/trial-time.js';
 import { errorSentence } from '../lib/gate.js';
 import { customerCall } from '../lib/admin-api.js';
+import { revokeGoogleGrant } from '../lib/google-token.js';
 
 /* ---- talking to the server ---------------------------------------- */
 
@@ -555,6 +556,10 @@ async function deleteTotally() {
     confirm: 'Delete totally', typeToConfirm: email
   })) return;
   try {
+    /* §66: revoke their stored Google Drive grant at Google FIRST, while
+       the row still exists to say what to revoke. Best effort: if Google
+       cannot be reached, deleting the sign-in still drops the row. */
+    await revokeGoogleGrant(cur.id);
     const out = await rpc('admin_delete_user', { p_user: cur.id, p_confirm_email: email });
     const n = out && typeof out.invoices_retained === 'number' ? out.invoices_retained : 0;
     wrote(email + ' is deleted' + (n ? ' — ' + n + (n === 1 ? ' invoice' : ' invoices') + ' kept, anonymised' : '') + '.');

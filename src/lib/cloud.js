@@ -1371,7 +1371,13 @@ async function saveBeforeSignOut() {
   }));
 }
 
-export async function signOut() {
+/* `{ everywhere: true }` (schema §66): sign this account out on EVERY
+   device, and first revoke the Google Drive grant the google-token edge
+   function holds for it, while this session can still say whose it is.
+   The revoke is best effort and never blocks the sign-out; plain
+   signOut() is unchanged (this device only, the grant kept). */
+export async function signOut(opts) {
+  const everywhere = !!(opts && typeof opts === 'object' && opts.everywhere === true);
   if (!supabase) {
     session = null;
     Store.setAccount(null);       // may reload; nothing left to await
@@ -1383,8 +1389,11 @@ export async function signOut() {
   // Free the device lock now rather than in 90 seconds. Best effort,
   // and BEFORE the session goes: the RPC needs the JWT to say whose.
   await Gate.release();
+  if (everywhere) {
+    try { const { revokeGoogleGrant } = await import('./google-token.js'); await revokeGoogleGrant(); } catch (e) { /* never blocks the sign-out */ }
+  }
   try {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut(everywhere ? { scope: 'global' } : undefined);
   } catch (e) {
     console.warn('[StudioCloud] sign-out', e);
   }

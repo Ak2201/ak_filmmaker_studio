@@ -1499,6 +1499,14 @@ function openShareDialog(projectId) {
     openCloudAuthModal();
     return;
   }
+  /* Drive-only storage (schema §66): the film is a folder in the owner's
+     Drive, shared by e-mail through Drive permissions — no link tokens. */
+  if (StudioCloud.storageModeNow && StudioCloud.storageModeNow() === 'drive') {
+    Promise.all([StudioCloud.drive(), import('./drive-ui.js')])
+      .then(([D, UI]) => { if (D) UI.openDriveShareSheet(projectId, D, { returnTo: document.activeElement }); })
+      .catch((e) => StudioUI.toastError((e && e.message) || String(e)));
+    return;
+  }
   let m = document.getElementById('shareDialog');
   if (m) m.remove();
   m = document.createElement('div');

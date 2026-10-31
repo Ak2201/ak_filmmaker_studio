@@ -345,7 +345,10 @@ export function createGate(getClient) {
       const r = one(await rpc('screening_open', { p_code: normaliseCode(code), p_viewer_email: viewerEmail || null }));
       if (!r) throw new GateError(INVALID_PASS, 'invalid');
       return { projectId: r.project_id, title: r.title, format: r.format, accessId: r.access_id,
-               expiresAt: r.expires_at, scopes: r.scopes || {} };
+               expiresAt: r.expires_at, scopes: r.scopes || {},
+               /* Drive-only storage (§66): the pass carries no content, only
+                  the id of the owner's link-shared export. */
+               driveFileId: r.drive_file_id || null };
     } catch (e) {
       if (isMissing(e)) throw new GateError('Screening passes are not available yet.', 'notdeployed');
       throw e;

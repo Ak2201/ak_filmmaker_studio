@@ -164,6 +164,37 @@ none of them a new key:
   `ALL_KEYS`), merged in on a click by `writePayCurrency()` in
   `src/lib/region-core.js`, never on load.
 
+## Drive-only storage (31 Oct 2026) — two subfields and one entry field, no new key
+
+`docs/DRIVE-STORAGE.md` is the design. With `billing_settings.storage_mode =
+'drive'` (schema §66) content lives in the user's own Google Drive, and the
+device keeps only what it needs to find it:
+
+- **A film's folder** is a `drive` field — `{ folderId, role, picked? }` —
+  on its entry in `fms_studio_projects_v1`, beside `region` and `fav`.
+  Written by `Store.setProjectDrive()` (no `projects:changed` event, no
+  `updatedAt` bump, only when it differs). `buildBackup()` LEAVES IT OUT of
+  an export: a folder id is this account's, on this device, like the next
+  two.
+- **`fms_drive_sync_v1.store[<account id>]`** — the root folder id, and per
+  project `{ folderId, role, files: { <scope>: { id, rev, hash } },
+  commentsId, metaId, privateId, budgetPrivate, screenings }`, plus
+  `granted` (this device handed the server a refresh token). Per account,
+  so two accounts on one browser never share a root. `rev`/`hash` are the
+  head revision this device last AGREED with and the canonical SHA-256 of
+  that content: local is dirty when its hash differs, so no queue key is
+  needed — a dirty scope is sent on the next pass.
+- **`fms_drive_sync_v1.migrate[<server project id>]`** — the migration's
+  progress: `{ localId, folderId, scopes: { <scope>:
+  'written'|'verified'|'deleted' }, comments, frames, shared, done }`.
+
+`fms_drive_sync_v1` was already device-local, in `ALL_KEYS` (reset clears
+it: the next sign-in re-learns everything by listing Drive) and
+deliberately out of `GLOBAL_KEYS`. Disconnecting the Drive BACKUP file
+(`drive-sync.js disconnect()`) keeps `store` and `migrate`. No token is
+ever stored on the device: the refresh token is encrypted on the server
+(`google_tokens`, §66), the access token lives in memory (`drive.js`).
+
 ## What is NOT verified
 
 - **The cloud half of this file has not been observed live.** The schema

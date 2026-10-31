@@ -31,7 +31,38 @@ const Gate = createGate(guestClient);
 
 /** Open a screening pass. Resolves the pass the server returned;
  *  rejects with the gate's error (err.code 'nocloud' when unconnected). */
-export const openScreening = (code, email) => Gate.openScreening(code, email);
+export const openScreening = (code, email) => Gate.openScreening(code, email).then(withDriveContent);
+
+/* DRIVE-ONLY STORAGE (schema §66): a pass for a film in its owner's
+   Drive carries no content, only `drive_file_id` — the owner's
+   screening export, shared "anyone with the link can read". It is read
+   here with the build's public Google API key and NO OAuth: the viewer
+   has no account. The key goes in a HEADER (x-goog-api-key), never in
+   the URL — a key in a URL is a key in history and in logs. The file id
+   arrives only while screening_open() says the pass is valid and
+   unexpired, which is the gate; the owner's client unshares the file
+   when the pass expires or is revoked. */
+export const DRIVE_FILE_URL = 'https://www.googleapis.com/drive/v3/files/';
+export async function readDriveExport(fileId, fetcher) {
+  const env = import.meta.env || {};
+  const key = String(env.VITE_GOOGLE_API_KEY || '').trim();
+  const headers = key ? { 'x-goog-api-key': key } : {};
+  const res = await (fetcher || fetch)(DRIVE_FILE_URL + encodeURIComponent(fileId) + '?alt=media', { headers, credentials: 'omit' });
+  if (!res.ok) {
+    const e = new Error('The film for this pass could not be read from its owner’s Google Drive (Google answered ' + res.status + ').');
+    e.code = res.status === 404 || res.status === 403 ? 'expired' : 'drive';
+    throw e;
+  }
+  return res.json();
+}
+async function withDriveContent(pass) {
+  if (!pass || !pass.driveFileId) return pass;
+  const doc = await readDriveExport(pass.driveFileId);
+  return Object.assign({}, pass, {
+    title: pass.title || doc.title, format: pass.format || doc.format,
+    scopes: (doc && doc.scopes && typeof doc.scopes === 'object') ? doc.scopes : {}
+  });
+}
 
 /** Open a public view token (VITE_PUBLIC_VIEW only). */
 export const openSharedView = (token) => guestClient().then((c) => openPublicView(c, token));

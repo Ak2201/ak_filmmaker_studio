@@ -27,10 +27,10 @@ import { readPrivacy, skipScope, isBudgetScope, UNKNOWN as PRIVACY_UNKNOWN } fro
    cannot drift apart about what was consented to. drive.js imports
    nothing from here, so this is not a cycle, and vite.config folds
    every src/lib module into one chunk anyway. */
-import { DRIVE_SCOPE } from './drive.js';
+import { DRIVE_SCOPE, setTokenSource } from './drive.js';
 /* The key only; the stash and its reader are below. Shared with
    start.js, which cannot import this file. */
-import { AUTH_ERROR_KEY } from './auth-scope.js';
+import { AUTH_ERROR_KEY, googleQueryParams, driveGrantRecorded } from './auth-scope.js';
 export { AUTH_ERROR_KEY };
 import { createGate, startHeartbeat, useHolder, getCodePass } from './gate.js';
 import { callPort, hasPort } from './ports.js';
@@ -126,32 +126,11 @@ const KEY_BY_SCOPE = Object.fromEntries(
    `fms_write_goals_v1` with section 37. */
 const LOCAL_ONLY = new Set(['fms_scene_bin_v1']);
 
-/* A scope whose value is a HISTORY (per-day entries) cannot use the
-   whole-blob last-writer-wins rule below: two devices that each wrote a
-   different day would have one of them erased. For these scopes the
-   pull and the live handler MERGE the two copies instead.
-   `fms_write_goals_v1` is { v, goal, days: { 'YYYY-MM-DD': {w0,p0,w,p} } }:
-   days are unioned; a day both devices have keeps the entry that
-   recorded more writing (w - w0), the remote on a tie; the goal follows
-   whichever side wins the clock. Pure, and returns canonical JSON text
-   (sorted days) so "did anything change" is a string comparison. */
-export function mergeWriteGoals(localRaw, remoteRaw, localWins) {
-  const parse = (r) => { try { const o = typeof r === 'string' ? JSON.parse(r) : r; return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } };
-  const L = parse(localRaw), R = parse(remoteRaw);
-  const ld = L.days && typeof L.days === 'object' ? L.days : {};
-  const rd = R.days && typeof R.days === 'object' ? R.days : {};
-  const written = (d) => (d && Number.isFinite(d.w - d.w0)) ? d.w - d.w0 : -Infinity;
-  const days = {};
-  for (const k of [...new Set([...Object.keys(ld), ...Object.keys(rd)])].sort()) {
-    if (!(k in ld)) days[k] = rd[k];
-    else if (!(k in rd)) days[k] = ld[k];
-    else days[k] = written(ld[k]) > written(rd[k]) ? ld[k] : rd[k];
-  }
-  const goal = (localWins ? L.goal || R.goal : R.goal || L.goal);
-  const out = { v: 1, days };
-  if (goal) out.goal = goal;
-  return JSON.stringify(out);
-}
+/* A scope whose value is a HISTORY (per-day entries) is MERGED, not
+   replaced: mergeWriteGoals now lives in write-goals-merge.js (pure), so
+   the Drive store (src/lib/drive-store.js) can run the same merge. */
+import { mergeWriteGoals } from './write-goals-merge.js';
+export { mergeWriteGoals };
 const MERGE_BY_SCOPE = { write_goals: mergeWriteGoals };
 
 /* The script scope merges ONLY with the co-editing switch on (§49);
@@ -263,6 +242,140 @@ let _signingIn = false;       // an OAuth redirect is in flight
 let _invitesCheckedFor = null; // user id whose account invites we swept
 
 // ============================================================
+// STORAGE MODE — where content lives (schema §66)
+// ------------------------------------------------------------
+// 'supabase' (the default, and every path below exactly as it was) or
+// 'drive': every project_data scope, comment, share and screening
+// export lives in the user's own Google Drive instead, through
+// src/lib/drive-project-sync.js, loaded LAZILY only once the server
+// says 'drive'. Read once per boot and after a sign-in, kept in memory
+// only, and ANY failure reads as 'supabase' — the switch fails toward
+// the existing path. While it is unknown, a save waits for the answer
+// rather than guessing (a push to project_data in drive mode would put
+// content back on the server).
+// ============================================================
+let _mode = 'supabase';
+let _modeKnown = false;
+let _modeP = null;
+let _drive = null;
+let _driveP = null;
+function _setMode(m) {
+  _modeKnown = true;
+  if (m === _mode) return;
+  _mode = m;
+  /* The silent token: the google-token function mints from the
+     server-held refresh token (drive.js asks this first). */
+  setTokenSource(m === 'drive' ? mintGoogleToken : null);
+  if (m === 'drive') tearDownChannels();
+}
+export function readStorageMode(opts) {
+  if (_modeP && !(opts && opts.force)) return _modeP;
+  _modeP = (async () => {
+    try {
+      const sb = await ensureClient();
+      if (!sb) return 'supabase';
+      const { data, error } = await sb.rpc('get_storage_mode');
+      return !error && data === 'drive' ? 'drive' : 'supabase';
+    } catch (e) { return 'supabase'; }
+  })().then((m) => { _setMode(m); return m; });
+  return _modeP;
+}
+/** The mode, once known; signed out there is no sync to route. */
+async function modeOf() {
+  if (!session) return _mode;
+  if (_modeKnown) return _mode;
+  return readStorageMode();
+}
+export const storageModeNow = () => _mode;
+export const storageModeKnown = () => _modeKnown;
+/* The drive branch, loaded on first need and handed what it needs from
+   this file (it imports store.js and drive.js itself, never cloud.js). */
+function loadDrive() {
+  if (_drive) return Promise.resolve(_drive);
+  if (_driveP) return _driveP;
+  _driveP = import('./drive-project-sync.js').then((m) => {
+    m.init({
+      Store, SYNC_STATES, KEY_BY_SCOPE, SCOPE_BY_KEY,
+      session: () => session,
+      rpc: async (name, args) => {
+        const sb = await ensureClient();
+        if (!sb) throw new Error('The studio is not connected to its server.');
+        const { data, error } = await sb.rpc(name, args || {});
+        if (error) throw error;
+        return data;
+      },
+      setSync, toast, salvage, idleSync,
+      applyingRemote: (fn) => { _applyingRemote = true; try { fn(); } finally { _applyingRemote = false; } },
+      isSample: _isSample,
+      allowed: () => !!(session && syncAllowed()),
+      coEditingEnabled,
+      listCommentsServer: (pid) => _listCommentsServer(pid),
+      planLimitToast: (msg) => planLimitToast(msg, { carry: false }),
+      setSyncEnabled,
+      userEmail: () => getUserEmail(),
+      reconnect: () => reconnectGoogle()
+    });
+    _drive = m.default || m;
+    return _drive;
+  });
+  _driveP.catch(() => { _driveP = null; });
+  return _driveP;
+}
+const driveDo = (name, ...args) => loadDrive().then((D) => D[name](...args));
+
+/* THE google-token EDGE FUNCTION (supabase/functions/google-token): the
+   server half of token renewal. 'store' hands it the refresh token
+   once, 'mint' returns a fresh access token, 'revoke' ends the grant.
+   A 409 {code:'regrant'} means Google refused the stored token and only
+   a new consent can fix it. Errors say what was observed. */
+async function googleTokenCall(action, extra) {
+  const c = getCfg();
+  if (!c || !c.url || !session) throw new Error('Sign in first.');
+  const res = await fetch(String(c.url).replace(/\/+$/, '') + '/functions/v1/google-token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token, apikey: c.key },
+    body: JSON.stringify(Object.assign({ action }, extra || {}))
+  });
+  let body = null;
+  if (res.status !== 204) { try { body = await res.json(); } catch (e) { body = null; } }
+  if (res.status === 409 && body && body.code === 'regrant') {
+    throw Object.assign(new Error('Google Drive needs you to sign in again.'), { code: 'regrant' });
+  }
+  if (!res.ok) throw Object.assign(new Error('The token service answered ' + res.status + (body && body.error ? ': ' + body.error : '')), { status: res.status });
+  return body || {};
+}
+async function mintGoogleToken() {
+  const b = await googleTokenCall('mint');
+  return { access_token: b.access_token, expires_in: b.expires_in };
+}
+/* After a sign-in (or a restored session) in drive mode: hand the
+   refresh token to the server once, then move whatever the server
+   still holds into Drive, then answer a ?drive= link. */
+async function afterDriveSignIn() {
+  if (_mode !== 'drive' || !session) return;
+  const D = await loadDrive();
+  try {
+    const rt = session.provider_refresh_token;
+    if (rt && !driveGrantRecorded()) {
+      await googleTokenCall('store', { refresh_token: rt });
+      D.markGranted(true);
+    } else if (!driveGrantRecorded()) {
+      const st = await supabase.rpc('google_token_status');
+      const row = st && !st.error ? (Array.isArray(st.data) ? st.data[0] : st.data) : null;
+      if (row && row.has_token) D.markGranted(true);
+    }
+  } catch (e) { console.warn('[StudioCloud] google-token store', e && e.message); }
+  try { await D.migrateServer(); } catch (e) { /* reported inside */ }
+  D.handleDriveLink();
+}
+/* "Reconnect Google Drive": sign in again with consent and offline
+   access, so Google issues a new refresh token. */
+export async function reconnectGoogle() {
+  if (_drive) _drive.markGranted(false);
+  return signInWithGoogle({ regrant: true });
+}
+
+// ============================================================
 // SYNC STATUS — one visible answer to "is my writing safe?"
 // ------------------------------------------------------------
 // A local-first app that also syncs owes the user an honest status
@@ -334,6 +447,12 @@ function idleSync() {
   if (_gateState === 'closed') return setSync(_gateReason === 'unreachable' ? SYNC_STATES.ERROR : SYNC_STATES.OFF, gateDetail(_gateReason));
   if (_gateState === 'lost')   return setSync(SYNC_STATES.ERROR, 'Paused — this account is active on another device');
   if (_planLimitHeld) return setSync(SYNC_STATES.ERROR, 'Not synced \u2014 plan limit reached');
+  /* Drive mode: the drive branch knows what is outstanding (its pushes,
+     its refusals); the Supabase queue is not flushed there. */
+  if (_mode === 'drive') {
+    const st = _drive && _drive.status ? _drive.status() : null;
+    return setSync(st ? st.state : SYNC_STATES.SYNCED, st ? st.detail : 'Everything is in your Google Drive');
+  }
   if (q) {
     const waiting = q + ' change' + (q === 1 ? '' : 's') + ' waiting to upload';
     /* "Offline" only when the browser says so. A queue on a connected
@@ -990,8 +1109,11 @@ async function _createClient() {
           // whether or not sync is open. Idempotent per user id.
           handlePendingInvites();
           if (!ok) return;
-          maybeMigrateLocalToCloud();
-          attachToCurrentProject();
+          readStorageMode({ force: true }).then(() => {
+            maybeMigrateLocalToCloud();
+            attachToCurrentProject();
+            afterDriveSignIn();
+          });
         });
       }
       if (!sess) {
@@ -1258,7 +1380,7 @@ function takePendingShare() {
    `prompt: 'select_account'` because the alternative is that a user on
    a shared machine is silently signed back into somebody else's
    Google account without ever being asked which one. */
-export async function signInWithGoogle() {
+export async function signInWithGoogle(opts) {
   const sb = await ensureClient();
   if (!sb) throw new Error('Cloud is not set up in this browser yet. Add your Supabase URL and anon key first.');
   if (_signingIn) return;
@@ -1282,6 +1404,15 @@ export async function signInWithGoogle() {
     return;
   }
   stashPendingShare();
+  /* Drive-only storage asks Google for offline access (a refresh token
+     for the google-token function) when this device has no record of
+     the grant, or the server said 'regrant'. auth-scope.js builds the
+     parameters, so start.html cannot drift from this. */
+  const mode = await readStorageMode().catch(() => 'supabase');
+  const queryParams = googleQueryParams({
+    drive: mode === 'drive',
+    needGrant: mode === 'drive' && (!!(opts && opts.regrant) || !driveGrantRecorded())
+  });
   setSync(SYNC_STATES.SYNCING, 'Opening Google…');
   notifyAuth('REDIRECTING', null);
   try {
@@ -1303,7 +1434,7 @@ export async function signInWithGoogle() {
            drive.file is non-sensitive, so adding it needs no
            verification review and does not change the user cap. */
         scopes: DRIVE_SCOPE,
-        queryParams: { prompt: 'select_account' }
+        queryParams
       }
     });
     if (error) throw error;
@@ -1343,7 +1474,8 @@ export function isSigningIn() { return _signingIn; }
 const SAVE_CAP_MS = 10000;
 async function saveBeforeSignOut() {
   if (!supabase || !session) return true;
-  const flush = (syncAllowed() && _myQueue().length) ? _flushQueue() : Promise.resolve();
+  const flush = _mode === 'drive' ? (_drive ? _drive.flushAll() : Promise.resolve())
+    : (syncAllowed() && _myQueue().length) ? _flushQueue() : Promise.resolve();
   const drive = import('./drive-sync.js').then(async (D) => {
     if (!D.isConnected()) return { ok: true };
     return D.push();
@@ -1371,7 +1503,7 @@ async function saveBeforeSignOut() {
   }));
 }
 
-export async function signOut() {
+export async function signOut(opts) {
   if (!supabase) {
     session = null;
     Store.setAccount(null);       // may reload; nothing left to await
@@ -1383,8 +1515,12 @@ export async function signOut() {
   // Free the device lock now rather than in 90 seconds. Best effort,
   // and BEFORE the session goes: the RPC needs the JWT to say whose.
   await Gate.release();
+  /* Everywhere: the Google grant goes too (drive-only storage), before
+     the session that authorises the call. Best effort. */
+  const everywhere = !!(opts && opts.everywhere);
+  if (everywhere) { try { await googleTokenCall('revoke'); } catch (e) { console.warn('[StudioCloud] google-token revoke', e && e.message); } }
   try {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut(everywhere ? { scope: 'global' } : undefined);
   } catch (e) {
     console.warn('[StudioCloud] sign-out', e);
   }
@@ -1490,6 +1626,7 @@ async function askMigratePrompt(count) {
 
 async function uploadAllLocalProjects(localProjects) {
   if (!supabase) return;
+  if ((await modeOf()) === 'drive') return driveDo('uploadProjects', localProjects);
   const userId = session.user.id;
   for (const p of localProjects) {
     if (isSampleProject(p)) continue;   // the sample stays on this device
@@ -1524,6 +1661,7 @@ async function uploadAllLocalProjects(localProjects) {
 
 export async function pullProjectList() {
   if (!supabase || !session) return;
+  if ((await modeOf()) === 'drive') return driveDo('pullProjectList');
   const { data, error } = await supabase
     .from('projects')
     .select('id,title,format,created_at,updated_at,owner_id')
@@ -1624,6 +1762,7 @@ function _applyRemoteRow(projectId, row) {
    local value that IS replaced is copied to the salvage ring first. */
 export async function pullProjectData(projectId) {
   if (!supabase || !projectId) return;
+  if ((await modeOf()) === 'drive') return driveDo('pullProjectData', projectId);
   setSync(SYNC_STATES.SYNCING, 'Checking your account…');
   const { data, error } = await supabase
     .from('project_data')
@@ -1708,6 +1847,7 @@ function reportSyncError(scope, code) {
 }
 
 async function _pushScope(projectId, scope, opts) {
+  if (session && (await modeOf()) === 'drive') { _dequeue((o) => o.kind === 'upsert' && o.projectId === projectId && o.scope === scope && _ownsOp(o)); return driveDo('onSaved', projectId, scope); }
   if (_isSample(projectId)) { _dequeue((o) => o.kind === 'upsert' && o.projectId === projectId && _ownsOp(o)); return; }
   if (!supabase || !session) {
     _enqueue({ kind: 'upsert', projectId, scope });
@@ -1833,6 +1973,7 @@ async function _pushScope(projectId, scope, opts) {
 
 async function _pushProjectMeta(project) {
   if (!supabase || !session || !project) return;
+  if ((await modeOf()) === 'drive') return;   // the folder carries the meta (drive-project-sync onProjectsChanged)
   if (isSampleProject(project)) { _dequeue((o) => o.kind === 'meta' && o.project && o.project.id === project.id && _ownsOp(o)); return; }
 
   /* UPDATE FIRST, INSERT ONLY IF ABSENT — and never send owner_id on
@@ -1961,6 +2102,7 @@ function planLimitToast(message, opts) {
 
 async function _deleteProjectInCloud(projectId) {
   if (!supabase || !session) return;
+  if ((await modeOf()) === 'drive') return;   // the folder goes to Drive's trash (onProjectsChanged)
   const { error } = await supabase.from('projects').delete().eq('id', projectId);
   if (error) throw error;
 }
@@ -2072,6 +2214,9 @@ function _flushQueue() {
 async function _flushOnce() {
   const q = _readQueue();
   if (!q.length || !supabase || !session || !syncAllowed()) { idleSync(); return; }
+  /* Drive mode never sends the Supabase queue: content goes to Drive,
+     and these ops wait in case the switch is turned back. */
+  if ((await modeOf()) === 'drive') { idleSync(); return; }
   /* A project that is no longer on this device has nothing to upload
      (a delete op is the exception: it is the one that removes it). */
   const known = new Set(Store.listAllProjects().map((p) => p.id));
@@ -2138,6 +2283,9 @@ function tearDownChannels() {
 export async function attachToCurrentProject() {
   if (!supabase || !session || !syncEnabled()) return;
   tearDownChannels();
+  /* Drive mode: no realtime (pd:/cm:) and no presence; the drive branch
+     pulls on open, on focus and every 60 s instead. */
+  if ((await modeOf()) === 'drive') return driveDo('attachToCurrentProject');
   const pid = Store.currentProjectId();
   if (!pid) return;
   // 0. The co-editing switch decides how the script scope is applied.
@@ -2195,6 +2343,7 @@ export const coEditingKnown = () => _coEdit === true;
 const _budgetPrivacy = new Map();
 export async function budgetPrivacy(pid, opts) {
   if (!pid || !session) return PRIVACY_UNKNOWN;
+  if ((await modeOf()) === 'drive') return driveDo('budgetPrivacy', pid);
   if (!(opts && opts.force) && _budgetPrivacy.has(pid)) return _budgetPrivacy.get(pid);
   let st = PRIVACY_UNKNOWN;
   try {
@@ -2219,6 +2368,7 @@ export async function budgetPrivacy(pid, opts) {
    is READ BACK rather than assumed, so the page shows what is true. */
 export async function setBudgetPrivate(pid, on) {
   if (!pid || !session) return { ok: false, state: PRIVACY_UNKNOWN, error: 'signed-out' };
+  if ((await modeOf()) === 'drive') return driveDo('setBudgetPrivate', pid, on);
   let error = null;
   let set = null;
   try {
@@ -2261,6 +2411,9 @@ export async function setBudgetPrivate(pid, on) {
      client or sync is off. */
 export async function joinPresence(pid, onSync) {
   if (!pid || !session || !syncEnabled()) return null;
+  /* §48's policies key off has_project_access(), which needs a projects
+     row; drive mode has none, so presence is off there. */
+  if ((await modeOf()) === 'drive') return null;
   let client;
   try { client = await ensureClient(); } catch (e) { return null; }
   if (!client || !session) return null;
@@ -2374,6 +2527,7 @@ function genToken() {
 
 export async function createShare(projectId, role, expiresAt) {
   if (!supabase || !session) throw new Error('Sign in first.');
+  if ((await modeOf()) === 'drive') return driveDo('createShare', projectId, role, expiresAt);
   const token = genToken();
   const { error } = await supabase.from('shares').insert({
     project_id: projectId,
@@ -2388,6 +2542,7 @@ export async function createShare(projectId, role, expiresAt) {
 }
 export async function listShares(projectId) {
   if (!supabase) return [];
+  if (session && (await modeOf()) === 'drive') return driveDo('listShares', projectId);
   const { data, error } = await supabase
     .from('shares')
     .select('*')
@@ -2396,8 +2551,9 @@ export async function listShares(projectId) {
   if (error) { console.warn('[list shares]', error); return []; }
   return data || [];
 }
-export async function revokeShare(shareId) {
+export async function revokeShare(shareId, projectId) {
   if (!supabase) return;
+  if (session && (await modeOf()) === 'drive') return driveDo('revokeShare', shareId, projectId);
   const { error } = await supabase.from('shares').delete().eq('id', shareId);
   if (error) throw error;
 }
@@ -2501,6 +2657,13 @@ async function handlePendingInvites() {
 // ============================================================
 export async function listComments(projectId, scope, fieldKey) {
   if (!supabase) return [];
+  if (session && (await modeOf()) === 'drive') return driveDo('listComments', projectId, scope, fieldKey);
+  return _listCommentsServer(projectId, scope, fieldKey);
+}
+/* The server's comment rows: the Supabase path, and the migration's
+   source (drive-migrate.js builds comments.json from these). */
+async function _listCommentsServer(projectId, scope, fieldKey) {
+  if (!supabase) return [];
   let q = supabase.from('comments').select('*').eq('project_id', projectId);
   if (scope) q = q.eq('scope', scope);
   if (fieldKey) q = q.eq('field_key', fieldKey);
@@ -2510,6 +2673,7 @@ export async function listComments(projectId, scope, fieldKey) {
 }
 export async function createComment(opts) {
   if (!supabase || !session) throw new Error('Sign in to comment.');
+  if ((await modeOf()) === 'drive') return driveDo('createComment', opts);
   const row = {
     project_id: opts.projectId,
     scope: opts.scope,
@@ -2534,6 +2698,7 @@ export async function createComment(opts) {
 export async function updateCommentStatus(id, status) {
   if (!supabase) return null;
   if (!session) throw new Error('Sign in to resolve a comment.');
+  if ((await modeOf()) === 'drive') return driveDo('updateCommentStatus', id, status);
   const { data, error } = await supabase
     .from('comments').update({ status }).eq('id', id).select().single();
   if (error) throw error;
@@ -2542,6 +2707,7 @@ export async function updateCommentStatus(id, status) {
 export async function deleteComment(id) {
   if (!supabase) return;
   if (!session) throw new Error('Sign in first.');
+  if ((await modeOf()) === 'drive') return driveDo('deleteComment', id);
   const { error } = await supabase.from('comments').delete().eq('id', id);
   if (error) throw error;
 }
@@ -2563,6 +2729,7 @@ export async function deleteComment(id) {
    RPC is the proper fix. */
 export async function getProjectRole(projectId) {
   if (!supabase || !session || !projectId) return null;
+  if ((await modeOf()) === 'drive') return driveDo('getProjectRole', projectId);
   const uid = session.user.id;
   const { data: own } = await supabase
     .from('projects').select('owner_id').eq('id', projectId).maybeSingle();
@@ -2594,7 +2761,9 @@ Store.subscribe('saved', ({ key }) => {
   // Gate closed or lock lost: the clock above is still recorded, so
   // this write wins its argument at the next sync rather than losing it.
   if (!syncAllowed()) return;
-  _debouncedPush(pid, scope);
+  /* Routed by the storage mode, and never before it is known. */
+  if (_modeKnown) { if (_mode === 'drive') driveDo('onSaved', pid, scope); else _debouncedPush(pid, scope); return; }
+  modeOf().then((m) => { if (m === 'drive') driveDo('onSaved', pid, scope); else _debouncedPush(pid, scope); });
 });
 Store.subscribe('current:changed', () => {
   if (session && syncAllowed()) attachToCurrentProject();
@@ -2602,6 +2771,13 @@ Store.subscribe('current:changed', () => {
 Store.subscribe('projects:changed', (info) => {
   if (!session || !syncAllowed()) return;
   if (!info) return;
+  if (_mode === 'drive' || !_modeKnown) {
+    modeOf().then((m) => { if (m === 'drive') driveDo('onProjectsChanged', info); else _onProjectsChangedSupabase(info); });
+    return;
+  }
+  _onProjectsChangedSupabase(info);
+});
+function _onProjectsChangedSupabase(info) {
   if (info.reason === 'create' || info.reason === 'update') {
     if (info.project) track(_pushProjectMeta(info.project));
   } else if (info.reason === 'adopt') {
@@ -2630,7 +2806,7 @@ Store.subscribe('projects:changed', (info) => {
       });
     }
   }
-});
+}
 
 // ============================================================
 // SHARED-LINK URL HANDLER (?share=<token>)
@@ -2709,6 +2885,7 @@ function toast(msg, type, duration) {
 export async function deleteOwnedCloudProjects() {
   const sb = await ensureClient();
   if (!sb || !session) throw new Error('Sign in to delete your cloud projects.');
+  if ((await modeOf()) === 'drive') return driveDo('deleteOwnedCloudProjects');
   const uid = session.user.id;
   /* The list is read BEFORE sync is paused: a read that fails attempts
      nothing, so it neither pauses sync nor counts as a failed project. */
@@ -2752,6 +2929,10 @@ const StudioCloud = {
      window.StudioCloud (screenplay.js, story.js) always read the switch
      as OFF; prove:presence faked it onto this object and never saw. */
   pullProjectList, pullProjectData, attachToCurrentProject, deleteOwnedCloudProjects, joinPresence, coEditingEnabled, coEditingKnown,
+  // drive-only storage (schema §66): the mode, and the drive branch's own calls
+  readStorageMode, storageModeNow, storageModeKnown, reconnectGoogle,
+  drive: () => (_mode === 'drive' ? loadDrive() : Promise.resolve(null)),
+  revokeGoogleFor: (userId) => googleTokenCall('revoke', userId ? { user_id: userId } : undefined),
   budgetPrivacy, setBudgetPrivate,
   flushQueue: _flushQueue,
   onSyncStatus, getSyncStatus, SYNC_STATES, settle,
@@ -2903,9 +3084,11 @@ async function boot() {
     // where a pending invite ticket gets redeemed.
     const open = await runGate();
     if (open) {
+      await readStorageMode();
       await maybeMigrateLocalToCloud();
       attachToCurrentProject();
       setTimeout(_flushQueue, 1500);
+      afterDriveSignIn();
     }
     // Also on a restored session, not only on a fresh sign-in: the
     // invite may have been created while this browser already held a

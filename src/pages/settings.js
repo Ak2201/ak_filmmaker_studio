@@ -1199,7 +1199,7 @@ function renderPrivacySection() {
 
 function renderTourSection() {
   const sec = section('tour', 'Help', 'Take the tour.',
-    'A two-minute walk through the studio. It never starts by itself; this is the button for it.');
+    'A walk through every page of the studio, on the Dragon sample. It starts by itself once, the first time an account signs in; this button takes it again. Pause it any time and resume it from your account menu.');
   sec.append(h('p', {}, [h('button.k-btn.k-btn--secondary', { type: 'button', 'data-action': 'tour-start', text: 'Take the tour again' })]));
   return sec;
 }

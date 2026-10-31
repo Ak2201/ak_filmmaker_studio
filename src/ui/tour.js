@@ -9,8 +9,11 @@
    the tour) and GLOBAL_KEYS (a backup carries it like the theme) — and
    it holds only the tour's own place:
        { v: 1, active, step, dismissed, finished, hideList }
-   It is WRITTEN ONLY ON A CLICK OR A KEY: starting, Next, Back, End,
-   Esc, hiding the list. Loading a page — any page, mid-tour or not —
+   It is WRITTEN ONLY ON A CLICK OR A KEY: starting, Next, Back, Pause,
+   Skip, Esc, hiding the list — and once by cloud.js, on an account's
+   FIRST EVER sign-in, when the server's mark_tour_started() answers that
+   this call was the one that set the flag (that is the click that started
+   it: the sign-in). Loading a page — any page, mid-tour or not —
    reads it and writes nothing, which is what verify's four idle
    seconds assert.
 
@@ -34,7 +37,7 @@
    ACCESSIBILITY. The card is a non-modal role="dialog" with its title
    and body wired as label and description; focus moves INTO it on
    each step (the card itself, so a reader hears title then body) and
-   back to where it was when the tour ends. Esc ends the tour from
+   back to where it was when the tour ends. Esc PAUSES the tour from
    anywhere unless a modal of the page's own is open. Every transform
    is multiplied by --motion, and scrolling is instant under
    prefers-reduced-motion.
@@ -52,16 +55,37 @@ import '../styles/tour.css';
 
 /* The tour's place (`fms_tour_v1`) is read and written by
    src/lib/tour-state.js, which owns the key; re-exported for importers. */
-import { TOUR_KEY, readTourState, writeTourState, clampStep as clampStepOf } from '../lib/tour-state.js';
-export { TOUR_KEY };
-/* A step or checklist item naming a `module` is dropped while that module
+import { TOUR_KEY, TOUR_START_URL, readTourState, writeTourState, clampStep as clampStepOf } from '../lib/tour-state.js';
+export { TOUR_KEY, TOUR_START_URL };
+/* A step or checklist item naming a `module` is SKIPPED while that module
    is switched off for everybody — the tour must not walk a reader to a
-   "Not available" card. The switched-off ones are the LAST steps, so the
-   stored step index of every step that stays is unchanged. */
+   "Not available" card — and a step marked `admin` is skipped unless the
+   gate reports an admin (the console). SKIPPED, NOT FILTERED OUT: the
+   tour walks every navigation page (first-sign-in tour, 31 Oct 2026), so
+   a hidden step can sit in the middle of the list, and isDisabledEverywhere
+   follows the server's features map. Filtering would renumber every later
+   step between one page load and the next, and a stored `step` would name
+   a different page. STEPS is the whole list, so an index always means the
+   same step; `shown()` decides, at the moment of moving, which are walked. */
 const live = (x) => !(x && x.module) || !safeOff(x.module);
 function safeOff(id) { try { return isDisabledEverywhere(id); } catch (e) { return false; } }
-const STEPS = data.steps.filter(live);
+function adminNow() {
+  try { const c = window.StudioCloud; return !!(c && c.getGateState && c.getGateState().role === 'admin'); } catch (e) { return false; }
+}
+const STEPS = data.steps;
 const CHECK_ITEMS = data.checklist.items.filter(live);
+export const shown = (i) => !!STEPS[i] && live(STEPS[i]) && (!STEPS[i].admin || adminNow());
+/** The nearest walked step from `i` in direction `dir` (+1 / -1), or -1. */
+export function nearestShown(i, dir = 1) {
+  for (let n = i; n >= 0 && n < STEPS.length; n += dir) if (shown(n)) return n;
+  return -1;
+}
+/** "Step N of M" counts only the steps this reader will walk. */
+function position(i) {
+  let n = 0, m = 0;
+  STEPS.forEach((_, k) => { if (shown(k)) { m++; if (k <= i) n++; } });
+  return { n: Math.max(1, n), m: Math.max(1, m) };
+}
 
 /* ---- state: read freely, written only by a user action ------------ */
 export function readTour() { return readTourState(STEPS.length); }
@@ -194,28 +218,32 @@ function whenAnchor(step, cb, tries = 60) {
 
 function stepCard(i, opts = {}) {
   const step = STEPS[i];
-  const last = i === STEPS.length - 1;
+  const next = nearestShown(i + 1, 1);
+  const prev = nearestShown(i - 1, -1);
   const body = opts.done && step.doneBody ? step.doneBody : step.body;
-  const primary = opts.primary || (last
-    ? { act: 'finish', text: step.action || 'Finish' }
-    : { act: 'next', text: 'Next: ' + STEPS[i + 1].title.split(':')[0] });
+  const primary = opts.primary || (next < 0
+    ? { act: 'finish', text: 'Finish' }
+    : { act: 'next', text: 'Next: ' + STEPS[next].title.split(':')[0] });
+  const { n, m } = position(i);
   const card = h('div.tour-pop', {
-    role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': 'tourTitle', 'aria-describedby': 'tourBody', tabindex: '-1'
+    role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': 'tourTitle', 'aria-describedby': 'tourBody', tabindex: '-1',
+    'data-tour-step': step.id
   }, [
-    h('p.tour-count', { text: 'Tour · step ' + (i + 1) + ' of ' + STEPS.length }),
+    h('p.tour-count', { text: 'Step ' + n + ' of ' + m }),
     h('h2#tourTitle.tour-title', { text: step.title }),
     h('p#tourBody.tour-body', { text: body }),
     h('div.tour-actions', {}, [
       h('button.btn.primary', { type: 'button', 'data-tour-act': primary.act, text: primary.text }),
-      i > 0 ? h('button.btn', { type: 'button', 'data-tour-act': 'back', text: 'Back' }) : null,
-      h('button.btn.tour-end', { type: 'button', 'data-tour-act': 'end', text: 'End tour' })
+      prev >= 0 ? h('button.btn', { type: 'button', 'data-tour-act': 'back', text: 'Back' }) : null,
+      h('button.btn', { type: 'button', 'data-tour-act': 'pause', text: 'Pause tour' }),
+      h('button.btn.tour-end', { type: 'button', 'data-tour-act': 'skip-tour', text: 'Skip tour' })
     ]),
-    h('p.tour-hint', { text: 'Esc ends the tour. You can start it again from the hub.' })
+    h('p.tour-hint', { text: 'Esc pauses the tour. Resume it from your account menu, or from Settings → Preferences → Help.' })
   ]);
   return card;
 }
 
-async function showStep(i, { focus = true } = {}) {
+async function showStep(i, { focus = true, keepScroll = false } = {}) {
   clearUI();
   const step = STEPS[i];
   let opts = {};
@@ -231,9 +259,12 @@ async function showStep(i, { focus = true } = {}) {
       el.setAttribute('data-tour-on', '');
       /* Centre a small anchor; a tall one (the whole screenplay, the
          breakdown) is shown from its TOP — centring a 100,000px section
-         parked the reader in the middle of the script. */
+         parked the reader in the middle of the script. Under reduced
+         motion the jump is 'instant', never 'auto': 'auto' means the
+         computed scroll-behavior, which base.css sets to smooth (the
+         fragments.js trap). */
       const tall = el.getBoundingClientRect().height > window.innerHeight * 0.6;
-      try { el.scrollIntoView({ block: tall ? 'start' : 'center', behavior: reduced() ? 'auto' : 'smooth' }); } catch (e) { /* old engine */ }
+      if (!keepScroll) try { el.scrollIntoView({ block: tall ? 'start' : 'center', behavior: reduced() ? 'instant' : 'smooth' }); } catch (e) { /* old engine */ }
     }
     pop = stepCard(i, opts);
     document.body.append(pop);
@@ -250,21 +281,50 @@ async function showStep(i, { focus = true } = {}) {
 function showChip(i) {
   clearUI();
   const step = STEPS[i];
+  const { n, m } = position(i);
   chip = h('div.tour-chip', { role: 'region', 'aria-label': 'Tour' }, [
-    h('span.tour-chip-text', { text: 'Tour · step ' + (i + 1) + ' of ' + STEPS.length + ': ' + step.title.split(':')[0] }),
+    h('span.tour-chip-text', { text: 'Tour · step ' + n + ' of ' + m + ': ' + step.title.split(':')[0] }),
     h('a.btn.primary', { href: step.href, 'data-tour-act': 'continue', text: 'Continue' }),
-    h('button.btn', { type: 'button', 'data-tour-act': 'end', text: 'End tour' })
+    h('button.btn', { type: 'button', 'data-tour-act': 'pause', text: 'Pause tour' })
   ]);
   document.body.append(chip);
 }
 
-function go(i) {
-  const n = clampStep(i);
-  writeTour({ active: true, step: n, dismissed: false });
+function go(i, dir = 1) {
+  let n = nearestShown(clampStep(i), dir);
+  if (n < 0) n = nearestShown(clampStep(i), -dir);
+  if (n < 0) { end({ finished: true }); return; }
+  writeTour({ active: true, step: n, dismissed: false, finished: false });
   renderInvite();
   const step = STEPS[n];
-  if (step.page === pageId()) { showStep(n); return; }
+  if (step.page === pageId()) {
+    /* Two steps on one page (Contacts, then its call sheets): the hash
+       picks the tab, tabs.js listens for it, and the anchor is looked
+       for once it has switched. */
+    const hash = (String(step.href).split('#')[1] || '');
+    if (hash && location.hash !== '#' + hash) location.hash = hash;
+    showStep(n);
+    return;
+  }
   location.href = step.href;
+}
+
+/* END, PAUSE AND SKIP are three different words for three states, all in
+   the one key's existing fields: finished (walked to the end), paused
+   (active:false with the step KEPT, so Resume lands where it stopped)
+   and skipped (dismissed:true). */
+function pause() {
+  writeTour({ active: false });
+  closeCard();
+  if (window.StudioUI && window.StudioUI.toast) window.StudioUI.toast('Tour paused. Resume it from your account menu.');
+}
+function closeCard() {
+  clearUI();
+  const back = returnFocus;
+  returnFocus = null;
+  if (back && back.isConnected && typeof back.focus === 'function') { try { back.focus({ preventScroll: true }); } catch (e) { /* gone */ } }
+  renderChecklist();
+  renderInvite();
 }
 
 function end({ finished = false } = {}) {
@@ -284,9 +344,32 @@ export function dismissTour() {
   renderInvite();
 }
 
+/** Is there a paused tour to come back to? (the account menu's "Resume"). */
+export function resumable(t = readTour()) { return !t.active && !t.finished && !t.dismissed && t.step > 0; }
+
+/* THE TOUR ALWAYS BEGINS ON THE SAMPLE. Starting it — from the account
+   menu, Settings, Home's list, or the first sign-in (cloud.js) — writes
+   step 0 and opens index.html?sample=1&tour=1: the hub opens (or
+   re-opens, never duplicates) the Dragon sample and then calls
+   continueFromSample(), which moves straight on to the next step, so
+   every page the tour walks has a film on it. */
 export function startTour() {
   returnFocus = document.activeElement;
-  go(0);
+  writeTour({ active: true, step: 0, dismissed: false, finished: false });
+  location.href = TOUR_START_URL;
+}
+/** Resume a paused tour at its step, or start one when there is none. */
+export function resumeTour() {
+  const t = readTour();
+  if (!resumable(t) && !t.active) { startTour(); return; }
+  returnFocus = document.activeElement;
+  go(t.step);
+}
+/** The hub, once ?sample=1&tour=1 has the sample open: the next step. */
+export function continueFromSample() {
+  const t = readTour();
+  if (!t.active || t.step !== 0) return;
+  go(1);
 }
 
 function wire() {
@@ -297,20 +380,22 @@ function wire() {
     const t = readTour();
     if (act === 'continue') return;                // a plain link
     e.preventDefault();
-    if (act === 'next') go(t.step + 1);
-    else if (act === 'back') go(t.step - 1);
+    if (act === 'next') go(t.step + 1, 1);
+    else if (act === 'back') go(t.step - 1, -1);
+    else if (act === 'pause') pause();
+    else if (act === 'skip-tour') end();
     else if (act === 'end') end();
     else if (act === 'skip') dismissTour();
     else if (act === 'finish') end({ finished: true });
     else if (act === 'start') startTour();
-    else if (act === 'resume') go(t.step);
+    else if (act === 'resume') resumeTour();
     else if (act === 'hide-list') { writeTour({ hideList: true }); renderChecklist(); }
     else if (act === 'sample') {
       /* The sample is opened by the hub's own URL handler, the same one
          start.html links to; the tour stays on step 1 and redraws with
          "the sample is open" when the page comes back. */
       writeTour({ active: true, step: 0, dismissed: false });
-      location.href = 'index.html?sample=1';
+      location.href = TOUR_START_URL;
     }
   });
   document.addEventListener('keydown', (e) => {
@@ -320,7 +405,7 @@ function wire() {
     const modal = [...document.querySelectorAll('[aria-modal="true"]')].find((m) => m !== pop && m.getClientRects().length);
     if (modal) return;
     e.preventDefault();
-    end();
+    pause();
   });
 }
 
@@ -374,7 +459,7 @@ function renderChecklist() {
      hid this button too — a new reader's Home offered the tour nowhere,
      and Settings → Help was the only way in. */
   const inviting = !!(inviteHost && inviteHost.isConnected);
-  const tourBtn = inviting ? null : t.active
+  const tourBtn = inviting ? null : (t.active || resumable(t))
     ? h('button.btn.primary', { type: 'button', 'data-tour-act': 'resume', text: 'Resume the tour' })
     : h('button.btn.primary', { type: 'button', 'data-tour-act': 'start', text: t.finished ? 'Take the tour again' : 'Take the tour' });
   sec.append(h('div.section-inner', {}, [
@@ -425,11 +510,26 @@ export async function boot() {
     Store.subscribe('plan:changed', () => draw());   // the "Choose a plan" item follows the trial
     window.addEventListener('focus', draw);
   }
+  /* The console step is shown only to an admin, and the gate's answer
+     lands a round trip after the card: when it does, the card's Next /
+     Finish is drawn again, keeping focus where it was. Writes nothing. */
+  Store.subscribe('gate:changed', () => {
+    const t = readTour();
+    if (!t.active || !pop) return;
+    const had = pop.contains(document.activeElement);
+    showStep(t.step, { focus: had, keepScroll: true });
+  });
   const t = readTour();
   if (!t.active) return;
-  const step = STEPS[t.step];
-  if (step.page === here) showStep(t.step);
-  else showChip(t.step);
+  /* The hub with ?tour=1 is about to move on to the next step by itself
+     (hub.js calls continueFromSample once the sample is open): drawing
+     step 0 here would be a card that flashes and goes. */
+  if (here === 'index' && t.step === 0 && /[?&]tour=1\b/.test(location.search)) return;
+  let i = t.step;
+  if (!shown(i)) { const n = nearestShown(i, 1); if (n >= 0) i = n; }
+  const step = STEPS[i];
+  if (step.page === here) showStep(i);
+  else showChip(i);
 }
 /* The sample step redraws when the sample opens in place. */
 function refreshStep() {
@@ -437,4 +537,4 @@ function refreshStep() {
   if (t.active && pop && STEPS[t.step].id === 'sample') showStep(t.step, { focus: false });
 }
 
-export default { boot, startTour, dismissTour, readTour, firstWeekFacts, pageId, TOUR_KEY };
+export default { boot, startTour, resumeTour, resumable, continueFromSample, dismissTour, readTour, firstWeekFacts, pageId, TOUR_KEY, TOUR_START_URL };

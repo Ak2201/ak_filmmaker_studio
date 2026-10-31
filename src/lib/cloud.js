@@ -40,6 +40,8 @@ const ask = (q) => Promise.resolve(callPort('ask', false, q));
 import { bumpUsage } from './usage.js';
 import { isSampleProject } from './sample-project.js';
 import { countSignIn } from './funnel.js';
+import { firstTourCheck } from './account-tour.js';
+import { writeTourState, TOUR_START_URL } from './tour-state.js';
 import { inExtension, sessionStorageAdapter, gateHolder, extensionGoogleTokens, onSessionLost } from './extension-bridge.js';
 
 /* INSIDE THE CHROME EXTENSION (PRD FR-202) the gate's short-lived
@@ -854,7 +856,40 @@ async function runGate() {
   if (_heartbeat) _heartbeat.stop();
   _heartbeat = startHeartbeat(Gate, { onLost: onLockLost });
   setGate('open');
+  maybeAccountTour();
   return true;
+}
+
+/* THE FIRST-EVER SIGN-IN STARTS THE TOUR (owner, 31 Oct 2026).
+   Asked HERE, at the one point every signed-in load passes once the gate
+   has OPENED — the restored session in boot(), the first sign-in in
+   onAuthStateChange, and the re-ask after a network return — so a
+   walled visitor is never toured, and one who is let in later (a trial
+   started on purchase.html) is toured on the first studio page they
+   reach rather than never. The flag is the server's (account-tour.js
+   says why, and why it fails closed); this browser only remembers, for
+   the tab's life, that it has had a definite answer for this account, so
+   a signed-in member does not pay a round trip on every page.
+   `fms_tour_asked` is a sessionStorage marker, like fms_gate_landing: in
+   no registry and in no backup, and never in localStorage.
+   Not on the doorway, the purchase page or the screening room: each is
+   somebody's errand, and the tour would navigate them away from it. */
+const TOUR_ASKED_KEY = 'fms_tour_asked';
+let _tourAsking = false;
+function maybeAccountTour() {
+  if (_tourAsking || !supabase || !session || inExtension()) return;
+  if (/(^|\/)(invite|purchase|screening|start)(\.html)?$/.test(location.pathname)) return;
+  const uid = session.user && session.user.id;
+  if (!uid) return;
+  try { if (sessionStorage.getItem(TOUR_ASKED_KEY) === uid) return; } catch (e) { /* ask */ }
+  _tourAsking = true;
+  firstTourCheck((name) => supabase.rpc(name)).then(({ start, settled }) => {
+    _tourAsking = false;
+    if (settled) { try { sessionStorage.setItem(TOUR_ASKED_KEY, uid); } catch (e) { /* asked again next page */ } }
+    if (!start || !session || !session.user || session.user.id !== uid) return;
+    writeTourState({ active: true, step: 0, dismissed: false, finished: false }, 1);
+    location.href = TOUR_START_URL;
+  }, () => { _tourAsking = false; });
 }
 export { Gate };
 

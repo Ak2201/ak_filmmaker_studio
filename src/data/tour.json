@@ -1,5 +1,5 @@
 {
-  "_comment": "The onboarding tour and the hub's first-week checklist (src/ui/tour.js). Copy only: the anchors are CSS selectors tried in order (a [data-tour] attribute first, so a page can name its own anchor), and every checklist tick is DERIVED from the open film in tour.js by the item's id; a step or item with a `module` is left out while that module is switched off for everybody (plan-gate isDisabledEverywhere) — nothing here, and nothing about a tick, is stored. Only the tour's own place (which step, dismissed) is kept, in fms_tour_v1, and only when the reader clicks.",
+  "_comment": "The onboarding tour and the hub's first-week checklist (src/ui/tour.js). Copy only: the anchors are CSS selectors tried in order (a [data-tour] attribute first, so a page can name its own anchor), and every checklist tick is DERIVED from the open film in tour.js by the item's id; a step or item with a `module` is left out while that module is switched off for everybody (plan-gate isDisabledEverywhere) — nothing here, and nothing about a tick, is stored. The steps walk every page in navigation.json order (the studio stages first, then the global pages), and a step with `admin: true` is shown only while the gate reports an admin; a hidden step keeps its index, so a stored step always names the same page. Only the tour's own place (which step, dismissed) is kept, in fms_tour_v1, and only when the reader clicks.",
   "steps": [
     {
       "id": "sample",
@@ -14,6 +14,19 @@
       "body": "The Dragon sample is a complete production — a screenplay, its scenes broken down, a schedule, a unit list and call sheets. Open it and every page of the studio has something on it to read, edit or delete.",
       "doneBody": "The sample is open. Next, the story it was built from.",
       "action": "Open the sample"
+    },
+    {
+      "id": "dashboard",
+      "page": "dashboard",
+      "href": "dashboard.html",
+      "anchor": [
+        "[data-tour=\"dashboard\"]",
+        "#main .db-continue",
+        "#main h1",
+        "#main"
+      ],
+      "title": "Dashboard: your film’s home",
+      "body": "Continue picks up where you left off; the stage cards show what is next."
     },
     {
       "id": "story",
@@ -31,6 +44,20 @@
       "body": "Write the synopsis and tag its passages to the beats of a structure; the heatmap and the pacing notes are worked out from what you tag."
     },
     {
+      "id": "vault",
+      "module": "idea-vault",
+      "page": "vault",
+      "href": "vault.html#vault",
+      "anchor": [
+        "[data-tour=\"vault\"]",
+        "#vault",
+        "#main .bd-head",
+        "#main"
+      ],
+      "title": "Idea Vault: loose ideas and notes",
+      "body": "Park loose ideas and sticky notes here and copy them into the script later."
+    },
+    {
       "id": "write",
       "page": "screenplay",
       "href": "screenplay.html#screenplay",
@@ -41,6 +68,19 @@
       ],
       "title": "Screenplay Writer: write the screenplay",
       "body": "It formats as you type — slug lines, action, cues, dialogue — and keeps the page count honest. Every scene heading you write becomes a scene in the breakdown."
+    },
+    {
+      "id": "drafts",
+      "page": "drafts",
+      "href": "drafts.html",
+      "anchor": [
+        "[data-tour=\"drafts\"]",
+        "#main section[id]:not([hidden])",
+        "#main .bd-head",
+        "#main"
+      ],
+      "title": "Drafts: numbered versions",
+      "body": "Save numbered versions of the script and compare them."
     },
     {
       "id": "breakdown",
@@ -54,6 +94,45 @@
       ],
       "title": "Scene Breakdown: what each scene needs",
       "body": "Tag cast, props, vehicles and sound against each scene. The elements list, the schedule, the budget and the call sheets all read these tags, so nothing is typed twice."
+    },
+    {
+      "id": "reports",
+      "page": "reports",
+      "href": "reports.html#reports",
+      "anchor": [
+        "[data-tour=\"reports\"]",
+        "#main nav.tabs",
+        "#reports",
+        "#main"
+      ],
+      "title": "Reports: read from your scenes",
+      "body": "The one-liner, sides, screen time and the cast matrix, all read from your scenes."
+    },
+    {
+      "id": "visualize",
+      "page": "visualize",
+      "href": "visualize.html#shot-list",
+      "anchor": [
+        "[data-tour=\"visualize\"]",
+        "#shot-list",
+        "#main nav.tabs",
+        "#main"
+      ],
+      "title": "Visualize: shots and frames",
+      "body": "The shot list and the storyboard for each scene."
+    },
+    {
+      "id": "plan",
+      "page": "plan",
+      "href": "plan.html#calendar",
+      "anchor": [
+        "[data-tour=\"plan\"]",
+        "#calendar",
+        "#main nav.tabs",
+        "#main"
+      ],
+      "title": "Plan: locations and the calendar",
+      "body": "Your locations and the shoot calendar, in one place."
     },
     {
       "id": "stripboard",
@@ -77,20 +156,19 @@
         "#main"
       ],
       "title": "Budget: what the schedule costs",
-      "body": "The estimate reads the days off your stripboard and the rates off the Chennai tables, and every figure stays editable. Change a shoot day and the number here follows it.",
-      "doneBody": "That is the plan priced. Next, the people it needs."
+      "body": "The estimate reads the days off your stripboard and the rates off the Chennai tables, and every figure stays editable. Change a shoot day and the number here follows it."
     },
     {
-      "id": "callsheet",
+      "id": "contacts",
       "page": "contacts",
-      "href": "contacts.html#call-sheets",
+      "href": "contacts.html#contacts",
       "anchor": [
-        "[data-tour=\"callsheet\"]",
-        "#call-sheets",
+        "[data-tour=\"contacts\"]",
+        "#contacts",
         "#main"
       ],
-      "title": "Call sheets: who, where, when",
-      "body": "A call sheet is a day's scenes plus the people called for them. Print one, or save it as a PDF to send to the unit."
+      "title": "Cast and crew: everyone on the film",
+      "body": "Everyone on the film, in one list. Call sheets and the budget read from it."
     },
     {
       "id": "shoot",
@@ -105,8 +183,19 @@
         "#main"
       ],
       "title": "Shoot day: on the phone, on the set",
-      "body": "Today's scenes, biggest first, with who is called. Mark each one shot, part or dropped; the edit log reads those marks to say what is in the can and what is still owed.",
-      "doneBody": "Marked. The edit log reads those marks next."
+      "body": "Today's scenes, biggest first, with who is called. Mark each one shot, part or dropped; the edit log reads those marks to say what is in the can and what is still owed."
+    },
+    {
+      "id": "callsheet",
+      "page": "contacts",
+      "href": "contacts.html#call-sheets",
+      "anchor": [
+        "[data-tour=\"callsheet\"]",
+        "#call-sheets",
+        "#main"
+      ],
+      "title": "Call sheets: who, where, when",
+      "body": "A call sheet is a day's scenes plus the people called for them. Print one, or save it as a PDF to send to the unit."
     },
     {
       "id": "edit",
@@ -120,8 +209,7 @@
         "#main"
       ],
       "title": "Edit log: what is in the can",
-      "body": "The cut’s word on each scene, read from the marks you made on the floor. The set’s answer is final here — this page never writes back to a shoot day.",
-      "doneBody": "Now the last question: what actually leaves."
+      "body": "The cut’s word on each scene, read from the marks you made on the floor. The set’s answer is final here — this page never writes back to a shoot day."
     },
     {
       "id": "deliverables",
@@ -135,7 +223,59 @@
         "#main"
       ],
       "title": "Deliverables: what leaves, and where it goes",
-      "body": "Picture, sound, text and legal, each with what a festival or a streamer asks for. The festival list carries the date each entry was last checked, so you can see what is stale.",
+      "body": "Picture, sound, text and legal, each with what a festival or a streamer asks for. The festival list carries the date each entry was last checked, so you can see what is stale."
+    },
+    {
+      "id": "library",
+      "page": "library",
+      "href": "library.html",
+      "anchor": [
+        "[data-tour=\"library\"]",
+        "#main nav.tabs",
+        "#main nav",
+        "#main"
+      ],
+      "title": "Library: around the studio",
+      "body": "Craft books, case studies and a film glossary, open whichever film you are on."
+    },
+    {
+      "id": "settings",
+      "page": "settings",
+      "href": "settings.html",
+      "anchor": [
+        "[data-tour=\"settings\"]",
+        "#main nav.tabs",
+        "#main"
+      ],
+      "title": "Settings: how the studio works for you",
+      "body": "Your preferences, plan and backup, and this tour if you want it again."
+    },
+    {
+      "id": "purchase",
+      "page": "purchase",
+      "href": "purchase.html",
+      "anchor": [
+        "[data-tour=\"purchase\"]",
+        "#plCompare",
+        "#main .bd-head",
+        "#main"
+      ],
+      "title": "Plans: what each includes",
+      "body": "What each plan includes and what it costs, before you pay anything."
+    },
+    {
+      "id": "console",
+      "admin": true,
+      "page": "admin",
+      "href": "admin.html",
+      "anchor": [
+        "[data-tour=\"console\"]",
+        "#main nav.tabs",
+        "#main .bd-head",
+        "#main"
+      ],
+      "title": "Console: for admins",
+      "body": "People, plans, billing and invites. Only admins see this step.",
       "action": "Finish the tour"
     }
   ],

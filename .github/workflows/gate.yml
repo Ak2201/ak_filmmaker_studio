@@ -193,6 +193,13 @@ jobs:
       - run: npm run prove:explainer-c
         env:
           PROVE_DIST: dist-verify
+      # Drive-only storage (schema §66) against a faked Drive and a faked
+      # google-token function: push/pull, merge, sharing, commenter
+      # comments, screening from Drive, the verified migration, and zero
+      # project_data / comments traffic in drive mode.
+      - run: npm run prove:drive-only
+        env:
+          PROVE_DIST: dist-verify
       # The built markup a crawler gets: lang, titles, canonicals, one h1,
       # noindex on studio shells, robots/sitemap/llms.txt/favicon, no source maps.
       - run: npm run test:site

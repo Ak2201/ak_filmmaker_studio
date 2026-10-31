@@ -13,6 +13,9 @@
 import { readText, writeText } from './prefs.js';
 
 export const TOUR_KEY = 'fms_tour_v1';
+/* Where every start of the tour goes: the hub opens (or re-opens) the
+   Dragon sample, then the tour moves on to its next step by itself. */
+export const TOUR_START_URL = 'index.html?sample=1&tour=1';
 
 /** A stored step, clamped to 0 … stepCount-1 (0 when not a number). */
 export function clampStep(n, stepCount) {
@@ -39,4 +42,4 @@ export function writeTourState(patch, stepCount) {
   return next;
 }
 
-export default { TOUR_KEY, clampStep, readTourState, writeTourState };
+export default { TOUR_KEY, TOUR_START_URL, clampStep, readTourState, writeTourState };

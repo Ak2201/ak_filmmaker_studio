@@ -403,7 +403,17 @@ function openSampleFromURL() {
      its landing on Home. */
   const toDashboard = params.get('open') === 'dashboard';
   if (toDashboard) { params.delete('open'); }
-  reopenOrOpenSample(sample.id, toDashboard);
+  /* `tour=1` is the tour's own start (src/ui/tour.js TOUR_START_URL, and
+     cloud.js on an account's first ever sign-in): once the sample is the
+     open film, the tour moves on to its next page by itself. A sample
+     that did not open leaves the tour on its first step, whose card
+     offers the button again. The parameter stays in the address until
+     the tour navigates on, so tour.js's boot knows not to draw step 1. */
+  const touring = params.get('tour') === '1';
+  reopenOrOpenSample(sample.id, toDashboard && !touring).then(() => {
+    if (!touring || !findSampleProject(sample.id)) return;
+    import('../ui/tour.js').then((m) => m.continueFromSample()).catch(() => { /* offline: the card on Home still offers it */ });
+  });
 }
 
 /* ONE entry for every "open the sample": a sample already in this

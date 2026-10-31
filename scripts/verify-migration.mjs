@@ -363,7 +363,13 @@ const EXPECTED = /* every earlier row was emptied by the 27 Oct 2026 re-baseline
   "dashboard": {},
   "preprod": {},
   "screenplay": {},
-  "settings": /* emptied by the 27 Oct 2026 re-baseline after the merge */ {},
+  "settings": /* emptied by the 27 Oct 2026 re-baseline after the merge */ {
+    /* 31 Oct 2026: the tour walks every page of the studio now and starts
+       by itself on an account's first sign-in, so Settings → Help stopped
+       calling it "a two-minute walk" (and stopped saying it never starts
+       by itself). */
+    'two-minute': 'the tour now walks every page; its length is no longer two minutes'
+  },
   shoot: {},
   /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.
 

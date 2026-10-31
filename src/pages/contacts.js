@@ -29,6 +29,7 @@ import '../styles/pdf.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { revealTarget } from '../ui/tabs.js';
+import { standDown as fragmentStandDown } from '../ui/fragments.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
@@ -858,7 +859,7 @@ function render() {
     try { want = new URLSearchParams(location.search).get('sheet') || ''; } catch (e) { /* ignore */ }
     if (want) requestAnimationFrame(() => requestAnimationFrame(() => {
       const card = document.querySelector('.ct-sheet[data-sheet="' + CSS.escape(want) + '"]');
-      if (card) card.scrollIntoView({ block: 'start', behavior: 'instant' });
+      if (card) { fragmentStandDown(); card.scrollIntoView({ block: 'start', behavior: 'instant' }); }
     }));
   }
   wireActionBar();

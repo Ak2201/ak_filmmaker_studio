@@ -7,8 +7,9 @@
    after build:verify) and serves it with Supabase replaced by
    scripts/fake-supabase.mjs, plus the two RPCs the tour reads, answered
    HERE through EXT_RPC so the shared fake is not edited:
-     tour_status()        → { started }   (null signed out)
-     mark_tour_started()  → { started: true, first }   (true exactly once)
+     tour_status()        → { started_at, finished_at }   (42501 signed out)
+     mark_tour_started()  → boolean   (true exactly once)
+   — §66's real shapes, as schema-66-drive-storage.sql returns them.
    TOUR.mode switches them to an error or to "function not found"
    (PGRST202), the two states the client must treat as "do not start".
 
@@ -56,14 +57,18 @@ EXT_RPC.tour_status = (args, user) => {
   TOUR.calls.push('status:' + (user ? user.email : 'anon'));
   if (TOUR.mode === 'missing') throw { code: 'PGRST202', message: 'Could not find the function public.tour_status', status: 404 };
   if (TOUR.mode === 'error') throw { code: 'XX000', message: 'boom', status: 500 };
-  return { started: user ? TOUR.started.has(user.id) : null };
+  /* §66's real shapes (schema-66-drive-storage.sql): tour_status() is
+     {started_at, finished_at} and refuses anon with 42501;
+     mark_tour_started() is a bare boolean, true exactly once. */
+  if (!user) throw { code: '42501', message: 'Sign in first' };
+  return { started_at: TOUR.started.has(user.id) ? '2026-10-31T00:00:00Z' : null, finished_at: null };
 };
 EXT_RPC.mark_tour_started = (args, user) => {
   TOUR.calls.push('mark:' + (user ? user.email : 'anon'));
   if (!user) throw { code: '42501', message: 'Sign in first' };
   const first = !TOUR.started.has(user.id);
   TOUR.started.add(user.id);
-  return { started: true, first };
+  return first;
 };
 const calls = (kind, email) => TOUR.calls.filter((c) => c === kind + ':' + email).length;
 

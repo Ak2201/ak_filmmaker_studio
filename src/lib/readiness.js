@@ -39,6 +39,30 @@ import { listSongs } from './songs.js';
 
 const norm = (s) => String(s || '').trim().toLowerCase();
 
+/* A role column often carries a note after the character — the
+   sample's own "RAGAVAN — 'Dragon'" and "YOUNG RAGAVAN (2014)" — and
+   an exact match called both leads uncast while the call sheet had
+   them on it. The role up to its first spaced dash or bracket counts
+   as well — the same rule as castNames() in costs.js (not imported: it
+   would bring the rate card into every page that reads this). */
+const roleCore = (r) => String(r || '').split(/\s[—–-]\s|[(,/]/)[0];
+
+/** Does this contact stand for the character `name`? Role, role up to its
+    first spaced dash or bracket, or name, case-insensitive. The one rule:
+    the cast-uncast check and the lock's cast-contact seeder both use it. */
+export function contactClaimsName(contact, name) {
+  const n = norm(name);
+  if (!n || !contact) return false;
+  return norm(contact.role) === n || norm(roleCore(contact.role)) === n || norm(contact.name) === n;
+}
+
+/** The stand-in the script lock seeds for a speaking part nobody is cast in
+    yet. It claims the character for the seeder and the call sheets, but it
+    is NOT casting: the readiness check ignores it until a person names
+    somebody. One name, shared with lock-seed.js. */
+export const TO_BE_CAST = 'To be cast';
+export const isCastPlaceholder = (c) => !!c && norm(c.name) === norm(TO_BE_CAST);
+
 /** One check's result. `items` are the offending things, named. */
 function check(id, severity, label, items, hint, where) {
   return {
@@ -153,20 +177,7 @@ export function readiness() {
      put the character in the role column, which is the convention
      the Dragon sample documents and the call sheet already reads. */
   const contacts = Contacts.listContacts();
-  const claimed  = new Set();
-  /* A role column often carries a note after the character — the
-     sample's own "RAGAVAN — 'Dragon'" and "YOUNG RAGAVAN (2014)" — and
-     an exact match called both leads uncast while the call sheet had
-     them on it. The role up to its first spaced dash or bracket counts
-     as well — the same rule as castNames() in costs.js, which the budget's
-     days-worked already uses (not imported: it would bring the rate card
-     into every page that reads this). */
-  const roleCore = (r) => String(r || '').split(/\s[—–-]\s|[(,/]/)[0];
-  contacts.forEach((c) => {
-    if (norm(c.role)) claimed.add(norm(c.role));
-    if (norm(roleCore(c.role))) claimed.add(norm(roleCore(c.role)));
-    if (norm(c.name)) claimed.add(norm(c.name));
-  });
+  const claimed  = { has: (n) => contacts.some((c) => !isCastPlaceholder(c) && contactClaimsName(c, n)) };
   const characters = [];
   scenes.forEach((s) => Locations.castOf(s).forEach((n) => {
     if (norm(n) && !characters.some((x) => norm(x) === norm(n))) characters.push(n);
@@ -174,7 +185,7 @@ export function readiness() {
   checks.push(check(
     'cast-uncast', 'gap',
     'Characters with nobody cast',
-    characters.filter((n) => !claimed.has(norm(n))),
+    characters.filter((n) => !claimed.has(n)),
     'Nobody to call, and nobody to pay. Add them in Cast & Crew with the character in the role column.',
     'contacts.html'
   ));

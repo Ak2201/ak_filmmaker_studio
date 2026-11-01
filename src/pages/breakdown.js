@@ -40,7 +40,7 @@ import { shootDayOf } from '../lib/locations.js';
 import {
   breakdownFigures, readNumberLock, numberKey, dupNumbers, daySlot, sceneStatus, STATUS_TONE,
   castSummary, searchText, PRESET_KEYS, filterActive as filterOn, describeFilter, presetMatches,
-  rowMatches, filterCountText, applySuggestions, suggestionTags, suggestCountText, scopeSelector, binEntryBits, binTotalsBits, headingInScript,
+  rowMatches, filterCountText, applySuggestions, suggestionTags, suggestionTagsForCategory, applyCategory, suggestCountText, scopeSelector, binEntryBits, binTotalsBits, headingInScript,
   sceneFieldValue, EIGHTHS_MAX, songFieldValue, runSaid, bulkText, restoreEighths
 } from '../lib/breakdown-model.js';
 import '../styles/breakdown-run.css';
@@ -986,7 +986,9 @@ function renderSuggestions(scenes) {
     h('span.bd-sug-count', { text: suggestCountText({ total, scenes: rows.length, guessed: guessed.length, labelOf: (c) => catById[c].label }) }),
     bulkLeft
       ? button({ label: 'Add all', action: 'sug-all' })
-      : null
+      : null,
+    ...SUGGEST_CATS.filter((cat) => suggestionTagsForCategory(scenes, loadScript().elements, cat).length).map((cat) =>
+      button({ label: 'Accept all ' + catById[cat].label, action: 'sug-cat', size: 'sm', attrs: { 'data-cat': cat } }))
   ]));
   const list = h('ol.bd-sug-list');
   for (const r of rows) {
@@ -1732,6 +1734,12 @@ delegate(document, 'click', '[data-action="sug-all"]', () => {
   const added = applySuggestions(null);
   render('[data-action="sug-all"], .bd-sug-scene-all');
   toastTagged(added, true);
+});
+delegate(document, 'click', '[data-action="sug-cat"]', (e, el) => {
+  const cat = el.dataset.cat;
+  const added = applyCategory(cat);
+  render('[data-action="sug-all"], .bd-sug-scene-all');
+  toastTagged(added, false);
 });
 /* ---- element index: filter, batch tag, export ---------------- */
 delegate(document, 'click', '[data-action="ex-cat"]', (e, el) => {

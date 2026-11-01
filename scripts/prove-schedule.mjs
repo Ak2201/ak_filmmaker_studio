@@ -183,7 +183,7 @@ await page.emulateMedia({ media: 'screen' });
 await page.goto(url('stripboard.html#stripboard'), { waitUntil: 'networkidle' });
 await settle(page, 1200);
 const sbMin = await page.$eval('.sb-kpi-runtime .k-stat-value', (v) => parseInt(v.textContent, 10)).catch(() => NaN);
-await page.goto(url('reports.html#screentime'), { waitUntil: 'networkidle' });
+await page.goto(url('breakdown.html#screentime'), { waitUntil: 'networkidle' });
 await settle(page, 1200);
 const rp = await page.evaluate(() => {
   const t = document.getElementById('screentime')?.innerText || '';
@@ -421,7 +421,7 @@ await page.emulateMedia({ media: 'print' });
 const dp = await page.$eval('.sb-dood-scroll', (n) => ({ ov: getComputedStyle(n).overflowX, sw: n.scrollWidth, cw: n.clientWidth, days: n.querySelectorAll('.sb-grid-day').length }));
 ok(dp.ov === 'visible' && dp.sw <= dp.cw + 1 && dp.days > 6, '13 printing the DOOD fits every day on the page', dp);
 await page.emulateMedia({ media: 'screen' });
-await page.goto(url('reports.html#cast-matrix'), { waitUntil: 'networkidle' });
+await page.goto(url('breakdown.html#cast-matrix'), { waitUntil: 'networkidle' });
 await settle(page);
 await page.emulateMedia({ media: 'print' });
 const cmx = await page.$eval('#cast-matrix .rp-scroll', (n) => ({ ov: getComputedStyle(n).overflowX, sw: n.scrollWidth, cw: n.clientWidth, cols: n.querySelectorAll('thead th').length }));
@@ -430,7 +430,7 @@ await page.emulateMedia({ media: 'screen' });
 await page.setViewportSize({ width: 1440, height: 900 });
 /* 14 Cast matrix and Screen time each have one Export menu (print, PDF, CSV), and the CSV downloads. */
 for (const [id, tag, csvName] of [['cast-matrix', 'castmatrix', 'cast-matrix.csv'], ['screentime', 'screentime', 'screen-time.csv']]) {
-  await page.goto(url('reports.html#' + id), { waitUntil: 'networkidle' });
+  await page.goto(url('breakdown.html#' + id), { waitUntil: 'networkidle' });
   await settle(page);
   const acts = await page.$$eval(`#${id} [data-action]`, (ns) => ns.map((n) => n.getAttribute('data-action')));
   ok(['print-', 'pdf-', 'csv-'].every((p) => acts.includes(p + tag)), `14 ${id} has print, PDF and CSV in its Export menu`, acts);
@@ -551,7 +551,7 @@ ok(await page.locator('#dpr input[data-field="note"]').first().inputValue() === 
   ok(!esc.open && esc.act === 'note-edit', R(17, 'Escape closes the note editor and returns focus to Add floor note'), esc);
 
   /* 7, 9, 10, 15 Reports */
-  await page.goto(url('reports.html#cast-matrix'), { waitUntil: 'networkidle' });
+  await page.goto(url('breakdown.html#cast-matrix'), { waitUntil: 'networkidle' });
   await settle(page, 600);
   const boxes = await page.$$eval('#cast-matrix .rp-scroll, .rp-scroll', (ns) => ns.filter((n) => n.offsetParent).map((n) => [n.getAttribute('tabindex'), n.getAttribute('role'), (n.getAttribute('aria-label') || '').length > 0]));
   ok(boxes.length > 0 && boxes.every((b) => b[0] === '0' && b[1] === 'region' && b[2]), R(9, 'a sideways-scrolling report table is a focusable, named region'), boxes);
@@ -579,7 +579,7 @@ ok(await page.locator('#dpr input[data-field="note"]').first().inputValue() === 
   await page.emulateMedia({ media: 'screen' });
   ok(brk === 'auto', R(11, 'Ctrl+P on the Sides tab does not push the sides to page 2 behind the stat strip'), brk);
 
-  await page.goto(url('reports.html#screentime'), { waitUntil: 'networkidle' });
+  await page.goto(url('breakdown.html#screentime'), { waitUntil: 'networkidle' });
   await settle(page, 600);
   await page.fill('#rt-target', '99999'); await fire('#rt-target');
   await settle(page, 300);

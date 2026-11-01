@@ -237,12 +237,99 @@ export function blankMark(patch = {}) {
     rot: 0,          // degrees, 0 = facing up the map
     toX: null,
     toY: null,
+    /* The blocking studio (1 Nov 2026). Three more FIELDS on the same
+       record, spread under every stored mark like widthM: a mark written
+       before them reads back with no path, a straight line and no
+       character, and every field it already had is untouched.
+         path    the beats AFTER the first leg: [{ x, y, beat }]. The first
+                 leg stays toX/toY, so an older build still draws the move
+                 to its first stop and simply does not know the rest.
+         curve   draw the walk as a curve through its beats, not a polyline.
+         charId  a Characters record id (src/lib/characters.js), or ''. An
+                 id, never a copied name: rename the character and the
+                 colour and the picker follow. */
+    path: [],
+    curve: false,
+    charId: '',
     ...patch
   };
 }
 
+/* What a setup can be furnished with, in plan view (1 Nov 2026). ONE
+   field, `set`, on the existing block record: an array of pieces, each a
+   rectangle centred at (x,y), `w` across and `h` deep in map units,
+   turned `rot` degrees. An unknown kind reads back as a prop, the way an
+   unknown mark kind reads back as an actor. */
+export const SET_KINDS = ['wall', 'door', 'window', 'table', 'chair', 'sofa', 'bed', 'counter', 'car', 'stairs', 'prop'];
+/* The size a piece is born at, in map units (a 12 m floor is ~8 units a
+   metre, so a chair is a little over half a metre). Suggestions only. */
+export const SET_SIZE = {
+  wall: [30, 1.2], door: [7, 1.2], window: [10, 1.2], table: [14, 8], chair: [4, 4], sofa: [16, 6],
+  bed: [14, 18], counter: [20, 5], car: [12, 24], stairs: [10, 16], prop: [5, 5]
+};
+
+export function blankSetPiece(patch = {}) {
+  return { id: uid('st'), kind: 'prop', x: BLOCK_W / 2, y: BLOCK_H / 2, w: 5, h: 5, rot: 0, label: '', ...patch };
+}
+
+const tenth = (n) => Math.round(n * 10) / 10;
+const finite = (v) => v !== null && v !== '' && Number.isFinite(Number(v));
+
+/** A set piece kept inside the rules: a known kind, a centre on the map,
+    a size between 1 and the map, a whole number of degrees. Unknown
+    fields ride along (an older tab must not wipe a newer field). */
+export function cleanSetPiece(p) {
+  const src = p && typeof p === 'object' ? p : {};
+  const out = { ...blankSetPiece(), ...src };
+  if (!src.id) out.id = uid('st');
+  out.kind = SET_KINDS.includes(out.kind) ? out.kind : 'prop';
+  Object.assign(out, clampPoint(out.x, out.y));
+  const [dw, dh] = SET_SIZE[out.kind];
+  out.w = tenth(clamp(finite(src.w) ? Number(src.w) : dw, 1, BLOCK_W));
+  out.h = tenth(clamp(finite(src.h) ? Number(src.h) : dh, 1, BLOCK_H));
+  out.rot = ((Math.round(Number(out.rot) || 0) % 360) + 360) % 360;
+  out.label = String(out.label ?? '');
+  return out;
+}
+
+/** The 180-degree line, both ends on the map, or null. Two ends on the
+    same spot are not a line. */
+export function cleanAxis(a) {
+  if (!a || typeof a !== 'object') return null;
+  if (![a.x1, a.y1, a.x2, a.y2].every(finite)) return null;
+  const p = clampPoint(a.x1, a.y1), q = clampPoint(a.x2, a.y2);
+  if (p.x === q.x && p.y === q.y) return null;
+  return { x1: p.x, y1: p.y, x2: q.x, y2: q.y };
+}
+
+/** The most beats one walk may carry. A path is a few numbers a beat. */
+export const PATH_MAX = 24;
+
+function cleanPath(path) {
+  if (!Array.isArray(path)) return [];
+  const out = [];
+  for (const b of path) {
+    if (!b || typeof b !== 'object' || !finite(b.x) || !finite(b.y)) continue;
+    out.push({ ...clampPoint(b.x, b.y), beat: String(b.beat ?? '') });
+    if (out.length >= PATH_MAX) break;
+  }
+  return out;
+}
+
 export function blankBlock(patch = {}) {
-  return { id: uid('bk'), sceneId: '', name: '', note: '', widthM: '', marks: [], ...patch };
+  /* `set` and `axis` (1 Nov 2026) are two more FIELDS, spread under every
+     stored block: an older block reads back unfurnished and with no line. */
+  return { id: uid('bk'), sceneId: '', name: '', note: '', widthM: '', marks: [], set: [], axis: null, ...patch };
+}
+
+/** A whole block, cleaned the way listBlocks() reads one. */
+export function cleanBlock(b) {
+  const src = b && typeof b === 'object' ? b : {};
+  const row = { ...blankBlock(), ...src };
+  row.marks = (Array.isArray(src.marks) ? src.marks : []).map(cleanMark);
+  row.set = (Array.isArray(src.set) ? src.set : []).filter((p) => p && typeof p === 'object').map(cleanSetPiece);
+  row.axis = cleanAxis(src.axis);
+  return row;
 }
 
 function cleanMark(m) {
@@ -260,6 +347,11 @@ function cleanMark(m) {
     const t = clampPoint(out.toX, out.toY); out.toX = t.x; out.toY = t.y;
   }
   out.label = String(out.label ?? '');
+  /* Beats after the first leg exist only while there IS a first leg, and
+     never on a track (whose toX/toY is the far end of a rail). */
+  out.path = out.toX == null || out.kind === 'track' ? [] : cleanPath(out.path);
+  out.curve = out.curve === true;
+  out.charId = typeof out.charId === 'string' ? out.charId : '';
   return out;
 }
 
@@ -846,11 +938,12 @@ export function framesByShot() {
 /* ---- blocking diagrams ------------------------------------------ */
 
 export function listBlocks() {
-  return readAll().blocks.map((b) => {
-    const row = { ...blankBlock(), ...b };
-    row.marks = (Array.isArray(b && b.marks) ? b.marks : []).map(cleanMark);
-    return row;
-  });
+  return readAll().blocks.map(cleanBlock);
+}
+
+/** One block by id, cleaned, or null. */
+export function getBlock(blockId) {
+  return listBlocks().find((b) => b.id === blockId) || null;
 }
 
 export function saveBlocks(blocks) {
@@ -873,9 +966,24 @@ export function updateBlock(id, patch) {
   const blocks = listBlocks();
   const i = blocks.findIndex((b) => b.id === id);
   if (i < 0) return null;
-  blocks[i] = { ...blocks[i], ...patch, id, marks: blocks[i].marks };   // marks go through the mark calls
+  // Marks and set pieces go through their own calls; the axis is cleaned.
+  blocks[i] = cleanBlock({ ...blocks[i], ...patch, id, marks: blocks[i].marks, set: blocks[i].set });
   saveBlocks(blocks);
   return blocks[i];
+}
+
+/** Write a whole block by id, every mark and piece cleaned; inserted at
+    the end when no block has that id. The one path for undo / redo and
+    for an AI draft's apply and undo, so none of them can store a shape
+    the readers would not produce. Returns the cleaned block. */
+export function replaceBlock(block) {
+  if (!block || typeof block !== 'object' || !block.id) return null;
+  const row = cleanBlock(block);
+  const blocks = listBlocks();
+  const i = blocks.findIndex((b) => b.id === row.id);
+  if (i < 0) blocks.push(row); else blocks[i] = row;
+  saveBlocks(blocks);
+  return row;
 }
 
 /** Put a removed diagram back at its old place in the list (Undo). */
@@ -936,6 +1044,133 @@ export function removeMark(blockId, markId) {
   block.marks = block.marks.filter((m) => m.id !== markId);
   saveBlocks(blocks);
   return block;
+}
+
+/* The default names a duplicate may renumber: "Actor 2" copied is the
+   next free "Actor N", but "Ravi" copied is still Ravi. */
+const DEFAULT_LABEL = /^(?:(?:Actor|Light|Track|Mark) \d+|Cam (?:[A-Z]|\d+))$/;
+function freeLabel(marks, kind) {
+  const labels = new Set(marks.map((m) => m.label));
+  const nameAt = (n) => (kind === 'camera' ? 'Cam ' + (n < 26 ? String.fromCharCode(65 + n) : n + 1)
+    : (kind === 'actor' ? 'Actor ' : kind === 'light' ? 'Light ' : kind === 'track' ? 'Track ' : 'Mark ') + (n + 1));
+  let n = 0;
+  while (labels.has(nameAt(n))) n++;
+  return nameAt(n);
+}
+
+/** Copies of some marks, offset by (dx, dy), with new ids. Their moves
+    and beats travel with them. Returns the new marks. */
+/** A mark moved by (dx, dy) as a whole: its spot, its walk's end and
+    every beat on the way, so a copy walks where the original walks,
+    offset — never back to the original's destinations. */
+export function offsetMark(m, dx, dy) {
+  return {
+    ...m, x: m.x + dx, y: m.y + dy,
+    toX: m.toX == null ? null : m.toX + dx, toY: m.toY == null ? null : m.toY + dy,
+    path: (m.path || []).map((b) => ({ ...b, x: b.x + dx, y: b.y + dy }))
+  };
+}
+
+export function duplicateMarks(blockId, markIds, dx = 4, dy = 4) {
+  const blocks = listBlocks();
+  const block = blocks.find((b) => b.id === blockId);
+  if (!block) return [];
+  const want = new Set(markIds || []);
+  const made = [];
+  for (const m of block.marks.filter((x) => want.has(x.id))) {
+    const label = DEFAULT_LABEL.test(m.label) ? freeLabel(block.marks.concat(made), m.kind) : m.label;
+    made.push(cleanMark({ ...offsetMark(m, dx, dy), id: uid('mk'), label }));
+  }
+  if (!made.length) return [];
+  block.marks.push(...made);
+  saveBlocks(blocks);
+  return made;
+}
+
+/* ---- set pieces and the line ------------------------------------ */
+
+export function addSetPiece(blockId, kind, patch = {}) {
+  const blocks = listBlocks();
+  const block = blocks.find((b) => b.id === blockId);
+  if (!block) return null;
+  const k = SET_KINDS.includes(kind) ? kind : 'prop';
+  const [w, h] = SET_SIZE[k];
+  // Born a little apart from the last piece, so two adds are two shapes.
+  const n = block.set.length % 6;
+  const piece = cleanSetPiece({ ...blankSetPiece({ kind: k, w, h, x: 40 + n * 4, y: 30 + n * 3 }), ...patch });
+  block.set.push(piece);
+  saveBlocks(blocks);
+  return piece;
+}
+
+export function updateSetPiece(blockId, pieceId, patch) {
+  const blocks = listBlocks();
+  const block = blocks.find((b) => b.id === blockId);
+  if (!block) return null;
+  const i = block.set.findIndex((p) => p.id === pieceId);
+  if (i < 0) return null;
+  block.set[i] = cleanSetPiece({ ...block.set[i], ...patch, id: pieceId });
+  saveBlocks(blocks);
+  return block.set[i];
+}
+
+export function removeSetPiece(blockId, pieceId) {
+  const blocks = listBlocks();
+  const block = blocks.find((b) => b.id === blockId);
+  if (!block) return null;
+  block.set = block.set.filter((p) => p.id !== pieceId);
+  saveBlocks(blocks);
+  return block;
+}
+
+/** Draw (or, with null, take away) the 180-degree line. Returns the
+    stored axis, null when cleared or unusable, undefined for no block. */
+export function setAxis(blockId, axis) {
+  const blocks = listBlocks();
+  const block = blocks.find((b) => b.id === blockId);
+  if (!block) return undefined;
+  block.axis = cleanAxis(axis);
+  saveBlocks(blocks);
+  return block.axis;
+}
+
+/* ---- derived, never stored --------------------------------------- */
+
+/** A lens's horizontal field of view in degrees, on a Super 35 gate
+    (24.9 mm wide), or null when the lens says no focal length ("zoom",
+    blank). "24-70mm" reads its wide end. Pure. */
+export function lensFov(lens) {
+  const m = String(lens ?? '').match(/(\d+(?:\.\d+)?)\s*(?:-\s*\d+(?:\.\d+)?)?\s*(?:mm)?/i);
+  const f = m ? Number(m[1]) : NaN;
+  if (!Number.isFinite(f) || f < 4 || f > 1200) return null;
+  return Math.round((2 * Math.atan(24.9 / (2 * f)) * 180) / Math.PI * 10) / 10;
+}
+
+/** The field of view a camera mark draws: the WIDEST lens among the shots
+    linked to it, or null (the drawing's default wedge) when none says. */
+export function cameraFov(camId, shots) {
+  let best = null;
+  for (const s of shotsOfCamera(camId, shots || [])) {
+    const f = lensFov(s.lens);
+    if (f != null && (best == null || f > best)) best = f;
+  }
+  return best;
+}
+
+/** Which side of the 180-degree line each camera stands on. `crossed` is
+    true when two cameras of this setup stand on opposite sides — the
+    warning. Cameras within half a unit of the line count as on it. Pure. */
+export function axisSides(block) {
+  const out = { left: [], right: [], on: [], crossed: false };
+  const a = block && cleanAxis(block.axis);
+  if (!a) return out;
+  const len = Math.hypot(a.x2 - a.x1, a.y2 - a.y1);
+  for (const m of (block.marks || []).filter((x) => x.kind === 'camera')) {
+    const d = ((a.x2 - a.x1) * (m.y - a.y1) - (a.y2 - a.y1) * (m.x - a.x1)) / len;
+    (Math.abs(d) < 0.5 ? out.on : d < 0 ? out.left : out.right).push(m.id);
+  }
+  out.crossed = out.left.length > 0 && out.right.length > 0;
+  return out;
 }
 
 /* ---- lookbook boards ------------------------------------------ */
@@ -1041,6 +1276,8 @@ export default {
   BLOCK_W, BLOCK_H, BLOCK_KINDS, clampPoint, blockScale, blockCallouts, formatMetres, shotStatus, coverageOf, blankMark, blankBlock, listBlocks, saveBlocks, blocksOfScene,
   floorWidthError,
   addBlock, updateBlock, removeBlock, restoreBlock, addMark, updateMark, removeMark,
+  SET_KINDS, SET_SIZE, PATH_MAX, offsetMark, blankSetPiece, cleanSetPiece, cleanAxis, cleanBlock, getBlock, addSetPiece,
+  updateSetPiece, removeSetPiece, setAxis, replaceBlock, duplicateMarks, lensFov, cameraFov, axisSides,
   blankShot, listShots, saveShots, addShot, updateShot, removeShot, moveShot,
   SHOT_COLUMNS, DEFAULT_COLUMNS, cleanColumns,
   reorderShots, isLockedNumber, autoNumbers, autoNumber, isAutoOrdered, sceneAutoOrdered, shotMinutes, parseMinutes, minutesProblem, MAX_SHOT_MINUTES, duplicateNumbers, nextBlockName, minutesOf, formatMinutes,

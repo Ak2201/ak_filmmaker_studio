@@ -271,7 +271,7 @@
           "label": "Screen Time",
           "purpose": "How many minutes each scene will run on screen, worked out from the pages",
           "status": "built",
-          "href": "reports.html#screentime",
+          "href": "breakdown.html#screentime",
           "icon": "◔",
           "sym": "timer",
           "group": "Breakdown"
@@ -281,7 +281,7 @@
           "label": "Cast Matrix",
           "purpose": "Which character is in which scene, and who shares the most scenes",
           "status": "built",
-          "href": "reports.html#cast-matrix",
+          "href": "breakdown.html#cast-matrix",
           "icon": "▦",
           "sym": "groups",
           "group": "Breakdown"
@@ -406,7 +406,7 @@
           "href": "budget.html",
           "icon": "₹",
           "sym": "payments",
-          "group": "Budget & People",
+          "group": "Budget",
           "sections": [
             {
               "id": "estimate",
@@ -472,7 +472,7 @@
           "href": "contacts.html#contacts",
           "icon": "☺",
           "sym": "person",
-          "group": "Budget & People"
+          "group": "People"
         },
         {
           "id": "reports",
@@ -482,7 +482,7 @@
           "href": "reports.html#reports",
           "icon": "⌗",
           "sym": "assessment",
-          "group": "Budget & People",
+          "group": "People",
           "sections": [
             {
               "id": "dpr",

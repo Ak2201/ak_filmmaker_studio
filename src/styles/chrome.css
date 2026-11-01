@@ -4544,6 +4544,99 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
 }
 .sh-fly-mod.is-planned { opacity: .72; }
 
+/* Level 1 of a grouped flyout (shell.js buildFly): one row per group,
+   icon · label · count · chevron, the module row's box and type so the
+   two levels read as one list. Open = the hover tint held, plus the
+   stage hue on the chevron; the group holding where you are carries the
+   module row's "here" bar, quieter (no fill, the fill is level 2's). */
+.sh-fly-grp {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto 16px;
+  align-items: center;
+  gap: var(--s2);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--h-control);
+  padding: var(--s1) var(--s2);
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--ink-body);
+  font-family: var(--f-body);
+  font-size: var(--t-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.sh-fly-grp:hover,
+.sh-fly-grp[aria-expanded="true"] { background: var(--surface-hover); color: var(--ink); }
+.sh-fly-grp:focus-visible { outline: var(--focus); outline-offset: -2px; }
+.sh-fly-grp.has-here { box-shadow: inset 2px 0 0 var(--hue, var(--accent-primary)); color: var(--ink); font-weight: 600; }
+.sh-fly-count {
+  min-width: 1.5em;
+  font-family: var(--f-body);
+  font-size: var(--t-micro);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--ink-muted);
+}
+.sh-fly-chev {
+  font-size: 16px;
+  line-height: 1;
+  color: var(--ink-muted);
+  transition: transform var(--speed) var(--ease);
+}
+.sh-fly-grp[aria-expanded="true"] .sh-fly-chev { color: var(--hue-deep, var(--ink)); }
+
+/* Level 2 BESIDE the flyout: its own fixed panel, the flyout's surface,
+   placed by placeL2() from the flyout's right edge and the row's top.
+   The flyout drops its entrance transform while a panel is open: a
+   transformed ancestor would make it the panel's containing block. */
+.sh-fly.has-l2 { transform: none; }
+.sh-fly-l2 {
+  position: fixed;
+  top: var(--sh-l2-top, var(--sh-bar-min));
+  left: var(--sh-l2-left, calc(var(--sh-rail-w) + 296px));
+  z-index: var(--z-float);
+  box-sizing: border-box;
+  display: grid;
+  align-content: start;
+  gap: 1px;
+  width: 272px;
+  max-height: calc(100dvh - var(--s4) - var(--ssb-h, 0px) - var(--mab-h, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--s2);
+  background: var(--surface-elevated);
+  color: var(--ink);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 2px 0 var(--hue, var(--accent-primary)), var(--shadow-md);
+}
+.sh-fly-l2[hidden] { display: none; }
+.sh-fly-l2 > .sh-fly-sub:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
+@starting-style {
+  .sh-fly-l2 { opacity: 0; transform: translateX(calc(-4px * var(--motion))); }
+}
+.sh-fly-l2 { transition: opacity var(--speed) var(--ease), transform var(--speed) var(--ease); }
+
+/* …or IN PLACE, an accordion under its row, when the window has no room
+   beside the flyout (placeL2 sets is-accordion). The chevron turns down. */
+.sh-fly.is-accordion .sh-fly-l2 {
+  position: static;
+  width: auto;
+  max-height: none;
+  overflow: visible;
+  margin: 0 0 var(--s1) var(--s3);
+  padding: 0;
+  background: none;
+  border: 0;
+  border-left: 1px solid var(--border-hair);
+  border-radius: 0;
+  box-shadow: none;
+}
+.sh-fly.is-accordion .sh-fly-l2 > .sh-fly-sub { display: none; }
+.sh-fly.is-accordion .sh-fly-grp[aria-expanded="true"] .sh-fly-chev { transform: rotate(90deg); }
+
 /* ---- the band: one 56px row ------------------------------------------ */
 :root .sh-bar {
   display: flex;
@@ -4825,7 +4918,7 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
 }
 
 @media print {
-  .sh-fly { display: none !important; }
+  .sh-fly, .sh-fly-l2 { display: none !important; }
 }
 
 /* THE RAIL HAS NO TOGGLE ON A DESK (owner, 14 Oct 2026): from 1100px up

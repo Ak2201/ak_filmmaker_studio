@@ -29,7 +29,7 @@ import '../styles/pdf.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { revealTarget } from '../ui/tabs.js';
-import { standDown as fragmentStandDown } from '../ui/fragments.js';
+import { standDown as fragmentStandDown, resolveFragment } from '../ui/fragments.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
@@ -857,9 +857,17 @@ function render() {
        sheet, not the top of the list. Once, after the tab has opened. */
     let want = '';
     try { want = new URLSearchParams(location.search).get('sheet') || ''; } catch (e) { /* ignore */ }
+    /* The address also carries #call-sheets, and that landing keeps
+       re-landing for as long as the page mutates, so a bare scroll raced
+       it and lost (item 77). standDown() alone was not enough once the
+       rail's flyout grew (1 Nov 2026, prove:schedule 13): the page kept
+       growing above the card after the one-off scroll. So the resolver
+       is pointed at the CARD — it stops the section's landing and keeps
+       the card under the band until the page holds still. */
     if (want) requestAnimationFrame(() => requestAnimationFrame(() => {
       const card = document.querySelector('.ct-sheet[data-sheet="' + CSS.escape(want) + '"]');
-      if (card) { fragmentStandDown(); card.scrollIntoView({ block: 'start', behavior: 'instant' }); }
+      if (card && card.id) resolveFragment('#' + card.id);
+      else if (card) { fragmentStandDown(); card.scrollIntoView({ block: 'start', behavior: 'instant' }); }
     }));
   }
   wireActionBar();

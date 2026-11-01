@@ -55,6 +55,7 @@
    provider setting picks which one a request uses.
    ============================================================ */
 import { rawGet, rawSet, rawRemove } from './store.js';
+import GeminiGoogle from './gemini-google.js';
 
 /* Per-device, never scoped, never synced. See the header. */
 export const AI_KEY           = 'fms_ai_key_v1';
@@ -178,7 +179,21 @@ export function getKey(id) {
   const k = rawGet(provider(id).keyKey);
   return typeof k === 'string' ? k.trim() : '';
 }
-export function hasKey(id) { return getKey(id).length > 0; }
+/* A Gemini call can also run on the owner's Google login instead of a
+   key (src/lib/gemini-google.js). "Has a key" therefore means "can make
+   a call": every gate in the studio asks hasKey(), so this one line is
+   what unlocks them all for a connected login. */
+export function viaGoogle(id) { return provider(id).id === 'gemini' && GeminiGoogle.isConnected(); }
+export function hasKey(id) { return getKey(id).length > 0 || viaGoogle(id); }
+
+/** The auth headers a request carries: the Google login first when it
+    is connected (it was an explicit choice), else the saved key under
+    the provider's own header name. Null when there is neither. */
+export function credential(id, keyHeader) {
+  if (viaGoogle(id)) return GeminiGoogle.authHeaders();
+  const k = getKey(id);
+  return k ? { [keyHeader]: k } : null;
+}
 
 /** Returns false when storage refused, so the panel can say so
     rather than pretending the key was kept. */
@@ -239,6 +254,6 @@ export default {
   PROVIDERS, DEFAULT_PROVIDER,
   AI_KEY, AI_MODEL_KEY, GEMINI_KEY, GEMINI_MODEL_KEY, AI_PROVIDER_KEY,
   getProviderId, provider, setProvider, providerLabel, apiName, apiHost, apiOrigin,
-  getKey, hasKey, setKey, clearKey, maskKey, looksLikeKey,
+  getKey, hasKey, viaGoogle, credential, setKey, clearKey, maskKey, looksLikeKey,
   models, defaultModel, getModel, setModel, imageModel, imageModelLabel
 };

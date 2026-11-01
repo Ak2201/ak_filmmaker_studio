@@ -37,6 +37,7 @@ import { h, delegate } from '../lib/dom.js';
 import * as Script from '../lib/script.js';
 import * as Drafts from '../lib/drafts.js';
 import { pageHeader, button, badge, emptyState } from '../ui/kit/index.js';
+import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
 import { choiceDialog, installLeavePrompt } from '../ui/leave-prompt.js';
 import { mountRevisionTools, renderCompareTool, renderRevisedPagesTool, renderNumberingTool, presetCompare } from '../ui/write-revisions.js';
 import { subscribe, onWriteElsewhere, currentProjectId } from '../lib/store.js';
@@ -167,6 +168,27 @@ delegate(document, 'input', '[data-tp-field]', (e, input) => {
   tpTimer = setTimeout(() => { fresh(); refreshState(); }, 400);
 });
 
+/* The AI Desk's 'draft-changes' task: a read of what changed between the
+   two drafts the Compare selects name AT THE CLICK. It changes nothing.
+   The page hands the two element lists in; src/lib never reads a select. */
+function changesPill() {
+  const picked = () => {
+    fresh();
+    const val = (id) => { const s = document.getElementById(id); return s ? s.value : ''; };
+    const label = (id) => { const s = document.getElementById(id); const o = s && s.selectedOptions[0]; return o ? o.textContent : ''; };
+    const lists = (v) => (v === 'live' ? doc.elements : ((doc.revisions.find((r) => r.id === v) || {}).elements || null));
+    const olderId = val('wr-cmp-from'), newerId = val('wr-cmp-to');
+    return { olderId, newerId, older: lists(olderId), newer: lists(newerId), olderLabel: label('wr-cmp-from'), newerLabel: label('wr-cmp-to') };
+  };
+  return h('p.dr-ai', {}, [aiPill({
+    label: 'Summarise changes', tasks: ['draft-changes'],
+    ctx: () => {
+      const c = picked();
+      return { olderId: c.olderId, newerId: c.newerId, compare: () => c };
+    }
+  })]);
+}
+
 /* ---- the list ---------------------------------------------------- */
 function row(d, isLatest) {
   const li = h('li.dr-row' + (isLatest ? '.is-current' : ''), { 'data-draft': d.id });
@@ -246,7 +268,8 @@ function render() {
     main.append(h('ol.dr-list', { 'aria-label': 'Drafts, newest first' }, drafts.map((d) => row(d, !!last && d.id === last.id))));
   }
 
-  main.append(h('div#dr-compare', {}, [renderCompareTool()]));
+  const compareTool = renderCompareTool();
+  main.append(h('div#dr-compare', {}, [compareTool, compareTool ? changesPill() : null].filter(Boolean)));
   main.append(h('div#dr-revised', {}, [renderRevisedPagesTool()].filter(Boolean)));
   /* The scene-number lock: the stripboard's "Manage numbering" lands
      here. Filtered — Element.append(null) prints "null". */
@@ -292,9 +315,16 @@ delegate(document, 'click', '[data-dr="update"]', async (e, btn) => {
   });
   if (res.id !== 'go') return;
   fresh();
-  Drafts.updateDraft(doc, last.id);
-  save();
-  say('Updated ' + last.label + '.', 'success');
+  /* updateDraft() refuses the locked baseline (the change report compares
+     the script with it): save a new draft instead and say why. */
+  if (Drafts.updateDraft(doc, last.id)) {
+    save();
+    say('Updated ' + last.label + '.', 'success');
+  } else {
+    const made = Drafts.saveNewDraft(doc);
+    save();
+    say('The locked script is kept as it is; saved as ' + (made ? made.name : 'a new draft') + '.', 'success');
+  }
   renderFocusing(opener);
 });
 
@@ -321,13 +351,19 @@ delegate(document, 'click', '[data-dr="restore"]', async (e, btn) => {
   const prev = Sync ? Sync.headingMap(doc.elements) : null;
   Drafts.restoreDraft(doc, id);
   save();
-  let binned = 0;
+  let binned = 0, waiting = 0;
   try {
-    const r = Sync ? Sync.syncScript(doc.elements, { prev, numbering: doc.numbering }) : null;
+    /* `held` is passed here, never inferred inside the sync: under a held
+       lock a scene the draft lacks is not binned, it waits in the change
+       report for the writer to act on. */
+    const held = Script.isHeld(doc.numbering);
+    const r = Sync ? Sync.syncScript(doc.elements, { prev, numbering: doc.numbering, held }) : null;
     binned = (r && r.result && r.result.binned.length) || 0;
+    waiting = held && r && r.plan && r.plan.pending ? (r.plan.pending.omit || []).length : 0;
   } catch (e) { console.warn('[drafts] scene sync', e); }
   say('Restored ' + d.label + ' as the working copy.'
-    + (binned ? ' ' + binned + (binned === 1 ? ' scene it does not have went' : ' scenes it does not have went') + ' to the Breakdown’s bin.' : ''), 'success');
+    + (binned ? ' ' + binned + (binned === 1 ? ' scene it does not have went' : ' scenes it does not have went') + ' to the Breakdown’s bin.' : '')
+    + (waiting ? ' ' + waiting + (waiting === 1 ? ' scene it does not have waits' : ' scenes it does not have wait') + ' in the change report.' : ''), 'success');
   renderFocusing(opener);
 });
 

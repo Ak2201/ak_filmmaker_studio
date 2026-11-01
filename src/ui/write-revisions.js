@@ -29,10 +29,8 @@ import { h, delegate } from '../lib/dom.js';
 import { button } from './kit/index.js';
 import '../styles/write-revisions.css';
 import StudioUI from './chrome.js';
-import Scenes from '../lib/scenes.js';
-import { applyNumbers } from '../lib/scene-sync.js';
 import {
-  revisionColour, sceneNumbers, lockNumbering, isNumberingLocked, typeLabel
+  revisionColour, sceneNumbers, isNumberingLocked, typeLabel
 } from '../lib/script.js';
 import { askDanger } from './dialog.js';
 import { issuedColour, issuedCount, revisionLabel, isSideCopy } from '../lib/script-incoming.js';
@@ -147,13 +145,21 @@ function renderNumbering(doc) {
   if (!isNumberingLocked(doc.numbering)) {
     box.append(
       h('p.wr-tool-sub', {
-        text: 'Numbered by position: the twelfth heading is scene 12. Lock them when the script '
+        text: 'Numbered by position: the twelfth heading is scene 12. Lock the script when it '
             + 'goes to the floor — after that a scene inserted after 12 is 12A, a cut scene stays '
             + 'in the pages as OMITTED, and no call sheet ends up pointing at the wrong scene.'
       }),
-      h('div.wr-tool-row', {}, [
-        button({ label: 'Lock scene numbers', action: 'numbers-lock', disabled: heads === 0 })
-      ])
+      /* ONE lock (owner, 1 Nov 2026): the scene numbers are frozen by the
+         Screenplay Writer's review sheet, which also runs the rules-based
+         pre-production pass. This was a second, bare "Lock scene numbers"
+         button; it is a link to that step now and its handler is gone. A
+         link, so with no headings it is simply not drawn (a disabled
+         control explains itself only in a tooltip). */
+      heads === 0
+        ? h('p.wr-tool-sub', { text: 'There are no scene headings yet; write or import the screenplay first.' })
+        : h('div.wr-tool-row', {}, [
+          button({ label: 'Lock the script', href: 'screenplay.html#lock' })
+        ])
     );
     return box;
   }
@@ -348,26 +354,6 @@ function wire() {
     });
   });
 
-  delegate(document, 'click', '[data-action="numbers-lock"]', () => {
-    const doc = ctx.getDoc();
-    if (!doc || isNumberingLocked(doc.numbering)) return;
-    /* An imported shooting script's numbers live on the Breakdown's rows
-       (the importer never puts them in the element text). When every
-       heading's row carries one, they are what is locked. */
-    const preset = new Map();
-    try {
-      for (const s of Scenes.listScenes()) if (s.scriptElId && s.number) preset.set(s.scriptElId, String(s.number));
-    } catch (e) { /* no scenes */ }
-    doc.numbering = lockNumbering(doc.elements, preset);
-    ctx.persistNow();
-    let moved = 0;
-    try { moved = applyNumbers(doc.elements, doc.numbering); } catch (e) { console.warn('[write] numbers', e); }
-    ctx.render('[data-action="numbers-unlock"]');
-    const n = Object.keys(doc.numbering.ids).length;
-    say('Scene numbers locked: ' + plural(n, 'scene') + '.'
-      + (moved ? ' ' + plural(moved, 'Breakdown row') + ' renumbered to match.' : ''), 'success');
-  });
-
   delegate(document, 'click', '[data-action="pages-lock"]', async () => {
     const doc = ctx.getDoc();
     if (!doc || !isNumberingLocked(doc.numbering) || (doc.numbering.pages && doc.numbering.pages.locked)) return;
@@ -392,25 +378,19 @@ function wire() {
     say('Page numbers unlocked.', 'success');
   });
 
+  /* The one shared unlock (script-lock-ui.js): it asks through dialog.js
+     with the counts, re-reads, saves, settles the Breakdown. The page's own
+     doc is the one it edits and saves, because this page holds the blob. */
   delegate(document, 'click', '[data-action="numbers-unlock"]', async () => {
     const doc = ctx.getDoc();
     if (!doc || !isNumberingLocked(doc.numbering)) return;
-    const res = sceneNumbers(doc.elements, doc.numbering);
-    const ok = await askDanger('Unlock the scene numbers?\n\n'
-      + 'Every scene is renumbered by its position, 1 to ' + res.byId.size + ' — lettered inserts '
-      + 'like 12A become whole numbers'
-      + (res.omitted.length ? ', and the ' + plural(res.omitted.length, 'OMITTED placeholder') + ' go' : '')
-      + '. The Breakdown, the stripboard and the call sheets follow.'
-      + (doc.numbering.pages ? ' The page numbers are unlocked with them.' : '') + '\n\n'
-      + 'Pages already handed out will no longer match. Cancel keeps the numbers locked.');
-    if (!ok) return;
-    delete doc.numbering;
-    ctx.persistNow();
-    let moved = 0;
-    try { moved = applyNumbers(doc.elements, null); } catch (e) { console.warn('[write] numbers', e); }
-    ctx.render('[data-action="numbers-lock"]');
-    say('Scene numbers unlocked and renumbered by position.'
-      + (moved ? ' ' + plural(moved, 'Breakdown row') + ' renumbered.' : ''), 'success');
+    let U;
+    try { U = await import('./script-lock-ui.js'); } catch (e) { say('The unlock could not be loaded. Check the connection and try again.'); return; }
+    await U.confirmUnlock({
+      getDoc: ctx.getDoc,
+      save: () => ctx.persistNow(),
+      after: () => ctx.render('[href="screenplay.html#lock"]')
+    });
   });
 }
 

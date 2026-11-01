@@ -658,7 +658,7 @@ async function untick(page, i) {
   await page.waitForTimeout(150);
 }
 async function clickUndo(page) {
-  const undo = page.locator('.toast-action', { hasText: /Undo/ }).last();
+  const undo = page.locator('.toast', { hasText: /applied\./ }).locator('.toast-action', { hasText: /Undo/ }).last();
   const has = await undo.waitFor({ state: 'visible', timeout: 3000 }).then(() => true, () => false);
   ok(has, 'an Undo toast is offered');
   if (has) await undo.click();

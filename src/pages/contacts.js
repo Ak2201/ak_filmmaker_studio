@@ -31,6 +31,7 @@ import { mountShell } from '../ui/shell.js';
 import { revealTarget } from '../ui/tabs.js';
 import { standDown as fragmentStandDown, resolveFragment } from '../ui/fragments.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
+import { aiPill } from '../ui/ai-pill.js';
 import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
 import PDF from '../lib/pdf.js';
@@ -424,6 +425,34 @@ function renderDayCard(sheet, scenes) {
   return card;
 }
 
+/* The AI Desk's notes draft (callsheet-notes). It fills the Notes box
+   only while it is empty and keeps no other copy; the unit message it
+   also drafts is offered to copy in a toast, never stored. The page hands
+   in the facts it already builds for the WhatsApp text. */
+function notesAi(sheetId) {
+  const find = () => Contacts.listCallSheets().find((x) => x.id === sheetId) || null;
+  return h('div.ct-ai-row', {}, [aiPill({
+    label: 'Draft notes', tasks: ['callsheet-notes'],
+    ctx: () => ({
+      sheetId,
+      facts: () => { const sh = find(); return sh ? factsOf(sh, Scenes.listScenes()) : null; },
+      say: (m) => StudioUI.toast(m),
+      offerUnit: (text) => StudioUI.toast('A unit message is ready to copy.', {
+        action: 'Copy it',
+        onAction: () => { copyText(text).then((ok) => StudioUI.toast(ok ? 'Unit message copied.' : 'Could not reach the clipboard.')); }
+      }),
+      after: () => {
+        const card = document.querySelector('.ct-sheet[data-sheet="' + sheetId + '"]');
+        const sh = find();
+        const box = card && card.querySelector('.ct-sheet-notes');
+        if (!box || !sh) return;
+        box.value = sh.notes || '';
+        syncDoc(box);
+      }
+    })
+  })]);
+}
+
 function renderSheetEdit(sheet, contacts, scenes) {
   const edit = h('div.ct-edit');
   edit.append(renderDayCard(sheet, scenes));
@@ -461,6 +490,7 @@ function renderSheetEdit(sheet, contacts, scenes) {
   edit.append(renderSchedLine(sheet, scenes));
   edit.append(renderLight(sheet, scenes));
 
+  edit.append(notesAi(sheet.id));
   edit.append(labelled('Notes', field('textarea.ct-sheet-notes', {
     rows: '2', placeholder: 'Weather, parking, nearest hospital, anything the day needs',
     'data-sheet-field': 'notes', 'aria-label': 'Call sheet notes'

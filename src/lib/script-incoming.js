@@ -30,6 +30,20 @@ export function scriptSignature(doc) {
   ]);
 }
 
+/** True when the two copies differ ONLY in `numbering` (elements, draft ids
+    and title page all equal): a change-report mark made on another device,
+    which the writer adopts quietly rather than filing as a side copy. */
+export function numberingOnly(base, fresh) {
+  if (!base || !fresh) return false;
+  const parts = (d) => JSON.stringify([
+    (d.elements || []).map((e) => [e.id, e.type, e.text, e.dual === true]),
+    (d.revisions || []).map((r) => r.id),
+    d.titlePage || null
+  ]);
+  return parts(base) === parts(fresh)
+    && JSON.stringify(base.numbering || null) !== JSON.stringify(fresh.numbering || null);
+}
+
 /** A script that is only the one blank line the page adds in memory. */
 const isBlank = (doc) => {
   const els = (doc && doc.elements) || [];
@@ -220,4 +234,4 @@ export function settleCrossed(mine, fresh, label) {
   return { doc: { ...won, revisions: capArrivals(revs.concat(draft)) }, mineWon, draft };
 }
 
-export default { scriptSignature, incomingAction, displacedCopy, crossedSave, settleCrossed, unionRevisions, keepBoth, takeTheirs, isSideCopy, issuedColour, issuedCount, revisionLabel, ARRIVAL_PREFIX, ARRIVAL_WINDOW_PREFIX, YOURS_PREFIX };
+export default { numberingOnly, scriptSignature, incomingAction, displacedCopy, crossedSave, settleCrossed, unionRevisions, keepBoth, takeTheirs, isSideCopy, issuedColour, issuedCount, revisionLabel, ARRIVAL_PREFIX, ARRIVAL_WINDOW_PREFIX, YOURS_PREFIX };

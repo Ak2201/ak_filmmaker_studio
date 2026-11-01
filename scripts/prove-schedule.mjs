@@ -245,16 +245,31 @@ ok(sbp.sel !== 'none' && sbp.border === '0px' && sbp.caret === 'none', '9  a str
 ok(sbp.seg === 'none' && sbp.links === 0, '9  no "Group by" label or link-button prints', sbp);
 await page.emulateMedia({ media: 'screen' });
 
-/* ---- 8 lock: the dialog's pointer and the badge's date -------- */
-await page.click('.sb-lock-btn');
-await page.waitForSelector('.dlg .dlg-field');
-const note = await page.$eval('.dlg', (d) => d.innerText);
-ok(!/revision tools/.test(note) && /Unlock draft/.test(note), '8  the lock dialog points at this page\'s Unlock draft', note.slice(0, 400));
-await page.fill('.dlg .dlg-field', 'LOCK');
-await page.click('.dlg .mbtn.primary');
+/* ---- 8 lock: ONE lock, on the Screenplay Writer ---------------- */
+const lockHref = await page.$eval('.sb-lock-btn', (a) => ({ tag: a.tagName, href: a.getAttribute('href') }));
+ok(lockHref.tag === 'A' && lockHref.href === 'screenplay.html#lock', '8  the stripboard lock is a link to screenplay.html#lock', lockHref);
+ok(await page.$('[data-action="sb-lock"]') === null, '8  and no second lock handler button remains');
+/* A legacy lock seeded into the blob: the badge prints the film's date style,
+   and Unlock draft opens the SHARED unlock dialog. */
+await page.evaluate(() => {
+  /* Through the page's own (project-scoping) storage, like the scene writes above. */
+  const k = 'fms_script_v1';
+  const b = JSON.parse(localStorage.getItem(k) || '{"elements":[],"revisions":[],"documents":[]}');
+  const ids = {};
+  (b.elements || []).filter((e) => e.type === 'scene').forEach((e, i) => { ids[e.id] = { n: String(i + 1), t: e.text }; });
+  b.numbering = { locked: true, at: new Date().toISOString(), ids };
+  localStorage.setItem(k, JSON.stringify(b));
+});
+await page.reload({ waitUntil: 'networkidle' });   // a goto to the same URL + hash is not a navigation
 await settle(page);
 const badge = await page.$eval('.sb-lock-state', (b) => b.textContent).catch(() => '');
 ok(/Draft locked · /i.test(badge) && !/\d{4}-\d{2}-\d{2}/.test(badge), '8  the lock badge prints the film\'s date style', badge);
+await page.click('[data-action="sb-unlock"]');
+await page.waitForSelector('.dlg');
+const unl = await page.$eval('.dlg', (d) => d.innerText);
+ok(/Unlock the script/i.test(unl), '8  Unlock draft opens the shared unlock dialog', unl.slice(0, 200));
+await page.keyboard.press('Escape');
+await settle(page, 300);
 
 /* ---- 11 a pinned strip at 390 has no mask --------------------- */
 const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, storageState: await ctx.storageState() });

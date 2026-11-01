@@ -79,6 +79,10 @@
 import { callPort, hasPort } from './ports.js';
 import W from './ai-writing-apply.js';   // pure: takes, alternates, fill-only story, cast join
 import Store from './store.js';   // the open project's format (scene-story)
+/* The ten tasks of docs/AI-EVERYWHERE.md, one module per lane. */
+import * as Preprod from './ai-tasks-preprod.js';
+import * as Post from './ai-tasks-post.js';
+import * as Story from './ai-tasks-story.js';
 
 /* ---- the modules, loaded once ------------------------------- */
 let AI = null;            // ./ai.js
@@ -2505,7 +2509,9 @@ const blockingEnhanceTask = {
 /* ---- registration ------------------------------------------- */
 const ALL_TASKS = [coverageTask, dialogueTask, critiqueTask, storyStepsTask, storyMapTask, shotTask, sceneStoryTask, synopsisTask,
   genScenesTask, genBatchTask, voiceTask, loglineTask, genreTask, sceneNotesTask, tagsTask, boardTask, tensionTask, audienceTask,
-  audienceQuickTask, audienceAskTask, blockingDraftTask, blockingEnhanceTask];
+  audienceQuickTask, audienceAskTask, blockingDraftTask, blockingEnhanceTask,
+  ...Preprod.TASKS, ...Post.TASKS, ...Story.TASKS];
+const LANES = [Preprod, Post, Story];
 let registered = false;
 
 /** Register every task with the Desk (idempotent), and resolve once
@@ -2518,7 +2524,7 @@ export function registerAll(register) {
     registered = true;
     for (const t of ALL_TASKS) register(t);
   }
-  return loadAll();
+  return Promise.all([loadAll(), ...LANES.map((m) => m.load())]).then(() => true);
 }
 
 export const TASK_IDS = ALL_TASKS.map((t) => t.id);

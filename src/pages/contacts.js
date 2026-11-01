@@ -29,6 +29,7 @@ import '../styles/pdf.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { revealTarget } from '../ui/tabs.js';
+import { resolveFragment } from '../ui/fragments.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
 import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
@@ -856,9 +857,15 @@ function render() {
        sheet, not the top of the list. Once, after the tab has opened. */
     let want = '';
     try { want = new URLSearchParams(location.search).get('sheet') || ''; } catch (e) { /* ignore */ }
+    /* Through the fragment resolver, not a bare scrollIntoView: the
+       address also carries #call-sheets, and that landing keeps
+       re-landing for as long as the page mutates. A one-off scroll
+       raced it and lost whenever the resolver's next frame came after
+       ours (it did once the rail's flyout grew, 1 Nov 2026).
+       resolveFragment() stops that wait and lands on the card instead. */
     if (want) requestAnimationFrame(() => requestAnimationFrame(() => {
       const card = document.querySelector('.ct-sheet[data-sheet="' + CSS.escape(want) + '"]');
-      if (card) card.scrollIntoView({ block: 'start', behavior: 'instant' });
+      if (card && card.id) resolveFragment('#' + card.id);
     }));
   }
   wireActionBar();

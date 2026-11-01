@@ -15,9 +15,9 @@
       "files": 21
     },
     "breakdown": {
-      "bytes": 1202176,
-      "measured": 1092820,
-      "files": 45
+      "bytes": 1347584,
+      "measured": 1224371,
+      "files": 52
     },
     "stripboard": {
       "bytes": 1030144,
@@ -35,8 +35,8 @@
       "files": 24
     },
     "visualize": {
-      "bytes": 1085440,
-      "measured": 986650,
+      "bytes": 1199104,
+      "measured": 1090080,
       "files": 32
     },
     "screenplay": {

@@ -387,7 +387,9 @@ html.fm-on #screenplay { width: 100%; box-sizing: border-box; }
   gap: var(--s3);
   padding: var(--s2) var(--s4);
   padding-top: calc(var(--s2) + env(safe-area-inset-top, 0px));
-  background: color-mix(in srgb, var(--surface-canvas) 88%, transparent);
+  /* Opaque: the paper page scrolls under it, and 12% of light paper
+     through a dark strip printed the script's words behind its own. */
+  background: var(--surface-canvas);
   border-bottom: 1px solid var(--border-hair);
   font-family: var(--f-mono);
   font-size: var(--t-micro);

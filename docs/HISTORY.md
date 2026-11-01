@@ -3019,3 +3019,47 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       breakdown, the edit log and the estimator print.
     - **§64** (`schema-64-pro-blurb.sql`) updates the live Pro blurb. It is an
       owner step, with its checksum in `docs/LIVE-STEPS-2026-10-27.md`.
+
+69. **Navigation, the Blocking studio, AI blocking and focus mode (1 Nov
+    2026).** Four lanes in worktrees, merged in order (focus, nav, blocking,
+    blocking-ai) by one integrator.
+    - **Two-level flyout.** The Pre-Production flyout shows one row per
+      group (Breakdown, Visualise, Plan & Schedule, Budget, People) with a
+      count and a chevron; the group opens its rows in a panel beside it, or
+      in place when there is no room. Hover, click, focus, ArrowRight/Enter
+      open it; ArrowLeft/Escape go back. "Budget & People" split into
+      Budget and People (labels only, no module moved). plan-gate hides an
+      empty group and keeps its count right. `prove:nav` opens every panel.
+    - **Screen Time and Cast Matrix live on `breakdown.html`** (same ids,
+      in `src/ui/script-reports.js` + `script-reports.css`).
+      `reports.html#screentime`, `#cast-matrix` and `#runtime` forward to
+      Breakdown with the fragment.
+    - **Blocking studio** (`src/ui/blocking/`). Tool palette, inspector, set
+      pieces, walks with numbered beats and curves, character colours, lens
+      field of view, the 180° line with a crossing warning, snapping,
+      multi-select, five templates, in-memory undo/redo. The data is
+      ADDITIVE in `fms_shots_v1`: `block.set`, `block.axis`, `mark.path`,
+      `mark.curve`, `mark.charId`, spread under every stored row by
+      `blankBlock()` / `blankMark()`; an old diagram reads back field for
+      field and reading writes nothing (`test:blocking`). No new key.
+    - **AI blocking (Pro).** Desk tasks `blocking-draft` and
+      `blocking-enhance` (`ai-tasks.js`), the pure half in
+      `blocking-ai-model.js` (`test:blocking-ai`). One `replaceBlock()` per
+      Accept; Undo removes the drafted setup or writes back the snapshot.
+      Never run against a real provider.
+    - **Focus mode, the "black board".** Night (which paints the paper page
+      dark) defaulted ON, so every focus session opened on a black page. It
+      is off now unless chosen, stored as `focusPageNight` inside
+      `fms_write_prefs_v1` (the old `focusNight` was written under the
+      theme meaning and is not read). Also: the Beats column, notes dock and
+      AI Desk no longer leave a dark slab beside the page (`prove:scroll`
+      checks the page is centred at 1440/1100/390 with each open), and the
+      focus strip is opaque.
+    - **Integration fix.** contacts.html's `?sheet=` landing now goes through
+      `resolveFragment()`: a bare scrollIntoView raced the `#call-sheets`
+      re-landing and lost once the rail grew (`prove:schedule` 13).
+    - **Re-baselined** (Screen Time / Cast Matrix words moved from Reports to
+      Breakdown; group counts and the chevron icon name on every shell
+      page; "walk" and "180" on Visualize). The breakdown and visualize
+      budget rows were raised by hand to 110% of what loads now; no other
+      row moved.

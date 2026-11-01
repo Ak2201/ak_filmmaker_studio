@@ -77,7 +77,14 @@ let getMeta = () => null;
 let tracker = null;
 
 let on = false;
-let prefs = { marker: 'frame', dim: true, night: true };
+/* NIGHT IS OFF UNLESS CHOSEN (owner, 1 Nov 2026: "there is a black board
+   when focus mode has been enabled"). It defaulted on when Night meant
+   the dark THEME; since the studio went dark-only it paints the paper
+   page dark, so every first focus session opened on a black board. The
+   choice is stored as `focusPageNight`: the old `focusNight` was written
+   under the theme meaning (and by ANY change to marker or dim, with the
+   default riding along), so it is left in the blob and not read. */
+let prefs = { marker: 'frame', dim: true, night: false };
 let themeBefore = undefined;      // the data-theme we replaced, or null
 let themeSet = false;
 let fullscreenOurs = false;
@@ -92,11 +99,11 @@ function loadPrefs() {
   const o = readPrefsBlob();
   if (MARKERS.some((m) => m.id === o.focusMarker)) prefs.marker = o.focusMarker;
   if (typeof o.focusDim === 'boolean') prefs.dim = o.focusDim;
-  if (typeof o.focusNight === 'boolean') prefs.night = o.focusNight;
+  if (typeof o.focusPageNight === 'boolean') prefs.night = o.focusPageNight;
 }
 function savePrefs() {
   // READ, MERGE, WRITE — the format guide's fields ride along untouched.
-  writeWritePrefs({ focusMarker: prefs.marker, focusDim: prefs.dim, focusNight: prefs.night });
+  writeWritePrefs({ focusMarker: prefs.marker, focusDim: prefs.dim, focusPageNight: prefs.night });
 }
 
 /* ---- the entry button --------------------------------------- */

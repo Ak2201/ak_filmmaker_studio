@@ -21,13 +21,15 @@
      (d) "Made with" on a staged PDF for a plan that keeps branding, the
          last child of <body>, shown in print; absent on Pro; removed on unstage;
          and on the plain prints of the budget, stripboard and reports
-     (d2) What's new from the rail's avatar menu
+     (d2) What's new from the rail's avatar menu: hidden while the list is
+          empty, shown once an entry is posted
      (e) Settings → What's in my plan: the plan's modules, the next plan's
          extras, the upgrade figure; a full trial is not told it may remove
          the PDF line; an ended trial and a lapsed year list nothing and
          offer a plan; a grant shows no section; absent signed out
-     (f) What's new: the drawer opens with every entry, "New" goes, the
-         seen id lands in fms_studio_prefs_v1 (no new key), and stays gone
+     (f) What's new: no button on the dashboard while the list is empty; with
+         one entry posted the drawer opens with it, "New" goes, the seen id
+         lands in fms_studio_prefs_v1 (no new key), and stays gone
      (g) the first-week list's "Choose a plan": listed during a trial,
          ticked once paid, absent signed out, absent for a year-long
          (grandfathered) trial
@@ -48,6 +50,17 @@ const DIST = path.resolve(ROOT, process.env.PROVE_DIST || 'dist-verify');
 const BRAND = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/brand.json'), 'utf8'));
 const MATRIX = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/plan-matrix.json'), 'utf8'));
 const CHANGELOG = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/changelog.json'), 'utf8'));
+/* The shipped list is empty (the site is launching), so the proof posts one
+   entry itself: it rewrites `entries:[]` in the built changelog chunk on the
+   way to the browser. A page opened without it sees the real, empty list. */
+const POSTED = { id: '2099-01-01-proof', date: '2099-01-01', title: 'A posted entry', items: ['It shows up again.'] };
+async function postEntry(ctx) {
+  await ctx.route(/\/assets\/changelog-[^/]*\.js$/, async (route) => {
+    const res = await route.fetch();
+    const text = (await res.text()).replace('entries:[]', 'entries:[' + JSON.stringify(POSTED) + ']');
+    await route.fulfill({ response: res, body: text });
+  });
+}
 if (!fs.existsSync(path.join(DIST, 'index.html'))) { console.error('✗ no build at ' + DIST + ' (npm run build:verify)'); process.exit(2); }
 {
   const stamp = (fs.readFileSync(path.join(DIST, 'index.html'), 'utf8').match(/<meta name="fms-site-gate" content="([a-z]+)"/) || [])[1];
@@ -295,7 +308,7 @@ try {
     await page.goto(BASE + 'dashboard.html');
     await page.waitForTimeout(2500);
     ok(!(await page.$('.gr-share')), 'signed out: no referral row');
-    ok(!!(await page.$('[data-action="db-whatsnew"]')), 'signed out: What’s new is still there');
+    ok(!(await page.$('[data-action="db-whatsnew"]')), 'signed out: no What’s new while the list is empty');
     allErrors.push(...errors); await ctx.close();
   }
 
@@ -421,18 +434,22 @@ try {
   }
 
   console.log('(d2) What’s new from the avatar menu');
+  ok(CHANGELOG.entries.length === 0, 'the shipped changelog is empty');
   F.reset();
-  {
+  for (const posted of [false, true]) {
     const { ctx, page, errors } = await newContext({});
+    if (posted) await postEntry(ctx);
     await page.goto(BASE + 'stripboard.html');
     await page.waitForSelector('#studioRail .sh-rail-account', { timeout: 10000 });
     await page.click('#studioRail .sh-rail-account');
-    const row = await page.waitForSelector('#shAcctMenu [data-action="rail-whatsnew"]', { timeout: 5000 }).then(() => true, () => false);
-    ok(row, 'the account menu has a What’s new row');
+    await page.waitForSelector('#shAcctMenu .sh-acct-item', { timeout: 5000 });
+    await page.waitForTimeout(800);
+    const row = !!(await page.$('#shAcctMenu [data-action="rail-whatsnew"]'));
+    ok(row === posted, posted ? 'one entry posted: the account menu has a What’s new row' : 'empty list: no What’s new row in the account menu');
     if (row) {
       await page.click('#shAcctMenu [data-action="rail-whatsnew"]');
       const n = await page.waitForSelector('[data-mn-sheet="changelog"] .cl-entry', { timeout: 5000 }).then(() => page.$$eval('[data-mn-sheet="changelog"] .cl-entry', (e) => e.length), () => 0);
-      ok(n === CHANGELOG.entries.length, 'it opens the changelog drawer with every entry (' + n + ')');
+      ok(n === 1, 'it opens the changelog drawer with the entry (' + n + ')');
       ok(!(await page.$('#shAcctMenu')), 'and the menu closes');
       await page.keyboard.press('Escape');
       ok(await page.evaluate(() => !!document.activeElement && document.activeElement.matches('.sh-rail-account')), 'Escape returns focus to the avatar');
@@ -516,15 +533,24 @@ try {
   {
     const { ctx, page, errors } = await newContext({});
     await page.goto(BASE + 'dashboard.html');
+    await page.waitForSelector('.db-main', { timeout: 10000 });
+    await page.waitForTimeout(1500);
+    ok(!(await page.$('[data-action="db-whatsnew"]')) && !(await page.$('.db-member-news')), 'empty list: no What’s new button and no New badge');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    const { ctx, page, errors } = await newContext({});
+    await postEntry(ctx);
+    await page.goto(BASE + 'dashboard.html');
     await page.waitForSelector('[data-action="db-whatsnew"]', { timeout: 10000 });
-    ok(!!(await page.$('.db-member-news .k-badge')), 'a first visit says New');
+    ok(!!(await page.$('.db-member-news .k-badge')), 'one entry posted: a first visit says New');
     const before = await page.evaluate(() => Object.keys(localStorage).sort());
     await page.click('[data-action="db-whatsnew"]');
     await page.waitForSelector('[data-mn-sheet="changelog"] .cl-entry', { timeout: 5000 });
-    ok((await page.$$eval('[data-mn-sheet="changelog"] .cl-entry', (e) => e.length)) === CHANGELOG.entries.length, 'the drawer lists every entry (' + CHANGELOG.entries.length + ')');
+    ok((await page.$$eval('[data-mn-sheet="changelog"] .cl-entry', (e) => e.length)) === 1, 'the drawer lists the entry');
     ok(!(await page.$('.db-member-news .k-badge')), 'New is gone once opened');
     const seen = await page.evaluate(() => JSON.parse(localStorage.getItem('fms_studio_prefs_v1') || '{}').whatsNewSeen);
-    ok(seen === CHANGELOG.entries[0].id, 'the newest id is kept in fms_studio_prefs_v1: ' + seen);
+    ok(seen === POSTED.id, 'the newest id is kept in fms_studio_prefs_v1: ' + seen);
     const after = await page.evaluate(() => Object.keys(localStorage).sort());
     ok(after.every((k) => before.includes(k) || k === 'fms_studio_prefs_v1'), 'no new localStorage key: ' + after.filter((k) => !before.includes(k)).join(', '));
     await page.keyboard.press('Escape');

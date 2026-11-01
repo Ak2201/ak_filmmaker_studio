@@ -153,7 +153,7 @@ jobs:
       - run: npm run prove:growth
       - run: npm run prove:ai-coverage
       # The in-app conversion surfaces (upgrade nudges, caps, referral row,
-      # "Made with" on every print, What's new, trial reminders) on the
+      # "Made with" on every print, What's new (hidden while empty), trial reminders) on the
       # open build; it reads dist-verify/ by default, said here anyway.
       - run: npm run prove:conversion
         env:

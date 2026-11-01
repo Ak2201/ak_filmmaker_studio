@@ -245,6 +245,8 @@
   align-items: flex-start;
   gap: var(--s3) var(--s5);
 }
+/* An empty row (no news, no referral) takes no space. */
+.db-main > .db-member[hidden] { display: none; }
 .db-member-news { display: flex; align-items: center; gap: var(--s2); }
 .db-member .gr-share { flex: 1 1 min(28rem, 100%); min-width: 0; margin: 0; }
 .db-member .gr-share-h { margin: 0; font-size: var(--t-base); }

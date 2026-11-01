@@ -22,6 +22,8 @@ import data from '../data/changelog.json';
 import '../styles/changelog.css';
 
 const ENTRIES = (data.entries || []).filter((e) => e && e.id && e.title);
+/** False while the list is empty: every entry point stays hidden then. */
+export const hasEntries = () => ENTRIES.length > 0;
 const latest = () => (ENTRIES[0] ? ENTRIES[0].id : '');
 
 /** True when there is an entry newer than the last one opened here. */
@@ -59,4 +61,4 @@ export function openChangelog(returnTo) {
   return sheet({ title: 'What’s new', body: body(), kind: 'changelog', returnTo });
 }
 
-export default { openChangelog, unseen };
+export default { openChangelog, unseen, hasEntries };

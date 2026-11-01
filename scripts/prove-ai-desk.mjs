@@ -426,8 +426,10 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
   const sw1 = await scriptWrites(page);
   ok(sw1 - sw0 >= 1 && sw1 - sw0 <= 2, 'one Accept is one write (' + (sw1 - sw0) + ')', sw1 - sw0);
 
-  /* Undo */
-  const undo = page.locator('.toast-action', { hasText: /Undo/ }).last();
+  /* Undo — the Desk's OWN toast. Opening the writer with no scene rows
+     now raises the handoff's "N scenes added to the Breakdown." (Undo
+     too) after it, so `.last()` would undo the wrong thing. */
+  const undo = page.locator('.toast', { hasText: 'Dialogue pass' }).locator('.toast-action', { hasText: /Undo/ }).last();
   const hasUndo = await undo.waitFor({ state: 'visible', timeout: 3000 }).then(() => true, () => false);
   ok(hasUndo, 'an Undo toast is offered');
   if (hasUndo) await undo.click();

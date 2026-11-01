@@ -457,7 +457,26 @@ for (const [w, hgt] of [[1100, 900], [390, 844]]) {
       truthy('390 lanes: a lane is 85% of the scroller and snaps one at a time', Math.abs(g.ratio - 0.85) < 0.03 && /x mandatory/.test(g.snap) && g.nav === 'flex', g);
       check('390 lanes: the indicator starts at beat 1', g.pos, 'Beat 1 of 15');
       await page.click('[data-st="lane-next"]');
-      await page.waitForTimeout(900);
+      /* Wait for the scroll to ARRIVE, not for 900ms: Next beat is a smooth
+         scroll (story.js laneStep), and on a loaded runner it took longer
+         than that to start, run and let the rAF-throttled indicator catch
+         up — the proof read "Beat 1" mid-glide (seen once in 6 under
+         taskset load). Arrived = scrollLeft at laneStep()'s own target for
+         the second lane and unchanged for two frames; then two frames for
+         the indicator's own rAF. The check below still reads the indicator
+         the reader sees. The predicate is synchronous and polled per frame:
+         one returning a Promise is truthy at once and waits for nothing. */
+      await page.waitForFunction(() => {
+        const sc = document.querySelector('.st-bl-scroll');
+        const lanes = document.querySelectorAll('.st-bl-lane');
+        if (!sc || lanes.length < 2) return false;
+        const want = lanes[1].offsetLeft - lanes[0].offsetLeft;   // laneStep()'s own target
+        const x = sc.scrollLeft, prev = window.__laneX;
+        window.__laneX = x;
+        window.__laneStill = (prev === x) ? (window.__laneStill || 0) + 1 : 0;
+        return Math.abs(x - want) <= 2 && window.__laneStill >= 2;
+      }, null, { timeout: 15000, polling: 'raf' }).catch(() => { /* the check below reports where it stopped */ });
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
       check('390 lanes: Next beat moves one lane', await page.$eval('.st-bl-pos', (p) => p.textContent), 'Beat 2 of 15');
       const tgt = await page.evaluate(() => [...document.querySelectorAll('.st-grip, .st-card-open, [data-st="lane-next"]')].filter((b) => b.getClientRects().length).every((b) => b.getBoundingClientRect().height >= 24));
       check('390 lanes: the grips and buttons are real targets', tgt, true);

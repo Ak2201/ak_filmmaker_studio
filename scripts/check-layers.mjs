@@ -56,6 +56,7 @@ const ADAPTERS = new Map(Object.entries({
   'src/lib/motion-landing.js': 'the landing page\'s motion',
   'src/lib/billing.js': 'loads the Razorpay checkout script',
   'src/lib/drive.js': 'loads Google Identity Services',
+  'src/lib/gemini-google.js': 'loads Google Identity Services for the owner\'s Gemini login (a click)',
   'src/lib/drive-picker.js': 'loads the Google Picker script (a click, drive-only storage)',
   'src/lib/drive-project-sync.js': 'drive-only sync: flushes on pagehide / hidden, pulls on visible',
   'src/lib/backup.js': 'downloads the backup file',

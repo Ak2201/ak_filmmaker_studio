@@ -202,7 +202,7 @@ eq(es.properties.suggestions.items.properties.type.enum, M.OP_TYPES.slice(), 'sc
 /* ---- registration (by source; ai-tasks.js needs the browser to load) */
 const tasksSrc = readFileSync(new URL('../src/lib/ai-tasks.js', import.meta.url), 'utf8');
 ok(/id: 'blocking-draft'/.test(tasksSrc) && /id: 'blocking-enhance'/.test(tasksSrc), 'ai-tasks: both tasks defined');
-ok(/blockingDraftTask, blockingEnhanceTask\]/.test(tasksSrc), 'ai-tasks: both in ALL_TASKS');
+ok(/blockingDraftTask, blockingEnhanceTask[,\]]/.test(tasksSrc), 'ai-tasks: both in ALL_TASKS');
 const aiSrc = readFileSync(new URL('../src/lib/ai.js', import.meta.url), 'utf8');
 ok(/export async function draftBlocking/.test(aiSrc) && /export async function enhanceBlocking/.test(aiSrc), 'ai.js: draftBlocking and enhanceBlocking exported');
 const modelSrc = readFileSync(new URL('../src/lib/blocking-ai-model.js', import.meta.url), 'utf8');

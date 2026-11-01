@@ -48,6 +48,12 @@
      audience-test    audience-store.js, one document in the script blob's
                       documents (a partial run's checkpoint as it lands,
                       the kept run on Accept), through the page's save
+     blocking-draft   shots.js replaceBlock (one new setup on the scene's
+                      blocking map, only the ticked marks / set pieces /
+                      line); undo = removeBlock of exactly that id
+     blocking-enhance shots.js replaceBlock (the ticked ops applied to the
+                      setup, blocking-ai-model.js applyBlockOps); undo =
+                      replaceBlock of the snapshot taken before Accept
    beat-critique, tension-notes, audience-quick (the story test) and
    audience-ask (a question to one viewer) are reads: they write nothing.
 
@@ -74,6 +80,8 @@ let DriveImg = null;      // ./drive-board.js (the live gate facts)
 let SA = null;            // ./script-analysis-model.js (pure)
 let AudM = null;          // ./audience-model.js (pure)
 let AudS = null;          // ./audience-store.js
+let BlockAI = null;       // ./blocking-ai-model.js (pure)
+let CharM = null;         // ./characters.js
 let readyP = null;
 
 function loadAll() {
@@ -84,10 +92,11 @@ function loadAll() {
       import('./screenplay-analysis.js'), import('./scriptgen.js'), import('./coverage-store.js'),
       import('./breakdown-extras.js'), import('./board-frames.js'), import('./drive.js'),
       import('./drive-board.js'), import('./script-analysis-model.js'),
-      import('./audience-model.js'), import('./audience-store.js')
-    ]).then(([a, b, st, sc, sp, sh, an, g, cv, bx, bf, dr, di, sa, am, aus]) => {
+      import('./audience-model.js'), import('./audience-store.js'),
+      import('./blocking-ai-model.js'), import('./characters.js')
+    ]).then(([a, b, st, sc, sp, sh, an, g, cv, bx, bf, dr, di, sa, am, aus, bai, ch]) => {
       AI = a; BP = b; StoryM = st; ScenesM = sc; ScriptM = sp; ShotsM = sh; Analysis = an; Gen = g; Cov = cv; Extras = bx;
-      BoardM = bf; DriveM = dr; DriveImg = di; SA = sa; AudM = am; AudS = aus;
+      BoardM = bf; DriveM = dr; DriveImg = di; SA = sa; AudM = am; AudS = aus; BlockAI = bai; CharM = ch;
       return true;
     }).catch((e) => { readyP = null; throw e; });
   }
@@ -1921,10 +1930,202 @@ const audienceAskTask = {
   }
 };
 
+/* ============================================================
+   AI BLOCKING — two list tasks over the overhead blocking map
+   ------------------------------------------------------------
+   'blocking-draft'    ctx { sceneId, prompt?, after?(blockId|null), say? }
+   'blocking-enhance'  ctx { sceneId, blockId, prompt?, after?(blockId|null), say? }
+
+   The job is the scene as the model needs it to stage it: number,
+   heading, synopsis, the script text matched by matchScenes() (the
+   same join the shot draft uses), the characters in it WITH their
+   Characters record ids (so an actor mark can carry `charId`), the
+   scene's shots with lens, size and setup (a camera has to be where a
+   listed shot can be taken from), and a line per setup already drawn.
+
+   EDITABLE, because the disclosure under the box says "the text above
+   is sent": the box holds the whole prompt, ending in a "What the
+   director asked for" section to type into; what is in the box is what
+   goes (blocking-ai-model.js `job.user`). The chat refines it against
+   the same schema.
+
+   WRITES go through shots.js only, ONE write per Accept:
+     draft    a new block built from blankBlock/blankMark/blankSetPiece
+              holding only the ticked parts, written with replaceBlock
+              (which inserts it); Undo removes exactly that id.
+     enhance  the ticked ops applied to a copy of the CURRENT block
+              (applyBlockOps — an op naming a mark deleted since the run
+              is skipped), written with replaceBlock; Undo writes back
+              the snapshot taken just before.
+   Pro-locked like every AI tool: the pill asks PlanGate.aiUnlocked(),
+   which reads the `ai_tools` feature and fails closed.
+   ============================================================ */
+function sceneById(id) {
+  const all = ScenesM.listScenes();
+  return { all, scene: all.find((s) => String(s.id) === String(id || '')) || null };
+}
+
+/** Characters in a scene: the breakdown's cast plus every speaker the
+    scene's script cues, each joined to a Characters record when one
+    claims the name. Only a record's id is ever offered as a charId. */
+function sceneCharacters(scene, slice) {
+  const list = CharM.loadCharacters();
+  const names = [].concat((scene.elements && scene.elements.cast) || []);
+  for (const el of (slice && slice.elements) || []) if (el && el.type === 'character') names.push(el.text);
+  const out = [];
+  const seen = new Set();
+  for (const raw of names) {
+    const n = CharM.normName(raw);
+    if (!n) continue;
+    const rec = CharM.ownerOf(list, n);
+    const key = rec ? 'id:' + rec.id : 'n:' + n;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ id: rec ? rec.id : '', name: rec ? rec.name : n });
+  }
+  return out.slice(0, 30);
+}
+
+function setupLine(b) {
+  const count = (k) => (b.marks || []).filter((m) => m.kind === k).length;
+  const cams = (b.marks || []).filter((m) => m.kind === 'camera').map((m) => m.label).filter(Boolean);
+  return (b.name || 'Setup') + ': ' + plural(count('actor'), 'actor', 'actors') + ', '
+    + plural(count('camera'), 'camera', 'cameras') + (cams.length ? ' (' + cams.join(', ') + ')' : '')
+    + (Array.isArray(b.set) && b.set.length ? ', ' + plural(b.set.length, 'set piece', 'set pieces') : '');
+}
+
+const findBlock = (id) => (typeof ShotsM.getBlock === 'function'
+  ? ShotsM.getBlock(id) : ShotsM.listBlocks().find((b) => b.id === id)) || null;
+
+function blockingJob(c, { withBlock = false } = {}) {
+  const { all, scene } = sceneById(c.sceneId);
+  if (!scene) fail('Pick a scene to block first.');
+  const script = ScriptM.loadScript();
+  const pair = Analysis.matchScenes(all, script.elements).pairs.find((p) => p.scene.id === scene.id);
+  const slice = pair ? pair.slice : null;
+  const cams = ShotsM.sceneCameras(scene.id);
+  const shots = ShotsM.listShots().filter((s) => s.sceneId === scene.id).map((s) => ({
+    number: s.number, size: s.size, angle: s.angle, movement: s.movement, lens: s.lens,
+    setup: ShotsM.setupOf(s, cams), description: s.description
+  }));
+  const blocks = ShotsM.blocksOfScene(scene.id);
+  const job = {
+    sceneId: scene.id, number: scene.number, slug: slugOf(scene), synopsis: scene.synopsis,
+    script: slice ? AI.sceneScriptText(slice) : '',
+    characters: sceneCharacters(scene, slice), shots,
+    setups: blocks.filter((b) => !withBlock || b.id !== c.blockId).map(setupLine),
+    prompt: String(c.prompt || '')
+  };
+  if (withBlock) {
+    const block = findBlock(c.blockId);
+    if (!block || block.sceneId !== scene.id) fail('That setup is no longer on this scene. Pick one to review.');
+    job.block = block;
+  }
+  return job;
+}
+
+/** The box: the built prompt, always ending in the section to type into
+    (the same heading blocking-ai-model.js prints for ctx.prompt). */
+function blockingInput(job, build) {
+  return build({ ...job, prompt: '' }) + '\n\nWhat the director asked for:\n' + (job.prompt || '');
+}
+
+const charNamer = (job) => { const m = new Map(job.characters.map((x) => [x.id, x.name])); return (id) => m.get(id) || ''; };
+
+const blockingDraftTask = {
+  id: 'blocking-draft',
+  label: 'Block the scene',
+  kind: 'list',
+  editable: true,      // the input IS the prompt that is sent
+  identity(ctx) { return 'scene:' + String(resolve(ctx).sceneId || ''); },
+  input(ctx) {
+    try { return blockingInput(blockingJob(resolve(ctx)), BlockAI.buildDraftPrompt); }
+    catch (e) { return (e && e.message) || ''; }
+  },
+  async run(input, { onStatus, signal, refine, ctx } = {}) {
+    await ready();
+    const job = blockingJob(resolve(ctx));
+    const user = String(input ?? '').trim() ? String(input) : '';
+    const res = await AI.draftBlocking({ ...job, user }, { onStatus, signal, refine: refineText(refine) });
+    const items = BlockAI.draftItems(res, { charName: charNamer(job) });
+    if (!items.length) fail('The model came back with nothing to place. Nothing was added.');
+    const note = [
+      'Setup “' + (res.name || 'Untitled') + '”' + (res.widthM ? ', floor ' + res.widthM + ' m wide' : '') + (res.note ? ': ' + res.note : '.'),
+      res.dropped ? plural(res.dropped, 'piece was', 'pieces were') + ' not usable and left out.' : '',
+      res.truncated ? 'The reply was cut short, so some pieces may be missing.' : ''
+    ].filter(Boolean).join(' ');
+    return remember('blocking-draft', { items, note }, { sceneId: job.sceneId, draft: res });
+  },
+  apply(selected, ctx, result) {
+    const c = resolve(ctx);
+    const mem = recall('blocking-draft', result);
+    if (!mem) fail('There is no blocking to keep. Run it first.');
+    if (typeof ShotsM.replaceBlock !== 'function') fail('This build cannot write a setup yet. Nothing was changed.');
+    const pick = BlockAI.pickDraft(mem.draft, selected);
+    if (!pick.marks.length && !pick.set.length && !pick.axis) return null;
+    const d = mem.draft;
+    const name = d.name || ShotsM.nextBlockName(ShotsM.blocksOfScene(mem.sceneId));
+    const makePiece = typeof ShotsM.blankSetPiece === 'function' ? ShotsM.blankSetPiece : (p) => p;
+    const block = ShotsM.blankBlock({
+      sceneId: mem.sceneId, name, note: d.note, widthM: d.widthM,
+      marks: pick.marks.map((m) => ShotsM.blankMark({ ...m })),
+      set: pick.set.map((p) => makePiece({ ...p })),
+      axis: pick.axis ? { ...pick.axis } : null
+    });
+    const saved = ShotsM.replaceBlock(block);
+    const id = (saved && saved.id) || block.id;
+    call(c.say, 'Added the setup “' + name + '”.');
+    call(c.after, id);
+    return () => { ShotsM.removeBlock(id); call(c.after, null); };
+  }
+};
+
+const blockingEnhanceTask = {
+  id: 'blocking-enhance',
+  label: 'Improve this setup',
+  kind: 'list',
+  editable: true,      // the input IS the prompt that is sent
+  identity(ctx) { return 'block:' + String(resolve(ctx).blockId || ''); },
+  input(ctx) {
+    try { return blockingInput(blockingJob(resolve(ctx), { withBlock: true }), BlockAI.buildEnhancePrompt); }
+    catch (e) { return (e && e.message) || ''; }
+  },
+  async run(input, { onStatus, signal, refine, ctx } = {}) {
+    await ready();
+    const job = blockingJob(resolve(ctx), { withBlock: true });
+    const user = String(input ?? '').trim() ? String(input) : '';
+    const res = await AI.enhanceBlocking({ ...job, user }, { onStatus, signal, refine: refineText(refine) });
+    const note = [
+      res.items.length ? res.note : (res.note || 'No changes suggested: the model found nothing to fix in this setup.'),
+      res.dropped ? plural(res.dropped, 'suggestion was', 'suggestions were') + ' not usable and left out.' : '',
+      res.truncated ? 'The reply was cut short, so some suggestions may be missing.' : ''
+    ].filter(Boolean).join(' ');
+    return remember('blocking-enhance', { items: res.items, note }, { blockId: job.block.id });
+  },
+  apply(selected, ctx, result) {
+    const c = resolve(ctx);
+    const mem = recall('blocking-enhance', result);
+    if (!mem) fail('There are no suggestions to keep. Run it first.');
+    if (typeof ShotsM.replaceBlock !== 'function') fail('This build cannot write a setup yet. Nothing was changed.');
+    const current = findBlock(mem.blockId);
+    if (!current) fail('That setup has been deleted. Nothing was changed.');
+    const snapshot = JSON.parse(JSON.stringify(current));
+    const ops = (selected || []).map((it) => it && it.op).filter(Boolean);
+    const makers = { makeMark: (p) => ShotsM.blankMark(p) };
+    if (typeof ShotsM.blankSetPiece === 'function') makers.makePiece = (p) => ShotsM.blankSetPiece(p);
+    const { block, applied } = BlockAI.applyBlockOps(current, ops, makers);
+    if (!applied) return null;
+    ShotsM.replaceBlock(block);
+    call(c.say, plural(applied, 'change', 'changes') + ' made to “' + (current.name || 'the setup') + '”.');
+    call(c.after, mem.blockId);
+    return () => { ShotsM.replaceBlock(snapshot); call(c.after, mem.blockId); };
+  }
+};
+
 /* ---- registration ------------------------------------------- */
 const ALL_TASKS = [coverageTask, dialogueTask, critiqueTask, storyStepsTask, storyMapTask, shotTask, sceneStoryTask, synopsisTask,
   genScenesTask, genBatchTask, voiceTask, loglineTask, genreTask, sceneNotesTask, tagsTask, boardTask, tensionTask, audienceTask,
-  audienceQuickTask, audienceAskTask];
+  audienceQuickTask, audienceAskTask, blockingDraftTask, blockingEnhanceTask];
 let registered = false;
 
 /** Register every task with the Desk (idempotent), and resolve once

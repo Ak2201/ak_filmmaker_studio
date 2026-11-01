@@ -43,6 +43,7 @@ import {
 } from '../lib/deliverables-model.js';
 import { guideHref } from '../lib/blueprint-route.js';
 import { pageHeader, statCard, statStrip, badge, button } from '../ui/kit/index.js';
+import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
 /* pdf.js, cbfc.js and cbfc-rules.json are only needed by the certification
    and dialogue tabs, so they load on demand, not in first paint. */
 let PDF = null, Cbfc = null, CBFC_RULES = null, lazyP = null;
@@ -371,6 +372,9 @@ function certificationPanel(build) {
         + 'flag came from. No AI.'
   }));
   sec.append(h('p.dv-cert-disclaimer', { role: 'note', text: Cbfc.DISCLAIMER }));
+  /* The AI Desk's 'cert-read' task: a read of the rules that fired, from
+     rule ids and scene numbers only. A hint, not advice; it changes nothing. */
+  sec.append(h('p.dv-cert-ai', {}, [aiPill({ label: 'Certification read', tasks: ['cert-read'], ctx: () => ({}) })]));
 
   const scenes = listScenes();
   const elements = loadScript().elements;

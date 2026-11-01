@@ -45,6 +45,7 @@ import {
 } from '../lib/edit-model.js';
 import { linkText } from '../lib/links.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
+import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
 import { pageHeader, statCard, statStrip, notice, button, check, field, meter, panel, badge } from '../ui/kit/index.js';
 
 const app = document.getElementById('app');
@@ -510,6 +511,12 @@ function render(focus) {
     }));
   });
   tools.append(nav);
+  /* The AI Desk's 'edit-notes' task: drafts notes for scenes that have
+     none; Accept fills only notes still empty, Undo takes back only those. */
+  tools.append(aiPill({
+    label: 'Edit notes', tasks: ['edit-notes'],
+    ctx: () => ({ secondsOf: () => secondsByScene(Scenes.listScenes()), after: () => render(), say: (m) => StudioUI.toast(m) })
+  }));
   tools.append(button({
     label: 'Copy pick-up list', icon: 'content_copy',
     title: 'The unshot scenes, the part-shot scenes and every open pick-up, as text',

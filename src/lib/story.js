@@ -1463,6 +1463,25 @@ export function addNoteToVault(note) {
   items.unshift(note);
   return saveVault(items) === false ? null : note;
 }
+/** Several ready notes at the top of the vault, in the order given, in
+ *  ONE write (an AI Desk Accept is one write). Returns the notes added,
+ *  or null when the write was refused. */
+export function addNotesToVault(notes) {
+  const list = (notes || []).filter((n) => n && n.id && typeof n.snippet === 'string');
+  if (!list.length) return [];
+  const items = listVault();
+  const have = new Set(items.map((x) => x.id));
+  const fresh = list.filter((n) => !have.has(n.id));
+  items.unshift(...fresh);
+  return saveVault(items) === false ? null : fresh;
+}
+/** Remove exactly these records (the Undo of addNotesToVault). One write. */
+export function removeManyFromVault(ids) {
+  const gone = new Set(ids || []);
+  const items = listVault();
+  const out = items.filter((x) => !gone.has(x.id));
+  return out.length === items.length ? false : saveVault(out);
+}
 /** Move record `id` to board position `to`. */
 export function moveInVault(id, to) {
   const items = listVault();

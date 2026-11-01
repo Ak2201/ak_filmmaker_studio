@@ -455,6 +455,39 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
   ok(!(await page.evaluate(() => document.documentElement.classList.contains('ai-desk-open'))), 'html.ai-desk-open is cleared');
   ok(await overflow(page) <= 0, 'no horizontal overflow at 1280', await overflow(page));
 
+  /* A read keeps notes (lane D): the beat critique of the scene at the
+     caret shows its prose AND a tick per note, with Accept; Accept
+     writes only the ticked note (a sticky note when the scene is not on
+     the scene list, its readerNote when it is); Undo takes it back. */
+  const notesNow = () => page.evaluate(() => {
+    const out = [];
+    for (const k of Object.keys(localStorage)) {
+      if (/^fms_idea_vault_v1/.test(k)) { try { out.push(...JSON.parse(localStorage.getItem(k)).map((x) => x.snippet)); } catch (e) { /* skip */ } }
+      if (/^fms_scenes_v1/.test(k)) { try { out.push(...JSON.parse(localStorage.getItem(k)).scenes.map((s) => s.readerNote || '')); } catch (e) { /* skip */ } }
+    }
+    return out.filter((t) => /AI \(Beat critique\)/.test(t));
+  });
+  await openTask(page, 'beat-critique');
+  ok(await deskOpen(page), 'the Desk opens on the beat critique');
+  ok(!(await page.locator('aside.ai-desk [data-action="ai-desk-accept"]').count()), 'before Run a read offers no Accept');
+  await page.click('aside.ai-desk [data-action="ai-desk-run"]');
+  await page.waitForSelector('aside.ai-desk .ai-desk-item input[type="checkbox"]', { timeout: 15000 }).catch(() => {});
+  ok(await page.locator('aside.ai-desk .ai-desk-readtext').count() === 1, 'the critique prose is still shown');
+  ok(await page.locator('aside.ai-desk .ai-desk-item input[type="checkbox"]').count() === 2, 'one tick per note');
+  ok(await page.locator('aside.ai-desk [data-action="ai-desk-accept"]').count() === 1, 'Accept is offered for a read that can keep notes');
+  ok((await notesNow()).length === 0, 'nothing was kept before Accept');
+  await page.locator('aside.ai-desk .ai-desk-item input[type="checkbox"]').nth(1).uncheck();
+  await page.click('aside.ai-desk [data-action="ai-desk-accept"]');
+  await page.waitForTimeout(800);
+  const keptNotes = await notesNow();
+  ok(keptNotes.length === 1 && /The want is stated, not shown/.test(keptNotes[0]), 'Accept kept exactly the ticked note', keptNotes);
+  const said = await page.locator('.toast', { hasText: /Beat critique: saved/ }).count();
+  ok(said >= 1, 'the toast says what was saved');
+  const cundo = page.locator('.toast-action', { hasText: /Undo/ }).last();
+  if (await cundo.waitFor({ state: 'visible', timeout: 3000 }).then(() => true, () => false)) await cundo.click();
+  await page.waitForTimeout(800);
+  ok((await notesNow()).length === 0, 'Undo removed the note it added', await notesNow());
+
   const keys = await page.evaluate(() => Object.keys(localStorage).filter((k) => /desk|chat/i.test(k)));
   ok(keys.length === 0, 'no storage key for the Desk or its chat', keys);
   ok(errors.length === 0, 'no page errors', errors);

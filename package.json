@@ -172,7 +172,8 @@
     "test:accept": "node scripts/test-accept.mjs",
     "test:site": "node scripts/test-site-hygiene.mjs",
     "test:pass": "node scripts/test-pass-offer.mjs && node scripts/test-pass-view.mjs",
-    "test:offer-terms": "node scripts/test-offer-terms.mjs"
+    "test:offer-terms": "node scripts/test-offer-terms.mjs",
+    "prove:shortflow": "node scripts/prove-shortflow.mjs"
   },
   "engines": {
     "node": ">=22.12"

@@ -76,8 +76,11 @@ export function blankStory() {
            /* Where the film sits in the market. Written by the Desk's genre
               task on Accept, or typed; `audience` also steers coverage's
               marketability section ('' = its long-standing default).
-              Fields spread under older rows, so no migration. */
-           genre: '', audience: '', budgetTier: '', comps: [] };
+              Fields spread under older rows, so no migration.
+              `tone` and `budgetWhy` (1 Nov 2026) are the same reading's
+              tone and its one line on why that budget tier: additive,
+              read back '' on a story saved before them. */
+           genre: '', audience: '', budgetTier: '', comps: [], tone: '', budgetWhy: '' };
 }
 
 /** A framework's own act split (frameworks.json `pacing.regions`), else
@@ -117,7 +120,7 @@ export function loadStory() {
   out.conflicts = Array.isArray(s.conflicts) ? [...new Set(s.conflicts.filter((x) => typeof x === 'string'))] : [];
   out.conflictLine = typeof s.conflictLine === 'string' ? s.conflictLine : '';
   out.outlineLockedAt = typeof s.outlineLockedAt === 'string' ? s.outlineLockedAt : '';
-  for (const k of ['genre', 'audience', 'budgetTier']) out[k] = typeof s[k] === 'string' ? s[k] : '';
+  for (const k of ['genre', 'audience', 'budgetTier', 'tone', 'budgetWhy']) out[k] = typeof s[k] === 'string' ? s[k] : '';
   out.comps = Array.isArray(s.comps)
     ? s.comps.filter((x) => x && typeof x.title === 'string' && x.title.trim())
         .map((x) => ({ title: x.title, year: typeof x.year === 'string' ? x.year : '', why: typeof x.why === 'string' ? x.why : '' }))

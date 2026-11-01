@@ -63,6 +63,10 @@ import { cueName as cueOf } from './screenplay-analysis.js';
 /* The Audience test's pure half (prompts, schemas, checks, curves);
    it imports nothing from here, so the one slicer stays one. */
 import * as Audience from './audience-model.js';
+/* AI blocking's pure half (prompts, schemas, every check on a reply);
+   it imports nothing from here, so Node can test it. */
+import * as Blocking from './blocking-ai-model.js';
+import { refineBlock as refineBlockText } from './ai-refine.js';
 import Providers, {
   PROVIDERS, DEFAULT_PROVIDER, AI_KEY, AI_MODEL_KEY,
   GEMINI_KEY, GEMINI_MODEL_KEY, AI_PROVIDER_KEY,
@@ -694,6 +698,82 @@ export async function draftShotDivision(jobs, { onStatus, signal } = {}) {
 }
 
 /* ============================================================
+   AI BLOCKING — a setup drafted on the overhead map, or a drawn one reviewed
+   ------------------------------------------------------------
+   The prompts, schemas and every check live in blocking-ai-model.js
+   (pure, Node-tested); these two only put them on the wire. Neither
+   writes anything: the Desk task (ai-tasks.js 'blocking-draft' /
+   'blocking-enhance') shows the result and a person decides.
+
+     job { sceneId, number, slug, synopsis, script,
+           characters: [{ id, name }], shots: [{ number, size, angle,
+           movement, lens, setup, description }], setups: [line…],
+           prompt?, block? (enhance: the block as shots.js holds it) }
+     opts.refine  a string (the refine block a task already built), or
+                  the Desk's { previous, instructions } — either way it
+                  rides in the user prompt against the SAME schema.
+   ============================================================ */
+function blockingRefine(refine) {
+  if (!refine) return '';
+  if (typeof refine === 'string') return refine;
+  if (typeof refine === 'object') return refineBlockText({ previous: refine.previous, instructions: refine.instructions }) || '';
+  return '';
+}
+const blockingCharIds = (job) => [...new Set((Array.isArray(job && job.characters) ? job.characters : [])
+  .map((c) => String((c && c.id) || '')).filter(Boolean))];
+/** A pure-model refusal ('malformed') as this module's AIError. */
+function asAIError(e) {
+  if (e instanceof AIError) return e;
+  if (e && e.kind === 'malformed') return new AIError(e.message, 'malformed');
+  return e;
+}
+
+/** → { name, note, widthM, set, marks, axis, dropped, truncated, model } */
+export async function draftBlocking(job, { refine, signal, onStatus } = {}) {
+  if (!job || !job.sceneId) throw new AIError('Pick a scene to block first.', 'noscenes');
+  const charIds = blockingCharIds(job);
+  const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
+  say('Sending scene ' + (job.number || '') + ' to ' + getModel() + '…');
+  const { parsed, truncated, model } = await callModel({
+    system: Blocking.DRAFT_SYSTEM,
+    user: Blocking.buildDraftPrompt({ ...job, refine: blockingRefine(refine) }),
+    schema: Blocking.draftSchema(charIds),
+    maxTokens: 16000, effort: 'medium',
+    onStatus, signal,
+    progress: (sofar) => {
+      const n = (sofar.match(/"kind"/g) || []).length;
+      return n ? 'Blocking… ' + n + ' pieces placed' : 'Blocking…';
+    }
+  });
+  let draft;
+  try { draft = Blocking.cleanDraft(parsed, { charIds }); } catch (e) { throw asAIError(e); }
+  return { ...draft, truncated, model };
+}
+
+/** → { items: [{ id, text, detail, op }], note, dropped, truncated, model } */
+export async function enhanceBlocking(job, { refine, signal, onStatus } = {}) {
+  if (!job || !job.block || !Array.isArray(job.block.marks)) throw new AIError('Pick a setup to review first.', 'nocontent');
+  const charIds = blockingCharIds(job);
+  const markIds = job.block.marks.map((m) => String((m && m.id) || '')).filter(Boolean);
+  const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
+  say('Sending ' + (job.block.name || 'the setup') + ' to ' + getModel() + '…');
+  const { parsed, truncated, model } = await callModel({
+    system: Blocking.ENHANCE_SYSTEM,
+    user: Blocking.buildEnhancePrompt({ ...job, refine: blockingRefine(refine) }),
+    schema: Blocking.enhanceSchema(charIds, markIds),
+    maxTokens: 12000, effort: 'medium',
+    onStatus, signal,
+    progress: (sofar) => {
+      const n = (sofar.match(/"type"/g) || []).length;
+      return n ? 'Reviewing… ' + n + ' suggestions' : 'Reviewing…';
+    }
+  });
+  let res;
+  try { res = Blocking.cleanEnhance(parsed, { block: job.block, charIds }); } catch (e) { throw asAIError(e); }
+  return { ...res, truncated, model };
+}
+
+/* ============================================================
    IN-PLACE WORK ON THE WRITING
    ------------------------------------------------------------
    CLAUDE.md open item 3, the half that was left: "in-place work
@@ -1066,7 +1146,7 @@ export default {
   ...Providers,
   sliceScriptByScene, sceneScriptText, buildPrompt,
   buildDialoguePrompt, buildCritiquePrompt,
-  draftShotDivision, dialoguePass, beatCritique, testKey, AIError
+  draftShotDivision, draftBlocking, enhanceBlocking, dialoguePass, beatCritique, testKey, AIError
 };
 
 /* ============================================================

@@ -393,13 +393,13 @@ html.mk-modal-open { overflow: hidden; }
    reader could start reading. The heading and anything with an id (a
    fragment target) only fade; the rest rises a short way, times --motion. */
 @media (prefers-reduced-motion: no-preference) {
-  .mk-hero :is(.mk-kicker, .mk-crumbs, .mk-h1, .mk-sub, .mk-cta-row, .mk-player, .mk-caption, .mk-updated, .mk-toc--row) {
+  .mk-hero :is(.mk-kicker, .mk-crumbs, .mk-h1, .mk-sub, .mk-cta-row, .mk-player, .mk-caption, .mk-toc--row) {
     animation: mk-rise var(--speed-lazy) var(--ease-out) both; animation-duration: .8s;
   }
   .mk-hero :is(.mk-h1, [id]) { animation-name: mk-fade; }
   .mk-hero .mk-sub { animation-delay: .06s; }
   .mk-hero .mk-cta-row { animation-delay: .12s; }
-  .mk-hero :is(.mk-player, .mk-caption, .mk-updated, .mk-toc--row) { animation-delay: .2s; }
+  .mk-hero :is(.mk-player, .mk-caption, .mk-toc--row) { animation-delay: .2s; }
 }
 @keyframes mk-rise { from { opacity: 0; transform: translateY(calc(18px * var(--motion))); } }
 @keyframes mk-fade { from { opacity: 0; } }
@@ -423,7 +423,6 @@ html.mk-modal-open { overflow: hidden; }
 .mk-hero.mk-hero--article { padding-block: clamp(var(--s7), 6vw, var(--s9)); }
 .mk-hero--article .mk-h1 { font-size: clamp(2.25rem, 5vw, 3.75rem); max-width: 22ch; }
 .mk-hero--article .mk-sub { margin-bottom: var(--s4); max-width: 60ch; }
-.mk-updated { margin-top: var(--s2); }
 
 .mk-crumbs ol { list-style: none; margin: 0 0 var(--s5); padding: 0; display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); font-size: var(--t-small); }
 .mk-crumbs li { display: inline-flex; align-items: center; gap: var(--s2); margin: 0; color: var(--ink-muted); }

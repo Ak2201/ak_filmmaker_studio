@@ -220,8 +220,15 @@ function renderRuntime(st, scenes, numbers) {
     t.append(body);
     box.append(scrollBox(t));
   } else {
-    box.append(h('p.bd-none', { text: 'No scene is linked to a story beat yet, so there is no per-act split. '
-      + 'Link scenes to beats on the Write page’s Outline and each act appears here against its share of the target.' }));
+    /* The beats are set on Story -> Beat Sheet (story.html#path-outline); the
+       Write page's Outline tab that said so is retired. A link, not a bare
+       sentence, so the reader is one click from the place they must act. */
+    box.append(h('p.bd-none', {}, [
+      'No scene is linked to a story beat yet, so there is no per-act split. '
+      + 'Link scenes to beats on ',
+      h('a', { href: 'story.html#path-outline', text: 'Story, on the Beat Sheet' }),
+      ' and each act appears here against its share of the target.'
+    ]));
   }
 
   if (byBeat.groups.length) {

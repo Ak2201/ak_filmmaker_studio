@@ -41,7 +41,7 @@
    ============================================================ */
 import Scenes, { SCENES_KEY } from '../lib/scenes.js';
 import { matchScenes } from '../lib/screenplay-analysis.js';
-import { headingsOf, headingMap, reconcile, applySync, isEmptyPlan } from '../lib/scene-sync.js';
+import { headingsOf, headingMap, reconcile, applySync, isEmptyPlan, renumberInOrder } from '../lib/scene-sync.js';
 import * as Bin from '../lib/scene-bin.js';
 import { elementLines, LINES_PER_PAGE } from '../lib/script.js';
 import StudioUI from './chrome.js';
@@ -57,6 +57,13 @@ let busy = false;
 let timer = 0;
 let syncTimer = 0;
 let syncPrev = null;       // Map(headingId -> text) at the last sync; memory only
+
+/* The baseline the first sync compares against. With NO scene rows at
+   all, nothing in the script has ever reached the Breakdown, so every
+   heading is still new: a heading typed last session and not yet synced
+   (the page closed inside the writer's pause) must not become "already
+   there" and be left to the banner while its later neighbours are added. */
+const baselineOf = (elements) => (Scenes.listScenes().length ? headingMap(elements) : new Map());
 
 /** The unmatched headings, in script order. Pure read. A heading a
     row is LINKED to (scene.scriptElId) is never new, whatever the
@@ -168,11 +175,13 @@ export async function addThem(opts) {
     let top = scenes.reduce((n, s) => Math.max(n, parseInt(s.number, 10) || 0), 0);
     const list = scenes.slice();
     const added = [];
+    let carried = false;       // a new row took the number its heading carries
     let after = null;          // the id of the row the next new one follows
     for (const slice of m.slices) {
       if (!fresh.has(slice)) { after = sceneOf.get(slice) || after; continue; }
       const parsed = parseSlug(slice.heading);
       let number = String(slice.number || parsed.number || '').trim();
+      if (number) carried = true;
       if (!number || taken.has(number.toUpperCase())) {
         do { top++; } while (taken.has(String(top)));
         number = String(top);
@@ -195,6 +204,8 @@ export async function addThem(opts) {
       added.push(row.id);
       after = row.id;
     }
+    // Script order, until a lock says otherwise (see renumberInOrder).
+    if (!carried) renumberInOrder(list, new Set(added));
     Scenes.saveScenes(list);
     dismissedAt = -1;
     safeRender();
@@ -390,7 +401,7 @@ export function mountHandoff(opts = {}) {
   if (typeof opts.save === 'function') saveDoc = opts.save;
   if (typeof opts.afterPipeline === 'function') afterPipeline = opts.afterPipeline;
   // The baseline the first sync compares against: the script as loaded.
-  try { const d = getDoc(); if (d && Array.isArray(d.elements)) syncPrev = headingMap(d.elements); } catch (e) { /* no doc yet */ }
+  try { const d = getDoc(); if (d && Array.isArray(d.elements)) syncPrev = baselineOf(d.elements); } catch (e) { /* no doc yet */ }
   /* A sync still waiting on the writer's pause runs on the way out,
      the same as the save it follows. */
   addEventListener('pagehide', () => {

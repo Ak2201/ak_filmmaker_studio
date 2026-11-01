@@ -188,7 +188,7 @@ export function measureEighths(elements, scenes) {
  * }
  */
 export function reconcile(elements, scenes, opts = {}) {
-  const plan = { add: [], update: [], bin: [], restore: [], held: [], mass: false, empty: false, linked: 0 };
+  const plan = { add: [], update: [], bin: [], restore: [], held: [], mass: false, empty: false, linked: 0, ordinal: false, carriedNumber: false };
   const els = elements || [];
   const rows = scenes || [];
   const heads = headingsOf(els);
@@ -199,6 +199,7 @@ export function reconcile(elements, scenes, opts = {}) {
   const locked = isNumberingLocked(opts.numbering)
     ? sceneNumbers(els, opts.numbering).byId
     : null;
+  plan.ordinal = !locked;
   /* Locked, the number is the lock's and nothing else's: the heading's
      text cannot move it, and every linked row is told it each time. */
   const lockPatch = (headingId, scene, p) => {
@@ -336,6 +337,7 @@ export function reconcile(elements, scenes, opts = {}) {
         scriptElId: h.id
       }
     });
+    if (!locked && f.number) plan.carriedNumber = true;
     lastAnchor = { kind: 'add', id: h.id };
   });
 
@@ -371,6 +373,29 @@ export function applyNumbers(elements, numbering) {
   for (const p of patches) Object.assign(byId.get(p.id), p.patch);
   Scenes.saveScenes(list);
   return patches.length;
+}
+
+/**
+ * Unlocked, scene numbers follow script order. A heading typed ABOVE
+ * existing scenes is numbered by the next-free rule (max + 1), which left
+ * it last in number and first in the list (3, 1, 2). When the rows that
+ * were already there carry plain whole numbers rising in list order, no
+ * person's number is in them, so the whole list is renumbered 1..n+k.
+ * Anything else (12A, a list out of order) is somebody's and stays: the
+ * new row keeps the number it was given. Returns true when it renumbered.
+ * Locked numbers never come here; the lock numbers every linked row.
+ */
+export function renumberInOrder(list, newIds) {
+  const before = list.filter((s) => s && !newIds.has(s.id));
+  /* Only the plain run 1..n in list order is the app's own numbering, so
+     only that is renumbered. A gap (1, 3, or an imported 1 … 12) may be a
+     number somebody chose, and so may 12A or a reordered list: those stay,
+     and a new row is numbered after the highest in use (test:sync holds this
+     rule). Locking scene numbers is how a writer pins them for good. */
+  const plain = before.every((s, i) => String(s.number ?? '').trim() === String(i + 1));
+  if (!plain) return false;
+  list.forEach((s, i) => { if (s) s.number = String(i + 1); });
+  return true;
 }
 
 /** True when a plan would change anything. */
@@ -429,6 +454,7 @@ export function applySync(plan) {
       madeFor.set(a.headingId, row.id);
       out.added.push(row);
     }
+    if (plan.ordinal && !plan.carriedNumber) renumberInOrder(list, new Set(out.added.map((r) => r.id)));
     Scenes.saveScenes(list);
   }
   return out;
@@ -450,4 +476,4 @@ export function syncScript(elements, opts = {}) {
   return { plan, result: applySync(plan) };
 }
 
-export default { measureEighths, headingsOf, headingMap, headingFields, reconcile, isEmptyPlan, applySync, syncScript, numberPatches, applyNumbers };
+export default { renumberInOrder, measureEighths, headingsOf, headingMap, headingFields, reconcile, isEmptyPlan, applySync, syncScript, numberPatches, applyNumbers };

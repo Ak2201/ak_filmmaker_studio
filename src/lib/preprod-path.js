@@ -62,7 +62,7 @@ function readers(ctx) {
       if (!els.some((e) => String(e.text || '').trim())) return { state: 'todo', facts: ['No screenplay yet'], missing: ['Write or import a screenplay'] };
       const missing = [];
       if (!heads) missing.push('Add scene headings');
-      if (!locked) missing.push('Lock the scene numbers (Drafts)');
+      if (!locked) missing.push('Lock the script (Screenplay Writer)');
       return { state: !missing.length ? 'done' : 'doing', facts: [plural(heads, 'scene heading') + (locked ? ' · numbers locked' : '')], missing };
     },
     scenes() {

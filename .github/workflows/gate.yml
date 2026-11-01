@@ -121,6 +121,8 @@ jobs:
       - run: npm run prove:beat-views
       # The short-film walk end to end: hub door, typed screenplay, live sync, breakdown, stripboard.
       - run: npm run prove:shortflow
+      # The script lock end to end: bar, review, lock, held edits, change report, unlock, legacy lock.
+      - run: npm run prove:script-lock
       - run: npm run prove:story-coedit
       - run: npm run prove:visual
       - run: npm run prove:board-frames

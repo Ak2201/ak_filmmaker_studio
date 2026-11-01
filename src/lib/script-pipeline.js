@@ -126,12 +126,20 @@ function blankDayLines(data) {
     .sort((a, b) => a - b);
 }
 
-function propCount(scenes, elements) {
+/* The one count of element suggestions, by category (cast is the Story
+   Bible's, not an element). planPipeline() and stepProps() both read it,
+   and the lock's review sheet reads `byCategory` off the props row. */
+function propTally(scenes, elements) {
+  const byCategory = {};
   let n = 0;
   for (const r of suggestAll(scenes, elements)) {
-    for (const [cat, list] of Object.entries(r.suggestions)) if (cat !== 'cast') n += list.length;
+    for (const [cat, list] of Object.entries(r.suggestions)) {
+      if (cat === 'cast' || !list.length) continue;
+      byCategory[cat] = (byCategory[cat] || 0) + list.length;
+      n += list.length;
+    }
   }
-  return n;
+  return { n, byCategory };
 }
 
 /**
@@ -145,7 +153,7 @@ export function planPipeline(opts = {}) {
   const scenes = listScenes();
   const linked = new Set(scenes.map((s) => s.scriptElId).filter(Boolean));
   const out = [];
-  const add = (id, todo, note) => out.push({ ...stepMeta.get(id), todo, note });
+  const add = (id, todo, note, extra) => out.push({ ...stepMeta.get(id), todo, note, ...extra });
 
   const newHeads = heads.filter((x) => !linked.has(x.id)).length;
   add('scenes', newHeads, !heads.length ? 'The script has no scene headings yet.'
@@ -157,8 +165,9 @@ export function planPipeline(opts = {}) {
   const places = locationIndex(scenes).length;
   add('locations', 0, scenes.length ? plural(places, 'location') + ' named so far.' : 'Read from the scenes once they exist.');
 
-  const props = scenes.length ? propCount(scenes, elements) : 0;
-  add('props', props, scenes.length ? plural(props, 'suggestion') + ' waiting for review.' : 'Read from the scenes once they exist.');
+  const tally = scenes.length ? propTally(scenes, elements) : { n: 0, byCategory: {} };
+  const props = tally.n;
+  add('props', props, scenes.length ? plural(props, 'suggestion') + ' waiting for review.' : 'Read from the scenes once they exist.', { byCategory: tally.byCategory });
 
   const have = scenesWithShots(listShots());
   const noShots = scenes.filter((s) => !have.has(String(s.id))).length + (scenes.length ? 0 : heads.length);
@@ -253,16 +262,7 @@ function stepLocations() {
 }
 
 function stepProps(ctx) {
-  const scenes = listScenes();
-  const byCat = {};
-  let n = 0;
-  for (const r of suggestAll(scenes, ctx.elements)) {
-    for (const [cat, list] of Object.entries(r.suggestions)) {
-      if (cat === 'cast' || !list.length) continue;
-      byCat[cat] = (byCat[cat] || 0) + list.length;
-      n += list.length;
-    }
-  }
+  const { n, byCategory: byCat } = propTally(listScenes(), ctx.elements);
   const top = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => catCount(k, v));
   return { status: 'derived', wrote: 0, count: n, byCategory: byCat, detail: n ? plural(n, 'suggestion') + ' (' + top.join(', ') + ') to accept or ignore on the Breakdown — nothing is tagged until you do.' : 'Nothing in the action lines calls for an element yet.' };
 }

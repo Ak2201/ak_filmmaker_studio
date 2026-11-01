@@ -19,6 +19,11 @@
        screenplay.html or write.html offers "Break down everything";
      · the Breakdown's overview (src/ui/breakdown-overview.js).
 
+   The lock (src/ui/script-lock-ui.js) opens it with `ai: false`, a
+   `title` and an `intro` of its own: the lock pass is rules only (owner,
+   1 Nov 2026), so that run carries no "Enhance with AI" block and says
+   the script stays locked after an Undo. Every other caller is as it was.
+
    NO STORAGE. The run's undo is the model's, in memory; this file only
    draws. Kit components only (src/ui/kit/index.js).
    ============================================================ */
@@ -157,14 +162,17 @@ function summaryBlock(res, opts, undoBtn) {
     button({ label: 'Stripboard', href: 'stripboard.html', icon: 'view_agenda' }),
     button({ label: 'Script analysis', href: 'screenplay.html#analysis', icon: 'assessment' })
   ]);
-  const ai = enhancePill({ getElements: opts.getElements, getDoc: opts.getDoc, save: opts.save, refresh: opts.onChange });
+  /* ai: false leaves out the AI block AND its chain: nothing in the lock
+     pass may reach a provider (the pill is not even built). */
+  const withAi = opts.ai !== false;
+  const ai = withAi ? enhancePill({ getElements: opts.getElements, getDoc: opts.getDoc, save: opts.save, refresh: opts.onChange }) : null;
   return h('div.pl-summary', { id: 'pl-summary' }, [
     h('p.pl-sumline', { role: 'status', text: s.text || 'Nothing to break down yet.' }),
     stats,
-    h('div.pl-ai', {}, [
+    withAi ? h('div.pl-ai', {}, [
       h('p.pl-ai-copy', { text: 'Before AI, the rules did this. AI can add what they cannot read — every element the page calls for, a shot list from a director’s eye, the story beats, a coverage report and notes on tension — each one a review you accept or skip.' }),
       ai
-    ]),
+    ]) : h('p.pl-ai-copy.pl-locknote', { text: 'Undo takes this run back; the script stays locked.' }),
     links,
     h('div.pl-foot', {}, [undoBtn])
   ]);
@@ -176,7 +184,10 @@ function summaryBlock(res, opts, undoBtn) {
  *   getNumbering?()
  *   getDoc?() / save?()   for the coverage step (the page's doc and save)
  *   onChange?()     repaint the page after the run and after Undo
- *   returnTo?       focus on close }
+ *   returnTo?       focus on close
+ *   ai?             false: no "Enhance with AI" block (default true)
+ *   title?          the sheet's title (default "Break down everything")
+ *   intro?          the opening line while it runs }
  * Resolves to the run's result (or null when it could not load).
  */
 export async function openPipeline(opts = {}) {
@@ -190,7 +201,7 @@ export async function openPipeline(opts = {}) {
   const bar = meter({ label: 'Breaking down the script', value: 0, max: plan.length, show: 'ratio', class: 'pl-meter' });
   const live = h('p.visually-hidden', { role: 'status', 'aria-live': 'polite' });
   const body = h('div.pl-body', { 'data-pipeline': 'running' }, [
-    h('p.pl-intro', { text: 'Reading the script from the first page to the last. Only blank places are filled — nothing you have written or edited is overwritten.' }),
+    h('p.pl-intro', { text: opts.intro || 'Reading the script from the first page to the last. Only blank places are filled — nothing you have written or edited is overwritten.' }),
     bar, list, live
   ]);
   /* The run's Undo must outlive the sheet. Closed by any route (the
@@ -211,10 +222,10 @@ export async function openPipeline(opts = {}) {
   };
   const offerUndo = () => {
     if (undone || !res || !res.undoable) return;
-    StudioUI.toast('Break down everything: the run is kept.', { type: 'info', action: 'Undo the run', onAction: doUndo });
+    StudioUI.toast((opts.title || 'Break down everything') + ': the run is kept.', { type: 'info', action: 'Undo the run', onAction: doUndo });
   };
   await sheet({
-    title: 'Break down everything', body, kind: 'pipeline', returnTo: opts.returnTo,
+    title: opts.title || 'Break down everything', body, kind: 'pipeline', returnTo: opts.returnTo,
     onClose: () => { closed = true; offerUndo(); }
   });
   let done = 0;

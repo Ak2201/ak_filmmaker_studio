@@ -120,8 +120,9 @@ export function headingFields(text) {
   return out;
 }
 
-/** Only the fields that differ from the row. */
-function fieldPatch(text, scene) {
+/** Only the fields that differ from the row. Exported for the change report's
+    "Update place and time" (docs/SCRIPT-LOCK.md §3); callers drop `number`. */
+export function headingPatch(text, scene) {
   const f = headingFields(text);
   const patch = {};
   for (const k of ['intExt', 'dayNight', 'location', 'number']) {
@@ -173,6 +174,14 @@ export function measureEighths(elements, scenes) {
  *                without it every unmatched heading is new.
  *   opts.bin     the bin's entries (listBin())
  *   opts.numbering  the script's `numbering` (locked scene numbers), or none
+ *   opts.held    true: the script is HELD (locked with a baseline revision,
+ *                script.js isHeld()), passed explicitly and NEVER inferred, so
+ *                the pipeline and the lock pass are unaffected. Only identity
+ *                and numbers follow the script: a linked row keeps its fields
+ *                (as keepLinked), a lost row also relinks to the heading that
+ *                carries its locked number, and a gone heading or a new one is
+ *                REPORTED in `pending` ({ add, omit }) instead of binned or
+ *                added, for the change report to put to the writer.
  *   opts.keepLinked  true: a row already linked to a heading that is still
  *                there keeps its heading-derived fields as they are
  *                (a person may have renamed the place on the Breakdown);
@@ -184,11 +193,13 @@ export function measureEighths(elements, scenes) {
  *   bin:     [{ sceneId, heading }]
  *   restore: [{ entryId, headingId, patch }]
  *   held:    [headingId]   a positional guess: neither linked nor added
+ *   pending: { add: [{ headingId, text, number }], omit: [{ sceneId, heading, number }] }
+ *                always present; filled only when `opts.held`
  *   mass, empty, linked    flags and the count of linked rows
  * }
  */
 export function reconcile(elements, scenes, opts = {}) {
-  const plan = { add: [], update: [], bin: [], restore: [], held: [], mass: false, empty: false, linked: 0, ordinal: false, carriedNumber: false };
+  const plan = { add: [], update: [], bin: [], restore: [], held: [], mass: false, empty: false, linked: 0, ordinal: false, carriedNumber: false, pending: { add: [], omit: [] } };
   const els = elements || [];
   const rows = scenes || [];
   const heads = headingsOf(els);
@@ -200,6 +211,9 @@ export function reconcile(elements, scenes, opts = {}) {
     ? sceneNumbers(els, opts.numbering).byId
     : null;
   plan.ordinal = !locked;
+  // Held needs the lock's numbers to mean anything; without them it is today's sync.
+  const holding = !!(opts.held && locked);
+  const keepFields = !!(opts.keepLinked || holding);
   /* Locked, the number is the lock's and nothing else's: the heading's
      text cannot move it, and every linked row is told it each time. */
   const lockPatch = (headingId, scene, p) => {
@@ -225,7 +239,7 @@ export function reconcile(elements, scenes, opts = {}) {
     const h = byId.get(s.scriptElId);
     if (h && !claimed.has(h.id)) {
       claimed.set(h.id, s.id);
-      const p = !opts.keepLinked && (!prev || prev.get(h.id) !== h.text) ? fieldPatch(h.text, s) : {};
+      const p = !keepFields && (!prev || prev.get(h.id) !== h.text) ? headingPatch(h.text, s) : {};
       addPatch(s.id, lockPatch(h.id, s, p));
     } else lost.push(s);
   }
@@ -242,9 +256,19 @@ export function reconcile(elements, scenes, opts = {}) {
     };
     const h = heads.find((x) => !claimed.has(x.id) && isNew(x)
       && (was ? norm(x.text) === norm(was) : !prev && sameAsRow(x)));
-    if (h) {
-      claimed.set(h.id, s.id);
-      addPatch(s.id, lockPatch(h.id, s, { scriptElId: h.id }));
+    /* Held only: a restore or a cut-and-paste after a settle gives the
+       heading a new id AND may have changed its words, but the lock's number
+       is the scene's identity, so the row follows its number. */
+    const byNumber = h || !holding ? null : heads.find((x) => !claimed.has(x.id)
+      && String(locked.get(x.id) || '').toUpperCase() === String(s.number ?? '').trim().toUpperCase()
+      && String(s.number ?? '').trim());
+    const target = h || byNumber;
+    if (target) {
+      claimed.set(target.id, s.id);
+      addPatch(s.id, lockPatch(target.id, s, { scriptElId: target.id }));
+    } else if (holding) {
+      // 3. (held) gone: the writer decides, nothing is binned behind their back
+      plan.pending.omit.push({ sceneId: s.id, heading: was || '', number: String(s.number ?? '') });
     } else {
       // 3. gone
       plan.bin.push({ sceneId: s.id, heading: was || '' });
@@ -257,7 +281,7 @@ export function reconcile(elements, scenes, opts = {}) {
     && e.scene && e.scene.row && !present.has(e.scene.row.id));
   const usedEntries = new Set();
   const restoredBy = new Map();       // headingId -> entry
-  for (const h of heads) {
+  for (const h of holding ? [] : heads) {   // held: nothing comes back by itself
     if (claimed.has(h.id)) continue;
     let e = entries.find((x) => !usedEntries.has(x.id) && x.scene.row.scriptElId === h.id);
     if (!e) e = entries.find((x) => !usedEntries.has(x.id) && x.heading && norm(x.heading) === norm(h.text));
@@ -266,7 +290,7 @@ export function reconcile(elements, scenes, opts = {}) {
     restoredBy.set(h.id, e);
     const row = e.scene.row;
     const patch = row.scriptElId === h.id ? {} : { scriptElId: h.id };
-    if (norm(e.heading) !== norm(h.text)) Object.assign(patch, fieldPatch(h.text, { ...Scenes.blankScene(), ...row }));
+    if (norm(e.heading) !== norm(h.text)) Object.assign(patch, headingPatch(h.text, { ...Scenes.blankScene(), ...row }));
     if (locked) {
       delete patch.number;
       Object.assign(patch, lockPatch(h.id, row, {}));
@@ -312,6 +336,10 @@ export function reconcile(elements, scenes, opts = {}) {
     const sceneId = owner(h);
     if (sceneId) { lastAnchor = { kind: 'scene', id: sceneId }; return; }
     if (held.has(h.id) || !isNew(h)) return;
+    if (holding) {
+      plan.pending.add.push({ headingId: h.id, text: h.text, number: String(locked.get(h.id) || '') });
+      return;
+    }
     const f = headingFields(h.text);
     let number = String((locked && locked.get(h.id)) || f.number || '').trim();
     if (!locked && (!number || taken.has(number.toUpperCase()))) {
@@ -461,7 +489,7 @@ export function applySync(plan) {
 }
 
 /** reconcile() + applySync() against what is stored now.
- *  opts.keepLinked  see reconcile().
+ *  opts.keepLinked, opts.held  see reconcile().
  *  opts.fillOnly    keepLinked, AND a plan that would bin or restore a
  *                   row is not applied at all: `{ plan, result, refused:
  *                   true }` with an empty result. Binning moves a scene's
@@ -469,11 +497,36 @@ export function applySync(plan) {
  *                   the blanks" run must never do behind somebody's back. */
 export function syncScript(elements, opts = {}) {
   const keepLinked = !!(opts.keepLinked || opts.fillOnly);
-  const plan = reconcile(elements, Scenes.listScenes(), { prev: opts.prev, bin: Bin.listBin(), numbering: opts.numbering, keepLinked });
+  const plan = reconcile(elements, Scenes.listScenes(), { prev: opts.prev, bin: Bin.listBin(), numbering: opts.numbering, keepLinked, held: opts.held });
   if (opts.fillOnly && (plan.bin.length || plan.restore.length)) {
     return { plan, refused: true, result: { added: [], binned: [], restored: [], updated: 0 } };
   }
   return { plan, result: applySync(plan) };
 }
 
-export default { renumberInOrder, measureEighths, headingsOf, headingMap, headingFields, reconcile, isEmptyPlan, applySync, syncScript, numberPatches, applyNumbers };
+/**
+ * A subset of a plan for ONE item of the change report. PURE.
+ *   sel.headingId  the add / restore entries for that heading, and the update
+ *                  of the row linked to it
+ *   sel.sceneId    the bin entry for that scene, and that row's update
+ * Flags are copied; `mass` is false (one item is never a mass removal).
+ */
+export function planFor(plan, sel = {}) {
+  const { headingId, sceneId } = sel;
+  const rowOf = new Set();
+  const add = headingId ? plan.add.filter((a) => a.headingId === headingId) : [];
+  const restore = headingId ? plan.restore.filter((r) => r.headingId === headingId) : [];
+  const bin = sceneId ? plan.bin.filter((b) => b.sceneId === sceneId) : [];
+  if (sceneId) rowOf.add(sceneId);
+  const update = plan.update.filter((u) => rowOf.has(u.id) || (headingId && u.patch.scriptElId === headingId));
+  return { ...plan, add, update, bin, restore, held: [], pending: { add: [], omit: [] }, mass: false };
+}
+
+/** The writer pressed an action on one report item: reconcile with today's
+    rules (not held, fields kept), keep only that item's part, apply it. */
+export function applyFor(elements, numbering, sel) {
+  const plan = reconcile(elements, Scenes.listScenes(), { numbering, bin: Bin.listBin(), keepLinked: true });
+  return applySync(planFor(plan, sel));
+}
+
+export default { planFor, applyFor, headingPatch, renumberInOrder, measureEighths, headingsOf, headingMap, headingFields, reconcile, isEmptyPlan, applySync, syncScript, numberPatches, applyNumbers };

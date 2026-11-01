@@ -36,6 +36,17 @@ eq([u.number, u.note, doc.revisions.length], [2, 'with more', 2], 'update in pla
 ok(!D.changedSinceDraft(doc), 'unchanged after update');
 ok(D.updateDraft(doc, 'nope') === null, 'unknown id');
 
+// A held lock protects its baseline draft; every other draft, and a legacy lock, still update.
+{
+  const held = { elements: els('INT. A - DAY', 'x'), revisions: [], documents: [] };
+  const b = D.saveNewDraft(held); const o = D.saveNewDraft(held);
+  held.numbering = { ...Script.lockNumbering(held.elements, null), base: b.id };
+  ok(D.updateDraft(held, b.id) === null, 'updateDraft refuses the baseline of a held lock');
+  ok(D.updateDraft(held, o.id) !== null, 'another draft still updates');
+  held.numbering = Script.lockNumbering(held.elements, null);
+  ok(D.updateDraft(held, b.id) !== null, 'a legacy lock (no base) does not protect anything');
+}
+
 // Title page: part of "changed" once the draft carries one; snapshotted.
 doc.titlePage = Script.normaliseTitlePage({ title: 'BLUE', author: 'A. Writer' });
 ok(D.changedSinceDraft(doc) === true, 'a title page added after the draft counts as a change');

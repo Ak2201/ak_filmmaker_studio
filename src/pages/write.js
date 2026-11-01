@@ -105,9 +105,9 @@ import Script, {
   revisionColour, typeLabel,
   blankElement, blankDocument,
   pageCount, formatPages, formatRuntime, wordCount, totalLines,
-  TITLE_FIELDS, hasTitlePage, normaliseTitlePage
+  TITLE_FIELDS, hasTitlePage, normaliseTitlePage, isHeld
 } from '../lib/script.js';
-import { ask, askDanger } from '../ui/dialog.js';
+import { ask, askDanger, tell } from '../ui/dialog.js';
 import PlanGate from '../lib/plan-gate.js';   // script_import (src/data/plan-matrix.json)
 /* The page's own arithmetic and sentences (dates, the synopsis loader,
    the generator's stage, the page view's layout, the import and
@@ -2151,6 +2151,16 @@ delegate(document, 'click', '[data-action="rev-del"]', async (e, btn) => {
   const id = idOf(btn, 'rev');
   const i = doc.revisions.findIndex((r) => r.id === id);
   if (i < 0 || i !== doc.revisions.length - 1) return;
+  /* The baseline of a held lock is what the change report compares the
+     script with: withdrawing it would erase every change tracked since
+     the lock. Unlock first, or issue a later draft. */
+  if (isHeld(doc.numbering) && doc.revisions[i].id === doc.numbering.base) {
+    await tell({
+      eyebrow: 'Script lock', icon: 'lock', title: 'This revision is the locked script',
+      body: 'The change report compares the script with it, so it cannot be withdrawn while the script is locked. Unlock the script first, or keep it and issue a later draft.'
+    });
+    return;
+  }
   const colour = revisionColour(i);
   if (!await askDanger(`Withdraw the ${colour.name} revision — “${doc.revisions[i].name}”?\n\n`
     + 'The snapshot is deleted. The screenplay on screen is not touched.')) return;

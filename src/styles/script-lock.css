@@ -1,0 +1,57 @@
+/* ============================================================
+   SCRIPT LOCK — the review and the change report
+   (src/ui/script-lock-ui.js; docs/SCRIPT-LOCK.md §2–§3)
+   Sheets only. Tokens and --sk-* only, no raw colour: shapes come from
+   the skin, text from the ink family. Nothing here may overflow at
+   390px, so every grid track is minmax(0, 1fr) and long headings wrap.
+   ============================================================ */
+.lk-review, .lk-report { display: grid; gap: var(--s4); padding: var(--s4); max-width: 44rem; min-width: 0; }
+.lk-lede, .lk-means, .lk-base, .lk-foot, .lk-none, .lk-step-note, .lk-item-counts { margin: 0; color: var(--ink-muted); font-size: var(--t-small); line-height: 1.5; overflow-wrap: anywhere; }
+.lk-base { color: var(--ink); font-weight: 600; }
+.lk-h { margin: 0; font-size: var(--t-ui); color: var(--ink); }
+
+.lk-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.lk-steps { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border-hair); border-radius: var(--sk-radius, var(--radius)); }
+.lk-step { padding: var(--s3); border-top: 1px solid var(--border-hair); min-width: 0; }
+.lk-step:first-child { border-top: 0; }
+.lk-step-label { margin: 0; color: var(--ink); font-weight: 600; font-size: var(--t-ui); }
+.lk-step-note { margin-top: var(--s1); }
+
+.lk-actions { display: flex; flex-wrap: wrap; gap: var(--s2); justify-content: flex-end; }
+
+/* the report */
+.lk-summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s3); }
+.lk-sumline { margin: 0; color: var(--ink); font-size: var(--t-base); line-height: 1.5; min-width: 0; }
+.lk-sumline:focus-visible { outline: var(--focus-w, 2px) solid var(--accent-primary); outline-offset: 2px; }
+.lk-items { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s3); }
+.lk-item { display: grid; gap: var(--s2); padding: var(--s3); border: 1px solid var(--border-hair); border-radius: var(--sk-radius, var(--radius)); background: var(--surface-card); min-width: 0; }
+/* a reviewed item recedes without vanishing: it can still be read and acted on */
+.lk-item[data-reviewed="true"] { background: transparent; }
+.lk-item-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); min-width: 0; }
+.lk-item-title { margin: 0; flex: 1 1 10rem; min-width: 0; color: var(--ink); font-weight: 600; font-size: var(--t-ui); overflow-wrap: anywhere; }
+.lk-impacts { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); }
+.lk-impact { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); justify-content: space-between; color: var(--ink); font-size: var(--t-small); line-height: 1.45; min-width: 0; }
+.lk-impact > span { flex: 1 1 14rem; min-width: 0; overflow-wrap: anywhere; }
+.lk-link { color: var(--accent-deep); font-size: var(--t-small); white-space: nowrap; }
+.lk-item-acts { display: flex; flex-wrap: wrap; gap: var(--s2); }
+
+@media (max-width: 719px) {
+  .lk-review, .lk-report { padding: var(--s3); }
+  .lk-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lk-actions .k-btn { flex: 1 1 100%; justify-content: center; }
+  .lk-link { white-space: normal; }
+}
+
+/* The Writer's button is hidden on the phone: the Tools sheet carries the
+   same two items (same query as screenplay.css's PHONE_Q). */
+@media (max-width: 719px) {
+  .sc-tools-r .sc-lock-btn { display: none; }
+}
+
+/* The sheet is a DARK scope (mobile-nav.css), but the kit's stat card takes
+   --sk-card-bg, which is the light work surface's white: the numbers, set in
+   the dark scope's light ink, vanished. Cards inside the lock's sheets read
+   the scope's own surface and ink. */
+.lk-facts .k-stat, .pl-stats .k-stat { background: var(--surface-card); border: 1px solid var(--border-hair); }
+.lk-facts .k-stat-value, .pl-stats .k-stat-value { color: var(--ink); }

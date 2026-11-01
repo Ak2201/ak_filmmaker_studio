@@ -45,6 +45,8 @@
    in a 190px stack on a desk. The strip takes the full row. */
 .sb-head.bd-head.k-page-head > .k-stat-strip.sb-kpis { justify-self: stretch; width: 100%; }
 .sb-head .k-stat .k-meter { margin-top: var(--s2); }
+/* The lock host: a link to the Screenplay Writer's one lock step, or the locked
+   badge with Unlock draft and Manage numbering (the lock itself is not taken here). */
 .sb-lock-host { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s2); }
 
 /* The empty state: the kit's, with the three teaching steps under it. */

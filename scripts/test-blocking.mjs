@@ -203,5 +203,133 @@ eq([S.blankShot().rig, S.blankShot().cam], ['', ''], 'a blank shot has no rig an
   eq([S.listShots()[0].rig, S.listShots()[0].cam], ['', ''], 'an older stored shot reads back with empty rig and cam');
 }
 
+
+/* ---- the blocking studio's contract (1 Nov 2026) ------------------ */
+reset();
+{
+  // An OLD diagram: toX/toY only, no set, no axis, no path. Reading it
+  // changes no stored byte, and every field it had reads back as before.
+  const oldRaw = JSON.stringify({ shots: [], frames: [], boards: [], blocks: [
+    { id: 'ob', sceneId: 's', name: 'Old', note: 'n', widthM: '10', marks: [
+      { id: 'a', kind: 'actor', label: 'Ravi', x: 10, y: 20, rot: 90, toX: 30, toY: 40 },
+      { id: 'c', kind: 'camera', label: 'Cam A', x: 50, y: 60, rot: 0, toX: null, toY: null },
+      { id: 't', kind: 'track', label: 'Track 1', x: 5, y: 5, rot: 0, toX: 25, toY: 5 }
+    ] }
+  ] });
+  mem.set('fms_shots_v1', oldRaw);
+  const ob = S.listBlocks()[0];
+  eq(mem.get('fms_shots_v1'), oldRaw, 'reading an old diagram writes nothing: the stored bytes are unchanged');
+  const pick = (m) => ({ id: m.id, kind: m.kind, label: m.label, x: m.x, y: m.y, rot: m.rot, toX: m.toX, toY: m.toY });
+  eq(ob.marks.map(pick), JSON.parse(oldRaw).blocks[0].marks, 'an old diagram\'s marks read back field for field');
+  eq([ob.name, ob.note, ob.widthM], ['Old', 'n', '10'], 'its block fields too');
+  eq([ob.set, ob.axis], [[], null], 'an old block reads back unfurnished and with no line');
+  eq(ob.marks.map((m) => [m.path, m.curve, m.charId]), [[[], false, ''], [[], false, ''], [[], false, '']], 'old marks: no path, straight, no character');
+  ok(!('set' in JSON.parse(mem.get('fms_shots_v1')).blocks[0]), 'no field is written into storage by a read');
+}
+{
+  // set pieces: cleaning
+  const sp = S.cleanSetPiece({ id: 'p1', kind: 'spaceship', x: 120, y: -3, w: 0.2, h: 500, rot: -30, label: 7, extra: 'kept' });
+  eq([sp.kind, sp.x, sp.y, sp.w, sp.h, sp.rot, sp.label], ['prop', 100, 0, 1, 70, 330, '7'], 'a set piece is clamped: unknown kind is a prop, size 1..map, rot wrapped');
+  eq(sp.extra, 'kept', 'an unknown field on a set piece rides along');
+  const sp2 = S.cleanSetPiece({ kind: 'table', x: 12.345, y: 6.789, w: 14.26, h: 'x', rot: 359.7 });
+  eq([sp2.x, sp2.y, sp2.w, sp2.h, sp2.rot], [12.3, 6.8, 14.3, S.SET_SIZE.table[1], 0], 'rounded to a tenth; a junk size takes the kind\'s default');
+  ok(typeof sp2.id === 'string' && sp2.id.length > 4, 'a piece without an id gets one');
+  eq(S.SET_KINDS, ['wall', 'door', 'window', 'table', 'chair', 'sofa', 'bed', 'counter', 'car', 'stairs', 'prop'], 'SET_KINDS is the contract');
+  eq(S.blankSetPiece().kind, 'prop', 'a blank piece is a prop');
+  // axis cleaning
+  eq(S.cleanAxis({ x1: -5, y1: 10, x2: 200, y2: 80 }), { x1: 0, y1: 10, x2: 100, y2: 70 }, 'the axis is clamped to the map');
+  eq(S.cleanAxis({ x1: 5, y1: 5, x2: 5, y2: 5 }), null, 'a zero-length axis is no axis');
+  eq(S.cleanAxis({ x1: 'a', y1: 1, x2: 2, y2: 3 }), null, 'a junk axis is no axis');
+  eq(S.cleanAxis(null), null, 'null stays null');
+  // path cleaning, on read
+  mem.set('fms_shots_v1', JSON.stringify({ blocks: [{ id: 'pb', sceneId: 's', marks: [
+    { id: 'm1', kind: 'actor', x: 10, y: 10, toX: 20, toY: 20, curve: 'yes', charId: 5,
+      path: [{ x: 30, y: 30, beat: 'sits' }, null, { x: 'q', y: 2 }, { x: 999, y: 40.04, beat: 9 }] },
+    { id: 'm2', kind: 'actor', x: 10, y: 10, toX: null, toY: null, path: [{ x: 3, y: 3 }], curve: true },
+    { id: 'm3', kind: 'track', x: 10, y: 10, toX: 30, toY: 10, path: [{ x: 3, y: 3 }] },
+    { id: 'm4', kind: 'camera', x: 10, y: 10, toX: 15, toY: 15, path: 'nope', charId: 'ch_1' }
+  ], set: [{ id: 's1', kind: 'door', x: 1, y: 1 }, null, 'x'], axis: { x1: 0, y1: 35, x2: 100, y2: 35 } }] }));
+  const pb = S.listBlocks()[0];
+  const [m1, m2, m3, m4] = pb.marks;
+  eq(m1.path, [{ x: 30, y: 30, beat: 'sits' }, { x: 100, y: 40, beat: '9' }], 'path beats are clamped, rounded and junk beats dropped');
+  eq([m1.curve, m1.charId], [false, ''], 'curve is a real boolean; charId a string');
+  eq([m2.path, m2.curve], [[], true], 'no first leg, no beats after it');
+  eq(m3.path, [], 'a track has no path');
+  eq([m4.path, m4.charId], [[], 'ch_1'], 'a non-array path is empty; a string charId is kept');
+  eq(pb.set.map((p) => [p.id, p.kind, p.w, p.h]), [['s1', 'door', ...S.SET_SIZE.door]], 'set pieces are cleaned and junk entries dropped');
+  eq(pb.axis, { x1: 0, y1: 35, x2: 100, y2: 35 }, 'the axis reads back');
+  const many = Array.from({ length: 40 }, (_, i) => ({ x: i, y: 1 }));
+  S.updateMark('pb', 'm1', { path: many });
+  eq(S.getBlock('pb').marks[0].path.length, S.PATH_MAX, 'a path is capped at PATH_MAX beats');
+}
+reset();
+{
+  // set CRUD, axis, getBlock
+  const b = S.addBlock('sc');
+  eq([S.getBlock(b.id).set, S.getBlock(b.id).axis], [[], null], 'a new block has no set and no line');
+  eq(S.getBlock('nope'), null, 'getBlock of a missing id is null');
+  const t = S.addSetPiece(b.id, 'table', { label: 'Dinner' });
+  const c = S.addSetPiece(b.id, 'banana');
+  eq([t.kind, t.w, t.h, t.label, c.kind], ['table', ...S.SET_SIZE.table, 'Dinner', 'prop'], 'addSetPiece takes the kind\'s size; unknown kind is a prop');
+  ok(t.x !== c.x || t.y !== c.y, 'two pieces are born apart');
+  eq(S.addSetPiece('nope', 'table'), null, 'addSetPiece on a missing block is null');
+  const u = S.updateSetPiece(b.id, t.id, { w: 500, rot: 370, id: 'hijack' });
+  eq([u.id, u.w, u.rot], [t.id, 100, 10], 'updateSetPiece cleans and keeps the id');
+  eq(S.updateSetPiece(b.id, 'nope', {}), null, 'updateSetPiece on a missing piece is null');
+  eq(S.removeSetPiece(b.id, c.id).set.map((p) => p.id), [t.id], 'removeSetPiece removes just that piece');
+  eq(S.setAxis(b.id, { x1: 10, y1: 10, x2: 90, y2: 60 }), { x1: 10, y1: 10, x2: 90, y2: 60 }, 'setAxis stores the line');
+  eq(S.setAxis(b.id, null), null, 'setAxis(null) clears it');
+  eq(S.getBlock(b.id).axis, null, '…in storage');
+  eq(S.setAxis('nope', null), undefined, 'setAxis on a missing block is undefined');
+  const up = S.updateBlock(b.id, { set: [], name: 'X' });
+  eq([up.name, up.set.length], ['X', 1], 'updateBlock cannot overwrite the set');
+  // replaceBlock: whole block, cleaned; inserts when absent
+  const snap = S.getBlock(b.id);
+  S.addMark(b.id, 'actor');
+  const back = S.replaceBlock(snap);
+  eq(back.marks.length, 0, 'replaceBlock puts a snapshot back (undo)');
+  eq(S.getBlock(b.id).set.map((p) => p.id), [t.id], '…set included');
+  const fresh = S.replaceBlock({ id: 'new1', sceneId: 'sc', name: 'AI', marks: [{ kind: 'zebra', x: 500, y: 1, path: [{ x: 1, y: 1 }] }], set: [{ kind: 'bed' }], axis: { x1: 0, y1: 0, x2: 0, y2: 0 } });
+  eq([fresh.marks[0].kind, fresh.marks[0].x, fresh.marks[0].path, fresh.set[0].kind, fresh.axis], ['actor', 100, [], 'bed', null], 'replaceBlock cleans every mark, piece and the axis');
+  eq(S.blocksOfScene('sc').map((x) => x.id), [b.id, 'new1'], 'replaceBlock inserts an absent block at the end');
+  eq(S.replaceBlock(null), null, 'replaceBlock(null) is null');
+  eq(S.replaceBlock({ name: 'no id' }), null, 'replaceBlock without an id is null');
+}
+reset();
+{
+  // duplicateMarks
+  const b = S.addBlock('sd');
+  const a = S.addMark(b.id, 'actor', { label: 'Ravi', x: 10, y: 10, toX: 20, toY: 20, path: [{ x: 30, y: 30, beat: 'sits' }], charId: 'ch1' });
+  const a2 = S.addMark(b.id, 'actor');
+  const cam = S.addMark(b.id, 'camera');
+  const made = S.duplicateMarks(b.id, [a.id, a2.id, cam.id]);
+  eq(made.length, 3, 'three copies');
+  ok(made.every((m) => ![a.id, a2.id, cam.id].includes(m.id)), 'copies get new ids');
+  eq([made[0].label, made[0].x, made[0].y, made[0].toX, made[0].toY, made[0].path, made[0].charId],
+    ['Ravi', 14, 14, 24, 24, [{ x: 34, y: 34, beat: 'sits' }], 'ch1'], 'a copy is offset with its move and beats; a typed name is kept');
+  eq([made[1].label, made[2].label], ['Actor 2', 'Cam B'], 'a default name takes the next free one');
+  eq(S.getBlock(b.id).marks.length, 6, 'copies are stored');
+  eq(S.duplicateMarks(b.id, [cam.id], -100, 0)[0].x, 0, 'a copy is clamped to the map');
+  eq(S.duplicateMarks(b.id, ['nope']), [], 'nothing to copy, nothing made');
+  eq(S.duplicateMarks('nope', [a.id]), [], 'a missing block makes nothing');
+}
+{
+  // derived: lens → field of view, the 180-degree line
+  eq(S.lensFov('35mm'), 39.2, '35mm is about 39 degrees on Super 35');
+  ok(S.lensFov('18mm') > S.lensFov('50mm') && S.lensFov('50mm') > S.lensFov('135mm'), 'wider lens, wider field');
+  eq(S.lensFov('24-70mm'), S.lensFov('24mm'), 'a zoom range reads its wide end');
+  eq([S.lensFov('zoom'), S.lensFov(''), S.lensFov(null)], [null, null, null], 'no focal length, no field');
+  const shots = [{ id: '1', cam: 'k', lens: '85mm' }, { id: '2', cam: 'k', lens: '35mm' }, { id: '3', cam: 'x', lens: '14mm' }];
+  eq(S.cameraFov('k', shots), S.lensFov('35mm'), 'a camera draws its widest linked lens');
+  eq(S.cameraFov('none', shots), null, 'an unlinked camera has no derived field');
+  const blk = { axis: { x1: 0, y1: 35, x2: 100, y2: 35 }, marks: [
+    { id: 'c1', kind: 'camera', x: 50, y: 10 }, { id: 'c2', kind: 'camera', x: 20, y: 60 },
+    { id: 'c3', kind: 'camera', x: 70, y: 35.2 }, { id: 'a', kind: 'actor', x: 50, y: 50 }] };
+  const sides = S.axisSides(blk);
+  eq([sides.left, sides.right, sides.on, sides.crossed], [['c1'], ['c2'], ['c3'], true], 'cameras on opposite sides of the line cross it');
+  eq(S.axisSides({ ...blk, marks: blk.marks.filter((m) => m.id !== 'c2') }).crossed, false, 'one side only is fine');
+  eq(S.axisSides({ marks: blk.marks }).crossed, false, 'no line, no warning');
+}
+
 console.log(`test:blocking — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

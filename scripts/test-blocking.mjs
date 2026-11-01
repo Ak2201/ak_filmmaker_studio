@@ -399,6 +399,36 @@ reset();
   const r2 = S.undoBlocking(snap2);
   ok(r2.kept >= 1 && S.blockOfShot(sA.id).note === 'typed after', 'undo split: a diagram edited since is kept');
 
+  // A split is one unit: the floor edited since + the diagrams untouched must
+  // not lose the cameras the split moved (they would be in no row at all).
+  S.undoBlocking({ blocks: [S.blockOfShot(sA.id)].map((b) => ({ id: b.id, before: null, wrote: b })) });
+  const camsBefore = S.sceneCameras('scS').map((c) => c.id || (c.mark && c.mark.id)).sort();
+  const snap3 = S.splitBlock(legacy.id);
+  ok(!!snap3, 'split again after the undo');
+  S.updateBlock(legacy.id, { name: 'Kitchen' });
+  S.undoBlocking(snap3);
+  const allIds = S.listBlocks().flatMap((b) => b.marks.map((m) => m.id));
+  ok([cA.id, cB.id].every((id) => allIds.includes(id)), 'undo split: floor edited since → the moved cameras are kept on their diagrams, never dropped');
+  eq(S.sceneCameras('scS').map((c) => c.id || (c.mark && c.mark.id)).sort(), camsBefore, 'undo split: every camera the scene had is still somewhere');
+  ok(S.camOf(S.listShots().find((s) => s.id === sB.id)), 'undo split: a link made before the split still names a camera that exists');
+  // Put the scene back to one combined setup for what follows.
+  S.listBlocks().filter((b) => b.sceneId === 'scS' && b.shotId).forEach((b) => {
+    const fl = S.getBlock(legacy.id);
+    S.replaceBlock({ ...fl, marks: [...fl.marks, ...b.marks.filter((m) => m.kind !== 'actor')] });
+    S.removeBlock(b.id);
+  });
+  S.updateShot(sA.id, { cam: '' });
+
+  // Only the scene's FLOOR splits: an older second setup is not offered.
+  const second = S.addBlock('scS', { name: 'Setup 2' });
+  S.addMark(second.id, 'camera', { label: 'Cam X' });
+  S.addMark(second.id, 'camera', { label: 'Cam Y' });
+  S.updateShot(sA.id, { setup: 'Cam X' });
+  eq(S.planSplit(S.getBlock(second.id), S.listShots(), S.listBlocks()), null, 'planSplit: a setup that is not the scene\'s floor never splits');
+  eq(S.splitBlock(second.id), null, 'splitBlock: same for the second setup');
+  S.removeBlock(second.id);
+  S.updateShot(sA.id, { setup: 'Cam B' });
+
   // ensureShotBlock: only on a press, idempotent, never for a missing shot.
   const made = S.ensureShotBlock(sC.id);
   eq([made.shotId, made.name, made.marks.length], [sC.id, 'Shot 3', 0], 'ensureShotBlock makes an empty diagram named for the shot');

@@ -272,8 +272,9 @@ function renderBlockCard(block, ctx = {}) {
       h('input.k-input.vz-blk-name', { type: 'text', value: block.name, placeholder: shot ? 'Shot diagram name' : 'Setup name', 'data-block-field': 'name', 'aria-label': shot ? 'Shot diagram name' : 'Setup name' })
     ]),
     /* An older setup that holds several shots' cameras can be split into
-       one diagram per shot; the toast's Undo puts it back as it was. */
-    !shot && cams >= 2 ? button({ label: 'Split into shots', icon: 'call_split', size: 'sm', action: 'blk-split',
+       one diagram per shot; the toast's Undo puts it back as it was.
+       Only the scene's floor (planSplit refuses any other setup). */
+    !shot && cams >= 2 && (Shots.floorOf(block.sceneId) || {}).id === block.id ? button({ label: 'Split into shots', icon: 'call_split', size: 'sm', action: 'blk-split',
       title: 'Make one diagram per shot, each with its own camera; the set and the line stay on the floor plan' }) : null,
     button({ label: shot ? 'Delete diagram' : 'Delete setup', icon: 'delete', size: 'sm', variant: 'danger', action: 'blk-del' })
   ].filter(Boolean)));
@@ -905,7 +906,8 @@ function duplicateSelected(B) {
   if (!block) return;
   History.record(block);
   const made = Shots.duplicateMarks(B, ids.filter((id) => !isPiece(block, id)));
-  const pieces = (block.set || []).filter((p) => ids.includes(p.id));
+  /* The set lives on the floor, never copied onto a shot's diagram. */
+  const pieces = block.shotId ? [] : (block.set || []).filter((p) => ids.includes(p.id));
   const madePieces = pieces.map((p) => { const { id, ...rest } = p; return Shots.addSetPiece(B, p.kind, { ...rest, x: p.x + 4, y: p.y + 4 }); }).filter(Boolean);
   const newIds = made.map((m) => m.id).concat(madePieces.map((p) => p.id));
   select(B, newIds);
@@ -928,6 +930,14 @@ function paste(B) {
   if (!c || !(c.marks.length || c.set.length)) return false;
   const block = Shots.getBlock(B);
   if (!block) return false;
+  /* The set lives on the floor plan, never copied into a shot's diagram
+     (a copy there would drift from the floor's): a set piece on the
+     clipboard is skipped on a shot diagram, and the toast says so. */
+  const skipSet = !!block.shotId && c.set.length > 0;
+  if (skipSet && !c.marks.length) {
+    StudioUI.toast('Set pieces live on the floor plan, so they were not pasted into this shot\u2019s diagram.', { type: 'info' });
+    return true;
+  }
   History.record(block);
   let made = [];
   if (c.from === B && c.marks.every((m) => block.marks.some((x) => x.id === m.id))) {
@@ -935,10 +945,11 @@ function paste(B) {
   } else {
     for (const m of c.marks) { const { id, ...rest } = Shots.offsetMark(m, 4, 4); made.push(Shots.addMark(B, m.kind, rest)); }
   }
-  const pieces = c.set.map((p) => { const { id, ...rest } = p; return Shots.addSetPiece(B, p.kind, { ...rest, x: p.x + 4, y: p.y + 4 }); });
+  const pieces = skipSet ? [] : c.set.map((p) => { const { id, ...rest } = p; return Shots.addSetPiece(B, p.kind, { ...rest, x: p.x + 4, y: p.y + 4 }); });
   const newIds = made.concat(pieces).filter(Boolean).map((x) => x.id);
   select(B, newIds);
   afterWrite(B, block, Shots.getBlock(B), { focus: newIds.length ? itemSel(B, newIds[newIds.length - 1]) : '' });
+  if (skipSet) StudioUI.toast('Pasted the marks. Set pieces live on the floor plan, so they were left out of this shot\u2019s diagram.', { type: 'info' });
   return true;
 }
 

@@ -195,6 +195,20 @@ eq([none.floor, none.shots.length], [null, 0], 'pickDraft: nothing ticked, nothi
   S.updateBlock(edited.id, { note: 'my note' });
   const r2 = S.undoBlocking(snap2);
   eq([r2.reverted, r2.kept, !!S.blockOfShot(s1.id), !!S.blockOfShot(s2.id)], [2, 1, true, false], 'undo: a diagram edited since is kept, the rest reverted');
+  // Undo keeps the camera link of a diagram it keeps (the link and its camera are one unit).
+  S.undoBlocking({ blocks: S.blocksOfScene('scA').map((b) => ({ id: b.id, before: null, wrote: b })) });
+  S.listShots().forEach((x) => S.updateShot(x.id, { cam: '' }));
+  const blocks3 = S.listBlocks(), shots3 = S.listShots();
+  const plan3 = M.planDraftApply(pickAll, { sceneId: 'scA', floor: S.floorOf('scA', blocks3), blockOfShot: (id) => S.blockOfShot(id, blocks3),
+    shotOf: (id) => shots3.find((x) => x.id === id) || null, floorName: 'Floor plan', make: { block: S.blankBlock, mark: S.blankMark, piece: S.blankSetPiece } });
+  const snap3 = S.writeBlocking({ blocks: plan3.blocks, cams: plan3.cams });
+  const k1 = S.blockOfShot(s1.id);
+  const act1 = k1.marks.find((m) => m.kind === 'actor');
+  S.updateMark(k1.id, act1.id, { x: 50 });
+  S.undoBlocking(snap3);
+  const cam1 = S.blockOfShot(s1.id) && S.blockOfShot(s1.id).marks.find((m) => m.kind === 'camera');
+  eq([!!cam1, S.listShots().find((x) => x.id === s1.id).cam === (cam1 && cam1.id), S.listShots().find((x) => x.id === s2.id).cam],
+    [true, true, ''], 'undo: a kept diagram keeps its shot\'s camera link; a reverted one\'s link goes blank');
   mem.delete('fms_shots_v1');
 }
 
@@ -285,6 +299,16 @@ ok(/FLOOR PLAN/.test(M.ENHANCE_SYSTEM) && /one camera/.test(M.ENHANCE_SYSTEM), '
   ok(dp2.includes('id sh9') && /one diagram per listed shot/.test(dp2), 'draft prompt: shot ids are sent');
   const es2 = M.cleanEnhance({ note: '', suggestions: [sug({ type: 'add-set', piece: { kind: 'door', x: 1, y: 1, w: 1, h: 5 } }), sug({ type: 'set-axis', axis: { on: true, x1: 0, y1: 0, x2: 9, y2: 9 } }), sug({ type: 'remove-mark', markId: 'mkA' })] }, { block, shot: true });
   eq([es2.items.map((i) => i.op.type), es2.dropped], [['remove-mark'], 2], 'enhance: set and line ops dropped on a shot diagram');
+  // ONE camera per shot diagram: a second camera is dropped, and refused again at Accept.
+  const camSug = sug({ type: 'add-mark', mark: { kind: 'camera', label: 'B', x: 80, y: 40, rot: 0, toX: null, toY: null, path: [], curve: false, charId: '' } });
+  const es3 = M.cleanEnhance({ note: '', suggestions: [camSug] }, { block: { ...block, shotId: 'sh1' }, shot: true });
+  eq([es3.items.length, es3.dropped], [0, 1], 'enhance: a second camera on a shot diagram is dropped and counted');
+  const noCam = { ...block, shotId: 'sh1', marks: block.marks.filter((m) => m.kind !== 'camera') };
+  const es4 = M.cleanEnhance({ note: '', suggestions: [camSug, { ...camSug, mark: { ...camSug.mark, x: 10 } }] }, { block: noCam, shot: true });
+  eq([es4.items.length, es4.dropped], [1, 1], 'enhance: a shot with no camera may gain ONE');
+  const ap = M.applyBlockOps({ ...block, shotId: 'sh1' }, [{ type: 'add-mark', mark: camSug.mark }]);
+  eq([ap.applied, ap.block.marks.filter((m) => m.kind === 'camera').length], [0, 1], 'apply: a second camera is refused against the shot diagram as it is');
+  eq(M.applyBlockOps(block, [{ type: 'add-mark', mark: camSug.mark }]).applied, 1, 'apply: the floor/setup may still take another camera');
 }
 const strict = (sc) => sc && typeof sc === 'object' && (sc.type !== 'object' || (sc.additionalProperties === false
   && JSON.stringify(Object.keys(sc.properties).sort()) === JSON.stringify(sc.required.slice().sort())

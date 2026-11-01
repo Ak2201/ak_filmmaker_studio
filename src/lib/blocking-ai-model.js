@@ -509,6 +509,11 @@ export function cleanEnhance(parsed, { block, charIds = [], shot = false } = {})
   const items = [];
   const seen = new Set();
   let dropped = 0;
+  /* ONE camera per shot diagram, as cleanDraft enforces: the prompt asks
+     for it, but a reply that adds a second camera to a shot is dropped
+     here (and applyBlockOps refuses it again against the block as it is
+     at Accept). The one camera moves through update-mark. */
+  let shotCam = shot && [...marks.values()].some((m) => m.kind === 'camera');
   for (const s of parsed.suggestions) {
     if (items.length >= MAX_OPS) { dropped++; continue; }
     if (!isObj(s) || !(shot ? SHOT_OP_TYPES : OP_TYPES).includes(s.type)) { dropped++; continue; }
@@ -517,7 +522,9 @@ export function cleanEnhance(parsed, { block, charIds = [], shot = false } = {})
     let op = null;
     if (s.type === 'add-mark') {
       const mark = cleanAIMark(s.mark, { charIds });
+      if (mark && mark.kind === 'camera' && shotCam) { dropped++; continue; }
       if (mark) op = { type: 'add-mark', mark };
+      if (mark && mark.kind === 'camera' && shot) shotCam = true;
     } else if (s.type === 'add-set') {
       const piece = cleanAIPiece(s.piece);
       if (piece) op = { type: 'add-set', piece };
@@ -694,7 +701,11 @@ export function applyBlockOps(block, ops, {
   let applied = 0;
   for (const op of [].concat(ops || [])) {
     if (!isObj(op)) continue;
-    if (op.type === 'add-mark' && isObj(op.mark)) { out.marks.push(makeMark({ ...op.mark })); applied++; }
+    if (op.type === 'add-mark' && isObj(op.mark)) {
+      // A shot's diagram holds ONE camera, checked against the block as it is now.
+      if (out.shotId && op.mark.kind === 'camera' && out.marks.some((m) => m.kind === 'camera')) continue;
+      out.marks.push(makeMark({ ...op.mark })); applied++;
+    }
     else if (op.type === 'add-set' && isObj(op.piece)) { out.set.push(makePiece({ ...op.piece })); applied++; }
     else if (op.type === 'set-axis') { out.axis = isObj(op.axis) ? { ...op.axis } : null; applied++; }
     else if (op.type === 'remove-mark') {

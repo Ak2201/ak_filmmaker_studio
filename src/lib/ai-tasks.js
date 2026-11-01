@@ -491,8 +491,9 @@ const dialogueTask = {
    A SCENE IS RESOLVED BY CONTENT, NEVER BY POSITION ALONE: a row id
    when the point carries one, else the script slice matched by the
    same confident join scene-notes uses (matchScenes + isConfident —
-   it compares the heading's parts), else the one row carrying that
-   scene number (two rows with it is a guess, so neither). A guess would put a
+   it compares the heading's parts), else the one row carrying the
+   scene number the WRITER typed on that slice (rowFor; a positional
+   number never counts, and two rows with it is a guess, so neither). A guess would put a
    note on the wrong scene, where nobody would think to look for it;
    a sticky note that says "Sc 4" is at worst one move away.
    ============================================================ */
@@ -519,10 +520,11 @@ function sceneRowFor(ref, c, memo) {
     const r = rowFor(memo.match, i);
     if (r) return rows.find((s) => s.id === r.id) || null;
   }
-  if (ref.n != null && String(ref.n).trim()) {
-    const ns = rows.filter((s) => String(s.number).trim().toUpperCase() === String(ref.n).trim().toUpperCase());
-    if (ns.length === 1) return ns[0];
-  }
+  /* No bare rows-by-number fallback here. `ref.n` is often only a
+     POSITION (coverageScenes and the analysis rows number an untyped
+     scene i+1), so "the row numbered 2" put an inserted scene's note on
+     the next scene down. A number the writer typed is already tried by
+     rowFor() above; anything else becomes a sticky note. */
   return null;
 }
 
@@ -532,12 +534,11 @@ function keepNotes(selected, ctx, label) {
   const memo = {};
   const onScene = [];
   const sticky = [];
-  const where = [];
   for (const it of selected || []) {
     const t = String((it && (it.keep || it.text)) ?? '').trim();
     if (!t) continue;
     const row = it.scene ? sceneRowFor(it.scene, c, memo) : null;
-    if (row) { onScene.push({ id: row.id, text: t }); where.push('Sc ' + (row.number || '?')); }
+    if (row) onScene.push({ id: row.id, text: t, where: 'Sc ' + (row.number || '?') });
     else sticky.push(it.where ? it.where + ' — ' + t : t);
   }
   if (!onScene.length && !sticky.length) fail('Nothing is ticked, so there is nothing to keep.');
@@ -554,6 +555,15 @@ function keepNotes(selected, ctx, label) {
     fail('The notes board could not be saved (storage may be full), so nothing was kept.');
   }
   const ids = added.map((n) => n.id);
+  /* Say what was WRITTEN, not what was ticked: a point already on its
+     scene word for word is skipped by appendSceneNotes (changes.same),
+     and an Accept that wrote nothing at all says so and returns no
+     Undo, the way scene-notes does. */
+  const same = (changes && changes.same) || 0;
+  const wroteOnScene = Math.max(0, onScene.length - same);
+  if (!changes.length && !ids.length) {
+    fail((onScene.length === 1 ? 'That note is' : 'Those notes are') + ' already on ' + (onScene.length === 1 ? 'its scene' : 'their scenes') + ', so nothing was written.');
+  }
   call(c.after);
   const undo = () => {
     ScenesM.undoSceneNotes(changes);
@@ -562,10 +572,13 @@ function keepNotes(selected, ctx, label) {
   };
   /* What the toast says instead of "applied": a read said "Nothing was
      saved", so after Accept it says exactly what was. */
-  const scenesSaid = onScene.length
-    ? plural(onScene.length, 'note', 'notes') + ' on the scene list (' + [...new Set(where)].join(', ') + ')' : '';
+  const written = new Set(changes.map((x) => x.id));
+  const whereSaid = [...new Set(onScene.filter((x) => written.has(x.id)).map((x) => x.where))];
+  const scenesSaid = wroteOnScene && changes.length
+    ? plural(wroteOnScene, 'note', 'notes') + ' on the scene list (' + whereSaid.join(', ') + ')' : '';
   const stickySaid = ids.length ? plural(ids.length, 'sticky note', 'sticky notes') + ' on the notes board' : '';
-  undo.said = label + ': saved ' + [scenesSaid, stickySaid].filter(Boolean).join(' and ') + '.';
+  undo.said = label + ': saved ' + [scenesSaid, stickySaid].filter(Boolean).join(' and ') + '.'
+    + (same ? ' ' + plural(same, 'note was', 'notes were') + ' already there.' : '');
   return undo;
 }
 

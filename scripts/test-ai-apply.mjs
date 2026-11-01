@@ -232,5 +232,34 @@ installFakeFetch(async (req) => {
   eq([story.genre, story.tone, story.budgetWhy, story.comps], ['', '', '', []], 'genre-comps: Undo restores the story as it was');
 }
 
+/* ---- read tools keep notes: a positional number never picks a row ---- */
+{
+  // No scene numbers typed; a scene inserted second. Its positional "2"
+  // must not land on the scene list's row numbered 2 (ROAD).
+  let k = 0;
+  const X = (type, text) => ({ id: 'q' + (++k), type, text });
+  const els2 = [X('scene', 'INT. KITCHEN - DAY'), X('action', 'Eggs.'), X('scene', 'INT. ATTIC - NIGHT'), X('action', 'Dust.'), X('scene', 'EXT. ROAD - DAY'), X('action', 'Cars.')];
+  const raw = mem.get('fms_script_v1');
+  mem.set('fms_script_v1', JSON.stringify({ elements: els2 }));
+  Scenes.saveScenes([
+    Scenes.blankScene({ id: 'k1', number: '1', intExt: 'INT', location: 'KITCHEN', dayNight: 'DAY' }),
+    Scenes.blankScene({ id: 'k2', number: '2', intExt: 'EXT', location: 'ROAD', dayNight: 'DAY' })
+  ]);
+  const ctx = { elements: () => els2 };
+  const u = tasks['tension-notes'].apply([{ id: 't0', text: 'x', keep: 'Attic sags', where: 'Sc 2', scene: { sceneId: '', n: '2', heading: 'INT. ATTIC - NIGHT' } }], ctx);
+  eq(Scenes.listScenes().map((s) => s.readerNote), ['', ''], 'keep notes: a positional scene number never puts a note on another row');
+  ok(/sticky note/.test(u.said), 'keep notes: the unmatched point became a sticky note — ' + u.said);
+  u();
+  const it = [{ id: 't1', text: 'x', keep: 'Kitchen drags', where: 'Sc 1', scene: { sceneId: 'k1', n: '1' } }];
+  const u1 = tasks['tension-notes'].apply(it, ctx);
+  ok(/saved 1 note on the scene list \(Sc 1\)/.test(u1.said), 'keep notes: first Accept says it saved — ' + u1.said);
+  const e2 = await throws(() => tasks['tension-notes'].apply(it, ctx));
+  ok(e2 && /already on its scene/.test(e2.message), 'keep notes: the same point again says it is already there, with no empty Undo — ' + (e2 && e2.message));
+  const u3 = tasks['tension-notes'].apply([...it, { id: 't2', text: 'y', keep: 'Kitchen fridge hums', scene: { sceneId: 'k1' } }], ctx);
+  ok(/saved 1 note/.test(u3.said) && /1 note was already there/.test(u3.said), 'keep notes: the toast counts what was written and what was already there — ' + u3.said);
+  u3(); u1();
+  mem.set('fms_script_v1', raw);
+}
+
 console.log('test:ai-apply — ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -3601,3 +3601,49 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       Visualize, and develop's own new words (tour, lanes/spine).
       `budget.json` is develop's unchanged: every page loads under it
       (breakdown 1254.7 KB of 1273, visualize 1123.3 of 1148).
+
+80. **AI output lands in the studio, and blocking is per shot (2 Nov
+    2026).** Four lanes (ai-blocking, ai-shots-breakdown, ai-writing,
+    ai-readonly-notes) merged on `claude/improvement-ideas-0gwjyx`, then a
+    review pass whose eight findings were verified and fixed here.
+    - **The rule.** Every AI tool's Accept writes into the studio's own
+      models — shot list, scenes, story, script, characters, notes — so
+      nothing is retyped. Nothing is written before Accept; every apply
+      returns an Undo that takes out only what it wrote and keeps later
+      edits; blanks are filled and a person's words are never overwritten.
+      No new key and no renamed key: new things are FIELDS on existing
+      records (`loglineAlts`, `alts`, `beatId`, a note's `from`, a block's
+      `shotId`), and readers pass unknown fields through.
+    - **Read tools keep notes.** Beat critique, tension notes and both
+      audience tools return each point as an item; a point whose scene
+      resolves is appended to that row's `readerNote` ("AI (<tool>):"),
+      anything else is a sticky note in the Idea Vault. **Fixed in review:**
+      `sceneRowFor()` had a last-resort "the row numbered N" fallback, but
+      `n` is often only a POSITION (`coverageScenes()` numbers an untyped
+      scene i+1), so an inserted scene's note landed on the next row down.
+      The fallback is gone; a number counts only when the writer typed it
+      (`rowFor()`), otherwise the point is a sticky note. The toast now
+      counts what was WRITTEN (a point already there word for word says
+      so), and an Accept that wrote nothing fails like scene-notes instead
+      of returning an empty Undo.
+    - **Blocking: one floor plan per scene, one diagram per shot.** The
+      floor (`floorOf()`, the scene's first block with no `shotId`) holds
+      the set and the 180° line; each shot's diagram holds ONE camera and
+      its actors, drawn over the floor. An older combined setup can be
+      split (`splitBlock()`); the AI draft writes floor and diagrams in one
+      `writeBlocking()`. **Fixed in review:** (1) `undoBlocking()` reverted
+      rows one by one, so undoing a split after editing the floor deleted
+      the moved cameras from every row and left `shot.cam` dangling — a
+      row is now also kept when reverting it would drop a mark the person
+      had before the write; (2) a camera link is put back to blank only
+      when its camera sits on no row this undo kept; (3) only the scene's
+      floor can be split (an older second setup would have been drawn over
+      another setup's set and checked against the wrong line); (4) enhance
+      on a shot diagram could add a second camera — `cleanEnhance()` drops
+      it and `applyBlockOps()` refuses it again against the block at
+      Accept; (5) Paste and Duplicate no longer copy floor set pieces onto
+      a shot diagram (the toast says why).
+    - **Checks.** `test:blocking` (190), `test:blocking-ai` (130),
+      `test:ai-apply` (41), `test:ai-writing`, `test:audience`, all with
+      faked model replies; `prove:ai-desk`, `prove:visual`, `prove:notes`.
+      Never run against a real provider.

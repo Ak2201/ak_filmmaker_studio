@@ -1240,23 +1240,60 @@ export function writeBlocking({ blocks = [], cams = [] } = {}) {
  * row 68): a block goes back (or away, when the write made it) only while
  * it is still exactly what was written; a shot's camera goes back to blank
  * only while it still names the written one. One write. → { reverted, kept }
+ *
+ * Two traps, both from a SPLIT, where one write MOVES marks between rows
+ * (the floor loses a camera, a new shot diagram gains it), so the rows are
+ * not independent:
+ *  - floor edited since (kept) + diagram untouched (reverted = removed)
+ *    used to delete the moved camera from EVERY row, leaving shot.cam
+ *    dangling. So a row is kept, too, when reverting it would drop a mark
+ *    that existed before the write and that no remaining row would hold.
+ *    Undo never removes a mark the person had before.
+ *  - a link is put back to blank only when the camera it names is gone, or
+ *    sits only on rows this undo reverted. A KEPT diagram keeps its link.
  */
 export function undoBlocking(snap) {
   const all = readAll();
-  let list = all.blocks.map(cleanBlock);
-  let reverted = 0, kept = 0;
-  for (const b of (snap && snap.blocks) || []) {
-    const i = list.findIndex((x) => x.id === b.id);
-    if (i < 0) { if (b.before) kept++; continue; }       // deleted since: leave it gone
-    if (stableJSON(list[i]) !== stableJSON(cleanBlock(b.wrote))) { kept++; continue; }
-    if (b.before) list[i] = b.before; else list = list.filter((x) => x.id !== b.id);
-    reverted++;
+  const cur = all.blocks.map(cleanBlock);
+  const entries = ((snap && snap.blocks) || []);
+  const revert = new Set();
+  let kept = 0;
+  for (const b of entries) {
+    const row = cur.find((x) => x.id === b.id);
+    if (!row) { if (b.before) kept++; continue; }       // deleted since: leave it gone
+    if (stableJSON(row) !== stableJSON(cleanBlock(b.wrote))) { kept++; continue; }
+    revert.add(b.id);
   }
+  const ids = (row) => [...(row.marks || []), ...(row.set || [])].map((m) => m.id);
+  const result = () => {
+    let list = cur.slice();
+    for (const b of entries) {
+      if (!revert.has(b.id)) continue;
+      if (b.before) list = list.map((x) => x.id === b.id ? b.before : x);
+      else list = list.filter((x) => x.id !== b.id);
+    }
+    return list;
+  };
+  // Marks the person had before the write that still exist now.
+  const now = new Set(cur.flatMap(ids));
+  const had = new Set(entries.flatMap((b) => b.before ? ids(b.before) : []).filter((id) => now.has(id)));
+  for (let changed = true; changed;) {
+    changed = false;
+    const held = new Set(result().flatMap(ids));
+    for (const id of had) {
+      if (held.has(id)) continue;
+      const owner = cur.find((x) => revert.has(x.id) && ids(x).includes(id));
+      if (owner) { revert.delete(owner.id); kept++; changed = true; }
+    }
+  }
+  const list = result();
+  let reverted = revert.size;
+  const camKept = (camId) => list.some((x) => !revert.has(x.id) && (x.marks || []).some((m) => m.id === camId));
   const shots = all.shots.slice();
   for (const c of (snap && snap.cams) || []) {
     const i = shots.findIndex((s) => s && s.id === c.id);
     if (i < 0) continue;
-    if (shots[i].cam !== c.wrote) { kept++; continue; }
+    if (shots[i].cam !== c.wrote || camKept(c.wrote)) { kept++; continue; }
     shots[i] = { ...shots[i], cam: c.was };
     reverted++;
   }
@@ -1295,6 +1332,11 @@ const norm = (s) => String(s ?? '').trim().toLowerCase();
  */
 export function planSplit(block, shots, blocks) {
   if (!block || block.shotId) return null;
+  /* Only the scene's FLOOR splits: a shot diagram is drawn over floorOf()'s
+     set and line, so splitting an older second setup would put its cameras
+     over another setup's set and check them against the wrong 180° line. */
+  const fl = floorOf(block.sceneId, blocks);
+  if (!fl || fl.id !== block.id) return null;
   const sceneShots = shots.filter((s) => s.sceneId === block.sceneId && !blockOfShot(s.id, blocks));
   const cams = block.marks.filter((m) => m.kind === 'camera');
   if (cams.length < 2) return null;

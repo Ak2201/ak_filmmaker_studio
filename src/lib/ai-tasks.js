@@ -33,7 +33,8 @@
      dialogue-pass    the page's in-memory script, `aiPass` kept so the
                       row's own Undo also still works, page save
      story-steps/map  story.js models, saved by the page's commit()
-     shot-draft       shots.js addShot (append only)
+     shot-draft       shots.js addShot (append only; size, angle, movement,
+                      lens, rig, setup, description)
      scene-story      story.js outline steps, one per scene, linked by
                       sceneId (breakdown-extras.js appendSteps)
      synopsis-script  scriptgen.js's job (stage 1 → the beat sheet)
@@ -42,7 +43,8 @@
                       the script blob, cursor advanced)
      voice-check      coverage.js addTake (a line's alternates)
      logline          the page's setLogline()
-     genre-comps      story.js fields genre/audience/budgetTier/comps, via commit
+     genre-comps      story.js fields genre/tone/budgetTier/budgetWhy/audience/
+                      comps, via commit
      scene-notes      scenes.js readerNote + cutCandidate on content-matched rows
      breakdown-tags   scenes.js tagMany (adds only), undo = untagMany
      audience-test    audience-store.js, one document in the script blob's
@@ -126,6 +128,15 @@ function remember(id, result, mem) {
   return result;
 }
 const recall = (id, result) => (result && result.memo) || last.get(id);
+/* What an Accept did, said in its Undo toast. The Desk's toast says only
+   "applied" otherwise, which hid a partial write (some ticked items
+   skipped) behind the word for a whole one. A property on the undo
+   function, so every caller that only calls undo() is unchanged. */
+function withNote(undo, parts) {
+  const note = [].concat(parts || []).filter(Boolean).join(' ');
+  if (note) undo.note = note;
+  return undo;
+}
 
 /** The refine block, as ai.js writes it, or ''. */
 function refineText(refine) {
@@ -677,7 +688,7 @@ const shotTask = {
       list.forEach((d, i) => items.push({
         id: sceneId + '#' + i, sceneId, draft: d,
         text: 'Sc ' + numOf.get(sceneId) + ' · ' + d.description,
-        detail: [d.size, d.angle, d.movement, d.lens].filter(Boolean).join(' · ')
+        detail: [d.size, d.angle, d.movement, d.lens, d.rig, d.setup].filter(Boolean).join(' · ')
       }));
     }
     if (!items.length) fail('The model came back with no shots. Nothing was added.');
@@ -688,7 +699,15 @@ const shotTask = {
     const made = [];
     for (const it of selected || []) {
       if (!it.sceneId || !it.draft) continue;
-      made.push(ShotsM.addShot(it.sceneId, { ...it.draft, ai: true }).id);
+      /* Every column the Shot List shows, rig and setup included, so
+         nothing the model drafted has to be retyped there. Named, not
+         spread: a refined or stale draft carrying some other field must
+         not reach the shot record. */
+      const d = it.draft;
+      made.push(ShotsM.addShot(it.sceneId, {
+        size: d.size, angle: d.angle, movement: d.movement, lens: d.lens || '',
+        rig: d.rig || '', setup: d.setup || '', description: d.description, ai: true
+      }).id);
     }
     if (!made.length) return null;
     call(c.after, made);
@@ -1196,8 +1215,10 @@ const loglineTask = {
    shows, with verbatim evidence (verified), and 3-5 comparable films.
    The comparables are the model's memory and cannot be checked here,
    so the note says so. The items are the comparables; Accept saves
-   genre, tone-as-budget tier, audience and the ticked comparables on
-   the story (additive fields), and Undo restores the story as it was.
+   genre, tone, budget tier (with its one-line why), audience (only
+   into a blank) and the ticked comparables on the story (additive
+   fields; the Breakdown header shows them), and Undo restores the
+   story as it was.
    ============================================================ */
 const TIER_LABEL = { micro: 'Micro', low: 'Low', mid: 'Mid', high: 'High' };
 
@@ -1238,7 +1259,7 @@ const genreTask = {
       'The comparables are the model’s memory of films, not something this tool can check. Look each one up before it goes in a pitch.',
       res.removed ? plural(res.removed, 'quote', 'quotes') + ' removed because ' + (res.removed === 1 ? 'it was' : 'they were') + ' not word for word in your script.' : '',
       sample.sampled ? 'A long script is sampled for this, so the evidence comes from the opening of each scene.' : '',
-      'Read by ' + res.model + '. Accepting saves the genre, budget tier and audience above and the comparables you tick.'
+      'Read by ' + res.model + '. Accepting saves the genre, tone, budget tier and audience above and the comparables you tick.'
     ].filter(Boolean);
     return remember('genre-comps', {
       items: res.comps.map((cp, i) => ({ id: 'c' + i, title: cp.title, year: cp.year, why: cp.why,
@@ -1254,7 +1275,9 @@ const genreTask = {
     const before = JSON.parse(JSON.stringify(storyOf(c)));
     const s = storyOf(c);
     s.genre = r.genre + (r.subgenres.length ? ' / ' + r.subgenres.join(' / ') : '');
-    if (r.budgetTier) s.budgetTier = r.budgetTier;
+    if (r.tone) s.tone = r.tone;
+    // The why travels with the tier it explains, never apart from it.
+    if (r.budgetTier) { s.budgetTier = r.budgetTier; s.budgetWhy = r.budgetWhy || ''; }
     if (r.audience && !String(s.audience || '').trim()) s.audience = r.audience;
     const have = new Set((s.comps || []).map((x) => x.title.toLowerCase()));
     const comps = (s.comps || []).slice();
@@ -1274,14 +1297,46 @@ const genreTask = {
    ------------------------------------------------------------
    One note per scene, each resting on a quote verified against that
    scene, plus a cut-candidate flag that needs the quote to stand. The
-   items are the notes; Accept writes `readerNote` and `cutCandidate`
-   on the scene rows the ticked notes belong to. A row is found by the
-   same content match the breakdown uses; a pair made only by position
-   is a guess and is left out, and the note says how many.
+   items are the notes; Accept writes on the scene rows the ticked
+   notes belong to:
+     readerNote    APPENDED to what the row already says, marked "AI:",
+                   never written over it (a note already there word for
+                   word is not added twice)
+     cutCandidate  set only when the row's flag is still unset — the
+                   model can raise it, never clear or re-raise it
+   Undo puts back exactly the values each written row had before.
+   A row is found by the same content match the breakdown uses. A pair
+   made only by POSITION is a guess and is left out, unless the
+   script's own scene number (the writer's, never a position) agrees
+   with the row's — the number is then the evidence, not the order.
+   What is left out is counted in the Undo toast.
    ============================================================ */
-function rowFor(pairs, sliceIndex) {
-  const p = pairs.find((x) => x.slice && x.slice.index === sliceIndex && Analysis.isConfident(x.how));
-  return p ? p.scene : null;
+const normNo = (v) => String(v ?? '').trim().toUpperCase();
+/* The scene row a slice of the script belongs to, or null. Confident
+   pairs first; then the writer's own scene number (slice.number is the
+   heading's sceneNumber, '' when the writer set none — so a number that
+   is only a position never counts). An unpaired slice may take the ONE
+   unpaired row carrying its number; two such rows are a guess again. */
+function rowFor(match, sliceIndex) {
+  if (sliceIndex == null) return null;
+  const pairs = match.pairs || [];
+  const p = pairs.find((x) => x.slice && x.slice.index === sliceIndex);
+  if (p && Analysis.isConfident(p.how)) return p.scene;
+  const slice = p ? p.slice : (match.slices || [])[sliceIndex];
+  const no = normNo(slice && slice.number);
+  if (!no) return null;
+  if (p) return normNo(p.scene.number) === no ? p.scene : null;
+  const free = pairs.filter((x) => !x.slice && normNo(x.scene.number) === no);
+  return free.length === 1 ? free[0].scene : null;
+}
+/** PURE. The note a row ends up with: the AI's appended, never over. */
+function appendNote(have, note) {
+  const was = String(have || '').trim();
+  const add = String(note || '').trim();
+  if (!add) return was;
+  if (!was) return add;
+  if (was.includes(add)) return was;
+  return was + ' · AI: ' + add;
 }
 
 const sceneNotesTask = {
@@ -1323,22 +1378,37 @@ const sceneNotesTask = {
   apply(selected, ctx) {
     const c = resolve(ctx);
     const els = scriptElements(c);
-    const rows = ScenesM.listScenes();
-    const pairs = Analysis.matchScenes(rows, els).pairs;
+    const match = Analysis.matchScenes(ScenesM.listScenes(), els);
     const before = new Map();
     const patch = new Map();
-    let skipped = 0;
+    let skipped = 0, same = 0;
     for (const it of selected || []) {
-      const row = rowFor(pairs, it.i);
+      const row = rowFor(match, it.i);
       if (!row) { skipped++; continue; }
-      before.set(row.id, { readerNote: row.readerNote || '', cutCandidate: !!row.cutCandidate });
-      patch.set(row.id, { readerNote: it.note, cutCandidate: !!it.cut });
+      // Two ticked notes on one row build on each other, not on the stored value twice.
+      const cur = patch.has(row.id) ? { ...row, ...patch.get(row.id) } : row;
+      const next = {};
+      const note = appendNote(cur.readerNote, it.note);
+      if (note !== String(cur.readerNote || '').trim()) next.readerNote = note;
+      if (it.cut && !cur.cutCandidate) next.cutCandidate = true;
+      if (!Object.keys(next).length) { same++; continue; }
+      if (!before.has(row.id)) before.set(row.id, { readerNote: row.readerNote, cutCandidate: row.cutCandidate });
+      patch.set(row.id, { ...(patch.get(row.id) || {}), ...next });
     }
-    if (!patch.size) fail('None of those scenes is matched to a scene on the breakdown by content, so nothing was written.' + (skipped ? ' (' + skipped + ' matched by position only.)' : ''));
+    if (!patch.size) {
+      fail(same && !skipped ? 'Those notes are already on their scenes, so nothing was written.'
+        : 'None of those scenes is matched to a scene on the breakdown by content or scene number, so nothing was written.'
+          + (skipped ? ' (' + plural(skipped, 'note', 'notes') + ' matched by position only.)' : ''));
+    }
     const write = (m) => ScenesM.saveScenes(ScenesM.listScenes().map((s) => (m.has(s.id) ? { ...s, ...m.get(s.id) } : s)));
     write(patch);
     call(c.after);
-    return () => { write(before); call(c.after); };
+    const undo = () => { write(before); call(c.after); };
+    return withNote(undo, [
+      'Notes on ' + plural(patch.size, 'scene', 'scenes') + '.',
+      skipped ? plural(skipped, 'note', 'notes') + ' left out: the scene is matched by position only.' : '',
+      same ? plural(same, 'note', 'notes') + ' already there.' : ''
+    ]);
   }
 };
 
@@ -1390,18 +1460,32 @@ const tagsTask = {
   apply(selected, ctx) {
     const c = resolve(ctx);
     const els = scriptElements(c);
-    const pairs = Analysis.matchScenes(ScenesM.listScenes(), els).pairs;
+    const match = Analysis.matchScenes(ScenesM.listScenes(), els);
+    /* Only a category the scene model has: tagMany() would otherwise
+       open a new bucket under any id it is handed, which no view lists. */
+    const known = new Set(ScenesM.ELEMENT_CATEGORIES.map((k) => k.id));
     const tags = [];
-    let skipped = 0;
+    let skipped = 0, unknown = 0;
     for (const it of selected || []) {
-      const row = rowFor(pairs, it.i);
+      if (!known.has(it.category)) { unknown++; continue; }
+      const row = rowFor(match, it.i);
       if (!row) { skipped++; continue; }
       tags.push({ sceneId: row.id, category: it.category, name: it.name });
     }
     const added = ScenesM.tagMany(tags);
-    if (!added.length) fail(skipped ? 'Those scenes are matched to the breakdown by position only, so nothing was tagged.' : 'Every ticked element is already tagged.');
+    const already = tags.length - added.length;
+    /* Every reason something was not tagged is said, on success as well
+       as on failure: a partial Accept that only says "applied" reads as
+       if every ticked element went in. */
+    const why = [
+      skipped ? plural(skipped, 'element', 'elements') + ' left out: the scene is matched by position only.' : '',
+      unknown ? plural(unknown, 'element', 'elements') + ' left out: not a breakdown category.' : '',
+      already ? plural(already, 'element', 'elements') + ' already tagged.' : ''
+    ];
+    if (!added.length) fail((skipped || unknown ? 'Nothing was tagged. ' : 'Every ticked element is already tagged. ') + why.filter(Boolean).join(' '));
     call(c.after);
-    return () => { ScenesM.untagMany(added); call(c.after); };
+    const undo = () => { ScenesM.untagMany(added); call(c.after); };
+    return withNote(undo, [plural(added.length, 'element', 'elements') + ' tagged.', ...why]);
   }
 };
 

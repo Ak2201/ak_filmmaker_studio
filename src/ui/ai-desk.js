@@ -533,7 +533,10 @@ async function accept(all) {
   closeDesk();
   if (typeof undo === 'function') {
     // An actionable toast never times out (chrome.js); Undo is reachable.
-    StudioUI.toast(label + ': applied.', {
+    // A task may say what the Accept did (ai-tasks.js withNote): what it
+    // left out matters as much as what it wrote.
+    const said = typeof undo.note === 'string' && undo.note ? ' ' + undo.note : '';
+    StudioUI.toast(label + ': applied.' + said, {
       action: 'Undo',
       onAction: () => {
         Promise.resolve().then(undo)

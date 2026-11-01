@@ -157,6 +157,9 @@ const SYSTEM = [
   '  sentences it is two shots.',
   '· "static" is a decision and usually the right one. Do not move the camera',
   '  because a field exists.',
+  '· Group shots by camera setup ("Setup 1", "Setup 2"): every shot taken from',
+  '  one camera position and lighting shares a setup, so the crew lights once.',
+  '  The rig is one short line of light and support ("Key from window, sticks").',
   '· Shoot the scene you were given. Do not invent action that is not in the',
   '  text, and do not rewrite the writer.',
   '· Answer only with the JSON the schema describes.'
@@ -181,12 +184,18 @@ function schemaFor() {
               items: {
                 type: 'object',
                 additionalProperties: false,
-                required: ['size', 'angle', 'movement', 'lens', 'description'],
+                required: ['size', 'angle', 'movement', 'lens', 'rig', 'setup', 'description'],
                 properties: {
                   size: { type: 'string', enum: SHOT_SIZES.map((s) => s.id) },
                   angle: { type: 'string', enum: SHOT_ANGLES.slice() },
                   movement: { type: 'string', enum: SHOT_MOVEMENTS.slice() },
                   lens: { type: 'string', description: 'a focal length such as 35mm, or empty' },
+                  /* The shot list's own two columns (shots.js `rig`, `setup`),
+                     so a drafted shot is not retyped there. Required-but-may-be-
+                     empty, like `lens`: an optional property is one a model
+                     quietly leaves out. */
+                  rig: { type: 'string', description: 'light and rig in one short line, e.g. "Key from window, handheld", or empty' },
+                  setup: { type: 'string', description: 'the camera setup this shot is grouped under, e.g. "Setup 1"; shots from one camera position share it, or empty' },
                   description: { type: 'string', description: 'one line of what the audience sees' }
                 }
               }
@@ -702,6 +711,8 @@ export async function draftShotDivision(jobs, { onStatus, signal } = {}) {
         angle: SHOT_ANGLES.includes(s.angle) ? s.angle : SHOT_ANGLES[0],
         movement: SHOT_MOVEMENTS.includes(s.movement) ? s.movement : SHOT_MOVEMENTS[0],
         lens: str(s.lens, 40),
+        rig: str(s.rig, 120),
+        setup: str(s.setup, 60),
         description: str(s.description, 400)
       }))
       .filter((s) => s.description);

@@ -192,7 +192,10 @@ for (const width of [1440, 390]) {
     }
   }
   ok(walked && anchors.length === NON_ADMIN.length - 1, `every one of the ${NON_ADMIN.length - 1} steps after Home came up`);
-  ok(anchors.every(([, a]) => a.tag && a.tag !== 'MAIN' && a.id !== 'main'), 'every step rings a real anchor: ' + anchors.map(([id, a]) => id + '=' + (a.id ? '#' + a.id : a.tag.toLowerCase() + '.' + a.cls.split(' ')[0])).join(' '));
+  ok(anchors.every(([, a]) => a.tag && a.tag !== 'MAIN' && a.id !== 'main'), 'every step rings a real anchor: ' + anchors.map(([id, a]) => id + '=' + (a.id ? '#' + a.id : a.tag ? a.tag.toLowerCase() + '.' + a.cls.split(' ')[0] : 'NONE')).join(' '));
+  /* (the summary names a missing ring as NONE rather than throwing on it:
+     the step's own line above has already failed, and a TypeError here
+     hid every check after it — Gate run 383) */
   ok(anchors.every(([, a]) => a.inView), 'every card sits inside the viewport');
   ok(anchors.every(([, a]) => !a.overflow), 'no page overflows sideways with the card up');
   const firstSeen = [...new Set(seen)];
@@ -251,7 +254,10 @@ for (const width of [1440, 390]) {
     await page.goto(BASE + 'settings.html#preferences'); await page.waitForTimeout(1500);
     const sbtn = await page.waitForSelector('[data-action="tour-start"]', { timeout: 6000 }).catch(() => null);
     ok(!!sbtn, 'Settings → Preferences has the tour button');
-    if (sbtn) { await sbtn.click(); ok(await card(page, 'dashboard'), 'and it starts the tour on the sample'); }
+    /* A locator, not the handle: settings.js swaps <main> whenever a fetch
+       lands (commitMain), and a handle taken a moment earlier is then a
+       detached copy ("Element is not attached to the DOM", seen under load). */
+    if (sbtn) { await page.locator('[data-action="tour-start"]').click(); ok(await card(page, 'dashboard'), 'and it starts the tour on the sample'); }
   } else {
     /* On a phone the same flow, Pause and resume through the hub's list */
     await page.goto(BASE + 'index.html'); await page.waitForTimeout(1500);
@@ -324,7 +330,10 @@ for (const width of [1440, 390]) {
     await c6.page.evaluate((i) => { const t = JSON.parse(localStorage.getItem('fms_tour_v1')); t.step = i; localStorage.setItem('fms_tour_v1', JSON.stringify(t)); }, purchaseIdx);
     await c6.page.goto(BASE + 'purchase.html');
     ok(await card(c6.page, 'purchase'), 'the purchase step');
-    ok(await c6.page.evaluate(() => /Next: Console/.test((document.querySelector('.tour-pop [data-tour-act="next"]') || {}).textContent || '')), 'offers Next: Console to an admin');
+    /* Waited for, not read once: the card is drawn before the gate's answer
+       (role: admin) lands, and tour.js redraws it on gate:changed — a round
+       trip that outlasted the card's first paint under load. */
+    ok(await c6.page.waitForFunction(() => /Next: Console/.test((document.querySelector('.tour-pop [data-tour-act="next"]') || {}).textContent || ''), null, { timeout: 15000 }).then(() => true, () => false), 'offers Next: Console to an admin');
     await c6.page.click('.tour-pop [data-tour-act="next"]');
     ok(await card(c6.page, 'console'), 'and the console step comes up, the last');
     ok(await c6.page.evaluate(() => !!document.querySelector('.tour-pop [data-tour-act="finish"]')), 'with Finish');

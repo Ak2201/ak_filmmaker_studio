@@ -51,6 +51,7 @@ import { listCallSheets } from '../lib/contacts.js';
 import { unscheduledScenes } from '../lib/locations.js';
 import data from '../data/tour.json';
 import { isDisabledEverywhere, entitlement, currentPlan, trialEndsAt, serverNow } from '../lib/plan-gate.js';
+import { apply as applyTabs } from './tabs.js';
 import '../styles/tour.css';
 
 /* The tour's place (`fms_tour_v1`) is read and written by
@@ -170,25 +171,57 @@ export function firstWeekFacts({ match = sampleMatch } = {}) {
 /* ---- the step card ------------------------------------------------- */
 let pop = null, ring = null, chip = null, returnFocus = null, keyWired = false, waitTimer = 0;
 
-/* Pages re-render their <main> (story.js, the hub) after this has drawn,
-   which takes the ringed element with it. A rAF-throttled observer puts
-   the ring back on the fresh copy; it touches attributes only on the
-   anchor, never storage, and stops when the step closes. */
-let ringObs = null, ringStep = null, ringQueued = false;
+/* Pages re-render their <main> (story.js, the hub, settings.js and
+   purchase.js on every fetch that lands) after this has drawn, which
+   takes the ringed element with it; and a page's own observers (tabs.js
+   building `nav.tabs`) add the better anchor a beat after the first
+   paint, when `findAnchor` has already settled for the `#main` fallback.
+   So while a step is up the anchor is RE-RESOLVED on every DOM change:
+   the first selector that matches now gets the ring.
+
+   SYNCHRONOUSLY, in the observer's own callback, never a rAF later. A
+   MutationObserver callback runs at the microtask checkpoint right after
+   the script that swapped <main>, before the browser paints and before
+   any other task; a rAF is a frame away, and on a loaded machine (or a
+   tab that is not compositing) a frame can be a long time. The rAF
+   version left a window in which the page had NO ringed element at all
+   — prove:tour measured "settings rings a real anchor (got null#null)"
+   in it about one run in three on CI (Gate run 383).
+
+   A swapped <main> on a TABBED page (settings) has no strip yet:
+   tabs.js rebuilds `nav.tabs` from a rAF of its own, so re-resolving
+   here alone would ring the `#main` fallback for that window. When the
+   ring has just been detached, the strip is applied first (tabs.js's
+   apply() is idempotent and a no-op on an untabbed page), so the ring
+   lands on the real anchor in the same checkpoint.
+
+   BOUNDED: the observer lives only while a step's card is up (clearUI
+   disconnects it), and after RING_SETTLE_MS a connected ring is left
+   where it is — only a detached one is put back. Touches the anchor's
+   attribute only, never storage; `data-tour-on` is not in the
+   attribute filter, so the write does not feed the observer. */
+const RING_SETTLE_MS = 15000;
+let ringObs = null, ringStep = null, ringUntil = 0;
+function placeRing() {
+  if (!ringStep) return;
+  const detached = !!ring && !ring.isConnected;
+  if (!detached && ring && Date.now() > ringUntil) return;
+  if (detached) { try { applyTabs(); } catch (e) { /* the strip's own rAF still runs */ } }
+  const el = findAnchor(ringStep);
+  if (!el || el === ring) return;
+  if (ring) ring.removeAttribute('data-tour-on');
+  ring = el;
+  el.setAttribute('data-tour-on', '');
+}
 function watchRing(step) {
   ringStep = step;
+  ringUntil = Date.now() + RING_SETTLE_MS;
+  placeRing();
   if (ringObs || typeof MutationObserver === 'undefined') return;
-  ringObs = new MutationObserver(() => {
-    if (ringQueued) return;
-    ringQueued = true;
-    requestAnimationFrame(() => {
-      ringQueued = false;
-      if (!ringStep || (ring && ring.isConnected)) return;
-      const el = findAnchor(ringStep);
-      if (el) { ring = el; el.setAttribute('data-tour-on', ''); }
-    });
-  });
-  ringObs.observe(document.body, { childList: true, subtree: true });
+  /* `hidden`: tabs.js shows a section by removing the attribute, which is
+     not a childList change, and findAnchor skips an element with no box. */
+  ringObs = new MutationObserver(placeRing);
+  ringObs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
 }
 
 function clearUI() {

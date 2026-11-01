@@ -66,7 +66,10 @@ const app = document.getElementById('app');
    write.html's. `#runtime` is the block inside Screen Time. Nothing is
    rendered on the way out. */
 const MOVED_AWAY = /^#(screentime|cast-matrix|runtime)$/.test(location.hash);
-if (MOVED_AWAY) location.replace('./breakdown.html' + location.hash);
+/* Spelled the way THIS page was reached: production's cleanUrls 308s
+   /breakdown.html to /breakdown (a second round trip on the one path
+   carrying the fragment), while dev and preview serve only the .html. */
+if (MOVED_AWAY) location.replace('./breakdown' + (/\.html$/i.test(location.pathname) ? '.html' : '') + location.hash);
 
 /* The hues, the tallies, the slug line and every derived figure are
    src/lib/reports-model.js's. */

@@ -180,6 +180,25 @@ ok(strict(es), 'schema: enhance — every object closed and fully required');
 eq(es.properties.suggestions.items.properties.markId.enum, ['', 'mkA', 'mkC'], 'schema: markId pinned to the block\'s marks');
 eq(es.properties.suggestions.items.properties.type.enum, M.OP_TYPES.slice(), 'schema: op types');
 
+/* ---- undoBlockOps: an Undo restores only what it wrote ------------ */
+{
+  const before = { id: 'b1', marks: [{ id: 'm1', x: 1, y: 1 }, { id: 'm2', x: 2, y: 2 }, { id: 'm3', x: 3, y: 3 }], set: [], axis: null };
+  const after = { id: 'b1', marks: [{ id: 'm1', x: 9, y: 9 }, { id: 'm2', x: 2, y: 2 }, { id: 'm4', x: 4, y: 4 }], set: [{ id: 's1', kind: 'table' }], axis: { x1: 0, y1: 0, x2: 1, y2: 1 } };
+  let u = M.undoBlockOps(before, after, after);
+  eq(u.block.marks.map((x) => x.id + ':' + x.x), ['m1:1', 'm2:2', 'm3:3'], 'undo: update, add and remove all reversed when untouched');
+  eq([u.block.set.length, u.block.axis, u.reverted, u.kept], [0, null, 5, 0], 'undo: added piece removed, axis restored');
+  const edited = JSON.parse(JSON.stringify(after));
+  edited.marks[0].x = 50; edited.marks[2].label = 'MEENA'; edited.marks.push({ id: 'm9', x: 7, y: 7 });
+  edited.axis = { x1: 5, y1: 5, x2: 6, y2: 6 };
+  u = M.undoBlockOps(before, after, edited);
+  eq(u.block.marks.map((x) => x.id + ':' + x.x), ['m1:50', 'm2:2', 'm3:3', 'm4:4', 'm9:7'], 'undo: hand edits after Accept survive');
+  eq([u.block.set.length, u.block.axis.x1, u.reverted, u.kept], [0, 5, 2, 3], 'undo: edited mark, edited added mark and edited axis kept');
+  u = M.undoBlockOps(before, after, { id: 'b1', marks: [{ id: 'm1', x: 9, y: 9, label: '', k: 1 }].map(({ k, ...r }) => r), set: [], axis: null });
+  ok(u.kept >= 1, 'undo: a field order or extra field counts as an edit, not a crash');
+  u = M.undoBlockOps(before, after, { id: 'b1', marks: [{ y: 9, x: 9, id: 'm1' }], set: [], axis: { y2: 1, x2: 1, y1: 0, x1: 0 } });
+  eq([u.block.marks[0].x, u.block.axis], [1, null], 'undo: key order does not make a mark look edited');
+}
+
 /* ---- registration (by source; ai-tasks.js needs the browser to load) */
 const tasksSrc = readFileSync(new URL('../src/lib/ai-tasks.js', import.meta.url), 'utf8');
 ok(/id: 'blocking-draft'/.test(tasksSrc) && /id: 'blocking-enhance'/.test(tasksSrc), 'ai-tasks: both tasks defined');

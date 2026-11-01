@@ -2074,9 +2074,24 @@ const blockingDraftTask = {
     });
     const saved = ShotsM.replaceBlock(block);
     const id = (saved && saved.id) || block.id;
+    const wrote = JSON.parse(JSON.stringify(saved || block));
     call(c.say, 'Added the setup “' + name + '”.');
     call(c.after, id);
-    return () => { ShotsM.removeBlock(id); call(c.after, null); };
+    /* Undo takes away only what this wrote: the whole setup while it is
+       still exactly that, else just the written pieces still as written
+       (anything added or edited since stays). */
+    return () => {
+      const now = findBlock(id);
+      if (!now) { call(c.say, 'That setup has already been deleted. Nothing to undo.'); return; }
+      const { block: left, reverted, kept } = BlockAI.undoBlockOps({ marks: [], set: [], axis: null }, wrote, now);
+      if (!kept && !left.marks.length && !left.set.length && now.name === wrote.name && (now.note || '') === (wrote.note || '')) {
+        ShotsM.removeBlock(id); call(c.after, null); return;
+      }
+      if (reverted) { call(c.before, id); ShotsM.replaceBlock(left); }
+      call(c.say, 'Kept the setup “' + (now.name || name) + '”: it has changed since. '
+        + (reverted ? 'Took out what the AI added and you had not changed.' : 'Nothing the AI added was left unchanged.'));
+      call(c.after, id);
+    };
   }
 };
 
@@ -2115,10 +2130,21 @@ const blockingEnhanceTask = {
     if (typeof ShotsM.blankSetPiece === 'function') makers.makePiece = (p) => ShotsM.blankSetPiece(p);
     const { block, applied } = BlockAI.applyBlockOps(current, ops, makers);
     if (!applied) return null;
-    ShotsM.replaceBlock(block);
+    call(c.before, mem.blockId);
+    const wrote = JSON.parse(JSON.stringify(ShotsM.replaceBlock(block) || block));
     call(c.say, plural(applied, 'change', 'changes') + ' made to “' + (current.name || 'the setup') + '”.');
     call(c.after, mem.blockId);
-    return () => { ShotsM.replaceBlock(snapshot); call(c.after, mem.blockId); };
+    /* Undo reverses only these changes, against the setup as it is NOW:
+       an edit made after Accept survives, and a deleted setup is not
+       brought back (row 68). */
+    return () => {
+      const now = findBlock(mem.blockId);
+      if (!now) { call(c.say, 'That setup has been deleted since. Nothing to undo.'); return; }
+      const { block: back, reverted, kept } = BlockAI.undoBlockOps(snapshot, wrote, now);
+      if (reverted) { call(c.before, mem.blockId); ShotsM.replaceBlock(back); }
+      if (kept) call(c.say, plural(kept, 'change was', 'changes were') + ' edited since and left as they are.');
+      call(c.after, mem.blockId);
+    };
   }
 };
 

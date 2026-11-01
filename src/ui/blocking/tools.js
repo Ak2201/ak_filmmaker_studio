@@ -15,12 +15,12 @@
    trap that broke the stage menus on phones.
    ============================================================ */
 import { h } from '../../lib/dom.js';
-import { BLOCK_KINDS, SET_KINDS, blockScale, axisSides } from '../../lib/shots.js';
+import { BLOCK_KINDS, SET_KINDS, blockScale, axisSides, getBlock } from '../../lib/shots.js';
 import { button, buttonGroup, field as kitField, badge } from '../kit/index.js';
 import { aiPill } from '../ai-pill.js';
 import { S, Z_MIN, Z_MAX, viewOf, toolOf, snapOf, selectedIn } from './state.js';
 import { TEMPLATES } from './templates.js';
-import { canUndo, canRedo } from './history.js';
+import { canUndo, canRedo, record as recordHistory } from './history.js';
 import { beatPrefixes } from './draw.js';
 
 export const KIND_ICON = { actor: 'person', camera: 'videocam', track: 'timeline', light: 'lightbulb', mark: 'place' };
@@ -102,7 +102,11 @@ export function toolbar(block) {
       button({ label: 'PNG', icon: 'image', size: 'sm', action: 'blk-png', title: 'Save this map as a picture' }),
       button({ label: 'PDF', icon: 'picture_as_pdf', size: 'sm', action: 'blk-pdf', title: 'Print this setup' })
     ], { label: 'Export' }),
-    aiPill({ label: 'Enhance', tasks: ['blocking-enhance'], ctx: () => ({ sceneId: block.sceneId, blockId: block.id, after: () => S.rerender() }) })
+    aiPill({ label: 'Enhance', tasks: ['blocking-enhance'], ctx: () => ({ sceneId: block.sceneId, blockId: block.id,
+      /* An AI write is a step in the editor's own Undo, like a hand edit:
+         without it one Ctrl+Z reverted the AI change AND the edit before. */
+      before: (id) => { const cur = getBlock(id); if (cur) recordHistory(cur); },
+      after: () => S.rerender() }) })
   ]);
 }
 

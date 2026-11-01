@@ -566,8 +566,56 @@ export function applyBlockOps(block, ops, {
   return { block: out, applied };
 }
 
+/* Key-order-free equality: a stored row may come back with its keys in
+   a different order from the object that was written. */
+const stable = (v) => Array.isArray(v) ? '[' + v.map(stable).join(',') + ']'
+  : isObj(v) ? '{' + Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + stable(v[k])).join(',') + '}'
+  : JSON.stringify(v === undefined ? null : v);
+const same = (a, b) => stable(a) === stable(b);
+
+/** Undo an AI write to a setup WITHOUT reverting anything else (CLAUDE.md
+    row 68: an Undo restores only what it wrote). `before` is the setup as
+    it was, `after` what the write stored, `current` the setup now. Marks
+    and pieces the write added go only while they are still exactly as
+    written; a mark it changed goes back only while it still reads as
+    written; a mark it removed comes back only if nothing took its id;
+    the axis goes back only while it is still the one written. Anything
+    edited since is left alone and counted in `kept`. Pure. */
+export function undoBlockOps(before, after, current) {
+  const b = isObj(before) ? before : {}, a = isObj(after) ? after : {};
+  const out = JSON.parse(JSON.stringify(isObj(current) ? current : {}));
+  out.marks = Array.isArray(out.marks) ? out.marks : [];
+  out.set = Array.isArray(out.set) ? out.set : [];
+  let reverted = 0, kept = 0;
+  for (const field of ['marks', 'set']) {
+    const was = new Map((Array.isArray(b[field]) ? b[field] : []).map((x) => [x.id, x]));
+    const wrote = new Map((Array.isArray(a[field]) ? a[field] : []).map((x) => [x.id, x]));
+    for (const [id, w] of wrote) {
+      const i = out[field].findIndex((x) => x.id === id);
+      const old = was.get(id);
+      if (old && same(old, w)) continue;                    // untouched by the write
+      if (i < 0) continue;                                  // gone since: nothing to undo
+      if (!same(out[field][i], w)) { kept++; continue; }    // edited since: theirs now
+      if (old) out[field][i] = JSON.parse(JSON.stringify(old)); else out[field].splice(i, 1);
+      reverted++;
+    }
+    for (const [id, old] of was) {
+      if (wrote.has(id)) continue;                          // the write removed it
+      if (out[field].some((x) => x.id === id)) { kept++; continue; }
+      const at = (Array.isArray(b[field]) ? b[field] : []).findIndex((x) => x.id === id);
+      out[field].splice(Math.min(at, out[field].length), 0, JSON.parse(JSON.stringify(old)));
+      reverted++;
+    }
+  }
+  if (!same(b.axis ?? null, a.axis ?? null)) {
+    if (same(out.axis ?? null, a.axis ?? null)) { out.axis = b.axis ? JSON.parse(JSON.stringify(b.axis)) : null; reverted++; }
+    else kept++;
+  }
+  return { block: out, reverted, kept };
+}
+
 export default {
   BLOCK_W, BLOCK_H, MARK_KINDS, SET_KINDS, OP_TYPES, MAX_MARKS, MAX_SET, MAX_BEATS, MAX_OPS,
   DRAFT_SYSTEM, ENHANCE_SYSTEM, draftSchema, enhanceSchema, buildDraftPrompt, buildEnhancePrompt, describeBlock,
-  cleanAIMark, cleanAIPiece, cleanAIAxis, cleanWidth, cleanDraft, cleanEnhance, opText, draftItems, pickDraft, applyBlockOps
+  cleanAIMark, cleanAIPiece, cleanAIAxis, cleanWidth, cleanDraft, cleanEnhance, opText, draftItems, pickDraft, applyBlockOps, undoBlockOps
 };

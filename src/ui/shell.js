@@ -812,7 +812,10 @@ function closeL2(fly) {
     const panel = l2Of(row);
     if (panel) panel.hidden = true;
   });
-  fly.classList.remove('has-l2');
+  /* Accordion is decided per opening by placeL2(); with nothing open it
+     must not outlive the width that chose it, or a window narrowed and
+     widened again kept the flyout an accordion with hover-open off. */
+  fly.classList.remove('has-l2', 'is-accordion');
 }
 function placeL2(fly, row, panel) {
   const fr = fly.getBoundingClientRect();

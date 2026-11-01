@@ -528,6 +528,32 @@ export function enterFocus({ fullscreen = false } = {}) {
     const cta = document.querySelector('#screenplay .bd-empty button');
     if (cta) cta.focus({ preventScroll: true });
   }
+  closeSidePanels();
+}
+
+/* Below 1100px the notes dock and the AI Desk are CLOSED on the way in,
+   not just hidden by focus-mode.css: there each is a modal sheet holding
+   a focus trap (holdFocus), and a trap around an element with no boxes
+   swallows every Tab until focus mode is left. Closing runs their own
+   releaseFocus. At 1100px and up they sit beside the page with no trap,
+   so hiding is enough and leaving focus finds them where they were.
+   Both modules are lazy, so they are imported only when their class
+   says they are open; each close hands focus back to its opener, so the
+   field that had it gets it back afterwards. */
+function closeSidePanels() {
+  if (window.matchMedia('(min-width: 1100px)').matches) return;
+  const waits = [];
+  if (root.classList.contains('nt-dock-open')) {
+    waits.push(import('./notes-dock.js').then((m) => m.closeNotes && m.closeNotes()));
+  }
+  if (root.classList.contains('ai-desk-open')) {
+    waits.push(import('./ai-desk.js').then((m) => m.closeDesk && m.closeDesk()));
+  }
+  if (!waits.length) return;
+  const back = document.activeElement;
+  Promise.all(waits).catch(() => {}).then(() => {
+    if (on && back && back.isConnected && back !== document.activeElement) back.focus({ preventScroll: true });
+  });
 }
 
 export function exitFocus() {

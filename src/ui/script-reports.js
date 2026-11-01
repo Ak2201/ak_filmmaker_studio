@@ -6,8 +6,8 @@
    with the other script-derived views in the Breakdown group, where
    navigation.json already filed them. Same ids (#screentime,
    #cast-matrix) because they are fragment targets, and the old
-   reports.html#screentime / #cast-matrix links are forwarded to
-   breakdown.html by fragments.js's MOVED table.
+   reports.html#screentime / #cast-matrix / #runtime links are
+   forwarded to breakdown.html by src/pages/reports.js (MOVED_AWAY).
 
    Nothing here stores anything but what a person types — the target
    running time (inside the songs blob) and each song's length (a

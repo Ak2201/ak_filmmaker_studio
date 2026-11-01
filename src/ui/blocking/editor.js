@@ -852,7 +852,7 @@ function paste(B) {
   if (c.from === B && c.marks.every((m) => block.marks.some((x) => x.id === m.id))) {
     made = Shots.duplicateMarks(B, c.marks.map((m) => m.id));
   } else {
-    for (const m of c.marks) { const { id, ...rest } = m; made.push(Shots.addMark(B, m.kind, { ...rest, x: m.x + 4, y: m.y + 4 })); }
+    for (const m of c.marks) { const { id, ...rest } = Shots.offsetMark(m, 4, 4); made.push(Shots.addMark(B, m.kind, rest)); }
   }
   const pieces = c.set.map((p) => { const { id, ...rest } = p; return Shots.addSetPiece(B, p.kind, { ...rest, x: p.x + 4, y: p.y + 4 }); });
   const newIds = made.concat(pieces).filter(Boolean).map((x) => x.id);

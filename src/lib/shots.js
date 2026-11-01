@@ -1060,6 +1060,17 @@ function freeLabel(marks, kind) {
 
 /** Copies of some marks, offset by (dx, dy), with new ids. Their moves
     and beats travel with them. Returns the new marks. */
+/** A mark moved by (dx, dy) as a whole: its spot, its walk's end and
+    every beat on the way, so a copy walks where the original walks,
+    offset — never back to the original's destinations. */
+export function offsetMark(m, dx, dy) {
+  return {
+    ...m, x: m.x + dx, y: m.y + dy,
+    toX: m.toX == null ? null : m.toX + dx, toY: m.toY == null ? null : m.toY + dy,
+    path: (m.path || []).map((b) => ({ ...b, x: b.x + dx, y: b.y + dy }))
+  };
+}
+
 export function duplicateMarks(blockId, markIds, dx = 4, dy = 4) {
   const blocks = listBlocks();
   const block = blocks.find((b) => b.id === blockId);
@@ -1068,12 +1079,7 @@ export function duplicateMarks(blockId, markIds, dx = 4, dy = 4) {
   const made = [];
   for (const m of block.marks.filter((x) => want.has(x.id))) {
     const label = DEFAULT_LABEL.test(m.label) ? freeLabel(block.marks.concat(made), m.kind) : m.label;
-    made.push(cleanMark({
-      ...m, id: uid('mk'), label,
-      x: m.x + dx, y: m.y + dy,
-      toX: m.toX == null ? null : m.toX + dx, toY: m.toY == null ? null : m.toY + dy,
-      path: (m.path || []).map((b) => ({ ...b, x: b.x + dx, y: b.y + dy }))
-    }));
+    made.push(cleanMark({ ...offsetMark(m, dx, dy), id: uid('mk'), label }));
   }
   if (!made.length) return [];
   block.marks.push(...made);
@@ -1270,7 +1276,7 @@ export default {
   BLOCK_W, BLOCK_H, BLOCK_KINDS, clampPoint, blockScale, blockCallouts, formatMetres, shotStatus, coverageOf, blankMark, blankBlock, listBlocks, saveBlocks, blocksOfScene,
   floorWidthError,
   addBlock, updateBlock, removeBlock, restoreBlock, addMark, updateMark, removeMark,
-  SET_KINDS, SET_SIZE, PATH_MAX, blankSetPiece, cleanSetPiece, cleanAxis, cleanBlock, getBlock, addSetPiece,
+  SET_KINDS, SET_SIZE, PATH_MAX, offsetMark, blankSetPiece, cleanSetPiece, cleanAxis, cleanBlock, getBlock, addSetPiece,
   updateSetPiece, removeSetPiece, setAxis, replaceBlock, duplicateMarks, lensFov, cameraFov, axisSides,
   blankShot, listShots, saveShots, addShot, updateShot, removeShot, moveShot,
   SHOT_COLUMNS, DEFAULT_COLUMNS, cleanColumns,

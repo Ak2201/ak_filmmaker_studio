@@ -671,17 +671,54 @@ function buildFly(p) {
   /* A stage with a landing page of its own (Pre-Production's path) lists
      it first: it is where the stage link goes. */
   if (p.home && p.home.href) list.append(flyRow({ id: p.id + '-home', status: 'built', ...p.home }));
-  let sub = null;
-  for (const m of p.modules || []) {
-    if (m.group && m.group !== sub) list.append(h('p.sh-fly-sub', { text: m.group }));
-    sub = m.group || null;
-    list.append(flyRow(m));
-    /* its sections, indented under it: the page's tabs that are not
-       modules of their own, so this list is the page strip's list */
-    if (m.status !== 'planned' && m.href) for (const sec of moduleSections(m)) list.append(flySubRow(m, sec));
+  const mods = p.modules || [];
+  /* TWO LEVELS when the stage has groups (owner, 1 Nov 2026). Pre-
+     Production is twenty-odd modules and as many sections, and one flat
+     list ran off a laptop screen. Level 1 is one row per group
+     (navigation.json `group`, in rail order; a module with no group stays
+     a row of its own); level 2 is that group's module and section rows,
+     built by the SAME flyRow / flySubRow, so plan-gate's markLocked()
+     hides and flags them exactly as before, and tidyHeadings() hides a
+     group whose rows are all off and keeps its count true. A stage
+     without groups keeps the flat list. */
+  if (!mods.some((m) => m.group)) {
+    for (const m of mods) appendModule(list, m);
+  } else {
+    const byLabel = new Map();
+    const order = [];
+    for (const m of mods) {
+      if (!m.group) { order.push({ m }); continue; }
+      if (!byLabel.has(m.group)) { const g = { label: m.group, mods: [] }; byLabel.set(m.group, g); order.push(g); }
+      byLabel.get(m.group).mods.push(m);
+    }
+    order.forEach((g, i) => {
+      if (g.m) { appendModule(list, g.m); return; }
+      const pid = 'shFlyG-' + p.id + '-' + i;
+      const row = h('button.sh-fly-grp', {
+        type: 'button', 'data-fly-group': g.label, 'aria-expanded': 'false', 'aria-controls': pid
+      });
+      /* the group wears its first module's mark — the first one sold to anybody */
+      const lead = g.mods.find((m) => !isDisabledEverywhere(m.id)) || g.mods[0];
+      row.append(iconSpan('sh-fly-icon', lead), h('span.sh-fly-label', { text: g.label }),
+        h('span.sh-fly-count', { text: String(g.mods.length) }),
+        iconSpan('sh-fly-chev', { sym: 'chevron_right', icon: '›' }));
+      const panel = h('div.sh-fly-l2', { id: pid, role: 'group', 'aria-label': g.label, hidden: true });
+      panel.append(h('p.sh-fly-sub', { text: g.label }));
+      for (const m of g.mods) appendModule(panel, m);
+      /* The panel sits right after its row: inline it is the accordion's
+         body; beside the flyout it is position: fixed (placeL2). */
+      list.append(row, panel);
+    });
   }
   fly.append(list);
   return fly;
+}
+
+/* A module's row and, indented under it, its sections: the page's tabs
+   that are not modules of their own, so this list is the page strip's. */
+function appendModule(into, m) {
+  into.append(flyRow(m));
+  if (m.status !== 'planned' && m.href) for (const sec of moduleSections(m)) into.append(flySubRow(m, sec));
 }
 
 /* A section of a module: a link to the page's tab, gated with its
@@ -748,12 +785,95 @@ function hideFly(now) {
     /* never shut the flyout the keyboard is inside */
     if (!now && f.parentElement.contains(document.activeElement) && document.activeElement !== document.body
         && f.parentElement.matches(':focus-within')) return;
+    closeL2(f);
     f.hidden = true;
     f.classList.remove('is-instant');
     f.parentElement.classList.remove('is-fly');
     flyOpen = null;
   };
   if (now) go(); else flyTimer = setTimeout(go, 160);
+}
+
+/* ---- level 2: a group's rows ------------------------------------
+   Beside the flyout when the viewport has room for it (a second
+   position: fixed panel, placed from the flyout's and the group row's
+   own rects, as placeFly() places the first), else an ACCORDION: the
+   panel opens in place under its row. It is the same element either
+   way; `is-accordion` on the flyout is the only difference, decided
+   each time a panel opens. One group open per flyout. */
+let l2Timer = 0;
+const L2_W = 272;   // the panel's width in chrome.css (.sh-fly-l2)
+const l2Of = (row) => row && document.getElementById(row.getAttribute('aria-controls'));
+function closeL2(fly) {
+  clearTimeout(l2Timer);
+  if (!fly) return;
+  fly.querySelectorAll('.sh-fly-grp[aria-expanded="true"]').forEach((row) => {
+    row.setAttribute('aria-expanded', 'false');
+    const panel = l2Of(row);
+    if (panel) panel.hidden = true;
+  });
+  fly.classList.remove('has-l2');
+}
+function placeL2(fly, row, panel) {
+  const fr = fly.getBoundingClientRect();
+  const room = window.innerWidth - fr.right - 8;
+  fly.classList.toggle('is-accordion', room < L2_W + 4);
+  if (fly.classList.contains('is-accordion')) {
+    /* the flyout grew: keep it inside the window */
+    const cell = fly.parentElement;
+    if (cell) placeFly(cell, fly);
+    return;
+  }
+  const rr = row.getBoundingClientRect();
+  const vh = window.innerHeight;
+  const ph = panel.offsetHeight;
+  let top = Math.round(rr.top) - 8;
+  if (top + ph > vh - 8) top = Math.max(8, Math.round(vh - 8 - ph));
+  panel.style.setProperty('--sh-l2-top', top + 'px');
+  panel.style.setProperty('--sh-l2-left', Math.round(fr.right + 4) + 'px');
+}
+function openL2(row, { focus = false } = {}) {
+  clearTimeout(l2Timer);
+  const fly = row && row.closest('.sh-fly');
+  const panel = l2Of(row);
+  if (!fly || !panel || row.hidden) return;
+  if (row.getAttribute('aria-expanded') !== 'true') {
+    closeL2(fly);
+    row.setAttribute('aria-expanded', 'true');
+    row.dataset.openedAt = String(Date.now());   // the click that follows a focus must not shut it
+    panel.hidden = false;
+    fly.classList.add('has-l2');
+    placeL2(fly, row, panel);
+  }
+  if (focus) { const first = navRows(panel)[0]; if (first) first.focus(); }
+}
+/* The rows the arrow keys walk: the visible ones of one level. Level 1
+   is the list's own children (rows and group rows), level 2 one panel. */
+function navRows(level) {
+  return [...level.children].filter((n) => !n.hidden && n.matches('.sh-fly-mod, .sh-fly-grp'));
+}
+function flyKeys(e) {
+  const el = e.target;
+  if (!el || !el.closest) return;
+  const panel = el.closest('.sh-fly-l2');
+  const level = panel || el.closest('.sh-fly-list');
+  if (!level || !el.matches('.sh-fly-mod, .sh-fly-grp')) return;
+  const k = e.key;
+  if (k === 'ArrowDown' || k === 'ArrowUp') {
+    const rows = navRows(level);
+    const i = rows.indexOf(el);
+    const next = rows[(i + (k === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length];
+    if (next) { e.preventDefault(); next.focus(); }
+  } else if (el.matches('.sh-fly-grp') && (k === 'ArrowRight' || k === 'Enter')) {
+    e.preventDefault();   // Enter would also click, and the click toggles
+    openL2(el, { focus: true });
+  } else if (panel && (k === 'ArrowLeft' || k === 'Escape')) {
+    e.preventDefault();
+    e.stopPropagation();   // back one level, not out of the flyout
+    const row = panel.previousElementSibling;
+    closeL2(el.closest('.sh-fly'));
+    if (row) row.focus();
+  }
 }
 
 /* "Idea, logline, beats. Beats & Pacing: write the story and…; …" —
@@ -1213,6 +1333,11 @@ function markFlyHere(loc) {
       : !m.classList.contains('is-sub') && !!(loc && loc.module && m.dataset.moduleId === loc.module.id);
     m.classList.toggle('is-here', here);
     if (here) m.setAttribute('aria-current', 'page'); else m.removeAttribute('aria-current');
+  });
+  /* the group holding it, at level 1 (aria-current stays on the row) */
+  document.querySelectorAll('.sh-fly-grp').forEach((g) => {
+    const panel = l2Of(g);
+    g.classList.toggle('has-here', !!(panel && panel.querySelector('.sh-fly-mod.is-here')));
   });
 }
 let crumbEl = null;
@@ -1925,6 +2050,34 @@ function wire() {
       if (!to || !(to.closest && to.closest('.sh-rail-stagecell.is-fly'))) hideFly(true);
     });
     rail.addEventListener('scroll', () => hideFly(true), { passive: true });
+    /* Level 2 (openL2): a group opens on a resting pointer (100ms, so a
+       pointer travelling down level 1 does not flash every group), at
+       once on a click, a focus, ArrowRight or Enter. Moving onto another
+       level-1 row closes it after a longer wait, so a diagonal move from
+       a group row to its panel survives crossing the row below. */
+    rail.addEventListener('pointerover', (e) => {
+      if (e.pointerType === 'touch' || !e.target.closest) return;
+      if (e.target.closest('.sh-fly-l2')) { clearTimeout(l2Timer); return; }
+      const row = e.target.closest('.sh-fly-grp');
+      const fly = e.target.closest('.sh-fly');
+      if (!fly || fly.classList.contains('is-accordion')) return;
+      clearTimeout(l2Timer);
+      if (row) { if (row.getAttribute('aria-expanded') !== 'true') l2Timer = setTimeout(() => openL2(row), fly.classList.contains('has-l2') ? 180 : 100); }
+      else if (e.target.closest('.sh-fly-list > .sh-fly-mod')) l2Timer = setTimeout(() => closeL2(fly), 240);
+    });
+    rail.addEventListener('click', (e) => {
+      const row = e.target.closest && e.target.closest('.sh-fly-grp');
+      if (!row) return;
+      if (row.getAttribute('aria-expanded') === 'true' && row.closest('.sh-fly.is-accordion')
+          && Date.now() - Number(row.dataset.openedAt || 0) > 400) closeL2(row.closest('.sh-fly'));
+      else openL2(row);
+    });
+    rail.addEventListener('focusin', (e) => {
+      const row = e.target.closest && e.target.closest('.sh-fly-grp');
+      if (row) openL2(row);
+      else if (e.target.closest && e.target.closest('.sh-fly-list > .sh-fly-mod')) closeL2(e.target.closest('.sh-fly'));
+    });
+    rail.addEventListener('keydown', flyKeys);
   }
   delegate(document, 'click', '.sh-fly a', () => hideFly(true));
 

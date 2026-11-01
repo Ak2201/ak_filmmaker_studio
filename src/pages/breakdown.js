@@ -63,6 +63,7 @@ import {
   loadStory, stepsByScene, stepColor, linkStates, reconcileStepScenes, resolveStepScene, restoreStepScene, resolveBeatKey
 } from '../lib/story.js';
 import '../styles/beat-color.css';   // a beat step's colour on its scene (owner, 24 Oct 2026)
+import { renderScreenTime, renderCastMatrix, wireScriptReports } from '../ui/script-reports.js';   // moved from reports.html (1 Nov 2026)
 
 const app = document.getElementById('app');
 const catById = Object.fromEntries(ELEMENT_CATEGORIES.map((c) => [c.id, c]));
@@ -1168,7 +1169,14 @@ function render(focus) {
      scene exists would hide it at exactly the moment it is most
      useful. The branch-local version this replaces called it twice. */
   main.append(renderPaperBreakdown(scenes, loadScript().elements, { refresh: () => render(), toast: (m, o) => StudioUI.toast(m, o) }),
-    renderScriptOverview(scenes), renderOverview(scenes, STATUS), list, renderSuggestions(scenes), renderSongs(scenes), renderElements());
+    renderScriptOverview(scenes), renderOverview(scenes, STATUS), list, renderSuggestions(scenes),
+    /* Screen Time and Cast Matrix (src/ui/script-reports.js): readings of
+       the script, filed under Breakdown in navigation.json and moved here
+       from reports.html on 1 Nov 2026. Both render their own empty state,
+       so #screentime and #cast-matrix exist before any scene does. */
+    renderScreenTime(scenes), renderCastMatrix(scenes),
+    renderSongs(scenes), renderElements());
+  wireScriptReports();
 
   app.replaceChildren(main);
   applySceneFilter();

@@ -588,7 +588,7 @@ function renderWages(ctx) {
       indiaOnly(h('td' + (r.published.bata ? '.k-mono' : ''), { text: pub })),
       h('td', {}, inp('bata', r.bata, '—', 'decimal')),
       h('td', {}, inp('callHours', r.callHours, '—', 'decimal')),
-      h('td', {}, inp('otRule', r.otRule, 'e.g. ½ batta per 2 h')),
+      h('td', {}, inp('otRule', r.otRule, filmAbroad() ? 'e.g. 1.5x after 10 h' : 'e.g. ½ batta per 2 h')),
       h('td', {}, r.overridden.length ? button({ label: 'Clear your figures for ' + r.craft, icon: 'restart_alt', iconOnly: true, size: 'sm', variant: 'ghost', attrs: { 'data-cx': 'reset-wage', 'data-id': r.id, 'data-fk': 'w:' + r.id + ':reset' } }) : null)
     ]));
   }
@@ -838,8 +838,8 @@ const ACTIONS = {
   'print-settlement': (el) => printDoc(settlementDoc(context(), el.dataset.id)),
   'print-top': () => printDoc(topSheetDoc(context(), false)),
   'csv-budget': () => download('budget', C.budgetCSV(context().report, shownCurrency())),
-  'csv-actuals': () => download('actuals', C.actualsCSV(context().report, shownCurrency())),
-  'csv-expenses': () => { const ctx = context(); download('expenses', C.expensesCSV(ctx.expenses, ctx.lineName, ctx.nameOf, shownCurrency())); }
+  'csv-actuals': () => download('actuals', C.actualsCSV(context().report, shownCurrency(), !filmAbroad())),
+  'csv-expenses': () => { const ctx = context(); download('expenses', C.expensesCSV(ctx.expenses, ctx.lineName, ctx.nameOf, shownCurrency(), !filmAbroad())); }
 };
 
 const NOT_AMOUNT = 'That is not an amount above zero — "1850", "1,850" and "1.85k" all work.';

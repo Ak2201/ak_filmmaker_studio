@@ -1161,9 +1161,10 @@ function renderGenPages() {
     }),
     /* Two ways on. The AI pill is the reviewed one: the AI Desk's
        'gen-batch' task drafts the next batch, the writer reads it, ticks
-       the scenes to keep and accepts (an unticked scene is skipped and
-       the run moves past it). The bulk button writes every batch in a
-       row without stopping to ask; it is hidden — not greyed — on a plan
+       the scenes to keep and accepts (an unticked scene stays next in
+       line and is drafted again with the next batch). The bulk button
+       writes every batch in a row without stopping to ask, and offers
+       one Undo for the whole run afterwards; it is hidden — not greyed — on a plan
        without AI, because the pill beside it already carries the offer,
        and plan:changed (below) shows it once the plan is known. */
     h('div.wr-gen-acts', {}, [
@@ -2361,6 +2362,15 @@ async function genRun(all) {
   genBegin();
   genAll = all;
   render();
+  /* THE BULK RUN HAS NO REVIEW, SO IT KEEPS AN UNDO. The Desk's
+     reviewed path shows every batch before Accept; this one writes
+     batch after batch without asking, which is what it is for. What it
+     owes instead is one Undo for the whole run: the first batch's undo
+     (scriptgen.js applyBatch) puts back the script and the job exactly
+     as they were before the run began. It is offered only while the
+     script is still the one the run left — a line typed afterwards
+     would otherwise be undone with it. */
+  let firstUndo = null, wroteAny = 0;
   try {
     for (;;) {
       /* One batch is these two halves; they are called apart so
@@ -2373,12 +2383,21 @@ async function genRun(all) {
         flushDoc();
         res = Scriptgen.applyBatch(d, null);
         reloadDoc();
+        if (res.wrote && !firstUndo) firstUndo = res.undo;
+        wroteAny += res.wrote || 0;
       }
       gen = res.job;
       // Re-render between batches: the progress bar is the only honest
       // report of how far a run that might still fail has actually got.
       render();
       if (res.done) { say('The draft is complete.'); break; }
+      /* A batch that wrote nothing moved nothing (applyBatch keeps an
+         unwritten scene next in line), so going round again would ask
+         for — and pay for — the same scenes forever. */
+      if (!d.done && !res.wrote) {
+        genError = 'The reply held none of the scenes asked for, so nothing was written and the run stopped. Ask for the next scenes again.';
+        break;
+      }
       if (!genAll) break;
       if (!genAbort) break;          // Stop ran between turns
     }
@@ -2386,6 +2405,29 @@ async function genRun(all) {
   } catch (err) { genFail(err); }
   genEnd();
   render();
+  if (firstUndo) offerRunUndo(firstUndo, wroteAny);
+}
+
+/* The Undo for one bulk run (see genRun). */
+function offerRunUndo(undo, scenes) {
+  const left = JSON.stringify(Script.loadScript().elements);
+  try {
+    StudioUI.toast(scenes + (scenes === 1 ? ' scene' : ' scenes') + ' written into the screenplay.', {
+      action: 'Undo',
+      onAction: () => {
+        flushDoc();
+        if (JSON.stringify(Script.loadScript().elements) !== left) {
+          StudioUI.toastError('The screenplay has changed since the run, so nothing was undone.');
+          return;
+        }
+        undo();
+        reloadDoc();
+        gen = Scriptgen.load();
+        render();
+        StudioUI.toast('Undone.', { type: 'info' });
+      }
+    });
+  } catch (e) { /* chrome may not be up */ }
 }
 
 delegate(document, 'click', '[data-action="gen-run-all"]', () => genRun(true));

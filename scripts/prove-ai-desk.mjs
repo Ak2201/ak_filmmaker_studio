@@ -37,8 +37,8 @@
          the batch; three idle seconds with the Desk open write
          nothing; untick one, Accept → the script gained the elements
          of exactly the ticked scenes and the cursor moved past the
-         WHOLE batch; Undo restores script and cursor; Skip writes
-         nothing
+         WRITTEN scenes only, the unticked one next in line; Undo
+         restores script and cursor; Skip writes nothing
      (g) PRO + KEY — the voice check (write.html#coverage): pick a
          character with three lines → the voice-check pill → Run →
          one item per rewrite; Accept one → it is an alternate take
@@ -738,7 +738,8 @@ async function clickUndo(page) {
   ok(JSON.stringify(added) === JSON.stringify(wantEls), 'the script gained the elements of exactly the ticked scenes (' + kept.length + ' of ' + BATCH + ')', { added, wantEls });
   ok(!after.elements.some((e) => String(e.text).includes(batch[dropAt].sceneId)), 'nothing of the unticked scene landed (' + batch[dropAt].sceneId + ')');
   const job = await stored(page, 'fms_scriptgen_v1');
-  ok(job && job.cursor === BATCH && job.stage === 'pages', 'the cursor moved past the WHOLE batch (0 → ' + BATCH + ')', job && { cursor: job.cursor, stage: job.stage });
+  ok(job && job.cursor === BATCH - 1 && job.stage === 'pages', 'the cursor moved past the WRITTEN scenes only (0 → ' + (BATCH - 1) + ')', job && { cursor: job.cursor, stage: job.stage });
+  ok(job && job.scenes[job.cursor] && job.scenes[job.cursor].sceneId === batch[dropAt].sceneId, 'the unticked scene is next in line, not skipped (' + batch[dropAt].sceneId + ')', job && job.scenes.map((s) => s.sceneId));
 
   await clickUndo(page);
   const undone = await scriptDoc(page);

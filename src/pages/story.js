@@ -533,7 +533,9 @@ function renderIdea(s) {
   const bpl = bpLogline();
   if (!s.logline.trim() && bpl) lg.append(offerBlueprint('logline', 'Feature blueprint, step 02', bpl));
   put(lg, exampleBox('logline'),
-    renderLoglineWorkshop(s, { getStory: story, format: projectFormat, setLogline: (t) => { const x = story(); x.logline = t; commit(x); } }),
+    renderLoglineWorkshop(s, { getStory: story, format: projectFormat,
+      setLogline: (t) => { const x = story(); x.logline = t; commit(x); },
+      setLoglineAlts: (list) => { const x = story(); x.loglineAlts = list; commit(x); } }),
     bpOne('idea', 'step-02', closedBox('Drafts, then the final one: write it three ways (blueprint step 02)')),
     earlierLadder('idea', 'Earlier version of your logline (treatment ladder, rung 1)',
       [h('button.k-btn.k-btn--secondary', { type: 'button', 'data-st': 'use-lad1', text: 'Use this as my logline' })]));

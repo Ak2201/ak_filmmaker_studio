@@ -31,17 +31,23 @@
      coverage         the coverage store in src/ui/coverage.js, inside
                       the script blob, through the page's save
      dialogue-pass    the page's in-memory script, `aiPass` kept so the
-                      row's own Undo also still works, page save
+                      row's own Undo also still works, page save; the
+                      other versions become the line's alternate takes
+                      (`alts`, the alt-lines.js shape)
      story-steps/map  story.js models, saved by the page's commit()
      shot-draft       shots.js addShot (append only)
      scene-story      story.js outline steps, one per scene, linked by
                       sceneId (breakdown-extras.js appendSteps)
-     synopsis-script  scriptgen.js's job (stage 1 → the beat sheet)
-     gen-scenes       scriptgen.js applyScenes (stage 2 → scenes.js)
+     synopsis-script  scriptgen.js's job (stage 1 → the beat sheet), and
+                      story.js's logline and outline steps where BLANK
+     gen-scenes       scriptgen.js applyScenes (stage 2 → scenes.js, each
+                      row's beatId, cast joined to characters.js records)
      gen-batch        scriptgen.js applyBatch (stage 3, one batch →
-                      the script blob, cursor advanced)
+                      the script blob, cursor advanced past what was
+                      written; an unticked scene stays next in line)
      voice-check      coverage.js addTake (a line's alternates)
-     logline          the page's setLogline()
+     logline          the page's setLogline(); the other ticked variants
+                      into the story's `loglineAlts` (setLoglineAlts)
      genre-comps      story.js fields genre/audience/budgetTier/comps, via commit
      scene-notes      scenes.js readerNote + cutCandidate on content-matched rows
      breakdown-tags   scenes.js tagMany (adds only), undo = untagMany
@@ -60,7 +66,8 @@
    NO STORAGE KEY. The only memory here is the last run per task (what
    apply() needs beside the ticked items), in a Map for this visit.
    ============================================================ */
-import { callPort } from './ports.js';
+import { callPort, hasPort } from './ports.js';
+import W from './ai-writing-apply.js';   // pure: takes, alternates, fill-only story, cast join
 import Store from './store.js';   // the open project's format (scene-story)
 
 /* ---- the modules, loaded once ------------------------------- */
@@ -391,8 +398,12 @@ const dialogueTask = {
     const others = res.options.slice(1).map((o, n) => 'Version ' + (n + 2) + ': ' + o.text + (o.note ? ' (' + o.note + ')' : ''));
     const note = [res.keep ? 'What already works: ' + res.keep : '', res.options[0].note || '', ...others,
       res.truncated ? 'The reply was cut short.' : ''].filter(Boolean).join('\n');
-    return remember('dialogue-pass', { original: String(els[i].text ?? ''), proposed: res.options[0].text, note },
-      { elId: els[i].id, model: res.model });
+    const alts = res.options.slice(1).map((o) => o.text);
+    const keepNote = alts.length ? 'Accept also keeps ' + (alts.length === 1 ? 'version 2' : 'versions 2–' + (alts.length + 1))
+      + ' as alternate takes of this line, beside it; the line in use is the merged version above.' : '';
+    return remember('dialogue-pass', { original: String(els[i].text ?? ''), proposed: res.options[0].text,
+      note: [note, keepNote].filter(Boolean).join('\n') },
+      { elId: els[i].id, model: res.model, alts });
   },
   apply(text, ctx, result) {
     const c = resolve(ctx);
@@ -410,16 +421,28 @@ const dialogueTask = {
       fail('This speech has changed since the pass ran, so nothing was changed. Run the pass again on the current text.');
     }
     const before = { text: el.text, aiPass: el.aiPass ? { ...el.aiPass } : undefined };
-    if (String(text) === String(el.text)) return null;
-    el.aiPass = { at: new Date().toISOString(), model: mem.model || '', was: el.aiPass ? el.aiPass.was : el.text };
-    el.text = String(text);
+    const changed = String(text) !== String(el.text);
+    if (changed) {
+      el.aiPass = { at: new Date().toISOString(), model: mem.model || '', was: el.aiPass ? el.aiPass.was : el.text };
+      el.text = String(text);
+    }
+    /* The other versions are not thrown away: each becomes an alternate
+       take of this line (alt-lines.js's "dialogue choices"), so the
+       writer can swap one in later without asking again. Only dialogue
+       carries takes. Undo takes out exactly these and nothing a person
+       added beside them. */
+    const added = el.type === 'dialogue' ? W.addTakes(el, mem.alts || []) : [];
+    if (!changed && !added.length) return null;
     call(c.save);
     call(c.render, el.id);
     return () => {
       const now = (d.elements || []).find((e) => String(e.id) === String(mem.elId));
       if (!now) return;
-      now.text = before.text;
-      if (before.aiPass) now.aiPass = before.aiPass; else delete now.aiPass;
+      if (changed) {
+        now.text = before.text;
+        if (before.aiPass) now.aiPass = before.aiPass; else delete now.aiPass;
+      }
+      W.removeTakes(now, added);
       call(c.save);
       call(c.render, now.id);
     };
@@ -817,6 +840,16 @@ const sceneStoryTask = {
    tick the beats to keep, and Accept writes them into the job,
    exactly where "Draft the beat sheet" wrote them. The page's panel
    then offers stage 2. `prepare()` lets the page save its form first.
+
+   THE STORY PAGE SEES IT TOO. The same Accept fills the Story page's
+   logline and its beat steps (story.js) WHERE THEY ARE BLANK, so the
+   beat sheet is not typed twice: a beat that already has a written
+   step, or a logline already there, is the writer's and is left
+   alone. Steps are written only when the story's beat sheet in force
+   is Save the Cat (the vocabulary scriptgen drafts in) and the
+   outline is not locked; a short film is always the five beats, so a
+   short gets the logline only. Undo takes back only what is still as
+   it was written.
    ============================================================ */
 const synopsisTask = {
   id: 'synopsis-script',
@@ -843,7 +876,10 @@ const synopsisTask = {
       id: b.id, text: res.byBeat.get(b.id), detail: b.label + (b.pages ? ' · pages ' + b.pages : '')
     }));
     if (!items.length) fail('The reply held no beats, so nothing changed.');
-    return remember('synopsis-script', { items, note: res.logline ? 'Logline: ' + res.logline : '' },
+    const note = [res.logline ? 'Logline: ' + res.logline : '',
+      'Accept also fills the Story page’s logline and beat steps where they are still blank; nothing you wrote there is replaced.']
+      .filter(Boolean).join('\n');
+    return remember('synopsis-script', { items, note },
       { synopsis, logline: res.logline, model: res.model, vocab });
   },
   apply(selected, ctx, result) {
@@ -860,10 +896,30 @@ const synopsisTask = {
     job.model = mem.model || job.model;
     job.stage = 'beats';
     Gen.save(job);
+    const filled = fillStoryFromBeats(job);
     call(c.after, job);
-    return () => { Gen.save(prev); call(c.after, prev); };
+    return () => { Gen.save(prev); undoStoryFromBeats(filled); call(c.after, prev); };
   }
 };
+
+/* The story half of synopsis-script's Accept (see its header). */
+function fillStoryFromBeats(job) {
+  const story = StoryM.loadStory();
+  const fwId = StoryM.effectiveFramework(story, job.format);
+  const fw = StoryM.frameworkById(fwId);
+  const steps = fw.id === 'save_the_cat' && !story.outlineLockedAt;
+  const beats = (job.beats || []).map((b) => ({ key: W.storyBeatKey(b.id, fw), text: b.happens }));
+  const wrote = W.fillStoryBlanks(story, { logline: job.logline, beats, steps }, StoryM.addOutlineStep);
+  if (!wrote.logline && !wrote.filled.length && !wrote.added.length) return null;
+  StoryM.saveStory(story);
+  return { wrote, logline: story.logline };
+}
+function undoStoryFromBeats(filled) {
+  if (!filled) return;
+  const story = StoryM.loadStory();
+  W.undoStoryFill(story, filled.wrote, filled.logline);
+  StoryM.saveStory(story);
+}
 
 /* A refinement whose `previous` is what this task's model actually
    said (the proposal objects, the drafted elements), not the Desk's
@@ -895,7 +951,11 @@ function fingerprint(s) {
    the ticked ones to applyScenes(), which writes the SCENE MODEL (so
    the breakdown, stripboard and budget can read them) and moves the
    job to stage 3. `replaceScenes()` is the page's checkbox, read at
-   the moment of Accept. Undo puts back the scene list and the job.
+   the moment of Accept. Each row keeps the beat it serves (`beatId`)
+   and its cast joined to the Characters records, a record made only
+   for a name nobody has (scriptgen.js applyScenes). Undo puts back the
+   scene list and the job, and removes the records it made that are
+   still blank.
    ============================================================ */
 const sceneSlug = (p) => (p.intExt || 'INT') + '. ' + String(p.location || 'Location TBC').toUpperCase() + ' — ' + (p.dayNight || 'DAY');
 
@@ -942,7 +1002,7 @@ const genScenesTask = {
       detail: [String(p.synopsis || '').trim(), (p.cast || []).length ? 'Cast: ' + p.cast.join(', ') : '',
         p.eighths ? p.eighths + '/8 pp' : ''].filter(Boolean).join(' · ')
     }));
-    const note = plural(items.length, 'scene', 'scenes') + ' proposed. Untick any you do not want; the rest go on the scene board in this order.'
+    const note = plural(items.length, 'scene', 'scenes') + ' proposed. Untick any you do not want; the rest go on the scene board in this order, each with its beat, and any name in the cast that is not on the Characters page yet is added there.'
       + (res.truncated ? '\nThe reply was cut short at the length limit, so the list may stop early.' : '');
     return { items, note };
   },
@@ -964,8 +1024,9 @@ const genScenesTask = {
    and writes nothing; the items are those scenes (heading and first
    lines). Accept hands the ticked sceneIds to applyBatch(), which
    appends them to the screenplay (a revision first, on the first
-   batch only), and moves the cursor past the WHOLE batch — an unticked
-   scene is skipped exactly as a scene the reply missed. The identity
+   batch only), and moves the cursor past the scenes it WROTE — an
+   unticked scene, like one the reply missed, stays next in line and is
+   drafted again with the next batch, never skipped for good. The identity
    is the job and its cursor, so every batch is its own Desk session,
    and a draft made at an old cursor is refused ('stale') rather than
    written in the wrong place.
@@ -1023,8 +1084,8 @@ const genBatchTask = {
     }
     if (!items.length) fail('The reply held none of the scenes it was asked for, so nothing was written. Ask again.');
     const note = [
-      plural(items.length, 'scene', 'scenes') + ' drafted. Ticked scenes are added to the end of the screenplay; an unticked one is skipped and the run moves on past it.',
-      missed.length ? 'Not in the reply (skipped if you accept): ' + missed.join('; ') + '.' : '',
+      plural(items.length, 'scene', 'scenes') + ' drafted. Ticked scenes are added to the end of the screenplay; an unticked one stays next in line and is drafted again with the next batch.',
+      missed.length ? 'Not in the reply (asked for again with the next batch): ' + missed.join('; ') + '.' : '',
       draft.truncated ? 'The reply was cut short at the length limit, so the last scene may stop mid-page.' : ''
     ].filter(Boolean).join('\n');
     return { items, note };
@@ -1118,6 +1179,13 @@ const voiceTask = {
   },
   apply(selected, ctx) {
     const c = resolve(ctx);
+    /* The takes are written by the Coverage tab (it registers the
+       addTake port). With that view not open the port answers its
+       fallback, 'gone', for every line — which used to read "those
+       lines are no longer in the script" about lines that are. */
+    if (!hasPort('addTake')) {
+      fail('The Coverage view has to be open to keep these rewrites as takes — it is what writes them. Open it and accept again. Nothing was added, and your lines are still in the script.');
+    }
     const added = [];
     let gone = 0, dup = 0;
     for (const it of selected || []) {
@@ -1143,8 +1211,12 @@ const voiceTask = {
    ------------------------------------------------------------
    loglineWorkshop(): the five-part check of THEIR logline (in the
    note, every span verified) and five variants (the items). Accept
-   takes the first ticked variant as the logline; Undo puts theirs
-   back. Nothing replaces the logline without that Accept.
+   takes the first ticked variant as the logline; every OTHER ticked
+   variant is kept as an alternate on the story (`loglineAlts`, an
+   additive field, through ctx.setLoglineAlts — the page's own commit),
+   shown under the workshop with "Use this". Undo puts their logline
+   back and takes out exactly the alternates it added. Nothing replaces
+   the logline without that Accept.
    ============================================================ */
 const loglineTask = {
   id: 'logline',
@@ -1173,7 +1245,7 @@ const loglineTask = {
       + (res.removed === 1 ? 'it was' : 'they were') + ' not in your logline.' : '';
     return {
       items: res.variants.map((v, i) => ({ id: 'v' + i, text: v.text, detail: v.angle })),
-      note: 'Your logline, checked:\n' + check + removed + '\n\nTick ONE variant to use it as your logline.'
+      note: 'Your logline, checked:\n' + check + removed + '\n\nThe first ticked variant becomes your logline; any other you tick is kept as an alternate under the workshop.'
     };
   },
   apply(selected, ctx) {
@@ -1183,7 +1255,16 @@ const loglineTask = {
     const live = call(c.getLogline);
     const before = typeof live === 'string' ? live : String((storyOf(c) || {}).logline || '');
     c.setLogline(pick.text);
-    return () => c.setLogline(before);
+    let added = [];
+    if (typeof c.setLoglineAlts === 'function') {
+      const r = W.addLoglineAlts(W.loglineAltsOf(storyOf(c)), (selected || []).slice(1).map((it) => it && it.text), pick.text);
+      added = r.added;
+      if (added.length) c.setLoglineAlts(r.list);
+    }
+    return () => {
+      c.setLogline(before);
+      if (added.length) c.setLoglineAlts(W.removeLoglineAlts(W.loglineAltsOf(storyOf(c)), added));
+    };
   }
 };
 

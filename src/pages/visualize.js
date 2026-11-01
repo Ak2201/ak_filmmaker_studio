@@ -54,7 +54,8 @@ import Shots, {
   SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_LENSES, SHOT_RIGS, SHOT_COLUMNS, DEFAULT_COLUMNS, isLinkable
 } from '../lib/shots.js';
 import { readShotView, saveShotView } from '../lib/chrome-prefs.js';
-import { renderBlocking, renderSceneBoard, highlightCamera } from '../ui/blocking.js';
+import { renderBlocking, renderSceneBoard, highlightCamera, showShotBlocking } from '../ui/blocking.js';
+import { resolveFragment } from '../ui/fragments.js';
 /* Drawn frames (NEXT-UI-REVAMP-PLAN phase 4): the picture is in the
    writer's Drive, the frame keeps `drive:<fileId>`. drive.js and
    drive-sync.js are CORE already; the generation itself (ai.js, the
@@ -687,6 +688,8 @@ function rowControls(shot, i, total, sortable, edge = { first: i === 0, last: i 
     btns.push(ctrlBtn('↑', 'vz-shot-up', 'Move this shot earlier', edge.first));
     btns.push(ctrlBtn('↓', 'vz-shot-down', 'Move this shot later', edge.last));
   }
+  // This shot's own blocking diagram, on the Blocking tab (per-shot blocking).
+  btns.push(ctrlBtn('grid_view', 'vz-shot-blocking', 'Blocking for shot ' + n, false));
   btns.push(ctrlBtn('✕', 'vz-shot-del', 'Delete this shot', false, true));
   return h('div.row-ctrl.vz-c-ctrl', {}, [ctrlTray(btns, 'Shot ' + n)]);
 }
@@ -1884,6 +1887,20 @@ function refocusMoved(host, id, action, other) {
 }
 delegate(document, 'click', '[data-action="vz-shot-up"]',  (e, el) => moveShotBy(shotIdOf(el), -1, 'vz-shot-up'));
 delegate(document, 'click', '[data-action="vz-shot-down"]', (e, el) => moveShotBy(shotIdOf(el),  1, 'vz-shot-down'));
+/* A shot's blocking: the Blocking tab, opened on this scene and this shot.
+   The address says #blocking (replaceState: no history entry), and the
+   landing goes through resolveFragment() — which switches the tab and
+   holds the target under the band while the page settles — on the shot
+   diagram's card when it has one, else the section (CLAUDE.md rows 77/80:
+   never a bare scrollIntoView). Memory only; nothing is written. */
+delegate(document, 'click', '[data-action="vz-shot-blocking"]', (e, el) => {
+  const shot = Shots.listShots().find((s) => s.id === shotIdOf(el));
+  if (!shot) return;
+  const target = showShotBlocking(shot.sceneId, shot.id);
+  render();
+  try { history.replaceState(history.state, '', '#blocking'); } catch (err) { /* sandboxed */ }
+  requestAnimationFrame(() => resolveFragment('#' + target));
+});
 delegate(document, 'click', '[data-action="vz-shot-del"]',  async (e, el) => {
   const id = shotIdOf(el);
   if (!await askDanger(shotDeleteQuestion(id), { confirm: 'Delete shot' })) return;

@@ -46,6 +46,15 @@
    (touch-action: pan-y); zoomed in, the map takes the finger. With a
    mouse, dragging the empty floor draws a selection box instead (at
    fit, or with Shift when zoomed in).
+
+   ONE FLOOR, ONE DIAGRAM PER SHOT (1 Nov 2026). Under the scene picker
+   a second picker chooses the view: "Floor plan" (the scene's block with
+   no shotId — the set, the 180° line, the width, where people start, and
+   any older setup or orphaned shot diagram) or one SHOT, whose own block
+   holds that shot's camera and actors and is drawn over the floor's set
+   and line, dimmed and not editable. A shot's diagram is never made by
+   looking at it (the idle-write check): "Start this shot's diagram" makes
+   it. An older setup holding several cameras offers "Split into shots".
    ============================================================ */
 import StudioUI from '../chrome.js';
 import { h, delegate } from '../../lib/dom.js';
@@ -106,9 +115,22 @@ function shotsNow() {
   try { return Shots.listShots(); } catch (e) { return []; }
 }
 
+/* What a block is drawn over and checked against: a shot's diagram sits
+   on its scene's floor, and the floor and every shot diagram share ONE
+   180° check across all the scene's cameras (shots.js sceneAxisSides).
+   An older extra setup keeps its own line and its own check. */
+export function floorCtx(block) {
+  const blocks = Shots.blocksOfScene(block.sceneId);
+  const floor = Shots.floorOf(block.sceneId, blocks);
+  const sceneWide = !!block.shotId || (!!floor && floor.id === block.id);
+  return { under: block.shotId ? floor : null, sides: sceneWide ? Shots.sceneAxisSides(block.sceneId, blocks) : null };
+}
+
 export function drawEditable(block, ctx = {}) {
   const v = viewOf(block.id);
+  const fc = floorCtx(block);
   return drawBlock(block, {
+    under: fc.under, sides: fc.sides,
     editable: true,
     viewBox: viewBoxOf(v),
     zoomed: v.z > 1,
@@ -123,7 +145,8 @@ export function drawEditable(block, ctx = {}) {
 
 /** The read-only drawing (the Scene board, the PDF). */
 export function drawReadOnly(block, ctx = {}) {
-  return drawBlock(block, { shots: ctx.shots || shotsNow(), hues: ctx.hues || huesOf(characters()), linkedCam: S.linkedCam, idPrefix: ctx.idPrefix });
+  const fc = floorCtx(block);
+  return drawBlock(block, { shots: ctx.shots || shotsNow(), hues: ctx.hues || huesOf(characters()), linkedCam: S.linkedCam, idPrefix: ctx.idPrefix, under: fc.under, sides: fc.sides });
 }
 
 /* The camera a focused shot row names. Held as well as painted, so a map
@@ -197,6 +220,32 @@ export function pickScene(scenes) {
   return scenes.find((s) => s.id === S.pickedScene) || null;
 }
 
+/** One shot as the pickers print it: "#4 MS 35mm — Meena at the door". */
+export function shotLabel(s, i = 0) {
+  const desc = String(s.description || '').trim();
+  return '#' + (String(s.number || '').trim() || String(i + 1)) + ' ' + [s.size, s.lens].filter(Boolean).join(' ')
+    + (desc ? ' — ' + (desc.length > 48 ? desc.slice(0, 47) + '…' : desc) : '');
+}
+
+/** The view picker under the scene picker: the floor plan, then each shot. */
+function shotPicker(shots) {
+  return kitField({
+    kind: 'select', label: 'view', value: S.pickedShot, class: 'vz-blk-shotfield',
+    options: [{ value: '', label: 'Floor plan' }, ...shots.map((s, i) => ({ value: s.id, label: shotLabel(s, i) }))],
+    attrs: { 'data-blk-shot': '', 'aria-label': 'Floor plan or one shot', class: 'vz-blk-shot' }
+  });
+}
+
+/** Open the Blocking tab on one shot of one scene (the Shot List's link).
+    Memory only; returns the id to land on: the shot diagram's card when
+    it has one, else the section. */
+export function showShotBlocking(sceneId, shotId) {
+  S.pickedScene = sceneId || S.pickedScene;
+  S.pickedShot = shotId || '';
+  const b = shotId ? Shots.blockOfShot(shotId) : null;
+  return b ? 'blk-' + b.id : 'blocking';
+}
+
 export function scenePicker(scenes, name) {
   return kitField({
     kind: 'select', label: 'scene', value: S.pickedScene, class: 'vz-blk-scenefield',
@@ -214,20 +263,30 @@ function renderBlockCard(block, ctx = {}) {
   const chars = ctx.chars || characters();
   const hues = ctx.hues || huesOf(chars);
   const shots = ctx.shots || shotsNow();
-  const card = h('article.vz-blk.k-panel', { 'data-block': block.id });
+  const shot = !!block.shotId;
+  /* The id is what the Shot List's "Blocking" link lands on. */
+  const card = h('article.vz-blk.k-panel', { 'data-block': block.id, id: 'blk-' + block.id });
+  const cams = block.marks.filter((m) => m.kind === 'camera').length;
   card.append(h('div.vz-blk-head.k-panel-head', {}, [
     h('div.k-control.vz-blk-namebox', {}, [
-      h('input.k-input.vz-blk-name', { type: 'text', value: block.name, placeholder: 'Setup name', 'data-block-field': 'name', 'aria-label': 'Setup name' })
+      h('input.k-input.vz-blk-name', { type: 'text', value: block.name, placeholder: shot ? 'Shot diagram name' : 'Setup name', 'data-block-field': 'name', 'aria-label': shot ? 'Shot diagram name' : 'Setup name' })
     ]),
-    button({ label: 'Delete setup', icon: 'delete', size: 'sm', variant: 'danger', action: 'blk-del' })
-  ]));
+    /* An older setup that holds several shots' cameras can be split into
+       one diagram per shot; the toast's Undo puts it back as it was. */
+    !shot && cams >= 2 ? button({ label: 'Split into shots', icon: 'call_split', size: 'sm', action: 'blk-split',
+      title: 'Make one diagram per shot, each with its own camera; the set and the line stay on the floor plan' }) : null,
+    button({ label: shot ? 'Delete diagram' : 'Delete setup', icon: 'delete', size: 'sm', variant: 'danger', action: 'blk-del' })
+  ].filter(Boolean)));
+  if (Shots.isOrphanBlock(block, shots)) {
+    card.append(h('p.vz-blk-hint.vz-blk-orphan', { text: 'This diagram belonged to a shot that has been deleted. It is kept so nothing is lost; delete it if you no longer need it.' }));
+  }
   card.append(toolbar(block));
 
   const body = h('div.vz-blk-body.k-panel-body');
   body.append(palette(block));
   const stage = h('div.vz-blk-stage');
   stage.append(h('div.vz-blk-canvas', {}, [drawEditable(block, { shots, hues })]));
-  const warn = axisWarning(block);
+  const warn = axisWarning(block, floorCtx(block).sides);
   if (warn) stage.append(warn);
   const key = mapKey(block);
   if (key) stage.append(key);
@@ -260,18 +319,38 @@ export function renderBlocking(scenes, redraw) {
     return wrap;
   }
   const scene = pickScene(scenes);
+  const allShots = shotsNow();
+  const sceneShots = allShots.filter((s) => s.sceneId === scene.id);
+  if (!sceneShots.some((s) => s.id === S.pickedShot)) S.pickedShot = '';
+  const blocks = Shots.blocksOfScene(scene.id);
+  const shotView = S.pickedShot ? sceneShots.find((s) => s.id === S.pickedShot) : null;
   wrap.append(h('div.vz-blk-pick', {}, [
     scenePicker(scenes, 'blocking'),
-    button({ label: 'Add a setup', icon: 'add', variant: 'primary', pill: true, action: 'blk-add', class: 'bd-cta' }),
-    aiPill({ label: 'Draft blocking', tasks: ['blocking-draft'], ctx: () => ({ sceneId: S.pickedScene, prompt: '', after: () => S.rerender() }) })
-  ]));
-  const blocks = Shots.blocksOfScene(scene.id);
-  if (!blocks.length) {
+    sceneShots.length ? shotPicker(sceneShots) : null,
+    shotView ? null : button({ label: 'Add a setup', icon: 'add', variant: 'primary', pill: true, action: 'blk-add', class: 'bd-cta' }),
+    aiPill({ label: 'Draft blocking', tasks: ['blocking-draft'], ctx: () => ({ sceneId: S.pickedScene, prompt: '',
+      /* The draft lands as a floor and a diagram per shot; open the first
+         shot it wrote so the result is on screen, not behind the picker. */
+      after: (id) => { const b = id && Shots.getBlock(id); S.pickedShot = b && b.shotId ? b.shotId : ''; S.rerender(); } }) })
+  ].filter(Boolean)));
+  const chars = characters();
+  const ctx = { chars, hues: huesOf(chars), shots: allShots };
+  if (shotView) {
+    const own = Shots.blockOfShot(shotView.id, blocks);
+    if (own) wrap.append(renderBlockCard(own, ctx));
+    else {
+      wrap.append(h('p.bd-none', { text: 'No diagram for this shot yet. It is drawn over the floor plan: place this shot’s camera and where the actors are during it.' }),
+        h('div.vz-blk-pick', {}, [button({ label: 'Start this shot’s diagram', icon: 'add', variant: 'primary', pill: true, action: 'blk-shot-start', class: 'bd-cta' })]));
+    }
+    return wrap;
+  }
+  /* The floor view: the floor plan, any older extra setup, and any diagram
+     whose shot has since been deleted (kept, never hidden: see removeShot). */
+  const floorish = blocks.filter((b) => !b.shotId || Shots.isOrphanBlock(b, allShots));
+  if (!floorish.length) {
     wrap.append(h('p.bd-none', { text: 'No maps for this scene yet. Add a setup, then start from a template or place the actors and the camera.' }));
   }
-  const chars = characters();
-  const ctx = { chars, hues: huesOf(chars), shots: shotsNow() };
-  blocks.forEach((b) => wrap.append(renderBlockCard(b, ctx)));
+  floorish.forEach((b) => wrap.append(renderBlockCard(b, ctx)));
   return wrap;
 }
 
@@ -305,7 +384,7 @@ function redrawMap(blockId) {
   if (stage) {
     stage.querySelectorAll(':scope > .vz-axis-msg, :scope > .vz-map-key').forEach((n) => n.remove());
     const hint = stage.querySelector('.vz-blk-viewhint');
-    const key = mapKey(block), warn = axisWarning(block);
+    const key = mapKey(block), warn = axisWarning(block, floorCtx(block).sides);
     if (key) stage.insertBefore(key, hint);
     if (warn) stage.insertBefore(warn, key || hint);
   }
@@ -780,6 +859,8 @@ function focusSelectorOf(el, B) {
   return `.vz-map[data-block="${esc(B)}"]`;
 }
 function setTool(B, tool) {
+  /* A shot's diagram has no line of its own: the floor's is the line. */
+  if (tool === 'axis') { const b = Shots.getBlock(B); if (b && b.shotId) return; }
   if (tool === 'select') S.tools.delete(B); else S.tools.set(B, tool);
   redrawCard(B, focusSelectorOf(document.activeElement, B) || `[data-block="${esc(B)}"] [data-action="blk-tool"][data-tool="${tool}"]`);
 }
@@ -900,7 +981,36 @@ function removeBeat(B, markId, i) {
 }
 
 /* ---- clicks ------------------------------------------------------ */
-delegate(document, 'change', '[data-blk-scene]', (e, el) => { S.pickedScene = el.value; S.rerender(); });
+delegate(document, 'change', '[data-blk-scene]', (e, el) => { S.pickedScene = el.value; S.pickedShot = ''; S.rerender(); });
+delegate(document, 'change', '[data-blk-shot]', (e, el) => { S.pickedShot = el.value; S.rerender('[data-blk-shot]'); });
+/* A shot's diagram is made here, on a press — never by opening the view. */
+delegate(document, 'click', '[data-action="blk-shot-start"]', () => {
+  const b = S.pickedShot && Shots.ensureShotBlock(S.pickedShot);
+  if (!b) return;
+  select(b.id, []);
+  S.snap.set(b.id, true);
+  S.rerender(`[data-block="${esc(b.id)}"] [data-action="blk-add-mark"][data-kind="camera"]`);
+});
+delegate(document, 'click', '[data-action="blk-split"]', (e, el) => {
+  const id = blockIdOf(el);
+  const snap = Shots.splitBlock(id);
+  if (!snap) {
+    StudioUI.toast('No shot of this scene names these cameras yet. Link each shot to its camera in the Shot List (or give it the camera’s name as its setup), then split.', { type: 'info' });
+    return;
+  }
+  S.rerender(`[data-block="${esc(id)}"] .vz-blk-name`);
+  try {
+    StudioUI.toast('Split into ' + plural(snap.matched, 'shot diagram', 'shot diagrams') + '.'
+      + (snap.unmatched ? ' ' + plural(snap.unmatched, 'camera matched', 'cameras matched') + ' no shot and stayed on the floor plan.' : ''), {
+      action: 'Undo',
+      onAction: () => {
+        const r = Shots.undoBlocking(snap);
+        S.rerender();
+        if (r.kept) StudioUI.toast(plural(r.kept, 'diagram has', 'diagrams have') + ' changed since and ' + (r.kept === 1 ? 'was' : 'were') + ' kept.', { type: 'info' });
+      }
+    });
+  } catch (err) { /* chrome may not be up */ }
+});
 delegate(document, 'click', '[data-action="blk-add"]', () => {
   if (!S.pickedScene) return;
   const b = Shots.addBlock(S.pickedScene);

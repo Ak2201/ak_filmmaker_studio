@@ -319,7 +319,13 @@ function cleanPath(path) {
 export function blankBlock(patch = {}) {
   /* `set` and `axis` (1 Nov 2026) are two more FIELDS, spread under every
      stored block: an older block reads back unfurnished and with no line. */
-  return { id: uid('bk'), sceneId: '', name: '', note: '', widthM: '', marks: [], set: [], axis: null, ...patch };
+  /* `shotId` (1 Nov 2026, per-shot blocking) is one more FIELD: '' is the
+     scene's FLOOR PLAN (and every setup written before the field existed),
+     a shot id makes this block that ONE shot's diagram. A shot block holds
+     only its own marks; the set, the 180° line and the floor width live on
+     the floor block and are READ by a shot view, never copied into it —
+     two copies of a wall drift apart the first time one is moved. */
+  return { id: uid('bk'), sceneId: '', shotId: '', name: '', note: '', widthM: '', marks: [], set: [], axis: null, ...patch };
 }
 
 /** A whole block, cleaned the way listBlocks() reads one. */
@@ -329,6 +335,7 @@ export function cleanBlock(b) {
   row.marks = (Array.isArray(src.marks) ? src.marks : []).map(cleanMark);
   row.set = (Array.isArray(src.set) ? src.set : []).filter((p) => p && typeof p === 'object').map(cleanSetPiece);
   row.axis = cleanAxis(src.axis);
+  row.shotId = typeof row.shotId === 'string' ? row.shotId : '';
   return row;
 }
 
@@ -494,7 +501,15 @@ export function updateShot(id, patch) {
 
 /** Removing a shot removes its frames. A frame pointing at a deleted
     shot id is a stranded record — the same defect that once inflated
-    the progress denominator forever. */
+    the progress denominator forever.
+
+    A shot's BLOCKING DIAGRAM (a block with that shotId) is deliberately
+    LEFT, not removed: deleting a row of the shot list must not quietly
+    take a person's staging with it (the frames are the shot's own; the
+    diagram is drawn work). While its shot is gone the block reads as an
+    orphan, and the Blocking tab lists it under the floor plan
+    (isOrphanBlock), where it can be deleted by hand with Undo — never
+    hidden and never removed as a side effect. */
 export function removeShot(id) {
   const all = readAll();
   const shots = listShots().filter((s) => s.id !== id);
@@ -1134,6 +1149,190 @@ export function setAxis(blockId, axis) {
   return block.axis;
 }
 
+/* ---- per-shot blocking (1 Nov 2026) ------------------------------
+   ONE floor plan per scene, ONE diagram per shot. The floor is the
+   scene's block with no shotId (the first one, when an older studio drew
+   several setups); a shot's diagram is the block whose shotId names it.
+   Every helper here READS, except ensureShotBlock(), splitBlock() and
+   writeBlocking(), and those run only on a person's action (a click, an
+   Accept): the idle-write check in `verify` must stay at zero, so a view
+   never makes a diagram just by being opened. */
+
+/** The scene's floor plan: its first block with no shotId, or null.
+    Never created here — a write that needs one makes it. */
+export function floorOf(sceneId, blocks = listBlocks()) {
+  return blocks.find((b) => b.sceneId === sceneId && !b.shotId) || null;
+}
+
+/** The diagram of one shot, or null. */
+export function blockOfShot(shotId, blocks = listBlocks()) {
+  if (!shotId) return null;
+  return blocks.find((b) => b.shotId === shotId) || null;
+}
+
+/** A block whose shot has been deleted (see removeShot). */
+export function isOrphanBlock(block, shots = listShots()) {
+  return !!(block && block.shotId) && !shots.some((s) => s.id === block.shotId);
+}
+
+/** The name a shot's diagram is given: "Shot 4A". */
+export const shotBlockName = (shot) => 'Shot ' + (String((shot && shot.number) || '').trim() || '?');
+
+/** The shot's diagram, made (empty) if it has none. ONLY on a person's
+    action — never from a render. Null when the shot does not exist. */
+export function ensureShotBlock(shotId) {
+  const shot = listShots().find((s) => s.id === shotId);
+  if (!shot) return null;
+  const have = blockOfShot(shotId);
+  if (have) return have;
+  return replaceBlock(blankBlock({ sceneId: shot.sceneId, shotId, name: shotBlockName(shot) }));
+}
+
+/** The 180° line's sides across a whole scene: the floor's line against
+    every camera on the floor AND on every shot diagram, so a shot whose
+    camera jumps the line is flagged though no single diagram holds both
+    cameras. Pure over the blocks it is given. */
+export function sceneAxisSides(sceneId, blocks = listBlocks()) {
+  const mine = blocks.filter((b) => b.sceneId === sceneId);
+  const floor = mine.find((b) => !b.shotId);
+  const cams = mine.filter((b) => b === floor || b.shotId).flatMap((b) => (b.marks || []).filter((m) => m.kind === 'camera'));
+  return axisSides({ axis: floor ? floor.axis : null, marks: cams });
+}
+
+/* Key-order-free comparison: a row read back may list its keys in a
+   different order from the object that was written. */
+const stableJSON = (v) => Array.isArray(v) ? '[' + v.map(stableJSON).join(',') + ']'
+  : v && typeof v === 'object' ? '{' + Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + stableJSON(v[k])).join(',') + '}'
+  : JSON.stringify(v === undefined ? null : v);
+
+/**
+ * Several blocks and shot camera links in ONE write (a split, an AI
+ * draft's Accept). `blocks` are whole rows to insert or replace (each
+ * cleaned); `cams` are { id, cam } and FILL ONLY: a shot that already
+ * names a camera keeps it. Returns the undo snapshot:
+ *   { blocks: [{ id, before (row | null), wrote }], cams: [{ id, was, wrote }] }
+ * Unknown fields on every row ride through (readAll's passthrough).
+ */
+export function writeBlocking({ blocks = [], cams = [] } = {}) {
+  const all = readAll();
+  const list = all.blocks.map(cleanBlock);
+  const snap = { blocks: [], cams: [] };
+  for (const raw of blocks) {
+    if (!raw || !raw.id) continue;
+    const row = cleanBlock(raw);
+    const i = list.findIndex((b) => b.id === row.id);
+    snap.blocks.push({ id: row.id, before: i < 0 ? null : list[i], wrote: row });
+    if (i < 0) list.push(row); else list[i] = row;
+  }
+  const shots = all.shots.slice();
+  for (const c of cams) {
+    const i = shots.findIndex((s) => s && s.id === c.id);
+    if (i < 0 || !c.cam || String(shots[i].cam || '')) continue;   // fill blanks only
+    snap.cams.push({ id: c.id, was: '', wrote: c.cam });
+    shots[i] = { ...shots[i], cam: c.cam };
+  }
+  if (snap.blocks.length || snap.cams.length) writeAll({ ...all, blocks: list, shots });
+  return snap;
+}
+
+/**
+ * Undo a writeBlocking() WITHOUT reverting anything edited since (CLAUDE.md
+ * row 68): a block goes back (or away, when the write made it) only while
+ * it is still exactly what was written; a shot's camera goes back to blank
+ * only while it still names the written one. One write. → { reverted, kept }
+ */
+export function undoBlocking(snap) {
+  const all = readAll();
+  let list = all.blocks.map(cleanBlock);
+  let reverted = 0, kept = 0;
+  for (const b of (snap && snap.blocks) || []) {
+    const i = list.findIndex((x) => x.id === b.id);
+    if (i < 0) { if (b.before) kept++; continue; }       // deleted since: leave it gone
+    if (stableJSON(list[i]) !== stableJSON(cleanBlock(b.wrote))) { kept++; continue; }
+    if (b.before) list[i] = b.before; else list = list.filter((x) => x.id !== b.id);
+    reverted++;
+  }
+  const shots = all.shots.slice();
+  for (const c of (snap && snap.cams) || []) {
+    const i = shots.findIndex((s) => s && s.id === c.id);
+    if (i < 0) continue;
+    if (shots[i].cam !== c.wrote) { kept++; continue; }
+    shots[i] = { ...shots[i], cam: c.was };
+    reverted++;
+  }
+  if (reverted) writeAll({ ...all, blocks: list, shots });
+  return { reverted, kept };
+}
+
+/* The rail a camera rides: a track whose line passes within 2 units of
+   the camera. The nearest one, or null. */
+function railOf(cam, marks) {
+  let best = null, bestD = 2.0001;
+  for (const t of marks) {
+    if (t.kind !== 'track' || t.toX == null) continue;
+    const dx = t.toX - t.x, dy = t.toY - t.y, len2 = dx * dx + dy * dy;
+    const k = len2 ? Math.max(0, Math.min(1, ((cam.x - t.x) * dx + (cam.y - t.y) * dy) / len2)) : 0;
+    const d = Math.hypot(cam.x - (t.x + k * dx), cam.y - (t.y + k * dy));
+    if (d < bestD) { best = t; bestD = d; }
+  }
+  return best;
+}
+
+const norm = (s) => String(s ?? '').trim().toLowerCase();
+
+/**
+ * Plan a split of an older COMBINED setup (one map, every shot's camera on
+ * it) into one diagram per shot. Pure: returns the rows writeBlocking()
+ * would write, and touches nothing.
+ *   Each camera finds its shot: first a shot whose `cam` names it, then one
+ *   whose setup (or, failing that, nothing) equals the camera's label —
+ *   only shots of this scene with no diagram yet, each shot used once.
+ *   A matched camera MOVES (same id, so every shot.cam link still holds)
+ *   into a new shot diagram with the rail it rides and COPIES of the
+ *   actors (new ids); the actors stay on the floor too. An unmatched
+ *   camera stays where it is. The original block stays, as the floor.
+ * → { floor, made: [rows], cams: [{ id, cam }], matched, unmatched } or null.
+ */
+export function planSplit(block, shots, blocks) {
+  if (!block || block.shotId) return null;
+  const sceneShots = shots.filter((s) => s.sceneId === block.sceneId && !blockOfShot(s.id, blocks));
+  const cams = block.marks.filter((m) => m.kind === 'camera');
+  if (cams.length < 2) return null;
+  const actors = block.marks.filter((m) => m.kind === 'actor');
+  const used = new Set();
+  const out = { floor: null, made: [], cams: [], matched: 0, unmatched: 0 };
+  const moved = new Set();
+  for (const cam of cams) {
+    const shot = sceneShots.find((s) => !used.has(s.id) && s.cam === cam.id)
+      || sceneShots.find((s) => !used.has(s.id) && !s.cam && norm(s.setup) && norm(s.setup) === norm(cam.label));
+    if (!shot) { out.unmatched++; continue; }
+    used.add(shot.id);
+    const rail = railOf(cam, block.marks.filter((m) => !moved.has(m.id)));
+    moved.add(cam.id);
+    if (rail) moved.add(rail.id);
+    out.made.push(blankBlock({
+      sceneId: block.sceneId, shotId: shot.id, name: shotBlockName(shot),
+      marks: [cam, ...(rail ? [rail] : []), ...actors.map((a) => ({ ...a, id: uid('mk') }))]
+    }));
+    if (!shot.cam) out.cams.push({ id: shot.id, cam: cam.id });
+    out.matched++;
+  }
+  if (!out.matched) return null;
+  out.floor = { ...block, marks: block.marks.filter((m) => !moved.has(m.id)) };
+  return out;
+}
+
+/** Split a combined setup into shot diagrams (see planSplit). One write;
+    returns the writeBlocking() snapshot (undoBlocking() takes it back) plus
+    the counts, or null when there is nothing to split. */
+export function splitBlock(blockId) {
+  const blocks = listBlocks();
+  const plan = planSplit(blocks.find((b) => b.id === blockId) || null, listShots(), blocks);
+  if (!plan) return null;
+  const snap = writeBlocking({ blocks: [plan.floor, ...plan.made], cams: plan.cams });
+  return { ...snap, matched: plan.matched, unmatched: plan.unmatched };
+}
+
 /* ---- derived, never stored --------------------------------------- */
 
 /** A lens's horizontal field of view in degrees, on a Super 35 gate
@@ -1278,6 +1477,7 @@ export default {
   addBlock, updateBlock, removeBlock, restoreBlock, addMark, updateMark, removeMark,
   SET_KINDS, SET_SIZE, PATH_MAX, offsetMark, blankSetPiece, cleanSetPiece, cleanAxis, cleanBlock, getBlock, addSetPiece,
   updateSetPiece, removeSetPiece, setAxis, replaceBlock, duplicateMarks, lensFov, cameraFov, axisSides,
+  floorOf, blockOfShot, isOrphanBlock, shotBlockName, ensureShotBlock, sceneAxisSides, writeBlocking, undoBlocking, planSplit, splitBlock,
   blankShot, listShots, saveShots, addShot, updateShot, removeShot, moveShot,
   SHOT_COLUMNS, DEFAULT_COLUMNS, cleanColumns,
   reorderShots, isLockedNumber, autoNumbers, autoNumber, isAutoOrdered, sceneAutoOrdered, shotMinutes, parseMinutes, minutesProblem, MAX_SHOT_MINUTES, duplicateNumbers, nextBlockName, minutesOf, formatMinutes,

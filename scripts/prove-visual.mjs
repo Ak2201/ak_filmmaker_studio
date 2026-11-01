@@ -14,6 +14,7 @@
      6  the storyboard's notice is not headed "No image uploads."; an
         empty storyboard links to the step that comes first
      7  a blocking mark removed by the Delete key offers Undo
+    30  a shot row opens ITS blocking diagram, drawn over the floor plan
      8  the scene board prints "2 2/8 pgs", its empty Shots line is
         padded like its neighbours, and the five Visualise tabs have
         five distinct icons
@@ -188,6 +189,49 @@ await page.keyboard.press('Delete');
 await settle(page, 300);
 const toast = await page.evaluate(() => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' | '));
 ok(/Removed Actor/.test(toast) && /Undo/.test(toast), '7  the Delete key offers the same Undo as the button', toast);
+
+/* ---- 30 per-shot blocking: a shot row opens ITS diagram, over the floor */
+{
+  await page.goto(url('visualize.html#shot-list'), { waitUntil: 'networkidle' });
+  await settle(page);
+  const shotId = await page.$eval('tr.vz-row[data-shot]', (r) => r.dataset.shot).catch(() => '');
+  // The scene's floor: one table and the line, nothing else.
+  await writeShots(`const s = doc.shots.find((x) => x.id === ${JSON.stringify(shotId)});
+    doc.blocks = (doc.blocks || []).filter((b) => b.sceneId !== s.sceneId);
+    doc.blocks.push({ id: 'bkProveFloor', sceneId: s.sceneId, shotId: '', name: 'Floor', note: '', widthM: '6', marks: [],
+      set: [{ id: 'stProve', kind: 'table', x: 50, y: 30, w: 14, h: 8, rot: 0, label: '' }], axis: { x1: 0, y1: 35, x2: 100, y2: 35 } });`);
+  await page.goto(url('visualize.html#shot-list'), { waitUntil: 'networkidle' });
+  await settle(page);
+  const before = JSON.stringify(await shotsDoc());
+  await page.click(`tr.vz-row[data-shot="${shotId}"] [data-action="vz-shot-blocking"]`);
+  await settle(page, 700);
+  const sv = await page.evaluate(() => ({
+    hash: location.hash, hidden: document.getElementById('blocking')?.hidden,
+    pick: document.querySelector('[data-blk-shot]')?.value, start: !!document.querySelector('[data-action="blk-shot-start"]')
+  }));
+  ok(!!shotId && sv.hash === '#blocking' && sv.hidden === false && sv.pick === shotId && sv.start, '30 a shot row\'s Blocking opens that shot on the Blocking tab', sv);
+  ok(JSON.stringify(await shotsDoc()) === before, '30 opening a shot view writes nothing');
+  await page.click('[data-action="blk-shot-start"]');
+  await settle(page, 400);
+  await page.click('#blocking .vz-blk [data-action="blk-add-mark"][data-kind="camera"]');
+  await settle(page, 400);
+  const doc = await shotsDoc();
+  const own = (doc.blocks || []).find((b) => b.shotId === shotId);
+  const floor = (doc.blocks || []).find((b) => b.id === 'bkProveFloor');
+  ok(!!own && own.marks.filter((m) => m.kind === 'camera').length === 1 && !(own.set || []).length,
+    '30 the camera lands on the shot\'s own diagram', own);
+  ok(floor && floor.marks.length === 0 && floor.set.length === 1, '30 the floor is untouched', floor);
+  const view = await page.evaluate(() => ({
+    under: document.querySelectorAll('#blocking .vz-map.is-editable .vz-set.vz-under > *').length,
+    underAxis: !!document.querySelector('#blocking .vz-map.is-editable .vz-axis.vz-under'),
+    setDrawer: !!document.querySelector('#blocking [data-action="blk-drawer"][data-drawer="set"]'),
+    axisTool: !!document.querySelector('#blocking [data-action="blk-tool"][data-tool="axis"]')
+  }));
+  ok(view.under === 1 && view.underAxis && !view.setDrawer && !view.axisTool, '30 the floor\'s set and line are drawn under it, and are not this shot\'s to edit', view);
+  await page.selectOption('[data-blk-shot]', '');
+  await settle(page, 400);
+  ok(await page.evaluate(() => !!document.querySelector('#blocking .vz-blk[data-block="bkProveFloor"]')), '30 "Floor plan" goes back to the floor');
+}
 
 /* ---- 5 contacts' New shoot day ----------------------------------- */
 await page.goto(url('contacts.html#contacts'), { waitUntil: 'networkidle' });

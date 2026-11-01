@@ -50,6 +50,8 @@ import Store from '../lib/store.js';
 import PlanGate from '../lib/plan-gate.js';
 import { askDanger } from './dialog.js';
 import { aiPill, refreshPills } from './ai-pill.js';
+import GeminiGoogle from '../lib/gemini-google.js';
+import { isAdmin } from '../lib/cloud.js';
 
 /* View state, and none of it is stored. Whether the key form is
    open is not the user's work, and a "replace your key" form that
@@ -97,7 +99,7 @@ export function proCard() { return lockedGate('Coverage'); }
    storage key for it would be a contract bought for a status line. */
 let testing = false;
 let lastTest = null;   // { sig, ok, kind, text }
-const testSig = () => AI.provider().id + '|' + AI.getModel() + '|' + AI.maskKey();
+const testSig = () => AI.provider().id + '|' + AI.getModel() + '|' + (AI.viaGoogle() ? 'google' : AI.maskKey());
 function testShown() { return lastTest && lastTest.sig === testSig() ? lastTest : null; }
 
 /* ---- the provider picker ------------------------------------
@@ -174,7 +176,10 @@ export function keyBar() {
   const bar = h('div.ai-bar');
   // maskKey(), never the key. Twelve bullets and four characters is
   // enough to tell two keys apart and not enough to use.
-  bar.append(h('span.ai-keystate', { text: 'Key on this device: ' + AI.maskKey() }));
+  const google = AI.viaGoogle();
+  bar.append(h('span.ai-keystate', { text: google
+    ? 'Gemini through your Google login (about ' + GeminiGoogle.minutesLeft() + ' min left in this tab)'
+    : 'Key on this device: ' + AI.maskKey() }));
   /* "Key verified" is derived from the last test of THIS key, provider and
      model (testShown), so it appears only after a real answer and goes when
      any of the three changes. A rate-limit answer is not a verification. */
@@ -198,10 +203,14 @@ export function keyBar() {
   bar.append(h('label.ai-modelwrap', {}, [h('span.ai-flabel', { text: 'Model' }), sel]));
 
   bar.append(h('span.ai-gap'));
-  bar.append(h('button.btn', { type: 'button', 'data-action': 'ai-test-key', text: 'Test the key',
+  bar.append(h('button.btn', { type: 'button', 'data-action': 'ai-test-key', text: google ? 'Test the connection' : 'Test the key',
     disabled: testing ? true : null }));
-  bar.append(h('button.btn', { type: 'button', 'data-action': 'ai-edit-key', text: 'Replace key' }));
-  bar.append(h('button.btn.danger', { type: 'button', 'data-action': 'ai-forget-key', text: 'Forget key' }));
+  if (google) {
+    bar.append(h('button.btn.danger', { type: 'button', 'data-action': 'ai-google-disconnect', text: 'Disconnect Google' }));
+  } else {
+    bar.append(h('button.btn', { type: 'button', 'data-action': 'ai-edit-key', text: 'Replace key' }));
+    bar.append(h('button.btn.danger', { type: 'button', 'data-action': 'ai-forget-key', text: 'Forget key' }));
+  }
   /* The answer to "does this key work?" sits under the key it is
      about. It is kept for the key, provider and model it was asked
      of, so a page redraw keeps it and changing any of the three
@@ -303,8 +312,36 @@ export function keySection(what, sends) {
      the three panels. */
   const kg = keyGate(what, { lead: false, ungated: true });   // the disclosure below says it; the key stays manageable on any plan
   if (kg) sec.append(kg);
+  const gg = googleCard();
+  if (gg) sec.append(gg);
   sec.append(disclose(sends));
   return sec;
+}
+
+/* ---- Gemini through the owner's Google login ----------------
+   Admins only (VITE_ADMIN_EMAILS), because a call made this way is
+   billed to the Cloud project that owns this app's Google sign-in —
+   the owner's. See src/lib/gemini-google.js for the whole reasoning.
+   No key field: Google's own window, from this click, and nothing
+   else. Shown while not connected; once connected the key bar above
+   says so and carries the Disconnect button. */
+let googleNote = '';
+let googleBusy = false;
+function googleCard() {
+  if (!GeminiGoogle.isConfigured() || !isAdmin()) return null;
+  if (AI.viaGoogle('gemini') && AI.getProviderId() === 'gemini') return null;
+  const card = h('div.ai-gate.ai-google');
+  card.append(h('p', {}, [
+    h('strong', { text: 'Use your own Gemini with your Google login. ' }),
+    h('span', { text: AI.viaGoogle('gemini')
+      ? 'Connected. Switch the provider to Google Gemini to use it.'
+      : 'No API key: Google asks you to allow Gemini, and calls are billed to the Google Cloud project behind this app’s sign-in (yours). Admin accounts only. Lasts about an hour, in this tab.' })
+  ]));
+  card.append(h('button.btn.primary', { type: 'button', 'data-action': 'ai-google-connect',
+    disabled: googleBusy ? true : null,
+    text: googleBusy ? 'Waiting for Google…' : (AI.viaGoogle('gemini') ? 'Use Google Gemini' : 'Connect Gemini with Google') }));
+  if (googleNote) card.append(h('p.ai-keynote', { role: 'alert', text: googleNote }));
+  return card;
 }
 
 /* ---- what leaves the browser -------------------------------
@@ -391,6 +428,26 @@ export function wireAIPanel() {
     let r;
     try { r = await AI.testKey(); } finally { testing = false; }
     lastTest = { sig, ...r };
+    announce();
+  });
+
+  delegate(document, 'click', '[data-action="ai-google-connect"]', async () => {
+    if (googleBusy) return;
+    googleNote = '';
+    if (!GeminiGoogle.isConnected()) {
+      googleBusy = true;
+      announce();
+      try { await GeminiGoogle.connect(); }
+      catch (e) { googleNote = (e && e.message) || 'Google did not connect.'; }
+      finally { googleBusy = false; }
+    }
+    if (GeminiGoogle.isConnected()) AI.setProvider('gemini');
+    editingKey = false;
+    announce();
+  });
+  delegate(document, 'click', '[data-action="ai-google-disconnect"]', async () => {
+    await GeminiGoogle.disconnect();
+    googleNote = '';
     announce();
   });
 

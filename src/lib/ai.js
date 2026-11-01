@@ -63,11 +63,12 @@ import { cueName as cueOf } from './screenplay-analysis.js';
 /* The Audience test's pure half (prompts, schemas, checks, curves);
    it imports nothing from here, so the one slicer stays one. */
 import * as Audience from './audience-model.js';
+import GeminiGoogle from './gemini-google.js';
 import Providers, {
   PROVIDERS, DEFAULT_PROVIDER, AI_KEY, AI_MODEL_KEY,
   GEMINI_KEY, GEMINI_MODEL_KEY, AI_PROVIDER_KEY,
   getProviderId, provider, setProvider, providerLabel, apiName, apiHost, apiOrigin,
-  getKey, hasKey, setKey, clearKey, maskKey, looksLikeKey,
+  getKey, hasKey, viaGoogle, credential, setKey, clearKey, maskKey, looksLikeKey,
   models, defaultModel, getModel, setModel, imageModel, imageModelLabel
 } from './ai-providers.js';
 
@@ -79,7 +80,7 @@ export {
   PROVIDERS, DEFAULT_PROVIDER, AI_KEY, AI_MODEL_KEY,
   GEMINI_KEY, GEMINI_MODEL_KEY, AI_PROVIDER_KEY,
   getProviderId, provider, setProvider, providerLabel, apiName, apiHost, apiOrigin,
-  getKey, hasKey, setKey, clearKey, maskKey, looksLikeKey,
+  getKey, hasKey, viaGoogle, credential, setKey, clearKey, maskKey, looksLikeKey,
   models, defaultModel, getModel, setModel, imageModel, imageModelLabel
 };
 
@@ -474,7 +475,7 @@ const WIRE = {
    Shared by callModel() (text, streamed) and generateImage() (one
    picture, not streamed): one place where the key meets a header,
    one network-error sentence, one status map. */
-async function send(prov, req, key, signal) {
+async function send(prov, req, auth, signal) {
   let res;
   try {
     res = await fetch(req.url, {
@@ -484,7 +485,7 @@ async function send(prov, req, key, signal) {
          format, and it is the last thing to touch it. It is not in
          `req`, it is not in the url, and it is not in anything
          logged or thrown below. */
-      headers: { ...req.headers, [req.authHeader]: key },
+      headers: { ...req.headers, ...auth },
       body: JSON.stringify(req.body)
     });
   } catch (e) {
@@ -504,6 +505,18 @@ async function send(prov, req, key, signal) {
   if (!res.ok) {
     let body = null;
     try { body = await res.json(); } catch (e) { /* not every error is JSON */ }
+    /* A Google-login token that Google refused is dead (expired, or
+       revoked elsewhere): forget it so the gates show the truth, and
+       say what to do, which is not "check your key". */
+    if ((res.status === 401 || res.status === 403) && auth && auth.authorization) {
+      const why = body && body.error && body.error.message ? String(body.error.message) : '';
+      if (res.status === 401) {
+        GeminiGoogle.forget();
+        throw new AIError('Your Google connection for Gemini has expired (it lasts about an hour). Reconnect it in Settings \u2192 AI.', 'auth');
+      }
+      throw new AIError('Google refused the call made with your Google login' + (why ? ': ' + why : '.')
+        + ' The Generative Language API must be enabled in the Cloud project that owns this app\u2019s Google sign-in.', 'auth');
+    }
     throw errorForStatus(res.status, body, prov);
   }
   return res;
@@ -514,16 +527,17 @@ async function callModel({
   onStatus, signal, progress
 }) {
   const prov = provider();
-  const key = getKey();
-  if (!key) throw new AIError('No API key saved on this device.', 'nokey');
-
   const model = getModel();
   const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
 
   const wire = WIRE[prov.id] || WIRE[DEFAULT_PROVIDER];
   const req = wire.request(prov, { model, system, user, schema, maxTokens, effort });
+  /* The saved key under req.authHeader, or the owner's Google login
+     (gemini-google.js) as a Bearer header. */
+  const auth = credential(prov.id, req.authHeader);
+  if (!auth) throw new AIError('No API key saved on this device.', 'nokey');
 
-  const res = await send(prov, req, key, signal);
+  const res = await send(prov, req, auth, signal);
   if (!res.body) throw new AIError('The API returned an empty response.', 'empty');
 
   let text, stop;
@@ -610,11 +624,11 @@ export function imageFromResponse(json) {
  */
 export async function generateImage({ prompt, aspectRatio = '16:9', signal } = {}) {
   const prov = provider('gemini');
-  const key = getKey('gemini');
-  if (!key) throw new AIError('No Gemini key saved on this device.', 'nokey');
   const model = imageModel('gemini');
   const req = geminiImageRequest(prov, { model, prompt: String(prompt || ''), aspectRatio });
-  const res = await send(prov, req, key, signal);
+  const auth = credential('gemini', req.authHeader);
+  if (!auth) throw new AIError('No Gemini key saved on this device.', 'nokey');
+  const res = await send(prov, req, auth, signal);
   let json = null;
   try { json = await res.json(); } catch (e) {
     if (e && e.name === 'AbortError') throw new AIError('Stopped. Nothing was changed.', 'aborted');
@@ -1037,7 +1051,7 @@ export async function beatCritique(job, { onStatus, signal } = {}) {
 export async function testKey({ signal } = {}) {
   const prov = provider();
   const model = getModel();
-  if (!getKey()) return { ok: false, kind: 'nokey', model, text: 'No ' + prov.label + ' key is saved on this device.' };
+  if (!hasKey()) return { ok: false, kind: 'nokey', model, text: 'No ' + prov.label + ' key is saved on this device.' };
   try {
     await callModel({
       system: 'You are checking that an API connection works.',

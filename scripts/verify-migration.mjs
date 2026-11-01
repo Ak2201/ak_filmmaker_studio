@@ -360,7 +360,7 @@ const EXPECTED = /* every earlier row was emptied by the 27 Oct 2026 re-baseline
   "short": {},
   "library": /* emptied by the 29 Oct 2026 explainer re-baseline, which absorbed the Tanglish clean-up rows */ {},
   "budget": { "do": "31 Oct 2026: pill labels shortened (learn.json `pill`), the full question stays the pop-up title", "owns": "31 Oct 2026: see do", "together": "31 Oct 2026: see do" },
-  "dashboard": {},
+  "dashboard": { "what’s": "Nov 2026: What’s new is hidden while src/data/changelog.json is empty (the launch)", "new": "see what’s", "awesome": "see what’s (its auto_awesome icon ligature)" },
   "preprod": {},
   "screenplay": {},
   "settings": /* emptied by the 27 Oct 2026 re-baseline after the merge */ {

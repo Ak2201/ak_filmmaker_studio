@@ -457,15 +457,14 @@ for (const id of IDS) {
     const toc = (h.match(/<nav class="legal-toc"[\s\S]*?<\/nav>/) || [''])[0];
     const linked = [...toc.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
     ok(h2s > 0 && ids.length === h2s && JSON.stringify(ids) === JSON.stringify(linked), f + ': every heading has an id and the contents list links each, in order (' + ids.length + '/' + h2s + ')');
-    /* Finalised 28 Oct 2026: a legal page never ships a passage awaiting
-       approval (CLAUDE.md item 64: "never release to main with a DRAFT
-       comment in a legal page"), and the date at the top is the date of
-       the latest "What changed" note, so the two cannot disagree. */
+    /* A legal page never ships a passage awaiting approval (CLAUDE.md
+       item 64), and (owner, Nov 2026: the site is launching, nobody has
+       bought) it never carries a date or a change note either: the
+       policy reads as THE policy, in the present tense. */
     const draft = h.match(/.{0,40}(\bDRAFT\b|AWAITING THE OWNER|<li>\s*Draft,).{0,40}/);
     ok(!draft, f + ': no DRAFT passage or marker' + (draft ? ': "' + draft[0].trim() + '"' : ''));
-    const upd = (main.match(/<p class="legal-date">Last updated (\d{1,2} [A-Z][a-z]+ \d{4})<\/p>/) || [])[1];
-    const chg = (main.match(/<h2 id="changes-h">What changed on (\d{1,2} [A-Z][a-z]+ \d{4})<\/h2>/) || [])[1];
-    ok(upd && upd === chg, f + ': "Last updated" (' + upd + ') is the date of the "What changed" note (' + chg + ')');
+    const note = (main + toc).match(/.{0,40}(legal-date|legal-changes|changes-h|Last updated|What changed|Effective (from|on)|date at the top|\b\d{1,2} (January|February|March|April|May|June|July|August|September|October|November|December) \d{4}\b).{0,40}/);
+    ok(!note, f + ': no date or change note' + (note ? ': "' + note[0].trim() + '"' : ''));
   }
   const ljs = read('src/pages/legal.js');
   const limports = [...ljs.matchAll(/^import\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]);

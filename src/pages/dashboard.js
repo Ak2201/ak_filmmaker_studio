@@ -72,7 +72,7 @@ import { formatEighths } from '../lib/scenes.js';
 import { formatPages } from '../lib/script.js';
 /* Derived, never stored — see the header of readiness.js. */
 import { readiness } from '../lib/readiness.js';
-import { openChangelog, unseen as changelogUnseen } from '../ui/changelog.js';
+import { openChangelog, unseen as changelogUnseen, hasEntries as changelogHas } from '../ui/changelog.js';
 /* Every number on this page, derived: the snapshot, the readiness order,
    the Continue target (docs/ARCHITECTURE.md). */
 import {
@@ -465,7 +465,7 @@ function renderNoProject() {
 }
 
 /* ---- the member row: What's new, and the referral share ----------
-   One slim row under the page's own cards. What's new is always there
+   One slim row under the page's own cards. What's new is there only while changelog.json holds an entry
    (src/ui/changelog.js; "New" is a READ of the prefs blob, written only
    when the drawer opens). The referral share appears only for a
    signed-in member whose code exists and is on (my_referral(), §22):
@@ -493,12 +493,14 @@ function wantReferral() {
 function renderMemberRow() {
   wantReferral();
   const row = h('div.db-member');
-  const isNew = changelogUnseen();
-  row.append(h('div.db-member-news', {}, [
-    button({ label: 'What’s new', icon: 'auto_awesome', size: 'sm', action: 'db-whatsnew',
-      attrs: { 'aria-label': isNew ? 'What’s new (new changes since you last looked)' : 'What’s new' } }),
-    isNew ? badge({ label: 'New', tone: 'info' }) : null
-  ].filter(Boolean)));
+  if (changelogHas()) {
+    const isNew = changelogUnseen();
+    row.append(h('div.db-member-news', {}, [
+      button({ label: 'What’s new', icon: 'auto_awesome', size: 'sm', action: 'db-whatsnew',
+        attrs: { 'aria-label': isNew ? 'What’s new (new changes since you last looked)' : 'What’s new' } }),
+      isNew ? badge({ label: 'New', tone: 'info' }) : null
+    ].filter(Boolean)));
+  }
   const d = ref.uid && ref.data;
   const share = d && ref.panel ? ref.panel(d, ref.link(d.code)) : null;
   if (share) row.append(share);

@@ -1614,8 +1614,7 @@ ${genNote(GUIDES_COPY)}
 ${header(site, pages, 'guides')}
 <main id="main" class="mk mk-guide ${x.hue}">
 ${passBand(site)}
-${articleHero(x.h1, x.sub, [{ name: g.ui.breadcrumbHome, href: 'start.html' }, { name: g.ui.breadcrumbGuides, href: 'guides.html' }, { name: x.label }],
-  `\n    <p class="mk-small mk-updated">${esc(g.ui.updatedLabel)} <time datetime="${esc(g.updated)}">${longDay(g.updated)}</time></p>`)}
+${articleHero(x.h1, x.sub, [{ name: g.ui.breadcrumbHome, href: 'start.html' }, { name: g.ui.breadcrumbGuides, href: 'guides.html' }, { name: x.label }])}
 <section class="mk-sec mk-band-a mk-article" id="guide" aria-label="${esc(x.label)}">
   <div class="mk-wrap mk-article-grid">
     <nav class="mk-toc" aria-label="${esc(site.ui.labelNav)}">
@@ -1746,8 +1745,7 @@ ${genNote(COMPARE_COPY)}
 ${header(site, pages, 'compare')}
 <main id="main" class="mk mk-guide mk-compare">
 ${passBand(site)}
-${articleHero(p.h1, p.sub, [{ name: g.ui.breadcrumbHome, href: 'start.html' }, { name: g.index.compareH, href: 'guides.html#compare' }, { name: p.label }],
-  `\n    <p class="mk-small mk-updated">${esc(c.ui.updatedLabel)} <time datetime="${esc(c.updated)}">${longDay(c.updated)}</time></p>`)}
+${articleHero(p.h1, p.sub, [{ name: g.ui.breadcrumbHome, href: 'start.html' }, { name: g.index.compareH, href: 'guides.html#compare' }, { name: p.label }])}
 <section class="mk-sec mk-band-a mk-article" id="guide" aria-label="${esc(p.label)}">
   <div class="mk-wrap mk-article-grid">
     <nav class="mk-toc" aria-label="${esc(site.ui.labelNav)}">

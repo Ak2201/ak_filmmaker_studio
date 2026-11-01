@@ -21,13 +21,16 @@
      (d) "Made with" on a staged PDF for a plan that keeps branding, the
          last child of <body>, shown in print; absent on Pro; removed on unstage;
          and on the plain prints of the budget, stripboard and reports
-     (d2) What's new from the rail's avatar menu
+     (d2) What's new: hidden from the rail's avatar menu while the list is
+         empty; the row appears, and opens the drawer, once an entry exists
      (e) Settings → What's in my plan: the plan's modules, the next plan's
          extras, the upgrade figure; a full trial is not told it may remove
          the PDF line; an ended trial and a lapsed year list nothing and
          offer a plan; a grant shows no section; absent signed out
-     (f) What's new: the drawer opens with every entry, "New" goes, the
-         seen id lands in fms_studio_prefs_v1 (no new key), and stays gone
+     (f) What's new on the dashboard: absent while the list is empty (the
+         shipped state); with one entry injected it appears saying "New", the
+         drawer lists it, "New" goes, the seen id lands in
+         fms_studio_prefs_v1 (no new key), and stays gone
      (g) the first-week list's "Choose a plan": listed during a trial,
          ticked once paid, absent signed out, absent for a year-long
          (grandfathered) trial
@@ -48,6 +51,11 @@ const DIST = path.resolve(ROOT, process.env.PROVE_DIST || 'dist-verify');
 const BRAND = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/brand.json'), 'utf8'));
 const MATRIX = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/plan-matrix.json'), 'utf8'));
 const CHANGELOG = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/changelog.json'), 'utf8'));
+/* While changelog.json is empty (the launch state) nothing about What's new
+   renders. To prove it comes back with ONE entry and no rebuild, the server
+   below swaps one entry into the bundled copy of that file when asked. */
+const TEST_ENTRY = { id: '2099-01-01-proof', date: '2099-01-01', title: 'Proof entry', items: ['An entry posted later.'] };
+let injectEntry = false;
 if (!fs.existsSync(path.join(DIST, 'index.html'))) { console.error('✗ no build at ' + DIST + ' (npm run build:verify)'); process.exit(2); }
 {
   const stamp = (fs.readFileSync(path.join(DIST, 'index.html'), 'utf8').match(/<meta name="fms-site-gate" content="([a-z]+)"/) || [])[1];
@@ -65,6 +73,13 @@ const server = http.createServer((req, res) => {
   if (!fs.existsSync(p) && fs.existsSync(p + '.html')) p += '.html';
   if (!fs.existsSync(p)) { res.writeHead(404); return res.end('not found'); }
   res.writeHead(200, { 'Content-Type': MIME[path.extname(p)] || 'application/octet-stream' });
+  if (injectEntry && path.extname(p) === '.js') {
+    let src = fs.readFileSync(p, 'utf8');
+    const at = src.indexOf('HIDDEN WHILE THIS LIST IS EMPTY');
+    const empty = at < 0 ? -1 : src.indexOf('entries:[]', at);
+    if (empty > 0) src = src.slice(0, empty) + 'entries:[' + JSON.stringify(TEST_ENTRY) + ']' + src.slice(empty + 'entries:[]'.length);
+    return res.end(src);
+  }
   fs.createReadStream(p).pipe(res);
 });
 const PORT = Number(process.env.PROVE_PORT) || 5391;
@@ -295,7 +310,7 @@ try {
     await page.goto(BASE + 'dashboard.html');
     await page.waitForTimeout(2500);
     ok(!(await page.$('.gr-share')), 'signed out: no referral row');
-    ok(!!(await page.$('[data-action="db-whatsnew"]')), 'signed out: What’s new is still there');
+    ok(!(await page.$('[data-action="db-whatsnew"]')), 'signed out: What’s new is hidden while the list is empty');
     allErrors.push(...errors); await ctx.close();
   }
 
@@ -420,23 +435,30 @@ try {
     allErrors.push(...errors); await ctx.close();
   }
 
-  console.log('(d2) What’s new from the avatar menu');
-  F.reset();
-  {
+  console.log('(d2) What’s new in the avatar menu: hidden while empty, back with an entry');
+  for (const withEntry of [false, true]) {
+    F.reset();
+    injectEntry = withEntry;
     const { ctx, page, errors } = await newContext({});
     await page.goto(BASE + 'stripboard.html');
     await page.waitForSelector('#studioRail .sh-rail-account', { timeout: 10000 });
     await page.click('#studioRail .sh-rail-account');
-    const row = await page.waitForSelector('#shAcctMenu [data-action="rail-whatsnew"]', { timeout: 5000 }).then(() => true, () => false);
-    ok(row, 'the account menu has a What’s new row');
-    if (row) {
-      await page.click('#shAcctMenu [data-action="rail-whatsnew"]');
-      const n = await page.waitForSelector('[data-mn-sheet="changelog"] .cl-entry', { timeout: 5000 }).then(() => page.$$eval('[data-mn-sheet="changelog"] .cl-entry', (e) => e.length), () => 0);
-      ok(n === CHANGELOG.entries.length, 'it opens the changelog drawer with every entry (' + n + ')');
-      ok(!(await page.$('#shAcctMenu')), 'and the menu closes');
-      await page.keyboard.press('Escape');
-      ok(await page.evaluate(() => !!document.activeElement && document.activeElement.matches('.sh-rail-account')), 'Escape returns focus to the avatar');
+    await page.waitForSelector('#shAcctMenu .sh-acct-item', { timeout: 5000 });
+    const row = !!(await page.$('#shAcctMenu [data-action="rail-whatsnew"]'));
+    if (!withEntry) {
+      ok(!row, 'empty list: the account menu has no What’s new row');
+    } else {
+      ok(row, 'one entry: the account menu has a What’s new row');
+      if (row) {
+        await page.click('#shAcctMenu [data-action="rail-whatsnew"]');
+        const n = await page.waitForSelector('[data-mn-sheet="changelog"] .cl-entry', { timeout: 5000 }).then(() => page.$$eval('[data-mn-sheet="changelog"] .cl-entry', (e) => e.length), () => 0);
+        ok(n === 1, 'it opens the changelog drawer with the entry (' + n + ')');
+        ok(!(await page.$('#shAcctMenu')), 'and the menu closes');
+        await page.keyboard.press('Escape');
+        ok(await page.evaluate(() => !!document.activeElement && document.activeElement.matches('.sh-rail-account')), 'Escape returns focus to the avatar');
+      }
     }
+    injectEntry = false;
     allErrors.push(...errors); await ctx.close();
   }
 
@@ -511,20 +533,31 @@ try {
     allErrors.push(...errors); await ctx.close();
   }
 
-  console.log('(f) What’s new');
+  console.log('(f) What’s new on the dashboard');
   F.reset();
+  ok(CHANGELOG.entries.length === 0, 'the shipped list is empty: What’s new is hidden everywhere');
+  {
+    const { ctx, page, errors } = await newContext({});
+    await page.goto(BASE + 'dashboard.html');
+    await page.waitForSelector('.db-main', { timeout: 10000 });
+    await page.waitForTimeout(1500);
+    ok(!(await page.$('[data-action="db-whatsnew"]')) && !(await page.$('.db-member-news')), 'empty list: no button and no New badge');
+    allErrors.push(...errors); await ctx.close();
+  }
+  F.reset();
+  injectEntry = true;
   {
     const { ctx, page, errors } = await newContext({});
     await page.goto(BASE + 'dashboard.html');
     await page.waitForSelector('[data-action="db-whatsnew"]', { timeout: 10000 });
-    ok(!!(await page.$('.db-member-news .k-badge')), 'a first visit says New');
+    ok(!!(await page.$('.db-member-news .k-badge')), 'one entry: a first visit says New');
     const before = await page.evaluate(() => Object.keys(localStorage).sort());
     await page.click('[data-action="db-whatsnew"]');
     await page.waitForSelector('[data-mn-sheet="changelog"] .cl-entry', { timeout: 5000 });
-    ok((await page.$$eval('[data-mn-sheet="changelog"] .cl-entry', (e) => e.length)) === CHANGELOG.entries.length, 'the drawer lists every entry (' + CHANGELOG.entries.length + ')');
+    ok((await page.$$eval('[data-mn-sheet="changelog"] .cl-entry', (e) => e.length)) === 1, 'the drawer lists the entry');
     ok(!(await page.$('.db-member-news .k-badge')), 'New is gone once opened');
     const seen = await page.evaluate(() => JSON.parse(localStorage.getItem('fms_studio_prefs_v1') || '{}').whatsNewSeen);
-    ok(seen === CHANGELOG.entries[0].id, 'the newest id is kept in fms_studio_prefs_v1: ' + seen);
+    ok(seen === TEST_ENTRY.id, 'the newest id is kept in fms_studio_prefs_v1: ' + seen);
     const after = await page.evaluate(() => Object.keys(localStorage).sort());
     ok(after.every((k) => before.includes(k) || k === 'fms_studio_prefs_v1'), 'no new localStorage key: ' + after.filter((k) => !before.includes(k)).join(', '));
     await page.keyboard.press('Escape');
@@ -533,6 +566,7 @@ try {
     ok(!(await page.$('.db-member-news .k-badge')), 'after a reload New stays gone');
     allErrors.push(...errors); await ctx.close();
   }
+  injectEntry = false;
 
   console.log('(g) the first-week list: Choose a plan');
   const checklist = async (tok) => {

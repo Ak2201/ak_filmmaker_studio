@@ -65,6 +65,7 @@ import { pageFile } from '../lib/page-file.js';
 import { markLocked, allowed, isDisabledEverywhere } from '../lib/plan-gate.js';
 import { monogram, BRAND } from '../lib/brand.js';
 import { tourResumable } from '../lib/chrome-prefs.js';
+import changelogData from '../data/changelog.json';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
 const NARROW = '(max-width: 1099px)';
@@ -888,7 +889,8 @@ function openAcctMenu(btn) {
        it, signed in or not. A paused tour resumes where it stopped. */
     row('button', { type: 'button', 'data-action': 'rail-tour' }, 'explore', tourResumable() ? 'Resume the tour' : 'Take the tour'),
     row('button', { type: 'button', 'data-action': 'rail-help' }, 'help', 'Help & shortcuts'),
-    row('button', { type: 'button', 'data-action': 'rail-whatsnew' }, 'auto_awesome', 'What’s new'),
+    /* Only while the list holds an entry (owner, 1 Nov 2026: launching). */
+    (changelogData.entries || []).length ? row('button', { type: 'button', 'data-action': 'rail-whatsnew' }, 'auto_awesome', 'What’s new') : null,
     signedIn ? row('button', { type: 'button', 'data-auth-action': 'signout' }, 'logout', 'Sign out') : null
   ]));
   document.body.append(menu);

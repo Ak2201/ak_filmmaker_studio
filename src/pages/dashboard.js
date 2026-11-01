@@ -72,7 +72,7 @@ import { formatEighths } from '../lib/scenes.js';
 import { formatPages } from '../lib/script.js';
 /* Derived, never stored — see the header of readiness.js. */
 import { readiness } from '../lib/readiness.js';
-import { openChangelog, unseen as changelogUnseen } from '../ui/changelog.js';
+import { openChangelog, unseen as changelogUnseen, hasEntries as changelogHasEntries } from '../ui/changelog.js';
 /* Every number on this page, derived: the snapshot, the readiness order,
    the Continue target (docs/ARCHITECTURE.md). */
 import {
@@ -465,9 +465,9 @@ function renderNoProject() {
 }
 
 /* ---- the member row: What's new, and the referral share ----------
-   One slim row under the page's own cards. What's new is always there
-   (src/ui/changelog.js; "New" is a READ of the prefs blob, written only
-   when the drawer opens). The referral share appears only for a
+   One slim row under the page's own cards. What's new is there only then
+   (src/ui/changelog.js; it shows only while the list holds an entry;
+   "New" is a READ of the prefs blob, written only when the drawer opens). The referral share appears only for a
    signed-in member whose code exists and is on (my_referral(), §22):
    signed out, before a first purchase, or on a database without §22 it
    is simply absent. growth.js and the panel are fetched only once
@@ -493,16 +493,19 @@ function wantReferral() {
 function renderMemberRow() {
   wantReferral();
   const row = h('div.db-member');
-  const isNew = changelogUnseen();
-  row.append(h('div.db-member-news', {}, [
-    button({ label: 'What’s new', icon: 'auto_awesome', size: 'sm', action: 'db-whatsnew',
-      attrs: { 'aria-label': isNew ? 'What’s new (new changes since you last looked)' : 'What’s new' } }),
-    isNew ? badge({ label: 'New', tone: 'info' }) : null
-  ].filter(Boolean)));
+  /* Nothing to show while the list is empty (owner, 1 Nov 2026). */
+  if (changelogHasEntries()) {
+    const isNew = changelogUnseen();
+    row.append(h('div.db-member-news', {}, [
+      button({ label: 'What’s new', icon: 'auto_awesome', size: 'sm', action: 'db-whatsnew',
+        attrs: { 'aria-label': isNew ? 'What’s new (new changes since you last looked)' : 'What’s new' } }),
+      isNew ? badge({ label: 'New', tone: 'info' }) : null
+    ].filter(Boolean)));
+  }
   const d = ref.uid && ref.data;
   const share = d && ref.panel ? ref.panel(d, ref.link(d.code)) : null;
   if (share) row.append(share);
-  return row;
+  return row.childNodes.length ? row : null;
 }
 delegate(document, 'click', '[data-action="db-whatsnew"]', (e, el) => {
   /* Opening marks it seen: take the "New" off in place. A redraw here
@@ -535,8 +538,7 @@ function render() {
 
   if (!project) {
     main.append(
-      renderNoProject(),
-      renderMemberRow(),
+      ...[renderNoProject(), renderMemberRow()].filter(Boolean),
       /* The id, even here: a link into #readiness followed with no
          project open must land on the section that says why it is
          empty, not on nothing. */
@@ -566,7 +568,7 @@ function render() {
       h('summary.db-more-sum', {}, [h('span', { text: 'Project details and title page' }), h('span.sym', { 'aria-hidden': 'true', text: 'expand_more' })]),
       renderTitlePage(project)
     ]);
-    main.append(hero, ...[renderStats(snap)].filter(Boolean), renderReadiness(), tools, details, renderMemberRow());
+    main.append(hero, ...[renderStats(snap)].filter(Boolean), renderReadiness(), tools, details, ...[renderMemberRow()].filter(Boolean));
   }
 
   /* A disclosure the reader opened stays open across a re-render (in

@@ -215,7 +215,7 @@ for (const width of [1440, 390]) {
     await page.goto(BASE + 'stripboard.html');
     await page.waitForTimeout(1500);
     const row = await openAccountMenu(page);
-    ok(!!row && /^Take the tour$/.test(await rowLabel(row)), 'the account menu offers "Take the tour" beside Help and What’s new');
+    ok(!!row && /^Take the tour$/.test(await rowLabel(row)), 'the account menu offers "Take the tour" beside Help');
     ok(await page.evaluate(() => { const r = [...document.querySelectorAll('#shAcctMenu .sh-acct-item')].map((e) => (e.lastElementChild || e).textContent.trim()); const i = r.indexOf('Take the tour'); return i > 0 && /Help/.test(r[i + 1] || ''); }), 'placed just above Help & shortcuts');
     if (row) await row.click();
     ok(await card(page, 'dashboard'), 'it starts the tour again, on the sample');

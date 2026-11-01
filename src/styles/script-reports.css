@@ -1,0 +1,126 @@
+/* ============================================================
+   SCRIPT REPORTS — screen time and the cast matrix, on the
+   breakdown page (src/ui/script-reports.js)
+   ------------------------------------------------------------
+   These two sections lived on reports.html until 1 Nov 2026 and
+   were drawn by reports.css. The breakdown page does not load
+   reports.css, and must not: it carries `.bd-head > .k-stat-strip`
+   and the sides' print rules, which would reach the breakdown's own
+   header and print jobs. So the handful of reports.css rules these
+   sections are built from (the band, the tools row, the table cells,
+   the scroll box) are restated here, scoped to the two section ids
+   so they can never touch another breakdown tab; the matrix rules
+   and the one-view print rules MOVED here outright.
+
+   Tokens for every colour, --sk-* for every shape, as reports.css.
+   ============================================================ */
+@import url('tokens.css');
+
+:is(#screentime, #cast-matrix).rp-sec {
+  max-width: var(--measure-wide);
+  margin-inline: auto;
+  padding-inline: var(--s5);
+  padding-block: var(--s6) var(--s7);
+  border-top: var(--sk-card-line-w, 1px) solid var(--rule);
+}
+:is(#screentime, #cast-matrix) .rp-h3 {
+  margin: var(--s7) 0 var(--s3);
+  font-family: var(--f-display);
+  font-size: var(--t-xl);
+  font-weight: 800;
+  letter-spacing: var(--track-tight);
+}
+:is(#screentime, #cast-matrix) > .rp-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3);
+  margin-bottom: var(--s5);
+  z-index: calc(var(--z-toolbar) - 2);   /* under the pinned tab strip */
+  padding: var(--s3);
+  background-color: var(--surface-rail);
+  background-image: var(--surface-rail-sheen);
+  border: 1px solid var(--border-default);
+  border-radius: var(--sk-radius, var(--radius));
+}
+/* pinned only where the shell is (>=1100px); a wrapped bar on a phone would cover the report */
+@media (min-width: 1100px) {
+  :is(#screentime, #cast-matrix) > .rp-tools { position: sticky; top: calc(var(--sh-chrome-h, 0px) + var(--tabs-h, 0px)); }
+}
+:is(#screentime, #cast-matrix) .rp-caption {
+  padding: var(--s2) var(--s3);
+  background: var(--paper-sunk);
+  border-bottom: 1px solid var(--rule-hair);
+  text-align: left;
+  font-size: var(--t-tiny);
+  line-height: var(--lh-snug);
+  color: var(--ink-muted);
+}
+:is(#screentime, #cast-matrix) .rp-table td.loc { font-weight: 600; color: var(--ink); min-width: 12rem; }
+:is(#screentime, #cast-matrix) .rp-table td.numeric {
+  width: 1%;
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+:is(#screentime, #cast-matrix) .rp-table th { white-space: nowrap; }
+:is(#screentime, #cast-matrix) .rp-table td.mono {
+  font-family: var(--f-mono);
+  font-size: var(--t-tiny);
+  color: var(--ink-muted);
+}
+:is(#screentime, #cast-matrix) .rp-table tfoot td {
+  background: var(--paper-sunk);
+  border-top: 1px solid var(--rule);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* Both tables can be wider than a phone, so each scrolls INSIDE its
+   own box: the page itself never scrolls sideways at 390px, which is
+   what verify measures. The matrix's dense columns are marked with a
+   wash AND a heavier rule, and listed in words underneath, so density
+   is never carried by colour alone. */
+:is(#screentime, #cast-matrix) .rp-scroll { position: relative; /* the visually-hidden header cells inside are absolute: without this they escape the box and widen the page */ max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+:is(#screentime, #cast-matrix) .rp-stats { margin-block: var(--s4); }
+.rp-matrix th.rp-mx-col { text-align: center; font-family: var(--f-mono); font-size: var(--t-tiny); min-width: 2.2rem; }
+.rp-matrix .rp-mx-cell { text-align: center; color: var(--accent-deep); font-size: var(--t-small); }
+.rp-matrix .is-dense { background: var(--warn-wash); }
+.rp-matrix th.is-dense { box-shadow: inset 0 -3px 0 var(--warn); color: var(--ink); }
+.rp-matrix tfoot .is-dense { font-weight: 700; color: var(--ink); }
+.rp-mx-notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: var(--s5); margin-top: var(--s4); }
+.rp-mx-list { margin: var(--s2) 0 0; padding-left: var(--s5); color: var(--ink-body); display: grid; gap: var(--s1); }
+
+@media (max-width: 719px) {
+  :is(#screentime, #cast-matrix).rp-sec { padding-inline: var(--s4); padding-block: var(--s5) var(--s6); }
+  :is(#screentime, #cast-matrix) .rp-h3 { margin-top: var(--s6); }
+}
+
+@media print {
+  :is(#screentime, #cast-matrix) .rp-noprint { display: none !important; }
+  :is(#screentime, #cast-matrix).rp-sec { max-width: none; padding: 0; border-top: 0; }
+  :is(#screentime, #cast-matrix) .rp-h3 { margin-top: 14pt; break-after: avoid; }
+  :is(#screentime, #cast-matrix) .rp-caption {
+    background: var(--print-wash) !important;
+    color: var(--print-ink) !important;
+    border-bottom: 1px solid var(--print-rule) !important;
+  }
+  :is(#screentime, #cast-matrix) .rp-table tfoot td { background: var(--print-wash) !important; color: var(--print-ink) !important; }
+  /* A scroll box clips on paper: the cast matrix lost every scene past
+     the 14th. Release it, and let the matrix share the page width among
+     its columns (fixed layout, no minimum) instead of overflowing it. */
+  :is(#screentime, #cast-matrix) .rp-scroll { overflow: visible !important; }
+  .rp-matrix { table-layout: fixed; width: 100%; }
+  .rp-matrix th, .rp-matrix td { padding-inline: 0 !important; overflow: hidden; }
+  .rp-matrix th.rp-mx-col { min-width: 0; font-size: 6.5pt; }
+  .rp-matrix .rp-mx-cell { font-size: 6.5pt; }
+  .rp-matrix th.loc { width: 22%; padding-inline-end: var(--s2) !important; }
+  .rp-matrix th:nth-child(2), .rp-matrix td:nth-child(2) { width: 7%; }
+
+  /* One view at a time (printOnly() / the PDF's body class). The PDF
+     masthead is inserted into #main, so it is spared by id. */
+  body.rp-print-screentime #main > *:not(#screentime):not(#pdf-masthead),
+  body.rp-print-castmatrix #main > *:not(#cast-matrix):not(#pdf-masthead) { display: none !important; }
+}

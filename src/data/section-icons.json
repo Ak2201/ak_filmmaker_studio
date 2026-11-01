@@ -92,6 +92,7 @@
     "add",
     "remove",
     "expand_more",
+    "chevron_right",
     "expand_less",
     "unfold_more",
     "unfold_less",
@@ -157,6 +158,14 @@
         "icon": "label",
         "hint": "Suggested tags for you to accept or ignore."
       },
+      "screentime": {
+        "icon": "timer",
+        "hint": "How long each character is on screen."
+      },
+      "cast-matrix": {
+        "icon": "grid_view",
+        "hint": "Who is in which scene."
+      },
       "songs": {
         "icon": "music_note",
         "hint": "Songs and the scenes they sit in."
@@ -185,16 +194,6 @@
         "group": "Daily",
         "icon": "fact_check",
         "hint": "The daily progress report."
-      },
-      "screentime": {
-        "group": "Analysis",
-        "icon": "timer",
-        "hint": "How long each character is on screen."
-      },
-      "cast-matrix": {
-        "group": "Analysis",
-        "icon": "grid_view",
-        "hint": "Who is in which scene."
       },
       "oneliner": {
         "group": "Analysis",

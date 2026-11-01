@@ -1409,13 +1409,14 @@ try {
     ok(await unlocked('screenplay.html'), 'Basic: screenplay.html (Screenplay Writer) opens');
     ok(await unlocked('drafts.html'), 'Basic: drafts.html (Drafts) opens');
     ok(await unlocked('story.html'), 'Basic: story.html (Story) opens');
-    /* Every section of reports.html (Production Reports, Sides, and since
-       19 Oct 2026 Screen Time and Cast Matrix again) is Intermediate: the page
-       locks for Basic, and the two returned sections are on a plan, so they
-       are not hidden as off for everybody. */
+    /* Every section of reports.html (Production Reports, Sides) is
+       Intermediate: the page locks for Basic. Screen Time and Cast Matrix
+       (Intermediate, sold on a plan again since 19 Oct 2026) moved to
+       breakdown.html on 1 Nov 2026: they are locked IN PLACE there for
+       Basic, never hidden as off for everybody. */
     ok(await locked('reports.html'), 'Basic: reports.html is locked — every section on it is Intermediate');
-    ok(!(await T.page.$('#screentime[data-tab-off]')) && !(await T.page.$('#cast-matrix[data-tab-off]')), 'and Screen Time and Cast Matrix are sold on a plan again, not hidden as off for everybody');
     ok(await unlocked('breakdown.html'), 'Basic: breakdown.html opens (Screenplay Analysis, Scene List)');
+    ok(!(await T.page.$('#screentime[data-tab-off]')) && !(await T.page.$('#cast-matrix[data-tab-off]')), 'and Screen Time and Cast Matrix are sold on a plan again, not hidden as off for everybody');
     await T.page.waitForSelector('#elements[data-tab-lock]', { state: 'attached', timeout: 8000 }).then(() => ok(true, 'Basic: the Elements section is locked in place'), () => ok(false, 'Basic: the Elements section is locked in place'));
     ok(!(await T.page.$('#scenes[data-tab-lock]')), 'and the Scene List (with its own tags in each row) is not');
     /* Scene Breakdown (breakdowns, Intermediate) has been its own tab since

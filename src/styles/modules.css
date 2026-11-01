@@ -1131,7 +1131,8 @@ html .k-seg-btn:active {
   transform: scale(calc(1 - (1 - var(--sk-press, 0.985)) * var(--motion)));
 }
 html .mn-mod:active,
-html .sh-fly-mod:active {
+html .sh-fly-mod:active,
+html .sh-fly-grp:active {
   background: var(--surface-hover);
   color: var(--ink);
 }

@@ -37,7 +37,7 @@ html {
      long-press. Never on body or content: writing stays selectable. */
   -webkit-tap-highlight-color: transparent;
 }
-button, .btn, .k-btn, .tabs-tab, .mobile-actionbar a, .mn-mod, .sh-fly-mod {
+button, .btn, .k-btn, .tabs-tab, .mobile-actionbar a, .mn-mod, .sh-fly-mod, .sh-fly-grp {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;

@@ -25,18 +25,35 @@ import { summarize } from '../lib/breakdown-run.js';
    the file without requiring it: missing, it is an empty map and the
    page carries on; present, it loads on demand. */
 const learnFiles = import.meta.glob('./learn.js');
+/* ONCE LOADED, FILLED IN THE SAME TICK. breakdown.js redraws <main> on
+   every edit and keyboard move, so these slots are rebuilt empty each
+   time (`.bdo-learn:empty` is display:none). Filling them after an
+   `await` — even of a module already loaded — let the page paint with
+   the slots collapsed and grow the What-is pills back above the Scene
+   List a task later; since the pills became the kit pill (31 Oct 2026)
+   that is ~128px, and on a loaded machine it landed after render()'s
+   half-second keep-in-place loop had stopped, so a scene moved with
+   the keyboard was thrown down the screen under the reader's focus
+   (prove:cards 9, Gate run 383: top 913 → 641). The first render still
+   waits for the import; every later one fills before it returns. */
+let learnFn = null;
+function fillLearn(root, fn) {
+  for (const slot of root.querySelectorAll('[data-learn]')) {
+    if (slot.childElementCount) continue;
+    const el = fn(slot.dataset.learn);
+    if (el) slot.append(el);
+  }
+}
 export async function mountLearn(root) {
+  if (learnFn) { try { fillLearn(root, learnFn); } catch (e) { /* a nicety */ } return; }
   const load = learnFiles['./learn.js'];
   if (!load) return;
   try {
     const mod = await load();
     const fn = mod.learn || mod.default;
     if (typeof fn !== 'function') return;
-    for (const slot of root.querySelectorAll('[data-learn]')) {
-      if (slot.childElementCount) continue;
-      const el = fn(slot.dataset.learn);
-      if (el) slot.append(el);
-    }
+    learnFn = fn;
+    fillLearn(root, fn);
   } catch (e) { /* the guide is a nicety, never the page */ }
 }
 

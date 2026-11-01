@@ -33,7 +33,9 @@
                              → Promise of a kind-shaped result:
             'text' → { original: string, proposed: string, note?: string }
             'list' → { items: [{ id, text, detail? }] }
-            'read' → { text: string }
+            'read' → { text: string, items?: [{ id, text, detail? }] }
+                     (items: the points a read can keep, ticked like
+                     a list's and handed to apply() the same way)
           `refine` is undefined on the first send, and on a chat
           refinement is { previous, instructions: string[] } where
           `previous` is the current version's result and
@@ -48,10 +50,13 @@
                                'list' it is the array of chosen items;
                                `result` is the SHOWN version's run()
                                result, not the latest run's;
-                               'read' tasks may omit apply. May return
+                               'read' tasks may omit apply (a read with
+                               an apply and items shows Accept). May return
                                an undo function (or a Promise of one),
                                which the Desk offers as an actionable
-                               Undo toast. One Accept is one write.
+                               Undo toast. One Accept is one write. An undo
+                               with a string `said` is the toast's words
+                               instead of '<label>: applied.'
      }
 
    RULES
@@ -100,7 +105,8 @@
      chat         textarea.ai-desk-chat,
                   button[data-action="ai-desk-send"],
                   button.ai-desk-chip
-     footer       [data-action="ai-desk-accept"] (hidden for 'read'),
+     footer       [data-action="ai-desk-accept"] (hidden for a 'read'
+                  with no apply or no items),
                   [data-action="ai-desk-accept-all"],
                   [data-action="ai-desk-skip"]
      no key       a[href="settings.html#ai"] and nothing else
@@ -202,7 +208,7 @@ function makeVersion(task, result) {
   const v = { result: result || {}, hunks: [], items: [], unticked: new Set() };
   if (task.kind === 'text') {
     v.hunks = diffLines(v.result.original ?? '', v.result.proposed ?? '');
-  } else if (task.kind === 'list') {
+  } else if (task.kind === 'list' || (task.kind === 'read' && Array.isArray(v.result.items))) {
     // The item objects are kept UNCHANGED — apply() reads fields of
     // its own on them (row, draft, sceneId, beat …). Ids live beside.
     v.items = [].concat(v.result.items || []).filter(Boolean);
@@ -335,12 +341,20 @@ function answerList(v) {
     ]));
 }
 
+/* A read keeps its prose; when it also returns items (the points it
+   can keep as notes), they follow as the same tick list a 'list' has. */
 function answerRead(v) {
-  return [h('div.ai-desk-read', {}, [
+  const read = h('div.ai-desk-read', {}, [
     aiMark(),
     h('div.ai-desk-readtext', { text: String(v.result.text ?? '') })
-  ])];
+  ]);
+  if (!v.items.length) return [read];
+  return [read, h('h3.ai-desk-label', { text: 'Keep as notes' }), ...answerList(v)];
 }
+
+/* Does this version have anything Accept can write? A 'read' only when
+   its task has an apply and the run gave it points to keep. */
+const canAccept = (t, v) => t.kind !== 'read' || (typeof t.apply === 'function' && !!v && v.items.length > 0);
 
 function statusLines() {
   return h('div.ai-desk-lines', {}, [
@@ -435,7 +449,7 @@ function render() {
     ]));
   }
 
-  const read = task.kind === 'read';
+  const read = !canAccept(task, v);
   foot.replaceChildren(h('footer.ai-desk-foot', {}, [
     read ? null : h('button.btn.primary.ai-desk-accept', {
       type: 'button', 'data-action': 'ai-desk-accept', disabled: !v || busy ? true : null, text: 'Accept selected'
@@ -513,7 +527,7 @@ async function accept(all) {
     const ids = v.hunks.map((hk) => hk.id).filter((id) => all || !v.unticked.has(id));
     if (!ids.length && v.hunks.length) { setStatus('Nothing is ticked, so there is nothing to accept.'); return; }
     selected = mergeHunks(v.result.original ?? '', v.hunks, ids);
-  } else if (task.kind === 'list') {
+  } else if (task.kind === 'list' || canAccept(task, v)) {
     selected = v.items.filter((it, i) => all || !v.unticked.has(v.itemIds[i]));
     if (!selected.length) { setStatus('Nothing is ticked, so there is nothing to accept.'); return; }
   } else {
@@ -533,10 +547,13 @@ async function accept(all) {
   closeDesk();
   if (typeof undo === 'function') {
     // An actionable toast never times out (chrome.js); Undo is reachable.
-    // A task may say what the Accept did (ai-tasks.js withNote): what it
-    // left out matters as much as what it wrote.
+    // A task may say what the Accept did: `said` replaces the whole line (a
+    // read task's notes, ai-tasks.js keepNotes), `note` is appended to it
+    // (ai-tasks.js withNote: what it left out matters as much as what it
+    // wrote). Both survive, so a tool can use either.
+    const head = typeof undo.said === 'string' && undo.said ? undo.said : label + ': applied.';
     const said = typeof undo.note === 'string' && undo.note ? ' ' + undo.note : '';
-    StudioUI.toast(label + ': applied.' + said, {
+    StudioUI.toast(head + said, {
       action: 'Undo',
       onAction: () => {
         Promise.resolve().then(undo)

@@ -8,8 +8,10 @@
      shot-draft      drafted shots land in shots.js with rig and setup
                      filled, flagged ai; the CSV header does not move;
                      Undo removes exactly those shots
-     scene-notes     a note is APPENDED to a typed readerNote (marked
-                     AI), never written over it; cutCandidate is only
+     scene-notes     a note is APPENDED to a typed readerNote as a line
+                     marked "AI (Scene notes):" (scenes.js
+                     appendSceneNotes, shared with the read-only
+                     tools), never written over it; cutCandidate is only
                      raised when unset; a position-only pair is used
                      when the writer's scene number agrees and left out
                      (and counted) when it does not; Undo restores the
@@ -156,9 +158,9 @@ installFakeFetch(async (req) => {
   const raw0 = mem.get('fms_scenes_v1');
   const undo = tasks['scene-notes'].apply(res.items, ctx, res);
   const by = Object.fromEntries(Scenes.listScenes().map((s) => [s.id, s]));
-  eq(by.r1.readerNote, 'Typed by me. · AI: Establishes want.', 'scene-notes: appended to the typed note, marked AI');
+  eq(by.r1.readerNote, 'Typed by me.\nAI (Scene notes): Establishes want.', 'scene-notes: appended to the typed note, marked AI');
   eq(by.r1.cutCandidate, true, 'scene-notes: a flag already set is not cleared by a "keep" note');
-  eq(by.r2.readerNote, 'The leaving.', 'scene-notes: a position pair whose scene number agrees takes its note');
+  eq(by.r2.readerNote, 'AI (Scene notes): The leaving.', 'scene-notes: a position pair whose scene number agrees takes its note');
   eq(by.r2.cutCandidate, true, 'scene-notes: an unset flag is raised');
   eq(by.r2.zzz, 'a later build’s field', 'scene-notes: an unknown row field survives the write');
   eq([by.r3.readerNote, by.r3.cutCandidate], ['', false], 'scene-notes: a position pair whose number disagrees is left alone');
@@ -167,11 +169,22 @@ installFakeFetch(async (req) => {
   undo();
   eq(JSON.parse(mem.get('fms_scenes_v1')).scenes.map((s) => [s.id, s.readerNote, s.cutCandidate]),
     JSON.parse(raw0).scenes.map((s) => [s.id, s.readerNote, s.cutCandidate]), 'scene-notes: Undo restores the exact previous values');
+  // Undo takes out only what it added: a person's edit after Accept stays.
+  {
+    const u2 = tasks['scene-notes'].apply([res.items[0]], ctx, res);
+    const rows = JSON.parse(mem.get('fms_scenes_v1'));
+    rows.scenes.find((s) => s.id === 'r1').readerNote += '\nMy later thought.';
+    mem.set('fms_scenes_v1', JSON.stringify(rows));
+    u2();
+    eq(Scenes.listScenes().find((s) => s.id === 'r1').readerNote, 'Typed by me.\nMy later thought.', 'scene-notes: Undo keeps an edit made after Accept');
+    rows.scenes.find((s) => s.id === 'r1').readerNote = 'Typed by me.';
+    mem.set('fms_scenes_v1', JSON.stringify(rows));
+  }
   // A second Accept of the same note adds nothing twice.
   tasks['scene-notes'].apply([res.items[0]], ctx, res);
   const e = await throws(() => tasks['scene-notes'].apply([res.items[0]], ctx, res));
   ok(e && /already on their scenes/.test(e.message), 'scene-notes: the same note twice is refused, not doubled');
-  eq(Scenes.listScenes().find((s) => s.id === 'r1').readerNote, 'Typed by me. · AI: Establishes want.', 'scene-notes: …and the note is unchanged');
+  eq(Scenes.listScenes().find((s) => s.id === 'r1').readerNote, 'Typed by me.\nAI (Scene notes): Establishes want.', 'scene-notes: …and the note is unchanged');
   const only = await throws(() => tasks['scene-notes'].apply([res.items[2]], ctx, res));
   ok(only && /position only/.test(only.message), 'scene-notes: only an unmatched scene ticked fails, saying why');
 }

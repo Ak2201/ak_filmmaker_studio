@@ -63,8 +63,15 @@
      blocking-enhance shots.js replaceBlock (the ticked ops applied to the
                       setup, blocking-ai-model.js applyBlockOps); undo =
                       replaceBlock of the snapshot taken before Accept
-   beat-critique, tension-notes, audience-quick (the story test) and
-   audience-ask (a question to one viewer) are reads: they write nothing.
+     beat-critique, tension-notes, audience-quick (the story test) and
+     audience-ask (a question to one viewer) are READS that keep notes:
+                      the prose is shown as it always was, and each point
+                      is a tickable item. Nothing is written until Accept;
+                      then a point that names a scene is APPENDED to that
+                      row's readerNote (scenes.js appendSceneNotes), every
+                      other point is a sticky note in the Idea Vault
+                      (story.js addNotesToVault). Undo removes exactly
+                      what was added (keepNotes below).
 
    NO STORAGE KEY. The only memory here is the last run per task (what
    apply() needs beside the ticked items), in a Map for this visit.
@@ -92,6 +99,7 @@ let AudM = null;          // ./audience-model.js (pure)
 let AudS = null;          // ./audience-store.js
 let BlockAI = null;       // ./blocking-ai-model.js (pure)
 let CharM = null;         // ./characters.js
+let NotesM = null;        // ./notes-model.js (pure)
 let readyP = null;
 
 function loadAll() {
@@ -103,10 +111,10 @@ function loadAll() {
       import('./breakdown-extras.js'), import('./board-frames.js'), import('./drive.js'),
       import('./drive-board.js'), import('./script-analysis-model.js'),
       import('./audience-model.js'), import('./audience-store.js'),
-      import('./blocking-ai-model.js'), import('./characters.js')
-    ]).then(([a, b, st, sc, sp, sh, an, g, cv, bx, bf, dr, di, sa, am, aus, bai, ch]) => {
+      import('./blocking-ai-model.js'), import('./characters.js'), import('./notes-model.js')
+    ]).then(([a, b, st, sc, sp, sh, an, g, cv, bx, bf, dr, di, sa, am, aus, bai, ch, nm]) => {
       AI = a; BP = b; StoryM = st; ScenesM = sc; ScriptM = sp; ShotsM = sh; Analysis = an; Gen = g; Cov = cv; Extras = bx;
-      BoardM = bf; DriveM = dr; DriveImg = di; SA = sa; AudM = am; AudS = aus; BlockAI = bai; CharM = ch;
+      BoardM = bf; DriveM = dr; DriveImg = di; SA = sa; AudM = am; AudS = aus; BlockAI = bai; CharM = ch; NotesM = nm;
       return true;
     }).catch((e) => { readyP = null; throw e; });
   }
@@ -153,9 +161,11 @@ function refineText(refine) {
   /* The model's own previous answer, trimmed to the part that matters,
      so a long list does not crowd the prompt it rides in. */
   let previous = prev;
-  if (prev && Array.isArray(prev.items)) previous = prev.items.map((it) => it.text);
+  /* A read that also lists points to keep refines on its prose, as it
+     always did — the items are a view of the same answer. */
+  if (prev && typeof prev.text === 'string') previous = prev.text;
+  else if (prev && Array.isArray(prev.items)) previous = prev.items.map((it) => it.text);
   else if (prev && typeof prev.proposed === 'string') previous = prev.proposed;
-  else if (prev && typeof prev.text === 'string') previous = prev.text;
   const block = AI && typeof AI.refineBlock === 'function'
     ? AI.refineBlock({ previous, instructions: refine.instructions })
     : '\n\nPrevious answer: ' + JSON.stringify(previous) + '\nChanges asked for:\n'
@@ -462,13 +472,113 @@ const dialogueTask = {
 };
 
 /* ============================================================
+   KEEPING A READ AS NOTES — the apply() of the four read tasks
+   ------------------------------------------------------------
+   A read used to end in "Nothing was changed", and the writer retyped
+   the points they wanted into the scene list or a sticky note. Now each
+   point is an item { id, text, keep, where?, scene? } beside the prose:
+     keep   the words a note holds (the point, its quote, its "try this")
+     where  the place it names, e.g. 'Sc 4' — printed in front of a
+            sticky note, left off a scene's own note (it IS that scene)
+     scene  { sceneId?, i?, n?, heading? } when the point names a scene
+   A point whose scene resolves to a row on the scene list is APPENDED
+   to that row's readerNote; anything else (no scene, a beat, a scene
+   that is not on the list) becomes a sticky note in the Idea Vault.
+   Both lines start "AI (<tool>):" so nobody mistakes them for their
+   own words. One write per store, and the undo takes out only what
+   this Accept added.
+
+   A SCENE IS RESOLVED BY CONTENT, NEVER BY POSITION ALONE: a row id
+   when the point carries one, else the script slice matched by the
+   same confident join scene-notes uses (matchScenes + isConfident —
+   it compares the heading's parts), else the one row carrying that
+   scene number (two rows with it is a guess, so neither). A guess would put a
+   note on the wrong scene, where nobody would think to look for it;
+   a sticky note that says "Sc 4" is at worst one move away.
+   ============================================================ */
+function sceneRowFor(ref, c, memo) {
+  if (!ref) return null;
+  if (!memo.rows) memo.rows = ScenesM.listScenes();
+  const rows = memo.rows;
+  if (ref.sceneId) {
+    const r = rows.find((s) => s.id === ref.sceneId);
+    if (r) return r;
+  }
+  if (!memo.els) memo.els = scriptElements(c);
+  let i = Number.isInteger(ref.i) ? ref.i : -1;
+  if (i < 0 && ref.n != null) {
+    if (!memo.slices) { try { memo.slices = AI.coverageScenes(memo.els); } catch (e) { memo.slices = []; } }
+    const hits = memo.slices.map((s, k) => (s.n === String(ref.n) ? k : -1)).filter((k) => k >= 0);
+    if (hits.length === 1) i = hits[0];
+  }
+  if (i >= 0) {
+    // rowFor takes the whole match ({pairs, slices}) since scene-notes
+    // learnt the writer's-scene-number fallback; passing the bare pairs
+    // array would read match.pairs as undefined and resolve nothing.
+    if (!memo.match) { try { memo.match = Analysis.matchScenes(rows, memo.els); } catch (e) { memo.match = { pairs: [], slices: [] }; } }
+    const r = rowFor(memo.match, i);
+    if (r) return rows.find((s) => s.id === r.id) || null;
+  }
+  if (ref.n != null && String(ref.n).trim()) {
+    const ns = rows.filter((s) => String(s.number).trim().toUpperCase() === String(ref.n).trim().toUpperCase());
+    if (ns.length === 1) return ns[0];
+  }
+  return null;
+}
+
+function keepNotes(selected, ctx, label) {
+  const c = resolve(ctx);
+  const from = 'AI (' + label + ')';
+  const memo = {};
+  const onScene = [];
+  const sticky = [];
+  const where = [];
+  for (const it of selected || []) {
+    const t = String((it && (it.keep || it.text)) ?? '').trim();
+    if (!t) continue;
+    const row = it.scene ? sceneRowFor(it.scene, c, memo) : null;
+    if (row) { onScene.push({ id: row.id, text: t }); where.push('Sc ' + (row.number || '?')); }
+    else sticky.push(it.where ? it.where + ' — ' + t : t);
+  }
+  if (!onScene.length && !sticky.length) fail('Nothing is ticked, so there is nothing to keep.');
+  const changes = onScene.length ? ScenesM.appendSceneNotes(onScene, { from }) : [];
+  if (changes === null) fail('The scene list could not be saved (storage may be full), so nothing was kept.');
+  const notes = sticky.map((t) => {
+    const n = NotesM.makeNote(from + ': ' + t);
+    if (n) n.from = 'ai';   // a field, not a key: notes pass unknown fields through
+    return n;
+  }).filter(Boolean);
+  const added = notes.length ? StoryM.addNotesToVault(notes) : [];
+  if (added === null) {
+    ScenesM.undoSceneNotes(changes);
+    fail('The notes board could not be saved (storage may be full), so nothing was kept.');
+  }
+  const ids = added.map((n) => n.id);
+  call(c.after);
+  const undo = () => {
+    ScenesM.undoSceneNotes(changes);
+    if (ids.length) StoryM.removeManyFromVault(ids);
+    call(c.after);
+  };
+  /* What the toast says instead of "applied": a read said "Nothing was
+     saved", so after Accept it says exactly what was. */
+  const scenesSaid = onScene.length
+    ? plural(onScene.length, 'note', 'notes') + ' on the scene list (' + [...new Set(where)].join(', ') + ')' : '';
+  const stickySaid = ids.length ? plural(ids.length, 'sticky note', 'sticky notes') + ' on the notes board' : '';
+  undo.said = label + ': saved ' + [scenesSaid, stickySaid].filter(Boolean).join(' and ') + '.';
+  return undo;
+}
+
+/* ============================================================
    BEAT CRITIQUE — read. Two shapes of ctx:
      { stepId, flush? }                a blueprint step (feature.html)
      { getDoc | elements, cursorId }   the scene at the caret (script.html)
    ------------------------------------------------------------
    beatCritique() quotes only from the `answers` it is handed and
    checks every quote, so for a scene the scene's own text is the one
-   answer. Writes nothing.
+   answer. Writes nothing until Accept: then each ticked note goes to
+   the scene's reader note (script.html) or, for a blueprint step, to a
+   sticky note headed with the step (keepNotes above).
    ============================================================ */
 function critiqueJob(c) {
   if (c.stepId) {
@@ -483,11 +593,27 @@ function critiqueJob(c) {
   const k = i >= 0 ? sceneIndexAt(els, i) : -1;
   const sc = scenes[k >= 0 ? k : 0];
   if (!sc || !sc.text.trim()) fail('There is no scene to critique yet. Write a scene heading and a few lines.');
-  return {
+  const job = {
     step: { num: 'Sc ' + sc.n, title: sc.heading, deck: 'One scene of the screenplay. Critique the scene as written.' },
     answers: [{ label: 'the scene', value: sc.text }],
     context: BP.blueprintContext()
   };
+  /* Which scene the notes belong to, for Accept — non-enumerable, so it
+     never reaches the prompt builder's spread. */
+  Object.defineProperty(job, 'scene', { value: { i: k >= 0 ? k : 0, n: sc.n, heading: sc.heading } });
+  return job;
+}
+
+/** The critique's notes as Desk items (keepNotes). */
+function critiqueItems(res, job) {
+  const sc = job.scene || null;
+  const st = job.step || {};
+  const where = sc ? 'Sc ' + sc.n : [st.num, st.title].filter(Boolean).join(' ');
+  return (res.notes || []).map((n, i) => {
+    const keep = [n.problem, n.quote ? '“' + n.quote + '”' : '', n.tryThis ? 'Try: ' + n.tryThis : ''].filter(Boolean).join(' ');
+    return { id: 'n' + i, text: n.problem, detail: [n.quote ? '“' + n.quote + '”' : '', n.tryThis ? 'Try: ' + n.tryThis : ''].filter(Boolean).join(' · '),
+      keep, where, scene: sc };
+  });
 }
 
 function critiqueText(res) {
@@ -503,7 +629,7 @@ function critiqueText(res) {
     L.push(plural(res.unverified, 'note', 'notes') + ' came back with a quotation that is not word for word '
       + 'what you wrote, so the quotation was dropped rather than shown.');
   }
-  L.push('These are notes, not edits. Nothing was changed.');
+  L.push('These are notes, not edits. Nothing was changed. Tick the ones to keep and press Accept to save them as notes.');
   return L.join('\n').trim();
 }
 
@@ -528,8 +654,9 @@ const critiqueTask = {
     await ready();
     const job = critiqueJob(resolve(ctx));
     const res = await AI.beatCritique({ ...job, context: withRefineContext(job.context, refine) }, { onStatus, signal });
-    return { text: critiqueText(res) };
-  }
+    return { text: critiqueText(res), items: critiqueItems(res, job) };
+  },
+  apply(selected, ctx) { return keepNotes(selected, ctx, 'Beat critique'); }
 };
 
 /* ============================================================
@@ -1381,12 +1508,15 @@ const genreTask = {
    scene, plus a cut-candidate flag that needs the quote to stand. The
    items are the notes; Accept writes on the scene rows the ticked
    notes belong to:
-     readerNote    APPENDED to what the row already says, marked "AI:",
-                   never written over it (a note already there word for
-                   word is not added twice)
+     readerNote    APPENDED to what the row already says as a new line
+                   marked "AI (Scene notes):" (scenes.js appendSceneNotes,
+                   the same path the read-only tools use), never written
+                   over it; a note already there word for word is not
+                   added twice
      cutCandidate  set only when the row's flag is still unset — the
                    model can raise it, never clear or re-raise it
-   Undo puts back exactly the values each written row had before.
+   Undo takes out only what this Accept added (undoSceneNotes), so an
+   edit made after Accept survives it.
    A row is found by the same content match the breakdown uses. A pair
    made only by POSITION is a guess and is left out, unless the
    script's own scene number (the writer's, never a position) agrees
@@ -1411,16 +1541,6 @@ function rowFor(match, sliceIndex) {
   const free = pairs.filter((x) => !x.slice && normNo(x.scene.number) === no);
   return free.length === 1 ? free[0].scene : null;
 }
-/** PURE. The note a row ends up with: the AI's appended, never over. */
-function appendNote(have, note) {
-  const was = String(have || '').trim();
-  const add = String(note || '').trim();
-  if (!add) return was;
-  if (!was) return add;
-  if (was.includes(add)) return was;
-  return was + ' · AI: ' + add;
-}
-
 const sceneNotesTask = {
   id: 'scene-notes',
   label: 'Scene notes',
@@ -1461,33 +1581,30 @@ const sceneNotesTask = {
     const c = resolve(ctx);
     const els = scriptElements(c);
     const match = Analysis.matchScenes(ScenesM.listScenes(), els);
-    const before = new Map();
-    const patch = new Map();
-    let skipped = 0, same = 0;
+    // ONE append path for every AI note on a scene row: scenes.js
+    // appendSceneNotes, shared with the read-only tools (keepNotes). It
+    // appends a marked line, skips a note already there word for word,
+    // fills cutCandidate only while it is unset, and its undo takes out
+    // only what this Accept added — an edit made after Accept survives.
+    const list = [];
+    let skipped = 0;
     for (const it of selected || []) {
       const row = rowFor(match, it.i);
       if (!row) { skipped++; continue; }
-      // Two ticked notes on one row build on each other, not on the stored value twice.
-      const cur = patch.has(row.id) ? { ...row, ...patch.get(row.id) } : row;
-      const next = {};
-      const note = appendNote(cur.readerNote, it.note);
-      if (note !== String(cur.readerNote || '').trim()) next.readerNote = note;
-      if (it.cut && !cur.cutCandidate) next.cutCandidate = true;
-      if (!Object.keys(next).length) { same++; continue; }
-      if (!before.has(row.id)) before.set(row.id, { readerNote: row.readerNote, cutCandidate: row.cutCandidate });
-      patch.set(row.id, { ...(patch.get(row.id) || {}), ...next });
+      list.push({ id: row.id, text: it.note, fill: it.cut ? { cutCandidate: true } : null });
     }
-    if (!patch.size) {
+    const changes = list.length ? ScenesM.appendSceneNotes(list, { from: 'AI (Scene notes)' }) : [];
+    if (changes === null) fail('The scene list could not be saved (storage may be full), so nothing was written.');
+    const same = changes.same || 0;
+    if (!changes.length) {
       fail(same && !skipped ? 'Those notes are already on their scenes, so nothing was written.'
         : 'None of those scenes is matched to a scene on the breakdown by content or scene number, so nothing was written.'
           + (skipped ? ' (' + plural(skipped, 'note', 'notes') + ' matched by position only.)' : ''));
     }
-    const write = (m) => ScenesM.saveScenes(ScenesM.listScenes().map((s) => (m.has(s.id) ? { ...s, ...m.get(s.id) } : s)));
-    write(patch);
     call(c.after);
-    const undo = () => { write(before); call(c.after); };
+    const undo = () => { ScenesM.undoSceneNotes(changes); call(c.after); };
     return withNote(undo, [
-      'Notes on ' + plural(patch.size, 'scene', 'scenes') + '.',
+      'Notes on ' + plural(changes.length, 'scene', 'scenes') + '.',
       skipped ? plural(skipped, 'note', 'notes') + ' left out: the scene is matched by position only.' : '',
       same ? plural(same, 'note', 'notes') + ' already there.' : ''
     ]);
@@ -1709,7 +1826,9 @@ const boardTask = {
    per character where they enter and leave), not the pages, and asked
    for notes on where tension builds, sags and releases and on the main
    arcs. A note that names a scene not in the script is dropped and
-   counted. Writes nothing.
+   counted. Writes nothing until Accept: each ticked note names one
+   scene, so it goes to that scene's reader note (the analysis row
+   carries the linked row id), else a sticky note (keepNotes above).
    ============================================================ */
 function tensionRead(c) {
   const els = scriptElements(c);
@@ -1752,8 +1871,17 @@ const tensionTask = {
     });
     const res = SA.readTensionNotes(parsed, a);
     if (!res.notes.length && !res.summary) fail('The reply held no usable notes, so nothing is shown.');
-    return { text: SA.tensionNotesText(res) + (model ? '\n\nRead by ' + model + '.' : '') };
-  }
+    const label = { tension: 'Tension', arc: 'Arc', structure: 'Structure' };
+    const items = res.notes.map((n, k) => {
+      const r = a.scenes.find((x) => String(x.number) === n.scene) || {};
+      const kind = label[n.kind] + (n.character ? ' · ' + n.character : '');
+      return { id: 't' + k, text: 'Sc ' + n.scene + ' · ' + kind + ' — ' + n.note, keep: kind + ' — ' + n.note,
+        where: 'Sc ' + n.scene, scene: { sceneId: r.sceneId || '', i: Number.isInteger(r.i) ? r.i : undefined, n: n.scene, heading: r.heading || '' } };
+    });
+    return { text: SA.tensionNotesText(res) + (model ? '\n\nRead by ' + model + '.' : '')
+      + (items.length ? '\n\nTick the notes to keep and press Accept: each goes to its scene’s reader note.' : ''), items };
+  },
+  apply(selected, ctx) { return keepNotes(selected, ctx, 'Tension notes'); }
 };
 
 /* ============================================================
@@ -1905,10 +2033,13 @@ const audienceTask = {
    script blob to keep a document in, and the story record has no
    field for it — keeping one would need a new field in fms_story_v1
    (a contract with saved work) for something the writer can re-run
-   for one request. So it writes nothing: the answer is resultText()
+   for one request. So the RUN is not kept: the answer is resultText()
    prose and the note, and the last run is remembered for this visit
    only, which is what 'audience-ask' reads when there is no kept
-   screenplay run.
+   screenplay run. What CAN be kept is the points: the same rows the
+   full test lists (resultItems), ticked, become sticky notes on Accept
+   (keepNotes — a beat or passage is not a scene, so none goes to the
+   scene list). Until then the read still says "Nothing was saved".
 
    THE BEATS are the framework's beats in order, numbered by their
    place in it: each one's written steps (an unplaced step joins the
@@ -1953,7 +2084,7 @@ function quickText(res) {
   const text = AudM.resultText(res);
   const extra = AudM.resultNote(res).split('\n').filter((l) => l && !text.includes(l));
   return text + (extra.length ? '\n\n' + extra.join('\n') : '')
-    + '\n\nNothing was saved. Run it again after you change the story.';
+    + '\n\nNothing was saved. Run it again after you change the story, or tick the points to keep and press Accept to save them as sticky notes.';
 }
 
 const audienceQuickTask = {
@@ -1993,8 +2124,10 @@ const audienceQuickTask = {
       context: withRefineContext(BP.blueprintContext(), refine),
       refine: [refineText(refine), extra].filter(Boolean).join('\n\n')
     }, { onStatus, signal });
-    return remember('audience-quick', { text: quickText(res) }, { res });
-  }
+    const items = AudM.resultItems(res).map((it) => ({ ...it, keep: it.text + (it.detail ? ' (' + it.detail + ')' : '') }));
+    return remember('audience-quick', { text: quickText(res), items }, { res });
+  },
+  apply(selected, ctx) { return keepNotes(selected, ctx, 'Audience test — story'); }
 };
 
 /* ============================================================
@@ -2004,7 +2137,10 @@ const audienceQuickTask = {
    Plan §10 item 4. One question to one simulated viewer of a run
    already made, in ONE request (AI.askAudienceViewer) that carries
    that viewer's record — their curve, moments, walkout and verdict —
-   and not the pages. Writes nothing.
+   and not the pages. Writes nothing until Accept: the answer is one
+   item (a sticky note) and each scene it rests on is one more (that
+   scene's reader note, when the run was of the screenplay; a beat or a
+   passage of the story run is a sticky note) — keepNotes above.
 
    WHICH RUN: ctx.result when the caller hands one over, else the
    newest of the kept screenplay run (audience-store latest(), from
@@ -2092,8 +2228,18 @@ const audienceAskTask = {
     const out = await AI.askAudienceViewer({
       result: res, viewer: p ? p.id : '', question, title, refine: refineText(refine), headings: res.headings
     }, { onStatus, signal });
-    return { text: AudM.askText(out, { res, viewer: out.viewer, question, model: out.model }) };
-  }
+    const who = (res.panel.find((x) => x.id === out.viewer) || { label: out.viewer }).label;
+    const tag = res.unit === 'Beat' || res.unit === 'Passage' ? res.unit : 'Sc';
+    const items = [{ id: 'answer', text: who + ': “' + out.answer + '”', detail: 'You asked: ' + question,
+      keep: who + ' (asked “' + question.slice(0, 200) + '”): “' + out.answer + '”' }]
+      .concat(out.cites.map((ct, k) => ({
+        id: 'cite' + k, text: tag + ' ' + ct.scene + (ct.note ? ' — ' + ct.note : ''), detail: who + ', answering: ' + question.slice(0, 200),
+        keep: who + ': ' + (ct.note || out.answer), where: tag + ' ' + ct.scene,
+        scene: tag === 'Sc' ? { n: ct.scene, heading: ((Array.isArray(res.headings) ? res.headings : []).find((x) => String(x.n) === ct.scene) || {}).heading || '' } : null
+      })));
+    return { text: AudM.askText(out, { res, viewer: out.viewer, question, model: out.model }), items };
+  },
+  apply(selected, ctx) { return keepNotes(selected, ctx, 'Ask a viewer'); }
 };
 
 /* ============================================================

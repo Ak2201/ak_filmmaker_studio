@@ -133,7 +133,25 @@
     "zoom_out",
     "fit_screen",
     "unfold_more",
-    "unfold_less"
+    "unfold_less",
+    "near_me",
+    "route",
+    "straighten",
+    "chair",
+    "table_restaurant",
+    "door_front",
+    "window",
+    "weekend",
+    "bed",
+    "countertops",
+    "directions_car",
+    "stairs",
+    "inventory_2",
+    "horizontal_rule",
+    "undo",
+    "redo",
+    "grid_4x4",
+    "dashboard_customize"
   ],
   "pages": {
     "breakdown": {

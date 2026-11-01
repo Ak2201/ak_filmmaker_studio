@@ -77,7 +77,14 @@ let getMeta = () => null;
 let tracker = null;
 
 let on = false;
-let prefs = { marker: 'frame', dim: true, night: true };
+/* NIGHT IS OFF UNLESS CHOSEN (owner, 1 Nov 2026: "there is a black board
+   when focus mode has been enabled"). It defaulted on when Night meant
+   the dark THEME; since the studio went dark-only it paints the paper
+   page dark, so every first focus session opened on a black board. The
+   choice is stored as `focusPageNight`: the old `focusNight` was written
+   under the theme meaning (and by ANY change to marker or dim, with the
+   default riding along), so it is left in the blob and not read. */
+let prefs = { marker: 'frame', dim: true, night: false };
 let themeBefore = undefined;      // the data-theme we replaced, or null
 let themeSet = false;
 let fullscreenOurs = false;
@@ -92,11 +99,11 @@ function loadPrefs() {
   const o = readPrefsBlob();
   if (MARKERS.some((m) => m.id === o.focusMarker)) prefs.marker = o.focusMarker;
   if (typeof o.focusDim === 'boolean') prefs.dim = o.focusDim;
-  if (typeof o.focusNight === 'boolean') prefs.night = o.focusNight;
+  if (typeof o.focusPageNight === 'boolean') prefs.night = o.focusPageNight;
 }
 function savePrefs() {
   // READ, MERGE, WRITE — the format guide's fields ride along untouched.
-  writeWritePrefs({ focusMarker: prefs.marker, focusDim: prefs.dim, focusNight: prefs.night });
+  writeWritePrefs({ focusMarker: prefs.marker, focusDim: prefs.dim, focusPageNight: prefs.night });
 }
 
 /* ---- the entry button --------------------------------------- */
@@ -521,6 +528,32 @@ export function enterFocus({ fullscreen = false } = {}) {
     const cta = document.querySelector('#screenplay .bd-empty button');
     if (cta) cta.focus({ preventScroll: true });
   }
+  closeSidePanels();
+}
+
+/* Below 1100px the notes dock and the AI Desk are CLOSED on the way in,
+   not just hidden by focus-mode.css: there each is a modal sheet holding
+   a focus trap (holdFocus), and a trap around an element with no boxes
+   swallows every Tab until focus mode is left. Closing runs their own
+   releaseFocus. At 1100px and up they sit beside the page with no trap,
+   so hiding is enough and leaving focus finds them where they were.
+   Both modules are lazy, so they are imported only when their class
+   says they are open; each close hands focus back to its opener, so the
+   field that had it gets it back afterwards. */
+function closeSidePanels() {
+  if (window.matchMedia('(min-width: 1100px)').matches) return;
+  const waits = [];
+  if (root.classList.contains('nt-dock-open')) {
+    waits.push(import('./notes-dock.js').then((m) => m.closeNotes && m.closeNotes()));
+  }
+  if (root.classList.contains('ai-desk-open')) {
+    waits.push(import('./ai-desk.js').then((m) => m.closeDesk && m.closeDesk()));
+  }
+  if (!waits.length) return;
+  const back = document.activeElement;
+  Promise.all(waits).catch(() => {}).then(() => {
+    if (on && back && back.isConnected && back !== document.activeElement) back.focus({ preventScroll: true });
+  });
 }
 
 export function exitFocus() {

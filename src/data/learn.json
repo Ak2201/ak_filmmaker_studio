@@ -1,5 +1,5 @@
 {
-  "_about": "Learn-in-place topics (src/ui/learn.js). POINTERS, not copies: `glossary` is a term in glossary.json (the definition, the Tanglish line and a worked example in each of the four films live there), `steps` are blueprint steps as `<ns>/<step id>` (their approved videos and their 'why this matters' text are read from the step JSON at open time), `videos` are extra videos.json join keys. `term` is the display word in the summary; `question` overrides the generated 'What is a <term>?'. `text` is a topic's own plain-language words, shown first, for a term the glossary does not hold (sides, one-liner, who can see a budget). `pill` overrides the label on the trigger; `exempt` marks a label that is not a 'What is...?' question. When a topic has both, `pill` is the short label on the trigger and `question` stays the explainer's title.",
+  "_about": "Learn-in-place topics (src/ui/learn.js). POINTERS, not copies: `glossary` is a term in glossary.json (the definition, the Tanglish line and a worked example in each of the four films live there), `steps` are blueprint steps as `<ns>/<step id>` (their approved videos and their 'why this matters' text are read from the step JSON at open time), `videos` are extra videos.json join keys. `term` is the display word in the summary; `question` overrides the generated 'What is a <term>?'. `text` is a topic's own plain-language words, shown first, for a term the glossary does not hold (sides, one-liner, who can see a budget). `pill` overrides the label on the trigger; `exempt` marks a label that is not a 'What is...?' question. When a topic has both, `pill` is the short label on the trigger and `question` stays the explainer's title. `here` (optional) is a line or two on how the page hosting the box does it, shown under 'Here' when the box opens.",
   "topics": [
     {
       "id": "idea",
@@ -481,7 +481,8 @@
         "feature/step-16"
       ],
       "videos": [],
-      "question": "What is a blocking diagram?"
+      "question": "What is a blocking diagram?",
+      "here": "Each setup is a floor plan. Furnish it from Set pieces or start from a Template, place actors (pick the character they play) and cameras, then use Move to drag out each walk and click the floor for the next beat: A1, A2, A3. Draw the 180° line and the map warns when a camera crosses it; a camera's field of view follows the lens of the shots linked to it. Snap (G), Undo (Ctrl+Z), Duplicate (Ctrl+D), and save a setup as a PNG or a PDF."
     },
     {
       "id": "atl-btl",

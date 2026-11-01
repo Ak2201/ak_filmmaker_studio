@@ -219,7 +219,17 @@ const probe = (secIds) => {
   const tabId = (e) => e.dataset.tab || (e.getAttribute('aria-controls') || '').replace(/^dv-panel-/, '') || (e.getAttribute('href') || '').replace(/^.*#/, '');
   const tabIds = new Set(tabEls.map(tabId));
   const stem = file.replace(/\.html$/, '');
-  const onPage = [...document.querySelectorAll('#studioRail .sh-fly-mod[href]')].filter((a) => !a.hidden && !a.closest('[data-pg-gone]'))
+  /* LEVEL 2 (1 Nov 2026): a grouped flyout (Pre-Production) keeps its
+     rows in one panel per group, closed until the group is opened.
+     Open every panel of a shown group, as a reader would one by one,
+     and note any group row whose panel is not where aria-controls says. */
+  const groupBad = [];
+  document.querySelectorAll('#studioRail .sh-fly-grp').forEach((g) => {
+    const p = document.getElementById(g.getAttribute('aria-controls'));
+    if (!p || p !== g.nextElementSibling || !p.querySelector('.sh-fly-mod')) groupBad.push(g.dataset.flyGroup);
+    else if (!g.hidden) { p.hidden = false; g.setAttribute('aria-expanded', 'true'); }
+  });
+  const onPage = [...document.querySelectorAll('#studioRail .sh-fly-mod[href]')].filter((a) => !a.hidden && !a.closest('[data-pg-gone]') && !a.closest('.sh-fly-l2[hidden]'))
     .filter((a) => { const [f] = (a.getAttribute('href') || '').split('#'); return f.toLowerCase().replace(/^\.?\//, '') === file; });
   const railRows = onPage.map((a) => ({ id: (a.getAttribute('href').split('#')[1] || stem), label: word(a) }))
     .filter((r) => tabIds.has(r.id));
@@ -239,6 +249,7 @@ const probe = (secIds) => {
   return {
     file,
     lists,
+    groupBad,
     phase: de.getAttribute('data-phase'),
     rail: [...document.querySelectorAll('.sh-rail-stage.is-active')].map((a) => a.dataset.phase).join(',') || null,
     crumbStage: txt('.sh-where-phase .sh-where-text'),
@@ -351,10 +362,17 @@ for (const file of [...byFile.keys()].sort()) {
   for (const r of results) {
     if (r.error || r.vp.width !== WIDTHS[0].width || r.file !== fileOf(r.href) || seen.has(r.file) || !r.lists) continue;
     seen.add(r.file);
+    if (r.groupBad && r.groupBad.length) fail(r.file, `flyout group rows with no panel of rows after them: ${r.groupBad.join(', ')}`);
     if (r.lists.sectionRows) fail(r.file, `the rail's flyout lists sections, which belong to the page's tab strip: ${r.lists.sectionRows}`);
     if (!r.lists.strip) continue;   // a page with no module tabs has nothing to agree with
     if (r.lists.strip !== r.lists.rail) fail(r.file, `the tab strip's modules and the rail's flyout list different things:\n      strip: ${r.lists.strip}\n      rail : ${r.lists.rail}`);
     sectionTabs += r.lists.sectionTabs;
+  }
+  /* Screen Time and Cast Matrix are Breakdown tabs since 1 Nov 2026. */
+  const bd = results.find((r) => !r.error && r.file === 'breakdown.html' && r.vp.width === WIDTHS[0].width && r.lists);
+  if (!bd) fail('breakdown.html', 'no load to read the strip from');
+  else for (const want of ['Screen Time#screentime', 'Cast Matrix#cast-matrix']) {
+    if (!(' | ' + bd.lists.strip + ' | ').includes(' | ' + want + ' | ')) fail('breakdown.html', `the strip has no ${want}: ${bd.lists.strip}`);
   }
   console.log(`rail vs strip: ${seen.size} pages compared (module tabs; ${sectionTabs} section tabs left to the strip)`);
 }

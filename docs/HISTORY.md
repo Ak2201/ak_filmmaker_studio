@@ -3537,3 +3537,67 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     drawer unreachable, then injects one entry and checks the drawer opens
     and the New badge clears. verify carries three `EXPECTED.dashboard`
     rows (awesome, new, what’s) for the hidden button; no data-key moved.
+
+79. **Navigation, the Blocking studio, AI blocking and focus mode (1 Nov
+    2026).** Four lanes in worktrees, merged in order (focus, nav, blocking,
+    blocking-ai) by one integrator.
+    - **Two-level flyout.** The Pre-Production flyout shows one row per
+      group (Breakdown, Visualise, Plan & Schedule, Budget, People) with a
+      count and a chevron; the group opens its rows in a panel beside it, or
+      in place when there is no room. Hover, click, focus, ArrowRight/Enter
+      open it; ArrowLeft/Escape go back. On the merge with develop the
+      panels list MODULES only (develop's 28 Oct decision: a module's
+      sections are the page's tab strip), so `prove:nav` keeps develop's
+      no-section-rows check beside this branch's group-panel check. "Budget & People" split into
+      Budget and People (labels only, no module moved). plan-gate hides an
+      empty group and keeps its count right. `prove:nav` opens every panel.
+    - **Screen Time and Cast Matrix live on `breakdown.html`** (same ids,
+      in `src/ui/script-reports.js` + `script-reports.css`).
+      `reports.html#screentime`, `#cast-matrix` and `#runtime` forward to
+      Breakdown with the fragment.
+    - **Blocking studio** (`src/ui/blocking/`). Tool palette, inspector, set
+      pieces, walks with numbered beats and curves, character colours, lens
+      field of view, the 180° line with a crossing warning, snapping,
+      multi-select, five templates, in-memory undo/redo. The data is
+      ADDITIVE in `fms_shots_v1`: `block.set`, `block.axis`, `mark.path`,
+      `mark.curve`, `mark.charId`, spread under every stored row by
+      `blankBlock()` / `blankMark()`; an old diagram reads back field for
+      field and reading writes nothing (`test:blocking`). No new key.
+    - **AI blocking (Pro).** Desk tasks `blocking-draft` and
+      `blocking-enhance` (`ai-tasks.js`), the pure half in
+      `blocking-ai-model.js` (`test:blocking-ai`). One `replaceBlock()` per
+      Accept; Undo removes the drafted setup or writes back the snapshot.
+      Never run against a real provider.
+    - **Focus mode, the "black board".** Night (which paints the paper page
+      dark) defaulted ON, so every focus session opened on a black page. It
+      is off now unless chosen, stored as `focusPageNight` inside
+      `fms_write_prefs_v1` (the old `focusNight` was written under the
+      theme meaning and is not read). Also: the Beats column, notes dock and
+      AI Desk no longer leave a dark slab beside the page (`prove:scroll`
+      checks the page is centred at 1440/1100/390 with each open), and the
+      focus strip is opaque.
+    - **Integration fix.** contacts.html's `?sheet=` landing raced the
+      `#call-sheets` re-landing and lost once the rail grew (`prove:schedule`
+      13). develop had met the same race (item 77) and answered it with
+      `standDown()` plus one instant scroll; after the merge that still
+      lost (the card sat at 2,906px), so the landing is
+      `resolveFragment('#sheet-<id>')`, which stops the section's landing
+      and keeps the card under the band until the page holds still;
+      `standDown()` stays as the fallback for a card with no id.
+    - **Merge with develop (1 Nov 2026).** Screen Time and Cast Matrix
+      kept develop's 8B type pass (body face, quiet table heads) in
+      `script-reports.css`; Blocking's new map labels and the flyout count
+      take the body face too. `tour.json` moved the Reports step after the
+      Stripboard, because Reports' first module in navigation.json is now
+      Sides (`prove:tour` checks the order), and its card no longer
+      promises screen time and the cast matrix.
+    - **Re-baselined after the merge** (zero data-keys moved on any of the
+      26 pages). Lost words: Reports' 28 Screen Time / Cast Matrix words
+      (they are on Breakdown now), plus the rows develop had allowed in
+      `EXPECTED` (breakdown `difference`, budget `do/owns/together`,
+      dashboard `awesome/new/what’s`, settings `two-minute`), which the
+      recapture absorbed, so those rows were emptied. Gained: the group
+      counts and chevron on shell pages, "walk"/"180"/"beat" on
+      Visualize, and develop's own new words (tour, lanes/spine).
+      `budget.json` is develop's unchanged: every page loads under it
+      (breakdown 1254.7 KB of 1273, visualize 1123.3 of 1148).

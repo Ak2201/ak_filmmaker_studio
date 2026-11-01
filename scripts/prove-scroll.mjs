@@ -40,6 +40,9 @@
                the band moves the page (reported under "chain")
      overlays  each bottom-bar sheet and the palette, opened and closed:
                reachable inside, and no lock left behind ("locked")
+     focus     screenplay.html in focus mode, with each side panel left
+               open: the page centred, inside the viewport, nothing
+               wide beside it, and back where it was on the way out
      tall      no fixed or sticky box that does NOT scroll itself is
                taller than the room it is pinned in, with focusable
                content past the viewport's edge (unreachable)
@@ -627,6 +630,85 @@ async function lockScenario(s) {
   return found;
 }
 
+/* ---- focus mode: the page and nothing beside it -----------------
+   The owner's report (1 Nov 2026): "there is a black board when focus
+   mode has been enabled in screenplay writing". Every panel a writer
+   can have open when they press Focus left one: the Beats panel's
+   20rem grid column stayed reserved after the panel was hidden (the
+   page 176px left of centre at 1440, the right third of the window an
+   empty dark slab at 1100), and the notes dock — appended to <body>,
+   out of reach of `#app > :not(main)` — stayed up with `main` still
+   narrowed for it. So, per width and per panel left open: enter focus,
+   then the paper page's centre is within 2px of the viewport's, it
+   fits the viewport, no visible box wider than 40% of the viewport
+   sits beside it, and leaving focus puts the page back where it was.
+   A new side panel on screenplay.html is a row here. */
+const FOCUS_PANELS = [
+  { name: 'nothing open', open: null },
+  { name: 'Beats open', open: '.sc-beats-btn' },
+  { name: 'notes open', open: '.nt-open' }
+];
+const FOCUS_WIDTHS = [{ width: 1440, height: 900 }, { width: 1100, height: 800 }, { width: 390, height: 844 }];
+const focusProbe = () => {
+  const vw = document.documentElement.clientWidth;
+  const pg = document.getElementById('wr-page');
+  if (!pg) return { missing: true };
+  const r = pg.getBoundingClientRect();
+  const beside = [];
+  for (const el of document.querySelectorAll('body *')) {
+    if (el === pg || el.contains(pg) || pg.contains(el)) continue;
+    if (el.closest('.fm-hud, .fm-strip, .fm-bar')) continue;   // focus mode's own chrome, top and bottom
+    const b = el.getBoundingClientRect();
+    if (b.width <= vw * 0.4 || b.height < 48 || b.bottom <= 0 || b.top >= innerHeight) continue;
+    const cs = getComputedStyle(el);
+    if (cs.visibility === 'hidden' || Number(cs.opacity) === 0) continue;
+    const overlap = Math.max(0, Math.min(b.right, r.right) - Math.max(b.left, r.left));
+    if (overlap < b.width / 2) beside.push(`${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.classList.length ? '.' + [...el.classList].join('.') : ''} (x ${Math.round(b.left)}, ${Math.round(b.width)}px wide)`);
+  }
+  return {
+    on: document.documentElement.classList.contains('fm-on'),
+    vw, sw: document.documentElement.scrollWidth,
+    left: r.left, right: r.right, width: r.width, centre: r.left + r.width / 2,
+    beside: beside.slice(0, 3)
+  };
+};
+async function focusScenario(vp, panel) {
+  const ctx = await browser.newContext({ viewport: vp, storageState: seeded });
+  await ctx.addInitScript(PIN);
+  const page = await ctx.newPage();
+  const found = [];
+  const say = (msg) => found.push({ kind: 'focus', msg: `${panel.name}: ${msg}` });
+  try {
+    await page.goto(BASE + 'screenplay.html', { waitUntil: 'networkidle', timeout: 45000 });
+    await page.waitForSelector('#wr-page [data-el]', { timeout: 15000 });
+    if (panel.open) {
+      const ok = await page.evaluate((sel) => { const b = document.querySelector(sel); if (b) b.click(); return !!b; }, panel.open);
+      if (!ok) { console.log(`  (skipped: screenplay.html has no ${panel.open} at ${vp.width})`); return found; }
+      await page.waitForTimeout(900);
+    }
+    const before = await page.evaluate(focusProbe);
+    /* the hidden desk button at 390 is the same control the phone's
+       Tools sheet clicks; one handler either way */
+    await page.evaluate(() => document.getElementById('fm-enter').click());
+    await page.waitForFunction(() => document.documentElement.classList.contains('fm-on'), null, { timeout: 5000 });
+    await page.waitForTimeout(500);
+    const m = await page.evaluate(focusProbe);
+    if (Math.abs(m.centre - m.vw / 2) > 2) say(`the page's centre is at ${Math.round(m.centre)}px, ${Math.round(m.centre - m.vw / 2)}px off the viewport's (${m.vw / 2}px)`);
+    if (m.left < -1 || m.right > m.vw + 1 || m.sw > m.vw) say(`the page spans ${Math.round(m.left)}–${Math.round(m.right)}px in a ${m.vw}px viewport (document ${m.sw}px wide)`);
+    if (m.beside.length) say(`beside the page: ${m.beside.join('; ')}`);
+    await page.evaluate(() => document.querySelector('[data-action="fm-exit"]').click());
+    await page.waitForTimeout(500);
+    const after = await page.evaluate(focusProbe);
+    if (after.on) say('the exit button left focus mode on');
+    else if (Math.abs(after.left - before.left) > 1 || Math.abs(after.width - before.width) > 1) say(`leaving focus put the page at x ${Math.round(after.left)}, ${Math.round(after.width)}px wide; it was at x ${Math.round(before.left)}, ${Math.round(before.width)}px`);
+  } catch (e) {
+    say(`could not run (${String(e.message || e).split('\n')[0]})`);
+  } finally {
+    await ctx.close();
+  }
+  return found;
+}
+
 /* ---- load every (page, width) --------------------------------- */
 const jobs = [];
 for (const file of PAGES) for (const vp of WIDTHS) jobs.push({ file, vp });
@@ -674,11 +756,16 @@ for (const s of LOCKS) {
   if (!PAGES.includes(file)) continue;
   results.push({ file, vp: s.vp, findings: await lockScenario(s) });
 }
+if (PAGES.includes('screenplay.html')) {
+  for (const vp of FOCUS_WIDTHS) for (const panel of FOCUS_PANELS) {
+    results.push({ file: 'screenplay.html', vp, findings: await focusScenario(vp, panel) });
+  }
+}
 await browser.close();
 server.close();
 
 /* ---- report --------------------------------------------------- */
-const KINDS = ['nested', 'bottom', 'hscroll', 'locked', 'sticky', 'fragment', 'chain', 'tall', 'jump'];
+const KINDS = ['nested', 'bottom', 'hscroll', 'locked', 'sticky', 'fragment', 'chain', 'tall', 'jump', 'focus'];
 const counts = Object.fromEntries(KINDS.map((k) => [k, 0]));
 let errors = 0;
 const byPage = new Map();

@@ -47,6 +47,30 @@ html.fm-on body.has-mobile-actionbar {
 html.fm-on body,
 html.fm-on main { background: var(--surface-canvas); }
 
+/* The side panels that live OUTSIDE #app — the notes dock and the AI
+   Desk are appended to <body>, so none of the rules above reached them
+   — and the room the page made for them. Measured with the Dragon
+   sample (1 Nov 2026): at 1440 the Beats panel's 20rem grid column
+   stayed reserved after the panel itself was hidden, so the page sat
+   176px left of centre beside an empty dark column; at 1100 the page
+   took the left 732px and the right third of the window was a dark
+   slab; with the notes dock open the dock stayed up and `main` kept
+   its `margin-inline-end`. Each is "a black board beside the page",
+   and the fix is the same for all three: in focus the screenplay's
+   grid has ONE cell, no side panel shows, and nothing narrows `main`.
+   The doubled class outranks `html.nt-dock-open main` and
+   `html.ai-desk-open main` whatever order the sheets load in. */
+html.fm-on .nt-dock,
+html.fm-on .ai-desk { display: none !important; }
+html.fm-on.fm-on main { margin-inline-end: 0; }
+html.fm-on .sc-main,
+html.fm-on .sc-main.has-beats {
+  grid-template-areas: "page";
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: 0;
+  padding-right: 0;
+}
+
 /* ---- the page, centred ---------------------------------------- */
 html.fm-on #screenplay {
   max-width: var(--measure-text);
@@ -363,7 +387,9 @@ html.fm-on #screenplay { width: 100%; box-sizing: border-box; }
   gap: var(--s3);
   padding: var(--s2) var(--s4);
   padding-top: calc(var(--s2) + env(safe-area-inset-top, 0px));
-  background: color-mix(in srgb, var(--surface-canvas) 88%, transparent);
+  /* Opaque: the paper page scrolls under it, and 12% of light paper
+     through a dark strip printed the script's words behind its own. */
+  background: var(--surface-canvas);
   border-bottom: 1px solid var(--border-hair);
   font-family: var(--f-body);
   font-size: var(--t-micro);

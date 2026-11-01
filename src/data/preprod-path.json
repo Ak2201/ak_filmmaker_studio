@@ -6,7 +6,7 @@
     { "id": "scenes", "group": "Script", "label": "Scene list", "about": "Every scene once: where it happens, INT or EXT, day or night, and how long.",
       "tool": { "label": "Open the scene list", "href": "breakdown.html#scenes" }, "pages": ["breakdown.html#scenes"] },
     { "id": "breakdown", "group": "Script", "label": "Break it down", "about": "Tag the cast, props, wardrobe and vehicles in each scene. Every report builds itself from these tags.",
-      "tool": { "label": "Open Scene Breakdown", "href": "breakdown.html#breakdown" }, "pages": ["breakdown.html#breakdown", "breakdown.html#script", "breakdown.html#overview", "breakdown.html#suggest", "breakdown.html#elements", "reports.html#screentime", "reports.html#cast-matrix"] },
+      "tool": { "label": "Open Scene Breakdown", "href": "breakdown.html#breakdown" }, "pages": ["breakdown.html#breakdown", "breakdown.html#script", "breakdown.html#overview", "breakdown.html#suggest", "breakdown.html#elements", "breakdown.html#screentime", "breakdown.html#cast-matrix"] },
     { "id": "vision", "group": "Look", "label": "Vision & look", "about": "A lookbook: the frames, colours and references the whole crew will see the film through.",
       "tool": { "label": "Open the lookbook", "href": "visualize.html#lookbook" }, "pages": ["visualize.html#lookbook", "plan.html#media"], "module": "lookbook" },
     { "id": "shots", "group": "Look", "label": "Shots & storyboard", "about": "How each scene will be covered: the shot list, and the storyboard where a picture helps.",

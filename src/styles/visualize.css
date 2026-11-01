@@ -762,14 +762,18 @@
 }
 
 /* ============================================================
-   BLOCKING AND THE SCENE BOARD (src/ui/blocking.js)
+   BLOCKING AND THE SCENE BOARD (src/ui/blocking/)
    ------------------------------------------------------------
-   A setup is a kit panel: the map and its tools on the left, the
-   inspector (floor width, the selected mark, the crew note) on the
-   right from 1100px, below it otherwise. Marks are filled with
-   category hues and carry their label as text in --ink, because
-   identity is never colour alone and a fill is never a text colour;
-   the key under the map prints each kind by name and count.
+   A setup is a kit panel: a toolbar over a three-part body — the tool
+   palette on the left, the map in the middle, the inspector (the
+   selection, then the floor width, the 180° line and the crew note) on
+   the right. Below 1280px the inspector goes under the map; below
+   720px the palette is a strip that scrolls sideways above it. Marks
+   are filled with category hues and carry their label as text in
+   --ink, because identity is never colour alone and a fill is never a
+   text colour; the key under the map prints each kind by name and
+   count. Set pieces are drawn in the neutral inks (furniture is the
+   ground the people stand on, not a category).
    ============================================================ */
 .vz-blk-pick { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s3); margin-block: var(--s4); }
 .vz-blk-scenefield { flex: 0 1 28rem; min-width: 0; }
@@ -777,24 +781,102 @@
 .vz-blk-head.k-panel-head { flex-wrap: wrap; padding-block: var(--s3); }
 .vz-blk-namebox { flex: 1 1 14rem; }
 .vz-blk-name.k-input { font-family: var(--f-display); font-weight: 600; }
-.vz-blk-body { display: grid; gap: var(--s4); grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 1100px) {
-  .vz-blk-body { grid-template-columns: minmax(0, 1fr) minmax(15rem, 18rem); align-items: start; }
+
+/* The toolbar: history, snap, zoom, export, AI — one wrapping row. */
+.vz-blk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  padding: var(--s2) var(--s4);
+  border-bottom: 1px solid var(--border-hair);
 }
-.vz-blk-stage { display: grid; gap: var(--s3); min-width: 0; }
-.vz-blk-tools { display: flex; flex-wrap: wrap; gap: var(--s2); }
-.vz-blk-side { display: grid; gap: var(--s4); align-content: start; min-width: 0; }
-.vz-blk-sel {
+.vz-blk-bar-gap { flex: 1 1 0; min-width: 0; }
+.vz-blk-bar .k-btn[aria-pressed="true"],
+.vz-blk-tools .k-btn[aria-pressed="true"] {
+  background: var(--brand-wash);
+  border-color: var(--accent-primary);
+  color: var(--ink);
+  box-shadow: inset 2px 0 0 var(--accent-primary);
+}
+
+.vz-blk-body { display: grid; gap: var(--s4); grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 721px) {
+  .vz-blk-body { grid-template-columns: 10rem minmax(0, 1fr); align-items: start; }
+  .vz-blk-side { grid-column: 1 / -1; }
+}
+@media (min-width: 1280px) {
+  .vz-blk-body { grid-template-columns: 10rem minmax(0, 1fr) minmax(15rem, 18rem); }
+  .vz-blk-side { grid-column: auto; }
+}
+
+/* The palette: a column of labelled tools on a desk. */
+.vz-blk-palette { display: grid; gap: var(--s3); align-content: start; min-width: 0; }
+.vz-blk-tools { display: flex; flex-direction: column; gap: var(--s1); }
+.vz-blk-tools .vz-tool { justify-content: flex-start; width: 100%; }
+.vz-tool-sep { display: block; height: 1px; margin: var(--s1) 0; background: var(--border-hair); }
+.vz-blk-drawer {
   display: grid;
   gap: var(--s2);
+  padding: var(--s2);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.vz-drawer-h { margin: 0; font-size: var(--t-tiny); line-height: var(--lh-snug); color: var(--ink-muted); }
+.vz-drawer-grid { display: grid; gap: var(--s1); grid-template-columns: minmax(0, 1fr); }
+.vz-drawer-btn { justify-content: flex-start; width: 100%; height: auto; min-height: 2rem; white-space: normal; text-align: left; }
+
+.vz-blk-stage { display: grid; gap: var(--s3); min-width: 0; }
+.vz-blk-canvas { min-width: 0; }
+.vz-blk-side { display: grid; gap: var(--s4); align-content: start; min-width: 0; }
+.vz-blk-setup { display: grid; gap: var(--s4); padding-top: var(--s3); border-top: 1px solid var(--border-hair); }
+.vz-blk-sel {
+  display: grid;
+  gap: var(--s3);
   padding: var(--s3);
   background: var(--brand-wash);
   border: 1px solid var(--info-line);
-  border-radius: var(--sk-radius);
+  border-radius: var(--sk-radius, var(--radius));
 }
 .vz-blk-selacts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 .vz-blk-hint { margin: 0; color: var(--ink-muted); font-size: var(--t-tiny); line-height: var(--lh-snug); }
+.vz-blk-sub {
+  margin: 0;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-body);
+}
+.vz-blk-axis { display: grid; gap: var(--s2); justify-items: start; }
+.vz-blk-rot { width: 6.5rem; }
+.vz-blk-rot .k-input, .vz-blk-size .k-input { min-width: 0; }
+.vz-blk-addon { padding-inline: var(--s2); color: var(--ink-muted); font-size: var(--t-tiny); }
+.vz-blk-sizes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); }
+.vz-blk-size { display: grid; gap: var(--s1); min-width: 0; }
+.vz-blk-check { display: inline-flex; align-items: center; gap: var(--s2); font-size: var(--t-small); color: var(--ink-body); cursor: pointer; }
+.vz-blk-check input { accent-color: var(--accent-primary); width: 1rem; height: 1rem; }
+.vz-blk-walk { display: grid; gap: var(--s2); }
+.vz-beats-list { display: grid; gap: var(--s1h); margin: 0; padding: 0; list-style: none; }
+.vz-beats-list li { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.vz-beat-chip {
+  flex: none;
+  min-width: 2.4rem;
+  padding: var(--s-half) var(--s1h);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-pill);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  text-align: center;
+  color: var(--ink);
+}
+.vz-beat-what { font-size: var(--t-tiny); color: var(--ink-muted); }
+.vz-beat-input { flex: 1 1 auto; min-width: 0; }
+.vz-axis-msg { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1h); margin: 0; font-size: var(--t-tiny); line-height: var(--lh-snug); color: var(--ink-body); }
 
+/* The map */
 .vz-map {
   display: block;
   width: 100%;
@@ -803,13 +885,17 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
   touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
 }
-.vz-map.is-editable [data-mark], .vz-map.is-editable [data-handle] { touch-action: none; }
+.vz-map.is-editable [data-mark], .vz-map.is-editable [data-handle], .vz-map.is-editable [data-piece],
+.vz-map.is-editable [data-beat], .vz-map.is-editable [data-axis], .vz-map.is-editable [data-rot] { touch-action: none; }
 .vz-map-ground { fill: var(--surface-canvas); }
 .vz-map-grid { fill: none; stroke: var(--border-hair); stroke-width: 0.25; }
-.vz-map-arrowhead { fill: var(--ink-muted); }
+.vz-map-fine { fill: none; stroke: var(--border-hair); stroke-width: 0.08; }
+.vz-map-arrowhead { fill: var(--ink-muted); fill: context-stroke; }
 .vz-mk-shape { stroke: var(--surface-canvas); stroke-width: 0.5; }
-.vz-mk-actor .vz-mk-shape  { fill: var(--el-cast); }
+.vz-mk-actor .vz-mk-shape  { fill: var(--mk-c, var(--el-cast)); }
 .vz-mk-camera .vz-mk-shape { fill: var(--accent-primary); }
 .vz-mk-light .vz-mk-shape  { fill: var(--strip-day); }
 .vz-mk-mark .vz-mk-shape   { fill: var(--el-vehicles); }
@@ -821,24 +907,98 @@
 .vz-mk-ray { stroke: var(--strip-day); stroke-width: 0.5; }
 .vz-mk-rail { stroke: var(--accent-primary); stroke-width: 0.45; }
 .vz-mk-sleeper { stroke: var(--border-strong); stroke-width: 0.5; }
-.vz-mk-move { stroke: var(--ink-muted); stroke-width: 0.6; stroke-dasharray: 2 1.4; }
+.vz-mk-move { stroke: var(--mk-c, var(--ink-muted)); stroke-width: 0.6; stroke-dasharray: 2 1.4; fill: none; }
+.vz-mk-move-camera { stroke: var(--accent-primary); }
 .vz-map-reach { stroke: var(--ink-muted); stroke-width: 0.3; stroke-dasharray: 0.8 1.2; }
 .vz-mk-label,
 .vz-map-callout {
   fill: var(--ink);
-  font-size: 2.9px;
+  font-size: 2.4px;
   font-family: var(--f-body); font-variant-numeric: tabular-nums;
   paint-order: stroke;
   stroke: var(--surface-canvas);
-  stroke-width: 0.9px;
+  stroke-width: 0.8px;
 }
-.vz-map-callout { fill: var(--ink-body); font-size: 2.5px; }
-.vz-map.is-editable .vz-mk, .vz-map.is-editable .vz-mk-handle { cursor: grab; }
-.vz-mk:focus-visible, .vz-mk-handle:focus-visible { outline: none; }
+.vz-map-callout { fill: var(--ink-body); font-size: 2.2px; }
+.vz-mk-badge rect { fill: var(--surface-elevated); stroke: var(--accent-primary); stroke-width: 0.25; }
+.vz-mk-badge text { fill: var(--ink); font-size: 2.2px; font-family: var(--f-mono); }
+
+/* A character's colour: a category hue, one per place in the list. */
+.vz-ch-0 { --mk-c: var(--el-cast); }
+.vz-ch-1 { --mk-c: var(--el-sfx); }
+.vz-ch-2 { --mk-c: var(--el-extras); }
+.vz-ch-3 { --mk-c: var(--el-makeup); }
+.vz-ch-4 { --mk-c: var(--el-wardrobe); }
+.vz-ch-5 { --mk-c: var(--el-stunts); }
+.vz-ch-6 { --mk-c: var(--el-animals); }
+.vz-ch-7 { --mk-c: var(--el-vfx); }
+.vz-blk-char[class*="vz-ch-"] .k-control { box-shadow: inset 3px 0 0 var(--mk-c); }
+
+/* Walks: a numbered dot at each stop, the beat in words beside it. */
+.vz-beat-dot { fill: var(--surface-canvas); stroke: var(--mk-c, var(--ink-muted)); stroke-width: 0.45; }
+.vz-beat-no { fill: var(--ink); font-size: 1.7px; font-family: var(--f-mono); font-weight: 600; }
+.vz-beat-text {
+  fill: var(--ink-body);
+  font-size: 2.2px;
+  font-family: var(--f-body);
+  paint-order: stroke;
+  stroke: var(--surface-canvas);
+  stroke-width: 0.7px;
+}
+
+/* The set, in plan view. */
+.vz-sp-wall { fill: var(--ink-muted); stroke: none; }
+.vz-sp-gap { fill: var(--surface-canvas); stroke: var(--ink-muted); stroke-width: 0.25; }
+.vz-sp-leaf { stroke: var(--ink-body); stroke-width: 0.45; }
+.vz-sp-swing { fill: none; stroke: var(--ink-muted); stroke-width: 0.25; stroke-dasharray: 0.8 0.6; }
+.vz-sp-frame { fill: var(--surface-elevated); stroke: var(--ink-muted); stroke-width: 0.3; }
+.vz-sp-body { fill: var(--surface-elevated); stroke: var(--border-strong); stroke-width: 0.35; }
+.vz-sp-solid { fill: var(--border-default); stroke: var(--border-strong); stroke-width: 0.2; }
+.vz-sp-line { stroke: var(--border-strong); stroke-width: 0.25; }
+.vz-sp-glass { fill: var(--border-hair); stroke: var(--border-strong); stroke-width: 0.2; }
+.vz-sp-run, .vz-sp-runhead { stroke: var(--ink-muted); stroke-width: 0.3; fill: none; }
+.vz-sp-prop { fill: var(--surface-elevated); stroke: var(--ink-muted); stroke-width: 0.3; stroke-dasharray: 0.9 0.6; }
+.vz-sp-label {
+  fill: var(--ink-body);
+  font-size: 2.2px;
+  font-family: var(--f-body);
+  paint-order: stroke;
+  stroke: var(--surface-canvas);
+  stroke-width: 0.6px;
+}
+.vz-sp-hit { fill: transparent; stroke: none; }
+.vz-sel-box { fill: none; stroke: var(--accent-primary); stroke-width: 0.35; stroke-dasharray: 1 0.7; }
+
+/* The 180-degree line: drawn in the warning hue, and crossed in danger. */
+.vz-axis-line { stroke: var(--warn); stroke-width: 0.45; stroke-dasharray: 3 1.2 0.6 1.2; }
+.vz-axis.is-crossed .vz-axis-line { stroke: var(--danger); }
+.vz-axis-tag { fill: var(--warn-deep); font-size: 2.2px; font-family: var(--f-body); paint-order: stroke; stroke: var(--surface-canvas); stroke-width: 0.6px; }
+.vz-axis.is-crossed .vz-axis-tag { fill: var(--danger-deep); }
+.vz-axis-warn circle { fill: var(--danger); }
+.vz-axis-warn text { fill: var(--surface-canvas); font-size: 2.4px; font-weight: 700; font-family: var(--f-mono); }
+
+/* The editor's handles and live feedback. */
+.vz-map.is-editable .vz-mk, .vz-map.is-editable .vz-sp, .vz-map.is-editable .vz-mk-handle,
+.vz-map.is-editable .vz-axis-handle { cursor: grab; }
+.vz-map.is-editable .vz-rot-handle { cursor: alias; }
+.vz-mk:focus-visible, .vz-mk-handle:focus-visible, .vz-sp:focus-visible, .vz-axis-handle:focus-visible { outline: none; }
 .vz-mk-camera.is-linked .vz-mk-shape { stroke: var(--ink); stroke-width: 1.1; }
 .vz-mk-camera.is-linked .vz-mk-cone { fill: var(--accent-primary); fill-opacity: 0.35; }
-.vz-mk:focus-visible .vz-mk-shape, .vz-mk.is-selected .vz-mk-shape, .vz-mk-handle:focus-visible { stroke: var(--ink); stroke-width: 1.1; }
+.vz-mk:focus-visible .vz-mk-shape, .vz-mk-handle:focus-visible { stroke: var(--ink); stroke-width: 1.1; }
+.vz-mk.is-selected .vz-mk-shape { stroke: var(--accent-primary); stroke-width: 0.9; }
+.vz-mk.is-selected:focus-visible .vz-mk-shape { stroke: var(--ink); }
+.vz-sp:focus-visible .vz-sp-body, .vz-sp:focus-visible .vz-sp-wall, .vz-sp:focus-visible .vz-sp-prop,
+.vz-sp:focus-visible .vz-sp-frame, .vz-sp:focus-visible .vz-sp-gap { stroke: var(--ink); stroke-width: 0.7; }
 .vz-mk-handle { fill: var(--surface-elevated); stroke: var(--accent-primary); stroke-width: 0.6; }
+.vz-beat-handle { stroke: var(--mk-c, var(--accent-primary)); }
+.vz-rot-arm { stroke: var(--accent-primary); stroke-width: 0.25; stroke-dasharray: 0.6 0.5; }
+.vz-rot-handle { fill: var(--accent-primary); stroke: var(--surface-canvas); stroke-width: 0.4; }
+.vz-axis-handle { fill: var(--surface-elevated); stroke: var(--warn); stroke-width: 0.5; }
+.vz-axis-handle:focus-visible { stroke: var(--ink); stroke-width: 0.9; }
+.vz-guide { stroke: var(--accent-primary); stroke-width: 0.2; stroke-dasharray: 0.8 0.8; pointer-events: none; }
+.vz-live { stroke: var(--accent-primary); stroke-width: 0.5; stroke-dasharray: 1.4 1; pointer-events: none; }
+.vz-live-axis { stroke: var(--warn); }
+.vz-marquee { fill: var(--accent-glow); stroke: var(--accent-primary); stroke-width: 0.25; pointer-events: none; }
 
 /* The key: each kind on the map, by name and count. */
 .vz-map-key { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin: 0; padding: 0; list-style: none; }
@@ -858,6 +1018,8 @@
 .vz-key-light .vz-key-swatch  { background: var(--strip-day); }
 .vz-key-mark .vz-key-swatch   { background: var(--el-vehicles); }
 .vz-key-track .vz-key-swatch  { border-radius: var(--radius-sm); background: var(--accent-primary); }
+.vz-key-set .vz-key-swatch    { border-radius: var(--radius-sm); background: var(--border-strong); }
+.vz-key-axis .vz-key-swatch   { height: 2px; border-radius: 0; background: var(--warn); }
 
 /* The scene board */
 .vz-sb { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); margin-top: var(--s4); }
@@ -898,7 +1060,7 @@
   .vz-sb-character, .vz-sb-dialogue, .vz-sb-paren { margin-left: var(--s4); }
 }
 @media print {
-  .vz-blk-pick, .vz-blk-tools, .vz-blk-sel { display: none; }
+  .vz-blk-pick, .vz-blk-tools, .vz-blk-sel, .vz-blk-palette, .vz-blk-bar { display: none; }
   .vz-sb { display: block; }
   .vz-sb-col { break-inside: avoid; margin-bottom: var(--s4); }
   .vz-sb-map { break-inside: avoid; }
@@ -1022,7 +1184,42 @@
 /* The thumb-sized target under each mark: unpainted, and only where
    the pointer is a finger — a mouse picks the mark it is on. */
 .vz-mk-hit { fill: transparent; stroke: none; }
-@media (pointer: fine) { .vz-mk-hit { display: none; } }
+@media (pointer: fine) { .vz-mk-hit, .vz-sp-hit { display: none; } }
+.vz-blk-viewhint { margin: 0; }
+.vz-blk-modehint { color: var(--ink-body); }
+/* Every tool a finger can hit: 44px under a coarse pointer. */
+@media (pointer: coarse) {
+  .vz-blk-tools .k-btn, .vz-blk-bar .k-btn, .vz-drawer-btn, .vz-blk-selacts .k-btn { min-height: 44px; min-width: 44px; }
+  .vz-blk-check input { width: 1.375rem; height: 1.375rem; }
+}
+
+/* The PDF of one setup (export.js): black on white, from --print-*. */
+.vz-blk-print { display: none; }
+@media print {
+  body.pdf-blocking #main > *:not(.vz-blk-print):not(#pdf-masthead) { display: none !important; }
+  body.pdf-blocking .vz-blk-print { display: block; color: var(--print-ink); }
+  .vz-blk-print-h { margin: 0 0 2pt; font-size: 14pt; color: var(--print-ink); }
+  .vz-blk-print-scene, .vz-blk-print-note { margin: 0 0 6pt; font-size: 9pt; color: var(--print-muted); }
+  .vz-blk-print-map { margin: 0 0 6pt; break-inside: avoid; }
+  .vz-blk-print .vz-map { max-height: 150mm; border-color: var(--print-rule); background: var(--print-paper); }
+  .vz-blk-print .vz-map-ground { fill: var(--print-paper); }
+  .vz-blk-print .vz-map-grid { stroke: var(--print-wash); }
+  .vz-blk-print .vz-mk-label, .vz-blk-print .vz-map-callout, .vz-blk-print .vz-sp-label,
+  .vz-blk-print .vz-beat-text, .vz-blk-print .vz-axis-tag { fill: var(--print-ink); stroke: var(--print-paper); }
+  .vz-blk-print .vz-mk-shape { stroke: var(--print-ink); stroke-width: 0.3; }
+  .vz-blk-print .vz-sp-body, .vz-blk-print .vz-sp-frame, .vz-blk-print .vz-sp-prop, .vz-blk-print .vz-sp-gap { fill: var(--print-paper); stroke: var(--print-ink); }
+  .vz-blk-print .vz-sp-wall, .vz-blk-print .vz-sp-solid { fill: var(--print-muted); }
+  .vz-blk-print .vz-sp-line, .vz-blk-print .vz-sp-leaf, .vz-blk-print .vz-sp-swing, .vz-blk-print .vz-sp-run { stroke: var(--print-ink); }
+  .vz-blk-print .vz-sp-glass { fill: var(--print-wash); stroke: var(--print-ink); }
+  .vz-blk-print .vz-mk-move, .vz-blk-print .vz-map-reach { stroke: var(--print-ink); }
+  .vz-blk-print .vz-map-arrowhead { fill: var(--print-ink); }
+  .vz-blk-print .vz-beat-dot { fill: var(--print-paper); stroke: var(--print-ink); }
+  .vz-blk-print .vz-beat-no { fill: var(--print-ink); }
+  .vz-blk-print .vz-axis-line { stroke: var(--print-accent); }
+  .vz-blk-print .vz-mk-badge rect { fill: var(--print-paper); stroke: var(--print-ink); }
+  .vz-blk-print .vz-mk-badge text { fill: var(--print-ink); }
+  .vz-blk-print .vz-map-key li { color: var(--print-ink); }
+}
 
 @media screen and (max-width: 720px) {
   .vz-scroll-hint { display: none; }
@@ -1114,6 +1311,21 @@
   .vz-strip.is-open { grid-template-columns: minmax(0, 1fr); }
 
   .vz-blk-viewhint { flex-basis: 100%; }
+
+  /* The palette is a strip that scrolls sideways; its drawer opens below
+     it, in flow (a menu inside a sideways strip is clipped to nothing). */
+  .vz-blk-tools {
+    flex-direction: row;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding-bottom: var(--s1);
+    scrollbar-width: thin;
+  }
+  .vz-blk-tools .vz-tool { width: auto; flex: none; }
+  .vz-tool-sep { width: 1px; height: auto; margin: 0 var(--s1); flex: none; }
+  .vz-drawer-grid { grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); }
+  .vz-blk-bar { padding-inline: var(--s3); }
+  .vz-blk-bar-gap { display: none; }
 }
 
 /* ---- 8B PASS (28 Oct 2026, lane C): labels in the body face ---------

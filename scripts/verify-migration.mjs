@@ -355,21 +355,15 @@ const EXPECTED = /* every earlier row was emptied by the 27 Oct 2026 re-baseline
   "visualize": {},
   "write": {},
   "plan": {},
-  "breakdown": { "difference": "31 Oct 2026: the explainer pills are short What-is questions; the long 'what is the difference' wording stays as the pop-up title only" },
+  "breakdown": /* emptied by the 1 Nov 2026 re-baseline (HISTORY 79), which absorbed the explainer-pill row */ {},
   "feature": {},
   "short": {},
   "library": /* emptied by the 29 Oct 2026 explainer re-baseline, which absorbed the Tanglish clean-up rows */ {},
-  "budget": { "do": "31 Oct 2026: pill labels shortened (learn.json `pill`), the full question stays the pop-up title", "owns": "31 Oct 2026: see do", "together": "31 Oct 2026: see do" },
-  "dashboard": { "awesome": "1 Nov 2026: What’s new is hidden while src/data/changelog.json has no entry (the site is launching); the icon ligature and the New badge go with it", "new": "1 Nov 2026: see awesome", "what’s": "1 Nov 2026: see awesome" },
+  "budget": /* emptied by the 1 Nov 2026 re-baseline (HISTORY 79), which absorbed the pill-label rows */ {},
+  "dashboard": /* emptied by the 1 Nov 2026 re-baseline (HISTORY 79), which absorbed the hidden What's new rows (HISTORY 78) */ {},
   "preprod": {},
   "screenplay": {},
-  "settings": /* emptied by the 27 Oct 2026 re-baseline after the merge */ {
-    /* 31 Oct 2026: the tour walks every page of the studio now and starts
-       by itself on an account's first sign-in, so Settings → Help stopped
-       calling it "a two-minute walk" (and stopped saying it never starts
-       by itself). */
-    'two-minute': 'the tour now walks every page; its length is no longer two minutes'
-  },
+  "settings": /* emptied by the 1 Nov 2026 re-baseline (HISTORY 79), which absorbed the tour's 'two-minute' row (31 Oct 2026) */ {},
   shoot: {},
   /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.
 

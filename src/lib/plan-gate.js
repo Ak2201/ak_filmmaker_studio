@@ -1266,6 +1266,18 @@ function tidyHeadings(root) {
     }
     set(hd, rows > 0 && !any);
   });
+  /* A rail flyout's group row (level 1, shell.js buildFly) goes when its
+     panel has nothing visible, and its count is the module rows still
+     shown. The panel is the row's next sibling: this runs on a flyout
+     not yet in the document too. */
+  root.querySelectorAll('.sh-fly-grp').forEach((g) => {
+    const panel = g.nextElementSibling;
+    if (!panel || !panel.matches('.sh-fly-l2')) return;
+    const rows = [...panel.querySelectorAll('[data-module-id]')];
+    set(g, rows.length > 0 && !rows.some(rowOn));
+    const n = g.querySelector('.sh-fly-count');
+    if (n) n.textContent = String(rows.filter((r) => rowOn(r) && !r.classList.contains('is-sub')).length);
+  });
   root.querySelectorAll('.mn-group[data-mn-phase]').forEach((g) => {
     const rows = [...g.querySelectorAll('[data-module-id]')];
     set(g, rows.length > 0 && !rows.some(rowOn));

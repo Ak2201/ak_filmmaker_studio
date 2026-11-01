@@ -108,7 +108,8 @@ function overviewPart(d, scenesRows, els) {
         cell(titleCase(String(c.name).toLowerCase()), 'bdo-name'), cell(c.scenes.size), cell(c.lines || '—')
       ])), 'Cast Matrix, characters by scenes'),
       h('p.bd-sub', { text: 'The full characters-by-scenes grid is in the Cast Matrix.' }),
-      h('p.bdo-onward', {}, [h('a.btn', { href: 'reports.html#screentime', text: 'Screen time by scene' }), h('a.btn', { href: 'reports.html#cast-matrix', text: 'Cast Matrix' })]));
+      /* both are tabs of this page since 1 Nov 2026: an in-page hash switches tab */
+      h('p.bdo-onward', {}, [h('a.btn', { href: '#screentime', text: 'Screen time by scene' }), h('a.btn', { href: '#cast-matrix', text: 'Cast Matrix' })]));
   } else {
     wrap.append(h('p.bd-sub', { text: 'The cast matrix appears once the breakdown has been run: it counts who is tagged in each scene as well as who speaks.' }));
   }

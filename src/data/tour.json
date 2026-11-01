@@ -96,19 +96,6 @@
       "body": "Tag cast, props, vehicles and sound against each scene. The elements list, the schedule, the budget and the call sheets all read these tags, so nothing is typed twice."
     },
     {
-      "id": "reports",
-      "page": "reports",
-      "href": "reports.html#reports",
-      "anchor": [
-        "[data-tour=\"reports\"]",
-        "#main nav.tabs",
-        "#reports",
-        "#main"
-      ],
-      "title": "Reports: read from your scenes",
-      "body": "The one-liner, sides, screen time and the cast matrix, all read from your scenes."
-    },
-    {
       "id": "visualize",
       "page": "visualize",
       "href": "visualize.html#shot-list",
@@ -145,6 +132,19 @@
       ],
       "title": "Stripboard: scenes into shoot days",
       "body": "Drag the strips into days. The day out of days, the Shoot Calendar and the call sheets follow the board."
+    },
+    {
+      "id": "reports",
+      "page": "reports",
+      "href": "reports.html#reports",
+      "anchor": [
+        "[data-tour=\"reports\"]",
+        "#main nav.tabs",
+        "#reports",
+        "#main"
+      ],
+      "title": "Reports: read from your scenes",
+      "body": "The one-liner, the sides, the daily production report and the equipment list, all read from your scenes."
     },
     {
       "id": "budget",

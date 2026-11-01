@@ -185,6 +185,11 @@ async function fill(body, t, opts, live) {
       h('div.learn-label', { text: 'Why it matters' }),
       h('div.learn-why-text', { text: why.text })
     ]) : null,
+    // `here`: how the page hosting the box does it, in a line or two.
+    t.here ? h('div.learn-why.learn-here', {}, [
+      h('div.learn-label', { text: 'Here' }),
+      h('div.learn-why-text', { text: t.here })
+    ]) : null,
     vids,
     h('a.learn-more', { href: more.href, text: more.text })
   ].filter(Boolean);

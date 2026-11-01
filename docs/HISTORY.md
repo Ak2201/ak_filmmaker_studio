@@ -3647,3 +3647,18 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       `test:ai-apply` (41), `test:ai-writing`, `test:audience`, all with
       faked model replies; `prove:ai-desk`, `prove:visual`, `prove:notes`.
       Never run against a real provider.
+    - **Merged with develop's ten Desk tasks** (`bcb0051`, docs/AI-EVERYWHERE.md)
+      and the script lock (`1211d3c`). Audit of the ten: shoot-order
+      (stripboard placements, undoPlace), recce-notes (blank recce fields),
+      budget-estimate (new rows only), callsheet-notes (a blank notes box),
+      edit-notes (blank edit notes), character-arcs (blank arc fields) and
+      script-cleanup (the selected block, words checked, ids kept) already
+      wrote blanks or new records with an exact Undo; none touches shots or
+      blocking. The three reads were lossy — draft-changes, day-wrap-summary
+      and cert-read ended in "Changed nothing" and the writer retyped the
+      points — so they now return items and set `keepAs`; `registerAll`'s
+      module gives them keepNotes as their apply (a lane cannot import
+      ai-tasks.js). A wrap point naming ONE scene of the day goes on its
+      row's note; draft and certification points are always sticky notes.
+      The Desk's read panel keeps develop's Copy beside "Keep as notes".
+      `test:ai-apply` (58) runs all three through faked replies.

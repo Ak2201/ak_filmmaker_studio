@@ -356,7 +356,55 @@ export function certText(res, ruleById, disclaimer, { model: m } = {}) {
   return out.join('\n\n') + model(m) + '\n\n' + NOTHING;
 }
 
+/* ---- keeping a read as notes (ai-tasks.js keepNotes) ------------
+   The three reads end in points the writer can tick and keep. Each item
+   is { id, text, detail?, keep, where?, scene? } as keepNotes reads it:
+   a point that names ONE scene of the day by a number the set gave it
+   carries that row's id and goes on the scene's note; everything else
+   is a sticky note headed with `where`. A draft comparison names
+   headings of two drafts, neither of which need be the open script, so
+   its points are always sticky notes (a guess would put a note on the
+   wrong scene). Pure: built from the checked reply, nothing re-asked. */
+const item = (id, text, where, scene) => (text ? { id, text, keep: text, where, ...(scene ? { scene } : {}) } : null);
+
+export function changesItems(res, { olderLabel = '', newerLabel = '' } = {}) {
+  const pair = [oneLine(olderLabel, 60), oneLine(newerLabel, 60)].filter(Boolean).join(' → ') || 'Draft changes';
+  return [
+    item('sum', oneLine(res && res.summary, 600), pair),
+    ...((res && res.scenes) || []).map((s, i) => { const it = item('sc' + i, s.change, s.heading); if (it) it.detail = s.heading; return it; }),
+    ...((res && res.watch) || []).map((w, i) => item('w' + i, w, pair + ' — watch'))
+  ].filter(Boolean);
+}
+
+/** byNumber: Map of the day's scene number (upper case) → scene row id. */
+export function wrapItems(res, { day = '', byNumber = new Map() } = {}) {
+  const where = 'Day ' + str(day);
+  const sceneOf = (text) => {
+    const ns = [...new Set(sceneNumbersIn(text))];
+    const id = ns.length === 1 ? byNumber.get(ns[0]) : '';
+    return id ? { sceneId: id } : null;
+  };
+  return [
+    item('sum', oneLine(res && res.summary, 600), where + ' wrap'),
+    ...((res && res.owed) || []).map((x, i) => item('o' + i, x, where + ' — owed', sceneOf(x))),
+    ...((res && res.tomorrow) || []).map((x, i) => item('t' + i, x, where + ' — next', sceneOf(x)))
+  ].filter(Boolean);
+}
+
+export function certItems(res, ruleById) {
+  return [
+    ...((res && res.rules) || []).map((r, i) => {
+      const label = (ruleById(r.ruleId) || {}).label || r.ruleId;
+      const it = item('r' + i, r.why, 'Certification [' + r.ruleId + '] ' + label);
+      if (it) it.detail = '[' + r.ruleId + '] ' + label;
+      return it;
+    }),
+    ...((res && res.questions) || []).map((q, i) => item('q' + i, q, 'Certification — to answer'))
+  ].filter(Boolean);
+}
+
 export default {
   clip, norm, changeFacts, changesUser, readChanges, changesText, sceneNumbersIn, wrapFacts, wrapUser, readWrap, wrapText,
-  editFacts, editUser, readEditNotes, canFill, canUndo, certFacts, certUser, readCert, certText
+  editFacts, editUser, readEditNotes, canFill, canUndo, certFacts, certUser, readCert, certText,
+  changesItems, wrapItems, certItems
 };

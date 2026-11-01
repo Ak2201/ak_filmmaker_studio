@@ -63,8 +63,10 @@
      blocking-enhance shots.js replaceBlock (the ticked ops applied to the
                       setup, blocking-ai-model.js applyBlockOps); undo =
                       replaceBlock of the snapshot taken before Accept
-     beat-critique, tension-notes, audience-quick (the story test) and
-     audience-ask (a question to one viewer) are READS that keep notes:
+     beat-critique, tension-notes, audience-quick (the story test),
+     audience-ask (a question to one viewer), and the lane reads
+     draft-changes, day-wrap-summary and cert-read (`keepAs`, set at
+     registration) are READS that keep notes:
                       the prose is shown as it always was, and each point
                       is a tickable item. Nothing is written until Accept;
                       then a point that names a scene is APPENDED to that
@@ -2512,6 +2514,12 @@ const ALL_TASKS = [coverageTask, dialogueTask, critiqueTask, storyStepsTask, sto
   audienceQuickTask, audienceAskTask, blockingDraftTask, blockingEnhanceTask,
   ...Preprod.TASKS, ...Post.TASKS, ...Story.TASKS];
 const LANES = [Preprod, Post, Story];
+/* A lane's read that sets `keepAs` keeps its ticked points as notes,
+   the way the reads here do (keepNotes above). Set here because the lane
+   modules cannot import this file, which imports them. */
+for (const t of [...Preprod.TASKS, ...Post.TASKS, ...Story.TASKS]) {
+  if (t.kind === 'read' && t.keepAs && typeof t.apply !== 'function') t.apply = (selected, ctx) => keepNotes(selected, ctx, t.keepAs);
+}
 let registered = false;
 
 /** Register every task with the Desk (idempotent), and resolve once

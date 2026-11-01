@@ -22,6 +22,12 @@
      genre-comps     tone and budgetWhy land on the story beside genre,
                      budget tier and comps; a typed audience is kept;
                      story.js reads both new fields back; Undo restores
+     draft-changes, cert-read, day-wrap-summary (the lane reads)
+                     Run writes nothing and returns points; Accept keeps
+                     them as sticky notes (a wrap point naming ONE of the
+                     day's scenes goes on that row's note, appended);
+                     Undo leaves the notes board and the scene list as
+                     they were
    ============================================================ */
 import { register } from 'node:module';
 
@@ -113,6 +119,14 @@ installFakeFetch(async (req) => {
       { scene: '2', note: 'The leaving.', cut: true, quote: 'A crowd waits.' },
       { scene: '3', note: 'A held beat.', cut: true, quote: 'Anbu lights a lamp' }
     ] };
+  }
+  if (/what changed between two drafts/.test(u)) {
+    return { summary: 'A cigarette was added.', scenes: [{ heading: 'INT. ANBU HOUSE - NIGHT', change: 'Anbu now lights a cigarette.' }, { heading: 'INT. INVENTED', change: 'x' }],
+      watch: ['The lighter must be on the table in scene 1.'] };
+  }
+  if (/certification rules/.test(u)) {
+    return { read: 'Mostly clean.', rules: [{ ruleId: 'tobacco', why: 'A health warning is needed.' }, { ruleId: 'madeup', why: 'x' }],
+      questions: ['Is the cigarette needed?'] };
   }
   if (/Place the screenplay/.test(u)) {
     return { genre: 'Drama', subgenres: ['Migration'], tone: 'quiet, aching', budgetTier: 'low',
@@ -259,6 +273,54 @@ installFakeFetch(async (req) => {
   ok(/saved 1 note/.test(u3.said) && /1 note was already there/.test(u3.said), 'keep notes: the toast counts what was written and what was already there — ' + u3.said);
   u3(); u1();
   mem.set('fms_script_v1', raw);
+}
+
+/* ---- the lane reads keep notes (draft-changes, cert-read, day-wrap) ---- */
+{
+  const PM = await import('../src/lib/ai-post-model.js');
+  const vaultNow = () => Story.listVault().map((x) => x.id).join();
+  seedScenes();
+  const v0 = vaultNow(), s0 = JSON.stringify(Scenes.listScenes());
+  const older = els.slice(0, 2);
+  const newer = [els[0], { id: 'zz', type: 'action', text: 'Anbu lights a cigarette.' }, ...els.slice(1, 2)];
+  const ctxD = { olderId: 'a', newerId: 'b', compare: () => ({ older, newer, olderLabel: 'Draft 1', newerLabel: 'The script now' }) };
+  ok(!!tasks['draft-changes'].apply, 'draft-changes: registration gives the read an apply (keepAs)');
+  const rd = await tasks['draft-changes'].run('', { ctx: ctxD });
+  eq(rd.items.map((i) => i.id), ['sum', 'sc0', 'w0'], 'draft-changes: summary, the one known scene and the watch line are points; the invented scene is not');
+  eq([vaultNow(), JSON.stringify(Scenes.listScenes())], [v0, s0], 'draft-changes: Run writes nothing');
+  const ud = tasks['draft-changes'].apply(rd.items, ctxD, rd);
+  const notes = Story.listVault().filter((x) => /^AI \(Draft changes\)/.test(x.snippet));
+  eq(notes.length, 3, 'draft-changes: Accept keeps three sticky notes');
+  ok(notes.some((n) => /INT\. ANBU HOUSE - NIGHT — Anbu now lights a cigarette\./.test(n.snippet)), 'draft-changes: a scene point is headed with its heading, never put on a row (two drafts, not the open script)');
+  eq(JSON.stringify(Scenes.listScenes()), s0, 'draft-changes: the scene list is untouched');
+  ok(/saved 3 sticky notes/.test(ud.said), 'draft-changes: the toast says what was saved — ' + ud.said);
+  ud();
+  eq(vaultNow(), v0, 'draft-changes: Undo takes out exactly those notes');
+
+  mem.set('fms_script_v1', JSON.stringify({ elements: [...els, E('action', 'He smokes a cigarette and coughs.')] }));
+  const rc = await tasks['cert-read'].run('', {});
+  eq(rc.items.map((i) => i.id), ['r0', 'q0'], 'cert-read: the real rule and the question are points; the made-up rule is not');
+  const uc = tasks['cert-read'].apply(rc.items, {}, rc);
+  ok(Story.listVault().some((n) => /^AI \(Certification read\): Certification \[tobacco\] .+ — A health warning is needed\./.test(n.snippet)), 'cert-read: a rule point names its rule on the sticky note');
+  uc();
+  eq(vaultNow(), v0, 'cert-read: Undo takes out exactly those notes');
+  mem.set('fms_script_v1', JSON.stringify({ elements: els }));
+
+  /* day-wrap: the reply as readWrap checked it, the items as run() builds them. */
+  const byNumber = new Map([['1', 'r1'], ['2', 'r2']]);
+  const rw = PM.readWrap({ summary: 'Scene 1 was shot.', owed: ['Scene 2 is part shot.', 'Scenes 1 and 2 need wild sound.'], tomorrow: ['Pick up Scene 2.'] }, ['1', '2']);
+  const wi = PM.wrapItems(rw, { day: '1', byNumber });
+  eq(wi.map((i) => [i.id, i.scene ? i.scene.sceneId : '']), [['sum', ''], ['o0', 'r2'], ['o1', ''], ['t0', 'r2']],
+    'day-wrap: a point naming ONE scene of the day carries its row; two scenes, none');
+  const uw = tasks['day-wrap-summary'].apply(wi, {}, { items: wi });
+  const r1 = Scenes.listScenes().find((x) => x.id === 'r1'), r2 = Scenes.listScenes().find((x) => x.id === 'r2');
+  eq(r1.readerNote, 'Typed by me.', 'day-wrap: a typed note on another scene is untouched');
+  eq(r2.readerNote, 'AI (Wrap summary): Scene 2 is part shot.\nAI (Wrap summary): Pick up Scene 2.', 'day-wrap: the scene\'s points are appended to its note, marked AI');
+  ok(/saved 2 notes on the scene list \(Sc 2\) and 2 sticky notes/.test(uw.said), 'day-wrap: the toast says where each went — ' + uw.said);
+  uw();
+  eq([vaultNow(), JSON.stringify(Scenes.listScenes())], [v0, s0], 'day-wrap: Undo restores the notes board and the scene list exactly');
+  const dup = new Map([['1', '']]);
+  ok(!PM.wrapItems({ summary: '', owed: ['Scene 1 is owed.'], tomorrow: [] }, { day: '1', byNumber: dup })[0].scene, 'day-wrap: a number two rows share picks no row');
 }
 
 console.log('test:ai-apply — ' + pass + ' passed, ' + fail + ' failed');

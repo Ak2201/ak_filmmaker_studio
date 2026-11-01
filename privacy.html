@@ -339,13 +339,12 @@ Privacy Control, and the start page has a &ldquo;Don&rsquo;t count this visit&rd
 reaches the purchase page, your browser keeps the two in the tab&rsquo;s session storage; closing
 the tab forgets them, and they are sent to us only as the short word on a count and, if you use
 it, the code at checkout.</p>
-<p>Our start page used to have a &ldquo;Get launch offers&rdquo; form. It has been removed.
-If you used it, we still hold the address, the exact consent sentence you saw, and the date;
+<p>If you gave your address through a &ldquo;Get launch offers&rdquo; form, we hold the address, the exact consent sentence you saw, and the date;
 we use it only to write to you about {{brand:name}}&rsquo;s launch and offers, only an
 administrator can read the list, and it is not shared. Ask us at {{brand:email}} and we
 will delete it.</p>
 
-<!-- Written Written from the code:
+<!-- Written from the code:
      src/pages/marketing.js (the form) -> src/lib/funnel.js addLead() ->
      add_lead() and public.leads in supabase/schema/supabase-schema.sql §29.
      The form is shown only once marketing-site.json lead.live is true,
@@ -360,7 +359,7 @@ school&rsquo;s name and never the rest of the link &mdash; and the time you sent
 IP address or cookie is stored with it, and sending the same address again changes nothing.</p>
 <p><strong>Why:</strong> we use each address only for what the sentence you ticked said, which is
 why we keep that sentence. An address given on this form is used only to send you an occasional
-note when something new ships or a plan changes; an address from the old launch-offers form above
+note when something new ships or a plan changes; an address from the launch-offers form above
 is used only for launch and offers, as its own sentence said. Both are kept in the same list.
 <strong>Who sends it:</strong> no product-news e-mail is being sent yet. Before the first one goes
 out, this section will name the service that sends it. <strong>Who can read it:</strong> only a

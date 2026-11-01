@@ -65,7 +65,6 @@ import { pageFile } from '../lib/page-file.js';
 import { markLocked, allowed, isDisabledEverywhere } from '../lib/plan-gate.js';
 import { monogram, BRAND } from '../lib/brand.js';
 import { tourResumable } from '../lib/chrome-prefs.js';
-import changelogData from '../data/changelog.json';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
 const NARROW = '(max-width: 1099px)';
@@ -889,10 +888,20 @@ function openAcctMenu(btn) {
        it, signed in or not. A paused tour resumes where it stopped. */
     row('button', { type: 'button', 'data-action': 'rail-tour' }, 'explore', tourResumable() ? 'Resume the tour' : 'Take the tour'),
     row('button', { type: 'button', 'data-action': 'rail-help' }, 'help', 'Help & shortcuts'),
-    /* Only while the list holds an entry (owner, 1 Nov 2026: launching). */
-    (changelogData.entries || []).length ? row('button', { type: 'button', 'data-action': 'rail-whatsnew' }, 'auto_awesome', 'What’s new') : null,
     signedIn ? row('button', { type: 'button', 'data-auth-action': 'signout' }, 'logout', 'Sign out') : null
   ]));
+  /* WHAT'S NEW IS HIDDEN WHILE THERE IS NOTHING TO SAY (owner, 1 Nov 2026:
+     the site is launching, nobody needs to hear what changed). The row is
+     added only when src/data/changelog.json holds an entry, so posting one
+     brings it back with no rebuild of the feature. The module is fetched
+     here, not imported, so the entries never ride on a first paint. */
+  import('./changelog.js').then((m) => {
+    if (!m.hasEntries() || !menu.isConnected) return;
+    const list = menu.querySelector('.sh-acct-list');
+    const out = list && list.querySelector('[data-auth-action="signout"]');
+    const item = row('button', { type: 'button', 'data-action': 'rail-whatsnew' }, 'auto_awesome', 'What’s new');
+    if (list) list.insertBefore(item, out || null);
+  }, () => { /* offline: no row */ });
   document.body.append(menu);
   const r = btn.getBoundingClientRect();
   menu.style.setProperty('--sh-acct-left', Math.round(r.right + 8) + 'px');

@@ -459,12 +459,12 @@ for (const id of IDS) {
     ok(h2s > 0 && ids.length === h2s && JSON.stringify(ids) === JSON.stringify(linked), f + ': every heading has an id and the contents list links each, in order (' + ids.length + '/' + h2s + ')');
     /* A legal page never ships a passage awaiting approval (CLAUDE.md item
        64: "never release to main with a DRAFT comment in a legal page"), and
-       it carries NO date and NO change note (owner, 1 Nov 2026: the site is
-       launching, so the current policy reads as the policy, in the present
-       tense, never as "new"). */
+       it carries NO date and NO change note anywhere in the file, comments
+       included (owner, 1 Nov 2026: the site is launching, so the current
+       policy reads as the policy, in the present tense, never as "new"). */
     const draft = h.match(/.{0,40}(\bDRAFT\b|AWAITING THE OWNER|<li>\s*Draft,).{0,40}/);
     ok(!draft, f + ': no DRAFT passage or marker' + (draft ? ': "' + draft[0].trim() + '"' : ''));
-    const note = h.match(/.{0,30}(legal-date|legal-changes|Last updated|What changed|Effective (from|date)|\b\d{1,2} (January|February|March|April|May|June|July|August|September|October|November|December) \d{4}\b).{0,30}/);
+    const note = h.match(/.{0,30}(legal-date|legal-changes|Last updated|What changed|Changes since|\bEffective (on|from|date)|\bnew polic|\b\d{1,2} (January|February|March|April|May|June|July|August|September|October|November|December),? \d{4}\b).{0,30}/i);
     ok(!note, f + ': no date and no change note' + (note ? ': "' + note[0].trim() + '"' : ''));
   }
   const ljs = read('src/pages/legal.js');

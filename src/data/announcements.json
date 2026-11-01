@@ -13,7 +13,9 @@
     "on 29 September failed on the 30th over festival countdowns. A",
     "timed carousel would have put three messages into rotation and only",
     "one of them into the baseline. So index 0 is what every load shows",
-    "and the dots advance it only when somebody clicks."
+    "and the dots advance it only when somebody clicks.",
+    "",
+    "The list is EMPTY while the site is launching (owner, 1 Nov 2026): nobody needs to hear what is new. Nothing reads it today."
   ],
   "items": []
 }

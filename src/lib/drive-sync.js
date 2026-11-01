@@ -549,7 +549,17 @@ export async function connect() {
  * app gets to do, and reconnecting finds it again.
  */
 export function disconnect() {
-  rawRemove(DRIVE_STATE_KEY);
+  /* Drive-only storage keeps its own device state in the same key
+     (`store`: folder ids and revisions; `migrate`: the migration's
+     progress — src/lib/drive-project-sync.js). Disconnecting the BACKUP
+     file must not forget where this account's films live, so those two
+     survive; with neither present the key goes, exactly as before. */
+  const keep = {};
+  const cur = readState();
+  if (cur.store) keep.store = cur.store;
+  if (cur.migrate) keep.migrate = cur.migrate;
+  if (Object.keys(keep).length) rawSet(DRIVE_STATE_KEY, JSON.stringify(keep));
+  else rawRemove(DRIVE_STATE_KEY);
   Drive.forgetToken();
   _conflict = null;
   if (_timer) { clearTimeout(_timer); _timer = null; }

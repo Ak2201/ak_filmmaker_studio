@@ -22,7 +22,7 @@
    is a migration, not a rename.
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
-import '../styles/learn.css';
+import { learnInline } from './learn-pill.js';
 import { parseAmount, fmtMoney, fmtINR } from '../lib/money.js';
 import {
   PRESET_ITEMS, readCalcData, saveCalcData, clearCalcData, maxRowIndex, rescuedCustomNames,
@@ -534,15 +534,10 @@ const WHO_TEXT = 'Once it syncs, anyone you share this project with can see the 
   + 'into the blueprint\u2019s budget questions are not part of this page '
   + 'and stay visible to anyone you share the film with, a screening pass included.';
 function whoCanSee() {
-  const btn = h('button.learn.learn-q', { type: 'button', 'aria-haspopup': 'dialog', text: 'Who can see this budget?' });
-  btn.addEventListener('click', () => {
-    import('./explainer.js').then(({ openExplainer }) => openExplainer({
-      title: 'Who can see this budget?',
-      returnTo: btn,
-      build: (body) => { body.replaceChildren(h('p.hint', { text: WHO_TEXT })); }
-    })).catch((e) => console.warn('[budget] explainer', e));
-  });
-  return h('div.bud-who', {}, [btn]);
+  return h('div.bud-who', {}, [learnInline({
+    label: 'Who can see this budget?', size: 'md', exempt: true, topic: 'budget-visibility',
+    eyebrow: 'Budget', text: WHO_TEXT
+  })]);
 }
 
 export function renderBudget() {

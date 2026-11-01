@@ -4406,6 +4406,7 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
 .sh-acct-id { display: flex; flex-direction: column; min-width: 0; }
 .sh-acct-name { font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sh-acct-email { font-size: var(--t-micro); color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-acct-signin { padding: 0 var(--s2) var(--s2); }
 .sh-acct-list { display: flex; flex-direction: column; gap: 2px; }
 .sh-acct-item {
   display: flex;
@@ -4778,6 +4779,19 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
 }
 :root .sh-bar .sign-in-pill.signed-in:hover { background: var(--surface-hover); }
 :root .sh-bar .sign-in-pill.signed-in .sip-avatar:not([hidden]) { width: 28px; height: 28px; }
+/* ONE WAY IN (31 Oct 2026): signed out, the pill is the Google button. The
+   band is dark, so it is the WHITE-filled variant (the G is public/google-g.svg,
+   never recoloured) with the dark canvas as its ink. */
+.sign-in-pill .gbtn-g { display: none; width: 18px; height: 18px; flex: none; }
+:root .sh-bar .sign-in-pill:not(.signed-in) {
+  gap: var(--s2);
+  background: var(--brand-on);
+  border-color: var(--brand-on);
+  color: var(--surface-canvas);
+}
+:root .sh-bar .sign-in-pill:not(.signed-in):hover { background: var(--brand-on); border-color: var(--accent-primary); color: var(--surface-canvas); }
+:root .sh-bar .sign-in-pill:not(.signed-in) .gbtn-g { display: block; }
+:root .sh-bar .sign-in-pill:not(.signed-in) .sip-label { max-width: none; }
 
 /* ---- below the desk ---------------------------------------------------- */
 @media (max-width: 1099px) {

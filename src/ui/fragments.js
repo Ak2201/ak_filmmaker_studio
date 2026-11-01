@@ -82,6 +82,15 @@ function stopWaiting() {
   if (_takeover) { _takeover(); _takeover = null; }
 }
 
+/** A page that lands somewhere MORE precise than the hash (contacts.html's
+ *  `?sheet=<id>#call-sheets` lands on one sheet inside the section) says so
+ *  here, and the resolver and its guard stand down exactly as they do for
+ *  the reader's own input. Without it the settle loop re-lands the section
+ *  on the next mutation — any late insert does it (item 77: the What-is
+ *  pill under the call-sheets subtitle arrives after a dynamic import) —
+ *  and the reader is put back at the top of the list. */
+export function standDown() { stopWaiting(); stopGuard(); }
+
 /* THE READER OUTRANKS THE RESOLVER (owner, 19 Oct 2026: "there are
    scrolling issues in a few pages"). The settle loop below runs for up
    to WAIT_MS while a page is still rendering, and every mutation re-lands

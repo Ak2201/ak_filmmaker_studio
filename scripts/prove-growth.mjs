@@ -28,7 +28,7 @@
      (f) THE SCREENING ROOM closes with the line
      (g) THE TOUR: no storage write on load, the checklist is derived
          (six items) and offers the tour, only clicks write
-         fms_tour_v1, Esc ends it and focus is inside each step
+         fms_tour_v1, Esc pauses it, Skip ends it and focus is inside each step
      (h) PUBLIC VIEW: a call sheet opens from #view=<token>; the token
          leaves the address bar; no phone or e-mail is drawn; nothing
          is written to storage; the line is shown, or not when the row
@@ -440,21 +440,33 @@ try {
        lose its last way in without this failing on that sentence. */
     ok(await page.$('#tourInvite') === null && await page.$('#firstweek [data-tour-act="start"]') !== null, 'a new reader is offered the tour on Home, by the first-week list');
     t0 = await now(page);
-    await page.click('#firstweek [data-tour-act="start"]'); await page.waitForTimeout(600);
-    ok(JSON.stringify(await localWrites(page, t0)) === '["fms_tour_v1"]', 'starting writes fms_tour_v1 once, and only that');
+    /* Since 31 Oct 2026 every start of the tour opens the Dragon sample
+       (index.html?sample=1&tour=1) and moves on to the dashboard step by
+       itself; scripts/prove-tour.mjs walks the rest. */
+    await page.click('#firstweek [data-tour-act="start"]');
+    await page.waitForSelector('.tour-pop[data-tour-step="dashboard"]', { timeout: 20000 }).catch(() => null);
+    ok(await page.$('.tour-pop[data-tour-step="dashboard"]') !== null && /dashboard/.test(page.url()), 'starting opens the sample and lands on the dashboard step');
     ok(await page.evaluate(() => document.activeElement && document.activeElement.classList.contains('tour-pop') && document.activeElement.getAttribute('role') === 'dialog'), 'focus is in the step, a labelled dialog');
-    await page.click('[data-tour-act="sample"]'); await page.waitForTimeout(3000);
+    ok(await page.evaluate(() => !Object.keys(localStorage).some((k) => /tour|week|check/i.test(k) && k !== 'fms_tour_v1')), 'no other key for the tour or the list');
+    await page.goto(BASE + 'index.html'); await page.waitForTimeout(1500);
     /* The list measures the user's OWN film: with the sample open only
        the "open the sample" item may tick, and a hint says why. */
     ok(await page.evaluate(() => document.querySelectorAll('#firstweek .tw-item.is-done').length <= 1 && !!document.querySelector('#firstweek .tw-hint')), 'with the sample open, its film does not tick the list, and the hint says so');
-    ok(await page.evaluate(() => !Object.keys(localStorage).some((k) => /tour|week|check/i.test(k) && k !== 'fms_tour_v1')), 'no other key for the tour or the list');
-    await page.click('.tour-pop [data-tour-act="next"]'); await page.waitForLoadState('load'); await page.waitForTimeout(1500);
+    await page.click('.tour-chip [data-tour-act="continue"]'); await page.waitForLoadState('load');
+    await page.waitForSelector('.tour-pop[data-tour-step="dashboard"]', { timeout: 15000 }).catch(() => null);
+    await page.click('.tour-pop [data-tour-act="next"]'); await page.waitForLoadState('load');
+    await page.waitForSelector('.tour-pop[data-tour-step="story"]', { timeout: 15000 }).catch(() => null);
     ok(/story\.html/.test(page.url()) && await page.$('.tour-pop') !== null, 'Next goes to Story, and the step is up there');
     t0 = await now(page);
     await page.waitForTimeout(4000);
     ok((await localWrites(page, t0)).length === 0, 'a page mid-tour writes nothing while idle');
     await page.keyboard.press('Escape'); await page.waitForTimeout(300);
-    ok(await page.$('.tour-pop') === null && await page.evaluate(() => JSON.parse(localStorage.getItem('fms_tour_v1')).dismissed === true), 'Esc ends the tour and records it');
+    ok(await page.$('.tour-pop') === null && await page.evaluate(() => { const t = JSON.parse(localStorage.getItem('fms_tour_v1')); return t.active === false && t.step === 2 && !t.dismissed; }), 'Esc pauses the tour and keeps its step');
+    await page.goto(BASE + 'index.html'); await page.waitForTimeout(1500);
+    await page.click('#firstweek [data-tour-act="resume"]');
+    await page.waitForSelector('.tour-pop[data-tour-step="story"]', { timeout: 15000 }).catch(() => null);
+    await page.click('.tour-pop [data-tour-act="skip-tour"]'); await page.waitForTimeout(300);
+    ok(await page.$('.tour-pop') === null && await page.evaluate(() => JSON.parse(localStorage.getItem('fms_tour_v1')).dismissed === true), 'Resume from Home, then Skip ends the tour and records it');
     await page.goto(BASE + 'write.html?stay=1'); await page.waitForTimeout(1000);
     ok(await page.evaluate(() => ![...document.querySelectorAll('script[src], link[rel="modulepreload"]')].some((s) => /tour-/.test(s.src || s.href)) && !document.querySelector('.tour-pop, .tour-chip')), 'an ended tour loads nothing off the hub');
     allErrors.push(...errors); await ctx.close();

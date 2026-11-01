@@ -19,6 +19,7 @@
 import { videoSlot } from './video-slots.js';
 import { stepKey } from '../lib/video-keys.js';
 import { h, fromHTML, delegate } from '../lib/dom.js';
+import { pillEl } from './learn-pill.js';
 import { paperTextarea, paperField, paperScope } from './paper-field.js';
 import SIDECAR from '../data/steps.tanglish.json';
 import PRIORITY from '../data/steps.priority.json';
@@ -338,7 +339,7 @@ const BLOCKS = {
     const words = [h('div.label', { text: label }), prose('p', b.body, b.tanglish)];
     if (!b.body) return h('div.why-this', {}, words);
     return h('div.why-this.why-pop', {}, [
-      h('button.why-open', { type: 'button', 'data-why-open': '', 'aria-haspopup': 'dialog', text: label }),
+      pillEl({ label, size: 'sm', exempt: true, extraClass: 'why-open', attrs: { 'data-why-open': '' } }),
       h('div.why-body', {}, words)
     ]);
   },
@@ -634,7 +635,7 @@ delegate(document, 'click', '[data-why-open]', (e, btn) => {
   const head = sec && sec.querySelector('h2, h3');
   const stepKeyOf = box.getAttribute('data-why-step') || '';
   import('./explainer.js').then(({ openExplainer }) => openExplainer({
-    title: btn.textContent,
+    title: (btn.querySelector('.learn-pill-label') || btn).textContent,
     eyebrow: head ? head.textContent.trim().replace(/\s+/g, ' ').slice(0, 80) : 'Why it matters',
     returnTo: btn,
     build: async (body) => {

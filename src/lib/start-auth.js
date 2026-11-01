@@ -46,7 +46,7 @@
    The hub is addressed as `/`, NOT as `/index.html`, and that
    distinction shipped broken: see defaultRedirect() below.
    ============================================================ */
-import { DRIVE_SCOPE } from './auth-scope.js';
+import { DRIVE_SCOPE, googleQueryParams, driveGrantRecorded } from './auth-scope.js';
 
 /* Named directly so Vite inlines two strings rather than an object, and
    wrapped so the module stays importable from Node. Same shape funnel.js
@@ -120,19 +120,44 @@ export function googleAuthorizeUrl(opts) {
   u.searchParams.set('provider', 'google');
   u.searchParams.set('redirect_to', o.redirectTo || defaultRedirect());
   u.searchParams.set('scopes', o.scopes || DRIVE_SCOPE);
-  /* Matches cloud.js. Without it a browser holding several Google
-     accounts silently reuses the last one, which on a shared machine
-     signs somebody into a stranger's studio. */
-  u.searchParams.set('prompt', 'select_account');
+  /* Matches cloud.js, through the one helper both use
+     (auth-scope.js googleQueryParams). `select_account` always: without
+     it a browser holding several Google accounts silently reuses the
+     last one, which on a shared machine signs somebody into a
+     stranger's studio. With drive-only storage on and no grant recorded
+     on this device, it also asks for offline access WITH consent, so
+     Google issues the refresh token the google-token function keeps. */
+  const qp = googleQueryParams({ drive: o.mode === 'drive', needGrant: o.mode === 'drive' && (o.needGrant != null ? !!o.needGrant : !driveGrantRecorded()) });
+  for (const [k, v] of Object.entries(qp)) u.searchParams.set(k, v);
   return u.href;
 }
 
+/* storage_mode, asked with a BARE fetch (no SDK: start.html stays light)
+   and the build's anon key in the headers. Anything but a clean
+   'drive' answer is 'supabase', the existing path. Cached per page. */
+let _modeP = null;
+export function fetchStorageMode() {
+  if (_modeP) return _modeP;
+  if (!configured() || typeof fetch !== 'function') return (_modeP = Promise.resolve('supabase'));
+  _modeP = fetch(URL_ + '/rest/v1/rpc/get_storage_mode', {
+    method: 'POST',
+    headers: { apikey: KEY_, Authorization: 'Bearer ' + KEY_, 'Content-Type': 'application/json' },
+    body: '{}'
+  }).then((r) => (r.ok ? r.json() : null)).then((v) => (v === 'drive' ? 'drive' : 'supabase'), () => 'supabase');
+  return _modeP;
+}
+
 /** Go. Returns false if the build has no project, so the caller can let
- *  the link do its ordinary thing. */
+ *  the link do its ordinary thing. The navigation waits (at most 1.5 s)
+ *  for the storage mode, which decides whether Google is asked for
+ *  offline access; a slow answer signs in the ordinary way. */
 export function startGoogle(opts) {
   if (!configured()) return false;
-  location.href = googleAuthorizeUrl(opts);
+  const cap = new Promise((r) => setTimeout(() => r('supabase'), 1500));
+  Promise.race([fetchStorageMode(), cap]).then((mode) => {
+    location.href = googleAuthorizeUrl(Object.assign({}, opts || {}, { mode }));
+  });
   return true;
 }
 
-export default { configured, hasStoredSession, googleAuthorizeUrl, defaultRedirect, startGoogle };
+export default { configured, hasStoredSession, googleAuthorizeUrl, defaultRedirect, startGoogle, fetchStorageMode };

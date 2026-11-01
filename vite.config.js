@@ -938,7 +938,7 @@ export default defineConfig({
              page and the Library went over scripts/budget.json. CORE calls
              nothing from region-core, so in a chunk of its own it is
              fetched only by the pages that use it. */
-          if (/\/src\/lib\/(funnel|invite-code|auth-scope|attribution|pass-offer|offer-terms|motion|trial-time|prefs|ports)\.js$/.test(id)) return 'startlib';
+          if (/\/src\/lib\/(funnel|invite-code|auth-scope|attribution|pass-offer|offer-terms|motion|trial-time|prefs|ports|google-button)\.js$/.test(id)) return 'startlib';
           if (/\/src\/lib\/region-core\.js$/.test(id)) return 'region';
           const CORE_LIB = /\/src\/lib\/(store|overflow|sitegate|gate|plan-gate|billing|navmodel|usage|dom|pwa|skin|drive-sync|drive|backup|cloud|extension-bridge|account|cloud-api)\.js$/;
           /* kit/ (14 Oct 2026): the component builders are pure and small, and

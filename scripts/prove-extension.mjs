@@ -102,7 +102,7 @@ try {
   await panel.fill('#pnCode', 'AMYCODE23456');
   await panel.click('button[type="submit"]');
   await panel.waitForSelector('[data-pn="google"]', { timeout: 8000 });
-  ok((await panel.textContent('.pn-title')).includes('Sign in with Google'), 'a valid code moves to step 2');
+  ok((await panel.textContent('.pn-title')).includes('Continue with Google'), 'a valid code moves to step 2');
   const t0 = await panel.evaluate(() => chrome.storage.session.get('fms_preauth_ticket'));
   ok(!!(t0.fms_preauth_ticket && t0.fms_preauth_ticket.ticket), 'the ticket waits in chrome.storage.session');
   ok(F.db.codes[0].redemptions_count === 0, 'nothing is spent before Google answers');

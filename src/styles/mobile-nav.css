@@ -541,31 +541,21 @@ html.mn-on .sh-bar .sh-tools .sign-in-pill.signed-in { padding: 0 var(--s1); bor
 html.mn-on .sh-bar .sh-tools .sign-in-pill.signed-in:has(.sip-avatar:not([hidden])) .sip-label,
 html.mn-on .sh-bar .sh-tools .sign-in-pill.signed-in:has(.sip-avatar:not([hidden])) .sip-dot { display: none; }
 html.mn-on .sh-bar .sh-tools .sign-in-pill:not(.signed-in) .sip-dot { display: none; }
-/* Signed out, the violet pill is a disc with the person mark once the
-   icon face has loaded (the words stay its name, and show until then). */
-html.mn-on.sym-ready .sh-bar .sh-tools .sign-in-pill:not(.signed-in) {
+/* Signed out, the pill is the G alone, a 44px target (the words stay its
+   name for assistive tech). No icon face is needed, so no .sym-ready gate. */
+html.mn-on .sh-bar .sh-tools .sign-in-pill:not(.signed-in) {
   width: var(--tap-min, 44px);
   min-width: var(--tap-min, 44px);
   padding: 0;
   justify-content: center;
 }
-html.mn-on.sym-ready .sh-bar .sh-tools .sign-in-pill:not(.signed-in) .sip-label {
+html.mn-on .sh-bar .sh-tools .sign-in-pill:not(.signed-in) .sip-label {
   position: absolute;
   width: 1px;
   height: 1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
-}
-html.mn-on.sym-ready .sh-bar .sh-tools .sign-in-pill:not(.signed-in)::before {
-  content: "person";
-  font-family: 'Material Symbols Rounded';
-  font-size: 20px;
-  font-weight: 400;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  font-feature-settings: 'liga';
 }
 
 /* A coarse pointer floors every control at 44px (base.css); the band

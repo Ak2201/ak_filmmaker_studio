@@ -355,15 +355,21 @@ const EXPECTED = /* every earlier row was emptied by the 27 Oct 2026 re-baseline
   "visualize": {},
   "write": {},
   "plan": {},
-  "breakdown": {},
+  "breakdown": { "difference": "31 Oct 2026: the explainer pills are short What-is questions; the long 'what is the difference' wording stays as the pop-up title only" },
   "feature": {},
   "short": {},
   "library": /* emptied by the 29 Oct 2026 explainer re-baseline, which absorbed the Tanglish clean-up rows */ {},
-  "budget": {},
+  "budget": { "do": "31 Oct 2026: pill labels shortened (learn.json `pill`), the full question stays the pop-up title", "owns": "31 Oct 2026: see do", "together": "31 Oct 2026: see do" },
   "dashboard": {},
   "preprod": {},
   "screenplay": {},
-  "settings": /* emptied by the 27 Oct 2026 re-baseline after the merge */ {},
+  "settings": /* emptied by the 27 Oct 2026 re-baseline after the merge */ {
+    /* 31 Oct 2026: the tour walks every page of the studio now and starts
+       by itself on an account's first sign-in, so Settings → Help stopped
+       calling it "a two-minute walk" (and stopped saying it never starts
+       by itself). */
+    'two-minute': 'the tour now walks every page; its length is no longer two minutes'
+  },
   shoot: {},
   /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.
 

@@ -178,7 +178,14 @@ export const FORMAT_ID = 'FilmMakerStudio';
  * VISIBLY when signed out.
  */
 export function buildBackup() {
-  const projects = Store.listAllProjects();
+  /* A project's `drive` field (drive-only storage) names this account's
+     Drive folder on this device; like fms_drive_sync_v1 it never
+     travels in a backup. Entries without one are passed through as-is. */
+  const projects = Store.listAllProjects().map((p) => {
+    if (!p || !Object.prototype.hasOwnProperty.call(p, 'drive')) return p;
+    const { drive, ...rest } = p;
+    return rest;
+  });
   const all = {
     _exported: new Date().toISOString(),
     _from: FORMAT_ID,

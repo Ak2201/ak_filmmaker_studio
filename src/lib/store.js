@@ -838,6 +838,31 @@ export function setProjectFav(slug, id) {
   return updateProject(pid, { fav: slug || undefined });
 }
 
+/* ---- the project's Drive folder (drive-only storage) ----------
+   `drive: { folderId, role, picked? }` on the entry, beside fav and
+   region: no new key. Written by src/lib/drive-project-sync.js when a
+   folder is created, listed or picked. WITHOUT a 'projects:changed'
+   event and without bumping updatedAt — it is sync bookkeeping, not an
+   edit, and an event here would push the project's meta again. Written
+   only when it differs, so a pull that learns nothing writes nothing.
+   backup.js leaves it out of an export: a folder id is this account's,
+   on this device, like fms_drive_sync_v1. null clears it. */
+export function setProjectDrive(id, drive) {
+  const arr = allProjectMeta();
+  const idx = arr.findIndex((p) => p.id === id);
+  if (idx < 0) return null;
+  const roles = ['owner', 'edit', 'comment', 'view'];
+  let next;
+  if (drive && typeof drive.folderId === 'string' && /^[A-Za-z0-9_-]{8,200}$/.test(drive.folderId)) {
+    next = { folderId: drive.folderId, role: roles.indexOf(drive.role) >= 0 ? drive.role : 'view' };
+    if (drive.picked || (arr[idx].drive && arr[idx].drive.picked)) next.picked = true;
+  }
+  if (JSON.stringify(arr[idx].drive || null) === JSON.stringify(next || null)) return arr[idx];
+  if (next) arr[idx].drive = next; else delete arr[idx].drive;
+  saveAllProjects(arr);
+  return arr[idx];
+}
+
 /* ---- the project subtitle ("Slate"), per project -------------
    One optional line under the title (owner, 14 Oct 2026). A field on
    the project entry beside title, format and fav — not a new key —
@@ -1544,7 +1569,7 @@ const StudioStore = {
   currentProjectId,
   currentProject,
   setCurrentProject,
-  upsertProjectMeta,
+  upsertProjectMeta, setProjectDrive,
 
   // account namespace
   currentNamespace,

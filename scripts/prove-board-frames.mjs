@@ -223,7 +223,7 @@ for (const width of [1280, 390]) {
     });
     ok(draw && draw.gate === 'signedout', 'the draw block knows it is signed out', draw);
     ok(draw && draw.off && draw.pill === 0, '"Draw frames with AI" is disabled, and no pill is offered', draw);
-    ok(draw && /Sign in/.test(draw.why) && /Google Drive/.test(draw.why), 'with the reason', draw && draw.why);
+    ok(draw && /Continue with Google/.test(draw.why) && /Google Drive/.test(draw.why), 'with the reason', draw && draw.why);
     ok(draw && draw.fix === 'settings.html#account', 'and the way to fix it', draw);
     const pic = await page.evaluate(() => {
       const el = document.querySelector('.vz-frame[data-frame="frSeed"] .drv-img');
@@ -360,7 +360,7 @@ function eq2(a, b, m) { return ok(JSON.stringify(a) === JSON.stringify(b), m, { 
     await page.waitForTimeout(400);
     const said = await page.evaluate(() => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' | '));
     ok(!chooser, 'signed out: no file picker opens');
-    ok(/Sign in with Google first/.test(said) && /Google Drive/.test(said), 'and the press says why', said);
+    ok(/Continue with Google first/.test(said) && /Google Drive/.test(said), 'and the press says why', said);
     ok(D.uploads.length === 0, 'nothing reached Drive');
     ok(errors.length === 0, 'no page errors', errors);
   } catch (e) { ok(false, 'the scenario stopped: ' + String(e && e.message || e).split('\n')[0]); }

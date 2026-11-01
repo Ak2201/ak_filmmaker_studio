@@ -52,6 +52,7 @@
    else here, so there is no second, unfiltered view of the map. */
 import { h, delegate } from '../lib/dom.js';
 import { iconSpan } from './icon.js';
+import { kGoogleBtn } from './kit/google-btn.js';
 import Store from '../lib/store.js';
 import { openPalette } from './palette.js';
 import { installTabs } from './tabs.js';
@@ -63,6 +64,7 @@ import { syncLine } from './status-bar.js';
 import { pageFile } from '../lib/page-file.js';
 import { markLocked, allowed, isDisabledEverywhere } from '../lib/plan-gate.js';
 import { monogram, BRAND } from '../lib/brand.js';
+import { tourResumable } from '../lib/chrome-prefs.js';
 
 const RAIL_KEY = 'fms_studio_rail_open_v1';
 const NARROW = '(max-width: 1099px)';
@@ -866,6 +868,9 @@ function openAcctMenu(btn) {
       h('span.sh-acct-name', { text: 'Not signed in' }),
       h('span.sh-acct-email', { text: 'Your work is saved on this device.' })
     ])]));
+    /* ONE WAY IN: the Google button sits directly under the "Not signed in"
+       block, ahead of the list. The phone Tools sheet borrows this menu. */
+    menu.append(h('div.sh-acct-signin', {}, [kGoogleBtn({ block: true, action: 'pill', class: 'sh-acct-gbtn' })]));
   }
   const row = (tag, attrs, sym, label) => {
     const el = h(tag + '.sh-acct-item', { role: 'menuitem', ...attrs });
@@ -878,11 +883,13 @@ function openAcctMenu(btn) {
     row('a', { href: (settings && settings.href) || 'settings.html' }, 'settings', 'Settings'),
     purchase ? row('a', { href: purchase.href }, purchase.sym || 'shopping_cart', 'Purchase') : null,
     row('a', { href: 'index.html?sample=1&open=dashboard' }, 'movie', 'Open the sample project'),
+    /* THE TOUR, AGAIN (owner, 31 Oct 2026). It starts by itself once, on
+       an account's first ever sign-in (cloud.js); this is the way back to
+       it, signed in or not. A paused tour resumes where it stopped. */
+    row('button', { type: 'button', 'data-action': 'rail-tour' }, 'explore', tourResumable() ? 'Resume the tour' : 'Take the tour'),
     row('button', { type: 'button', 'data-action': 'rail-help' }, 'help', 'Help & shortcuts'),
     row('button', { type: 'button', 'data-action': 'rail-whatsnew' }, 'auto_awesome', 'What’s new'),
-    signedIn
-      ? row('button', { type: 'button', 'data-auth-action': 'signout' }, 'logout', 'Sign out')
-      : row('button', { type: 'button', 'data-auth-action': 'pill' }, 'login', 'Sign in')
+    signedIn ? row('button', { type: 'button', 'data-auth-action': 'signout' }, 'logout', 'Sign out') : null
   ]));
   document.body.append(menu);
   const r = btn.getBoundingClientRect();
@@ -1973,6 +1980,12 @@ function wire() {
   });
   window.addEventListener('resize', () => closeAcctMenu(false));
 
+  /* The tour is a lazy chunk (src/ui/tour.js); fetched on the click. */
+  delegate(document, 'click', '[data-action="rail-tour"]', () => {
+    closeAcctMenu(false);
+    import('./tour.js').then((m) => (tourResumable() ? m.resumeTour() : m.startTour()))
+      .catch(() => { const ui = window.StudioUI; if (ui && ui.toastError) ui.toastError('The tour did not load.'); });
+  });
   delegate(document, 'click', '[data-action="rail-help"]', () => {
     /* Close the menu first, here, so the sheet's opener is the Account
        button and not a row that is about to be detached. */

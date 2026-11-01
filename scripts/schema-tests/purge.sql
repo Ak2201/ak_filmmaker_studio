@@ -177,6 +177,15 @@ insert into public.user_active_sessions (user_id, session_id) values
   ('00000000-0000-4000-8000-00000000ce01', gen_random_uuid()),
   ('00000000-0000-4000-8000-00000000ce11', gen_random_uuid())
   on conflict (user_id) do nothing;
+-- §66: a stored Google grant and a tour flag, the keeper's and a tester's
+insert into public.google_tokens (user_id, enc_refresh) values
+  ('00000000-0000-4000-8000-00000000ce01', repeat('K', 64)),
+  ('00000000-0000-4000-8000-00000000ce11', repeat('T', 64))
+  on conflict (user_id) do nothing;
+insert into public.account_profile (user_id, tour_started_at) values
+  ('00000000-0000-4000-8000-00000000ce01', now()),
+  ('00000000-0000-4000-8000-00000000ce12', now())
+  on conflict (user_id) do nothing;
 
 -- configuration a tester last touched: it must survive, minus the pointer
 insert into public.feature_overrides (key, scope, scope_id, enabled, set_by) values
@@ -268,6 +277,9 @@ select t.ok((select count(*) from public.events) = 0 and (select count(*) from p
   'purge. no funnel counts, leads, codes, requests, testimonials, audit, notes, tickets or tombstones');
 select t.ok((select count(*) from public.subscriptions) = 0 and (select count(*) from public.rzp_plans) = 0,
   'purge. §62: subscriptions and rzp_plans are empty');
+select t.ok((select array_agg(user_id::text) from public.google_tokens) = array['00000000-0000-4000-8000-00000000ce01']
+        and (select array_agg(user_id::text) from public.account_profile) = array['00000000-0000-4000-8000-00000000ce01'],
+  'purge. §66: only the keeper''s Google grant and tour flag are left');
 select t.ok(exists (select 1 from public.accounts a where a.id = '00000000-0000-4000-8000-0000000ca001'
                      and a.plan = 'free' and a.plan_until is null and a.plan_period is null
                      and a.seat_limit <= greatest(1, coalesce(public.plan_cap((select p.limits from public.plans p where p.id = 'free'), 'seats'), 1000)))

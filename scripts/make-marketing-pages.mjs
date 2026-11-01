@@ -47,6 +47,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadMatrixModule } from './make-plan-features-sql.mjs';
+import { googleBtnHTML } from '../src/lib/google-button.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const SITE_FILE = 'src/data/marketing-site.json';
@@ -305,7 +306,7 @@ ${s.ids.map((id) => `              <li>${toolLink(site, pages, id, current)}</li
           </div>`).join('');
   /* Guides, the switching guides and the trust page sit in the Product
      menu's last column, so the bar itself holds four things: Product,
-     Pricing, Sign in, Get started (28 Oct 2026). */
+     Pricing, and the one Continue with Google button (31 Oct 2026). */
   const cur = (k) => (current === k ? ' aria-current="page"' : '');
   const resources = `
           <div class="mk-mega-col mk-mega-col--more">
@@ -328,11 +329,9 @@ ${s.ids.map((id) => `              <li>${toolLink(site, pages, id, current)}</li
         </div>
       </div>
       <a class="mk-nav-link mk-nav-pricing" href="pricing.html"${cur('pricing')}>${esc(u.pricing)}</a>
-      <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">${esc(u.login)}</a>
     </nav>
     <div class="mk-top-end">
-      <a class="mk-nav-link mk-end-login" href="invite.html" data-start-auth="google">${esc(u.login)}</a>
-      <a class="mk-btn mk-btn--primary mk-btn--sm" href="invite.html" data-open-signup>${esc(u.getStarted)}</a>
+      ${googleBtnHTML({ cls: 'mk-btn mk-btn--primary mk-btn--sm mk-top-google', label: u.continue, open: true })}
       <a class="mk-burger" id="mkBurger" href="#mkFoot" aria-controls="mkNav" aria-expanded="false" aria-label="${esc(u.menu)}">${sym('menu')}</a>
     </div>
   </div>
@@ -383,10 +382,9 @@ function modal(site) {
     <button class="mk-modal-x" type="button" data-close aria-label="${esc(s.close)}">${sym('close')}</button>
     <h2 class="mk-modal-h" id="mkSignupTitle">${passOr(passSlots(s.headingPass), esc(s.heading))}</h2>
     <p class="mk-modal-offer" id="mkOffer" data-off-text="${esc(s.offerOff)}" data-open-text="${esc(s.offerIn)}">${passOr(passSlots(s.offerPass), esc(s.offer))}</p>
-    <a class="mk-btn mk-btn--primary mk-btn--block" id="mkGoogle" href="invite.html" data-start-auth="google" data-open-text="${esc(s.googleIn)}">${esc(s.google)}</a>
+    ${googleBtnHTML({ id: 'mkGoogle', cls: 'mk-btn mk-btn--primary mk-btn--block', label: s.google, attrs: 'data-open-text="' + esc(s.googleIn) + '"' })}
     <p class="mk-msg" id="mkMsg" role="status"></p>
     <p class="mk-modal-terms">${terms}</p>
-    <p class="mk-modal-have">${esc(s.have)} <a href="invite.html" data-start-auth="google" data-open-text="${esc(s.googleIn)}">${esc(s.haveLink)}</a></p>
   </div>
 </div>`;
 }
@@ -410,7 +408,7 @@ export function renderPage(id, { site, pages }) {
     <h1 class="mk-h1" id="mkH1">${esc(p.hero.h1)}</h1>
     <p class="mk-sub"${alt(p.hero, 'sub')}>${esc(p.hero.sub)}</p>
     <div class="mk-cta-row">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(u.getStarted)}</a>
+      ${googleBtnHTML({ cls: 'mk-btn mk-btn--primary mk-btn--lg', label: u.continue, open: true })}
     </div>
     <figure class="mk-player mk-hero-media" id="demo" aria-label="${esc(p.demo.h2)}">
       <video controls muted loop playsinline preload="none" width="1280" height="720" poster="${media(id + '.webp')}" aria-label="${esc(p.demo.h2)}">
@@ -465,7 +463,7 @@ ${p.related.map((rid) => {
 </section>`;
 
   const mid = closeBand(p.midCta.h2, `
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-off>${esc(u.getStarted)}</a>
+      ${googleBtnHTML({ cls: 'mk-btn mk-btn--primary mk-btn--lg', label: u.continue, open: true, attrs: 'data-pass-off' })}
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(site.pass.ctaFull)}</a>`, '', stage.hue);
 
 
@@ -654,7 +652,7 @@ ${g.items.map((it) => { const t = it.pass ? ' data-pass-faq' : (it.modes ? ' dat
 </section>`;
 
   const close = closeBand(c.close.h, `
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(c.close.cta)}</a>`);
+      ${googleBtnHTML({ cls: 'mk-btn mk-btn--primary mk-btn--lg', label: c.close.cta, open: true })}`);
 
   return `<!DOCTYPE html>
 <html lang="en" data-volume="studio" data-fms-marketing>
@@ -889,7 +887,7 @@ export function renderHome({ site, pages, home }) {
       <h1 class="mk-h1" id="mkH1">${home.hero.h1.split(' ').map((w) => `<span class="st-w">${esc(w)}</span>`).join(' ')}</h1>
       <p class="mk-sub"${alt(home.hero, 'sub')}>${priceSpans(esc(home.hero.sub))}</p>
       <div class="mk-cta-row">
-        <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-o-fallback>${esc(o.fallback)}</a>
+        ${googleBtnHTML({ cls: 'mk-btn mk-btn--primary mk-btn--lg', label: o.fallback, open: true, attrs: 'data-o-fallback' })}
         <a class="mk-link" href="#tools">${esc(home.hero.sample)}${sym('arrow_downward')}</a>
       </div>
     </div>
@@ -1013,7 +1011,7 @@ ${fq.items.map((it) => `      <details class="st-faq-item" id="faq-${esc(it.id)}
     <h2 class="mk-h2" id="mkMidH"><span data-o-fallback>${esc(home.closing.h2)}</span><span data-o-only hidden>${esc(home.closeOffer.h2)}</span></h2>
     <p class="mk-sub"><span data-o-fallback>${esc(home.closing.sub)}</span><span data-o-only hidden>${esc(home.closeOffer.sub)}</span></p>
     <div class="mk-cta-row mk-cta-row--center" data-o-fallback>
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(home.closing.cta)}</a>
+      ${googleBtnHTML({ cls: 'mk-btn mk-btn--primary mk-btn--lg', label: home.closing.cta, open: true })}
     </div>
     <div class="st-offer st-offer--close" id="offerClose"${offerData(o)} hidden>
       ${offerSlots(o, { surface: 'close' })}
@@ -1181,7 +1179,7 @@ ${ldScripts([orgLd()])}
 function companyCta(company, h2) {
   const cta = company.cta;
   return closeBand(h2, `
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-open-text="${esc(cta.startOpen)}">${esc(cta.start)}</a>
+      ${googleBtnHTML({ cls: 'mk-btn mk-btn--primary mk-btn--lg', label: cta.start, open: true, attrs: 'data-open-text="' + esc(cta.startOpen) + '"' })}
       <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(cta.plans)}</a>`);
 }
 
@@ -1191,7 +1189,7 @@ function companyHero(company, h1, sub, own) {
      as the one primary, instead of the site-wide pair (28 Oct 2026). */
   const row = own
     ? `<a class="mk-btn mk-btn--primary mk-btn--lg" href="${own.href}">${esc(own.label)}</a>`
-    : `<a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-open-text="${esc(cta.startOpen)}">${esc(cta.start)}</a>
+    : `${googleBtnHTML({ cls: 'mk-btn mk-btn--primary mk-btn--lg', label: cta.start, open: true, attrs: 'data-open-text="' + esc(cta.startOpen) + '"' })}
       <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(cta.plans)}</a>`;
   return `<section class="mk-hero co-hero" id="top" aria-labelledby="mkH1" data-surface="dark">
   <div class="mk-wrap mk-hero-in">

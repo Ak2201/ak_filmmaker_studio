@@ -100,6 +100,7 @@ import './blueprint-drawer-mount.js';
    window for the few callers outside the module graph. */
 import Dialog from './dialog.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
+import './learn-places.js';   // the "What is …?" pills under newcomer terms
 import './ports-view.js';   // what this UI plugs into the logic layer's ports
 if (typeof window !== 'undefined') window.StudioDialog = Dialog;
 
@@ -1497,6 +1498,14 @@ function openShareDialog(projectId) {
   if (!projectId) return;
   if (!window.StudioCloud || !StudioCloud.getSession()) {
     openCloudAuthModal();
+    return;
+  }
+  /* Drive-only storage (schema §66): the film is a folder in the owner's
+     Drive, shared by e-mail through Drive permissions — no link tokens. */
+  if (StudioCloud.storageModeNow && StudioCloud.storageModeNow() === 'drive') {
+    Promise.all([StudioCloud.drive(), import('./drive-ui.js')])
+      .then(([D, UI]) => { if (D) UI.openDriveShareSheet(projectId, D, { returnTo: document.activeElement }); })
+      .catch((e) => StudioUI.toastError((e && e.message) || String(e)));
     return;
   }
   let m = document.getElementById('shareDialog');

@@ -115,6 +115,8 @@ jobs:
       # (HISTORY 67). All read this job's gate-off dist/.
       - run: npm run prove:notes
       - run: npm run prove:beat-sync
+      # The Beat Sheet's two views, Lanes and Spine (owner, 31 Oct 2026).
+      - run: npm run prove:beat-views
       - run: npm run prove:story-coedit
       - run: npm run prove:visual
       - run: npm run prove:board-frames
@@ -191,6 +193,24 @@ jobs:
         env:
           PROVE_DIST: dist-verify
       - run: npm run prove:explainer-c
+        env:
+          PROVE_DIST: dist-verify
+      # Drive-only storage (schema §66) against a faked Drive and a faked
+      # google-token function: push/pull, merge, sharing, commenter
+      # comments, screening from Drive, the verified migration, and zero
+      # project_data / comments traffic in drive mode.
+      - run: npm run prove:drive-only
+        env:
+          PROVE_DIST: dist-verify
+      # The tour: an account's first ever sign-in starts it on the Dragon
+      # sample (faked tour_status / mark_tour_started), it walks every
+      # navigation page, pause / resume / skip, the account menu and
+      # Settings start it again; never on an error, an absent function or
+      # a walled member; zero idle writes; at 1440 and 390.
+      - run: npm run prove:tour
+        env:
+          PROVE_DIST: dist-verify
+      - run: npm run prove:pills
         env:
           PROVE_DIST: dist-verify
       # The built markup a crawler gets: lang, titles, canonicals, one h1,

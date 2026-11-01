@@ -1711,7 +1711,7 @@ try {
         terms: !!document.querySelector('#plan .pl-row + .pu-terms')
       }));
       ok(r.cards.join() === 'starter,indie,pro' && /^Everything in Basic, plus:$/.test(r.lead) && r.bullets.every((n) => n > 0 && n <= 5), 'purchase.html signed out: the three cards, "Everything in Basic, plus:" and at most five bullets each: ' + JSON.stringify(r));
-      ok(r.primary.join() === 'Sign in to buy Intermediate' && r.outline.join() === 'starter,pro' && r.google && r.rec === 'Recommended', 'the one filled button is "Sign in to buy Intermediate" (Recommended), the others outline, each a Google sign-in');
+      ok(r.primary.join() === 'Continue with Google' && r.outline.join() === 'starter,pro' && r.google && r.rec === 'Recommended', 'the one filled button is "Continue with Google" (Recommended), the others outline, each a Google sign-in');
       ok(r.buy === 0 && r.terms, 'nothing on it can buy, and "Read this before you purchase" is under the row'); }
     allErrors.push(...errors); await ctx.close();
   }

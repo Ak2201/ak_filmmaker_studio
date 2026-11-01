@@ -37,6 +37,11 @@ export { DEMO_PENDING_KEY, DEMO_LAND_KEY, demoPending, markDemoPending, enterAdd
 export const demoLink = (code) => new URL('invite.html#code=' + formatCode(code) + '&demo=1', location.href).href;
 
 const cloud = () => window.StudioCloud || null;
+/* Drive-only storage (schema §66): the console's films are the admin's
+   own Drive films, and a screening pass carries a Drive file id. */
+const driveMode = () => { const c = cloud(); return !!(c && c.storageModeNow && c.storageModeNow() === 'drive'); };
+const driveProjects = () => ((window.StudioStore && window.StudioStore.listProjects()) || [])
+  .filter((p) => p.drive && p.drive.role === 'owner').map((p) => ({ id: p.id, title: p.title, format: p.format }));
 const gate = () => (cloud() && cloud().gate) || null;
 const toast = (msg, type, duration) => {
   if (!window.StudioUI || !StudioUI.toast) return;
@@ -255,7 +260,7 @@ async function loadAdmin({ quiet = false } = {}) {
   try {
     const [codes, members, redemptions, requests] = await Promise.all([g.admin.listCodes(), g.admin.listMembers(), g.admin.listRedemptions(), g.admin.listRequests()]);
     admin.codes = codes; admin.members = members || []; admin.redemptions = redemptions; admin.requests = requests || [];
-    try { admin.projects = await g.admin.listProjects(); } catch (e) { admin.projects = []; }
+    try { admin.projects = driveMode() ? driveProjects() : await g.admin.listProjects(); } catch (e) { admin.projects = []; }
     try { admin.role = await g.admin.studioRole(); } catch (e) { admin.role = null; }
     admin.loaded = true;
   } catch (e) {
@@ -532,11 +537,23 @@ async function createCode(form) {
   if (passType === 'screening_pass' && !v('project')) { toast('Choose the project the pass opens.', 'error'); return; }
   if (passType === 'screening_pass' && !hours) { toast('A screening pass needs an expiry.', 'error'); return; }
   try {
+    const expiresAt = hours ? new Date(Date.now() + Number(hours) * 3600e3).toISOString() : null;
+    /* In drive mode the film is not on the server: the pass is made with
+       no target project, then the film's screening export is written to
+       the owner's Drive, link-shared, and its FILE ID put on the pass
+       (screening_set_drive_file, schema §66). The id never goes in a
+       URL; screening_open hands it over only while the pass is valid. */
+    const viaDrive = passType === 'screening_pass' && driveMode();
     admin.made = await g.admin.createCode({
       passType, maxRedemptions: Math.max(1, parseInt(v('max'), 10) || 1),
-      expiresAt: hours ? new Date(Date.now() + Number(hours) * 3600e3).toISOString() : null,
-      projectId: passType === 'screening_pass' ? v('project') : null, label: v('label')
+      expiresAt,
+      projectId: passType === 'screening_pass' && !viaDrive ? v('project') : null, label: v('label')
     });
+    if (viaDrive && admin.made) {
+      const D = await cloud().drive();
+      try { await D.attachScreening(v('project'), admin.made.id, expiresAt); }
+      catch (e) { try { await g.admin.revokeCode(admin.made.id); } catch (er) { /* shown below */ } throw e; }
+    }
     admin.draft = {};
     await loadAdmin({ quiet: true });
     rerender();
@@ -611,7 +628,9 @@ delegate(document, 'click', '[data-gate-action]', async (e, el) => {
   try {
     if (act === 'revoke') {
       if (!await askDanger('Revoke this code? Nobody can redeem or open it again. Accounts already made with it are not affected.', { confirm: 'Revoke code' })) return;
-      await g.admin.revokeCode(el.dataset.id); await loadAdmin();
+      await g.admin.revokeCode(el.dataset.id);
+      if (driveMode()) { try { const D = await cloud().drive(); if (D) await D.revokeScreening(el.dataset.id); } catch (e) { /* the owner's next pull removes it */ } }
+      await loadAdmin();
     } else if (act === 'terminate') {
       await g.admin.terminate(el.dataset.id, false); await loadAdmin();
       toast('Session ended. If that device is still open it can take the session back.');
@@ -656,6 +675,7 @@ delegate(document, 'click', '[data-gate-action]', async (e, el) => {
         confirm: 'Delete totally', typeToConfirm: String(el.dataset.email || '')
       })) return;
       try {
+        /* Their Google grant is revoked inside g.admin.deleteUser (§66). */
         const out = await g.admin.deleteUser(el.dataset.id, el.dataset.email);
         await loadAdmin();
         const n = out && typeof out.invoices_retained === 'number' ? out.invoices_retained : 0;

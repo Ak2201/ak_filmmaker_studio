@@ -1719,22 +1719,6 @@ body.reading-mode .how-to { padding-block: var(--s6); }
   margin: var(--s3) 0;
 }
 .why-pop .why-body { display: none; }
-.why-pop .why-open {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.5rem;
-  padding: 0;
-  background: none;
-  border: 0;
-  font: inherit;
-  font-size: var(--t-tiny);
-  color: var(--ink-muted);
-  text-decoration: underline dotted;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-.why-pop .why-open:hover { color: var(--ink); }
-.why-pop .why-open:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; border-radius: var(--sk-radius, var(--radius)); }
 @media print {
   .why-pop .why-open { display: none !important; }
   .why-pop .why-body { display: block !important; }

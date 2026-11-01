@@ -10,7 +10,8 @@
 --   * every other sign-in (auth.users) and ALL of its work: projects
 --     (project_data, comments, collaborators and shares go with them),
 --     accounts and team seats, studio membership, console roles, device
---     locks;
+--     locks, and (§66, when it has run) their stored Google grants and
+--     tour flags;
 --   * for EVERYBODY, the keeper included: payments, refunds, refund
 --     requests, invoices, invoice buyer details, the invoice counters,
 --     referral credits, e-mail grants, and (§62, when it has run)
@@ -94,6 +95,7 @@ known(tbl) as (values
   -- the keeper's rows stay
   ('projects'), ('project_data'), ('project_collaborators'), ('shares'), ('comments'), ('accounts'),
   ('account_members'), ('studio_members'), ('admin_roles'), ('user_active_sessions'),
+  ('google_tokens'), ('account_profile'),
   -- configuration, not touched
   ('plans'), ('plan_prices'), ('billing_settings'), ('site_announcement'), ('feature_overrides')
 ),
@@ -118,6 +120,8 @@ plan(ord, tbl, what, cond) as (values
   (20, 'admin_roles',           'console roles other than the keeper',               'user_id <> $K'),
   (21, 'user_active_sessions',  'device locks other than the keeper',                'user_id <> $K'),
   (22, 'feature_overrides',     'account overrides naming a deleted account',        'scope = ''account'' and scope_id not in (select id::text from public.accounts where owner_id = $K)'),
+  (23, 'google_tokens',         'Google grants other than the keeper''s (§66; null = not run)', 'user_id <> $K'),
+  (24, 'account_profile',       'tour flags other than the keeper''s (§66; null = not run)',    'user_id <> $K'),
   (30, 'payments',              'ALL payments (the keeper''s too)',                  'true'),
   (31, 'refunds',               'ALL refunds',                                       'true'),
   (32, 'refund_requests',       'ALL refund requests',                               'true'),
@@ -196,6 +200,7 @@ declare
   keep_tables text[] := array[
     'projects', 'project_data', 'project_collaborators', 'shares', 'comments', 'accounts',
     'account_members', 'studio_members', 'admin_roles', 'user_active_sessions',
+    'google_tokens', 'account_profile',
     'plans', 'plan_prices', 'billing_settings', 'site_announcement', 'feature_overrides'];
   -- GUARD TRIGGERS STOOD DOWN for this transaction only. ALTER TABLE is
   -- transactional: an error anywhere rolls the DISABLE back with
@@ -293,6 +298,15 @@ begin
    where scope = 'account'
      and scope_id not in (select id::text from public.accounts where owner_id = keeper);
   delete from public.user_active_sessions where user_id <> keeper;
+  -- §66's two account tables, when §66 has run (they would cascade from
+  -- auth.users in step 7 anyway; said here so the preview's count is what
+  -- this deletes)
+  if to_regclass('public.google_tokens') is not null then
+    delete from public.google_tokens where user_id <> keeper;
+  end if;
+  if to_regclass('public.account_profile') is not null then
+    delete from public.account_profile where user_id <> keeper;
+  end if;
 
   -- 6. the keeper's accounts carry no plan (seats back to the free cap,
   -- as a lapse leaves them — §61's mark_payment_refunded)
@@ -380,6 +394,10 @@ checks(ord, what, expected, actual) as (
          case when to_regclass('public.' || e.tbl) is null then 'n/a'
               else (xpath('/row/n/text()', query_to_xml(format('select count(*) as n from public.%I', e.tbl), false, true, '')))[1]::text end
     from emptied e
+  union all
+  select 7, 'google_tokens rows not the keeper''s (§66)', case when to_regclass('public.google_tokens') is null then 'n/a' else '0' end,
+         case when to_regclass('public.google_tokens') is null then 'n/a'
+              else (xpath('/row/n/text()', query_to_xml('select count(*) as n from public.google_tokens g where g.user_id not in (select u.id from auth.users u where lower(u.email) = ''arunkumarmohanans@gmail.com'')', false, true, '')))[1]::text end
   union all
   select 90, 'price_notice() still answers', 'true', (public.price_notice() is not null)::text
 )

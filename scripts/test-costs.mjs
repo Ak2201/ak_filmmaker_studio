@@ -233,6 +233,9 @@ eq(C.actualsCSV(rep, 'USD').split('\r\n')[0], 'Account,Description,Estimate (USD
 ok(C.actualsCSV(rep).startsWith('Account,Description,Estimate,Actual (incl. GST),'), 'INR actuals headers unchanged');
 ok(C.expensesCSV([], undefined, undefined, 'USD').startsWith('Date,Shoot day,Budget line,Category,Amount (incl. GST) (USD),GST %,GST (USD),'), 'USD expenses CSV names its currency');
 ok(C.expensesCSV([]).startsWith('Date,Shoot day,Budget line,Category,Amount (incl. GST),GST %,GST,'), 'INR expenses headers unchanged');
+eq(C.expensesCSV([], undefined, undefined, undefined, false).split('\r\n')[0], 'Date,Shoot day,Budget line,Category,Amount,Vendor,Paid by,Method,Note,Receipt', 'film abroad: expenses CSV drops GST %, GST, GSTIN');
+eq(C.actualsCSV(rep, undefined, false).split('\r\n')[0], 'Account,Description,Estimate,Actual,Variance,% used', 'film abroad: actuals CSV drops excl. GST, GST, TDS');
+eq(C.actualsCSV(rep, undefined, true), C.actualsCSV(rep), 'India film: actuals CSV unchanged');
 
 /* ---- locked versions, scales ----------------------------------- */
 reset();

@@ -623,6 +623,8 @@ the 8 Oct schema and Google findings.
 
 ## 6c. THE PENDING REGISTRY — every item still to do, with an ID
 
+> **The owner's one checklist (1 Nov 2026): `docs/LIVE-STEPS-2026-11-01.md`.** It gathers every owner-only step in this registry, the CLAUDE.md status table and the `docs/LIVE-STEPS-*.md` files, and says where those documents disagree. Where it and a P/O row below differ on a live fact, the later dated live-steps status table wins.
+
 **This is the work list.** IDs are stable: say "do P2" or "do G2" and a
 session knows what is meant. Every row was checked by reading the code, not by
 trusting an earlier doc — first at `cc4e580`, then re-checked row by row on

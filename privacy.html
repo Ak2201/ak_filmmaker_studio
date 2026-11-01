@@ -87,7 +87,6 @@
 <nav class="legal-toc" aria-label="On this page">
   <p class="legal-toc-h">On this page</p>
   <ol>
-      <li><a href="#changes-h">What changed on 28 October 2026</a></li>
       <li><a href="#who-we-are">1. Who we are</a></li>
       <li><a href="#what-we-collect">2. What we collect</a></li>
       <li><a href="#why-we-use-it">3. Why we use it</a></li>
@@ -106,7 +105,6 @@
 <details class="legal-toc-m">
   <summary>On this page</summary>
   <ol>
-      <li><a href="#changes-h">What changed on 28 October 2026</a></li>
       <li><a href="#who-we-are">1. Who we are</a></li>
       <li><a href="#what-we-collect">2. What we collect</a></li>
       <li><a href="#why-we-use-it">3. Why we use it</a></li>
@@ -128,7 +126,6 @@
 
 <h1>Privacy Policy</h1>
 <p class="legal-sub">What we collect, why we collect it, who helps us process it, and the rights you have over it.</p>
-<p class="legal-date">Last updated 28 October 2026</p>
 
 <div class="legal-key">
   <p><strong>Your work is saved on your device first.</strong>
@@ -140,35 +137,6 @@
   <p>We never sell your personal data, we do not show advertising, we run no third-party
   analytics, and we do not use your scripts or projects to train AI models.</p>
 </div>
-
-<section class="legal-changes" id="changes" aria-labelledby="changes-h">
-  <h2 id="changes-h">What changed on 28 October 2026</h2>
-  <ul>
-    <li>Section 2: the access records now include the launch pass; what we keep when a
-    purchase is on auto-renew (the mandate itself stays with Razorpay); the reminder and
-    cancellation e-mails an auto-pay sends; what is kept when you send us a testimonial, and
-    how to take it back.</li>
-    <li>Section 2: visit counts are kept for the first public page a visit lands on, not only
-    the start page, and for the later steps (signing in, opening the sample, starting a trial,
-    viewing the plans in the studio, checkouts, purchases and launch passes); a count can name
-    the kind of link that brought the visit, which your browser keeps for the tab only.</li>
-    <li>Section 2: the product-news e-mail form, what it keeps and how to leave the list.
-    Sections 3, 4, 7 and 9 follow these changes.</li>
-    <li>On 21 October 2026, new section 9, for people in the United States: the California (CCPA/CPRA)
-    categories of personal information we collect, that we do not sell or share it, how to
-    ask for access or deletion, and that exercising a right never changes your price or your
-    service.</li>
-    <li>On 21 October 2026, section 2: how we choose whether to show you prices in rupees or US dollars (in your
-    browser, with no IP lookup), and that a payment record now notes its currency and
-    whether the card was issued outside India.</li>
-    <li>On 21 October 2026, section 4: using the studio from outside India transfers your data to India and to
-    the countries our providers work in.</li>
-    <li>On 19 October 2026: cloud sync, payment records, receipt e-mails, invoices, session
-    records and sign-in history, team invitations, screening passes, the Chrome extension,
-    support records, account deletion and who can see your data were described as they work;
-    Google Fonts and the launch-offers form were removed.</li>
-  </ul>
-</section>
 
 <h2 id="who-we-are">1. Who we are</h2>
 
@@ -259,7 +227,7 @@ internal identifier for your account, to match the payment to it. We keep:</p>
   <li>if you have a referral code, the credits it has earned and whether they have been
   paid out.</li>
 </ul>
-<!-- Auto-renew, finalised 28 Oct 2026 from schema section 62 (the
+<!-- Auto-renew, from schema section 62 (the
      subscriptions table) and section 63 (reminded_for): a Razorpay
      Subscription holds the mandate; we keep its identifiers and status so a
      renewal charge can be matched and a cancel carried out. -->
@@ -289,7 +257,7 @@ terms and privacy policy. Storyboard pictures drawn with Gemini are saved, when 
 them, as files in your own Google Drive; the project keeps only a reference to each
 file.</p>
 
-<!-- Written 28 Oct 2026 from schema section 59 (public.testimonials) and
+<!-- Written from schema section 59 (public.testimonials) and
      src/lib/testimonials.js consentText(): the author is always the
      signed-in account; anon reads only public_testimonials(); a revoke hides
      the row and forbids publishing it again; the public site is static, so
@@ -349,7 +317,7 @@ The choice is kept on your device and takes effect from your next click; it also
 you are not signed in, nothing is counted.
 We send the totals once, as you leave or hide the page; we never send them in the background.</p>
 
-<!-- Finalised 28 Oct 2026 from the code: src/pages/marketing.js counts a
+<!-- From the code: src/pages/marketing.js counts a
      landing (bumpOnce('landing_view'), once per tab) on every public page;
      src/lib/funnel.js counts the in-studio steps once per tab
      (signin_done, sample_open, trial_start, plan_view_in_app) and
@@ -371,13 +339,12 @@ Privacy Control, and the start page has a &ldquo;Don&rsquo;t count this visit&rd
 reaches the purchase page, your browser keeps the two in the tab&rsquo;s session storage; closing
 the tab forgets them, and they are sent to us only as the short word on a count and, if you use
 it, the code at checkout.</p>
-<p>Our start page used to have a &ldquo;Get launch offers&rdquo; form. It has been removed.
-If you used it, we still hold the address, the exact consent sentence you saw, and the date;
+<p>If you gave your address through a &ldquo;Get launch offers&rdquo; form, we hold the address, the exact consent sentence you saw, and the date;
 we use it only to write to you about {{brand:name}}&rsquo;s launch and offers, only an
 administrator can read the list, and it is not shared. Ask us at {{brand:email}} and we
 will delete it.</p>
 
-<!-- Finalised 28 Oct 2026. Written from the code:
+<!-- Written from the code:
      src/pages/marketing.js (the form) -> src/lib/funnel.js addLead() ->
      add_lead() and public.leads in supabase/schema/supabase-schema.sql §29.
      The form is shown only once marketing-site.json lead.live is true,
@@ -392,7 +359,7 @@ school&rsquo;s name and never the rest of the link &mdash; and the time you sent
 IP address or cookie is stored with it, and sending the same address again changes nothing.</p>
 <p><strong>Why:</strong> we use each address only for what the sentence you ticked said, which is
 why we keep that sentence. An address given on this form is used only to send you an occasional
-note when something new ships or a plan changes; an address from the old launch-offers form above
+note when something new ships or a plan changes; an address from the launch-offers form above
 is used only for launch and offers, as its own sentence said. Both are kept in the same list.
 <strong>Who sends it:</strong> no product-news e-mail is being sent yet. Before the first one goes
 out, this section will name the service that sends it. <strong>Who can read it:</strong> only a
@@ -644,9 +611,9 @@ account or make a purchase. We do not knowingly collect personal data from child
 you believe a child has given us personal data, contact us and we will delete it.</p>
 
 <h2 id="changes-to-this-policy">12. Changes to this policy</h2>
-<p>We may update this policy from time to time. The date at the top shows the latest
-version, and the note under it says what changed. If a change is significant, we will let
-signed-in members know in the app or by e-mail before it takes effect.</p>
+<p>If we change this policy, the version on this page is the one that applies. If a change
+is significant, we will let signed-in members know in the app or by e-mail before it takes
+effect.</p>
 
 <h2 id="contact-and-grievances">13. Contact and grievances</h2>
 <p>Questions, requests and grievances about your personal data:

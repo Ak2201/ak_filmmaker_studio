@@ -3511,3 +3511,29 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     the live region, the buttons, drag across lanes and on the spine
     matching the buttons, Escape with no write, locked, reduced motion,
     1440/1100/390 overflow and AA, no page errors.
+
+78. **No change notices: What's new hidden, policies undated (1 Nov 2026).**
+    Owner: the site is launching and nobody has bought anything (every
+    purchase so far is a test), so nothing should announce a change.
+    What's new is hidden until an entry exists: `src/data/changelog.json`
+    has `entries: []`, and the avatar-menu row (`shell.js`), the dashboard
+    button and its New badge (`dashboard.js`) render only when the list
+    holds at least one entry. The drawer (`src/ui/changelog.js`) and the
+    `whatsNewSeen` field in `fms_studio_prefs_v1` are untouched, so the
+    owner posting one entry brings every entry point back with no rebuild
+    of the feature. privacy.html, terms.html and refund.html lost their
+    date line, their "What changed" section and its contents links, and
+    every sentence framed as a change; each rule those sentences carried
+    is still stated in the body in the present tense (refund of that
+    payment's year, refund currency and conversion fees, the upgrade
+    credit, the auto-pay mandate, California and outside-India sections,
+    the launch pass). announcements.json lost its dated items; guides and
+    comparisons print no "Updated" line (the `updated` field still feeds
+    JSON-LD). The guard was turned round rather than deleted:
+    `test:marketing` used to fail a legal page with a STALE date and now
+    fails one with ANY date or change wording (`legal-date`, "Last
+    updated", "What changed", "Changes since", "Effective", "new policy",
+    `D Month YYYY`). `prove:conversion` asserts the list is empty and the
+    drawer unreachable, then injects one entry and checks the drawer opens
+    and the New badge clears. verify carries three `EXPECTED.dashboard`
+    rows (awesome, new, what’s) for the hidden button; no data-key moved.

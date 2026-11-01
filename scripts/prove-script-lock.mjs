@@ -241,7 +241,9 @@ try {
     [facts.scenes, facts.cast >= 1, facts.locations, 'elements' in facts, 'extras' in facts], [3, true, 3, true, true]);
   await page.click('[data-action="lock-confirm"]');
   check('4. the pass finishes ([data-pipeline="done"])', await until(() => document.querySelector('[data-pipeline="done"]'), null, 30000), true);
-  check('4. the lock pass has no AI block', await page.locator('.pl-ai').count(), 0);
+  /* Phase 2 (docs/LOCK-EXTRACT.md): the done state offers "Enhance with AI"; with no Pro plan the pill is locked and nothing is requested. */
+  check('4. the done state has the Enhance with AI block, its pill locked (Pro off)',
+    [await page.locator('.pl-ai').count(), await page.locator('.pl-ai .ai-pill').getAttribute('data-ai-state')], [1, 'locked']);
   const locked = await blob();
   const n = locked.numbering || {};
   check('4. blob: locked, base names a draft, 3 ids, no reviewed',
@@ -373,7 +375,8 @@ try {
     const S = window.StudioStore;
     return JSON.parse(S.rawGet('fms_contacts_v1__' + S.currentProjectId())).callSheets.map((c) => c.sceneIds);
   });
-  check('9. the call sheet still lists the STREET row', cs, [[ids[1]]]);
+  /* Phase 2's lock also drafts a sheet for each shoot day that had none; the typed sheet is the first and keeps its row. */
+  check('9. the typed call sheet still lists the STREET row (first sheet, untouched by the lock\'s drafts)', cs[0], [ids[1]]);
 
   /* ---- 10. a legacy lock, in a second fresh project ---- */
   await ctx.close();

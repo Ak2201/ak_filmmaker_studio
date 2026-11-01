@@ -564,6 +564,13 @@ export function setRecce(name, patch) {
   return patchAll({ recces });
 }
 
+/** True when a recce record is STORED for this location, even an empty
+    one. getRecce() cannot say: it always hands back a blank. */
+export function hasRecce(name) {
+  const key = locationKey(name);
+  return !!key && Object.prototype.hasOwnProperty.call(readAll().recces, key);
+}
+
 export function removeRecce(name) {
   const recces = { ...readAll().recces };
   delete recces[locationKey(name)];
@@ -709,7 +716,7 @@ export default {
   listDayOrder, dayOrder, setDayOrder, clearDayOrders, orderByList, orderedDayScenes,
   placeScene, undoPlace, nudgeScene,
   DAY_RECORDS, listDayRecords, dayRecord, setDayRecord, schedulePrefs, setSchedulePrefs,
-  getRecce, setRecce, removeRecce, locationIndex, byLocation, unplacedScenes, orphanRecces,
+  getRecce, setRecce, hasRecce, removeRecce, locationIndex, byLocation, unplacedScenes, orphanRecces,
   listMedia, saveMedia, addMedia, updateMedia, removeMedia,
   LINK_NONE, locationLink, dayLink, linkLabel
 };

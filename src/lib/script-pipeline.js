@@ -31,6 +31,13 @@
      analysis    castMatrix(), screenTime(), the tension read —
                  DERIVED, stored nowhere (script-analysis-model.js)
 
+   THE LOCK'S SEVEN (docs/LOCK-EXTRACT.md, `lockOnly: true`): synopsis,
+   extras, tags (lock-extract.js), castcontacts, recce, sheets,
+   budgetlines (lock-seed.js). They run and plan ONLY when the caller
+   passes `lock: true`; without it STEPS shown, summary and behaviour
+   are exactly what they were. `categories` (undefined = all) is the
+   writer's ticked element categories and governs extras and tags.
+
    THE RULES.
      · Each step writes only into BLANK places, so a second run writes
        nothing and a person's edit is never overwritten.
@@ -48,7 +55,7 @@
    by scripts/test-pipeline.mjs (npm run test:pipeline).
    ============================================================ */
 import './store.js';   // must evaluate before anything reads localStorage
-import { SCENES_KEY, listScenes, untagMany, totalEighths, formatEighths } from './scenes.js';
+import { SCENES_KEY, listScenes, tagMany, untagMany, totalEighths, formatEighths } from './scenes.js';
 import { BIN_KEY, unaddScenes } from './scene-bin.js';
 import { loadScript, SCRIPT_KEY } from './script.js';
 import { headingsOf } from './scene-sync.js';
@@ -61,6 +68,12 @@ import { proposeShots, appendShots, scenesWithShots } from './breakdown-extras.j
 import { readCalcData, saveCalcData, scheduleFacts, CALC_KEY } from './budget-model.js';
 import { pageTarget } from './dpr.js';
 import { analyseScript } from './script-analysis-model.js';
+import { CONTACTS_KEY } from './contacts.js';
+import { planSynopses, applySynopses, undoSynopses, planExtras, planTags, tagCountsByCategory } from './lock-extract.js';
+import {
+  planCastContacts, seedCastContacts, undoCastContacts, planRecce, seedRecce, undoRecce,
+  planCallSheets, seedCallSheets, undoCallSheets, planBudgetLines, seedBudgetLines, undoBudgetLines
+} from './lock-seed.js';
 
 /** A speaker the bible does not hold is adopted when they speak in at
  *  least this many scenes: the cast, not every waiter with one line. */
@@ -69,11 +82,18 @@ export const ADOPT_MIN_SCENES = 2;
 export const STEPS = [
   { id: 'scenes', label: 'Scenes and cast', what: 'Every scene heading becomes a scene, and the people with lines in it are tagged as its cast.' },
   { id: 'characters', label: 'Characters', what: 'Speaking characters who appear in two scenes or more join the Story Bible.' },
+  { id: 'synopsis', lockOnly: true, label: 'Scene synopses', what: 'Each scene with no synopsis takes the first sentence of its first action line.' },
+  { id: 'extras', lockOnly: true, label: 'Background and extras', what: 'Crowd words in the action lines become background tags, with the count when the script states it.' },
+  { id: 'tags', lockOnly: true, label: 'Pre-tagged elements', what: 'Props, vehicles, sound and the rest that the action lines call for are tagged on the scenes you left ticked.' },
   { id: 'locations', label: 'Locations', what: 'Every place the headings name, with its scenes and pages.' },
   { id: 'props', label: 'Props and elements', what: 'Props, vehicles, sound and the rest that the action lines call for, as suggestions to accept on the Breakdown.' },
   { id: 'shots', label: 'Shot division', what: 'A first shot list for every scene that has none, by the basic rules.' },
   { id: 'days', label: 'Shooting days', what: 'Scenes with no day are grouped by place into proposed days on the Stripboard.' },
+  { id: 'castcontacts', lockOnly: true, label: 'Cast contacts', what: 'Each speaking character with no contact gets a "To be cast" row on Contacts.' },
+  { id: 'recce', lockOnly: true, label: 'Recce cards', what: 'Each location with no recce card gets one, with the time of day its scenes need.' },
+  { id: 'sheets', lockOnly: true, label: 'Draft call sheets', what: 'Each shooting day with no call sheet gets a draft, with its scenes and cast; every time stays blank.' },
   { id: 'budget', label: 'Budget days', what: 'Estimate lines with no days take the shoot length.' },
+  { id: 'budgetlines', lockOnly: true, label: 'Budget lines', what: 'New estimate lines from the schedule and the Breakdown, with days filled and rates left blank.' },
   { id: 'analysis', label: 'Screen time, cast and tension', what: 'Read from the script and the scenes; nothing is stored.' }
 ];
 const stepMeta = new Map(STEPS.map((s) => [s.id, s]));
@@ -149,6 +169,8 @@ function propTally(scenes, elements) {
  */
 export function planPipeline(opts = {}) {
   const { elements } = elementsOf(opts);
+  const lock = !!opts.lock;
+  const categories = Array.isArray(opts.categories) ? opts.categories : undefined;
   const heads = headingsOf(elements);
   const scenes = listScenes();
   const linked = new Set(scenes.map((s) => s.scriptElId).filter(Boolean));
@@ -161,6 +183,17 @@ export function planPipeline(opts = {}) {
 
   const fresh = freshSpeakers(elements, scenes).filter((c) => c.scenes >= ADOPT_MIN_SCENES);
   add('characters', fresh.length, fresh.length ? plural(fresh.length, 'speaking character') + ' not in the Story Bible yet.' : 'Every recurring speaker is in the Story Bible.');
+
+  if (lock) {
+    const later = 'Made once the scenes exist.';
+    const some = scenes.length > 0;
+    const syn = some ? planSynopses(scenes, elements).length : 0;
+    add('synopsis', syn, !some ? later : syn ? plural(syn, 'scene') + ' with no synopsis.' : 'Every scene has a synopsis, or no action line to read one from.');
+    const ext = some && (!categories || categories.includes('extras')) ? planExtras(scenes, elements).length : 0;
+    add('extras', ext, !some ? later : ext ? plural(ext, 'background tag') + ' to add.' : 'No crowd words left to tag.');
+    const tg = some ? planTags(scenes, elements, categories).length : 0;
+    add('tags', tg, !some ? later : tg ? plural(tg, 'element') + ' to tag.' : 'No element left to tag.', { byCategory: some ? tagCountsByCategory(scenes, elements) : {} });
+  }
 
   const places = locationIndex(scenes).length;
   add('locations', 0, scenes.length ? plural(places, 'location') + ' named so far.' : 'Read from the scenes once they exist.');
@@ -176,9 +209,26 @@ export function planPipeline(opts = {}) {
   const open = scenes.length ? unscheduled(scenes).length : heads.length;
   add('days', open, open ? plural(open, 'scene') + ' without a shooting day.' : 'Every scene has a day.');
 
+  if (lock) {
+    const later = 'Made once the scenes exist.';
+    const some = scenes.length > 0;
+    const n = (fn) => (some ? fn() : 0);
+    const cc = n(() => planCastContacts({ scenes, elements }));
+    add('castcontacts', cc, !some ? later : cc ? plural(cc, 'speaking character') + ' with no contact.' : 'Every speaker has a contact.');
+    const rc = n(() => planRecce(scenes));
+    add('recce', rc, !some ? later : rc ? plural(rc, 'location') + ' with no recce card.' : 'Every location has a recce card.');
+    const cs = n(() => planCallSheets(scenes));
+    add('sheets', cs, !some ? later : cs ? plural(cs, 'shooting day') + ' with no call sheet.' : 'Every shooting day has a sheet, or none is scheduled yet.');
+  }
+
   let lines = [];
   try { lines = blankDayLines(readCalcData()); } catch (e) { lines = []; }
   add('budget', lines.length, lines.length ? plural(lines.length, 'estimate line') + ' with no days.' : 'No estimate line is waiting for days.');
+
+  if (lock) {
+    const bl = scenes.length ? planBudgetLines({ scenes, elements }) : 0;
+    add('budgetlines', bl, !scenes.length ? 'Made once the scenes exist.' : bl ? plural(bl, 'budget line') + ' to add, rates left blank.' : 'Every line the schedule calls for is in the estimate, or no day is scheduled yet.');
+  }
 
   add('analysis', 0, 'Derived on every view.');
   return out;
@@ -264,6 +314,9 @@ function stepLocations() {
 function stepProps(ctx) {
   const { n, byCategory: byCat } = propTally(listScenes(), ctx.elements);
   const top = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => catCount(k, v));
+  if (ctx.tagged) {
+    return { status: 'derived', wrote: 0, count: n, byCategory: byCat, detail: ctx.tagged + ' tagged at the lock, ' + (n ? n + ' left to review on the Breakdown.' : 'nothing left to review.') };
+  }
   return { status: 'derived', wrote: 0, count: n, byCategory: byCat, detail: n ? plural(n, 'suggestion') + ' (' + top.join(', ') + ') to accept or ignore on the Breakdown — nothing is tagged until you do.' : 'Nothing in the action lines calls for an element yet.' };
 }
 
@@ -371,14 +424,114 @@ function stepAnalysis(ctx) {
   return { status: 'derived', wrote: 0, count: a.scenes.length, analysis: a, detail: bits.length ? bits.join(', ') + '.' : 'Nothing to read yet.' };
 }
 
+/* ---- the lock's seven ------------------------------------------ */
+
+const wants = (ctx, cat) => !Array.isArray(ctx.categories) || ctx.categories.includes(cat);
+const none = (detail) => ({ status: 'nothing', wrote: 0, count: 0, detail });
+const noScenes = () => ({ status: 'skipped', wrote: 0, count: 0, detail: 'No scenes yet, so there is nothing to read.' });
+
+function stepSynopsis(ctx) {
+  const scenes = listScenes();
+  if (!scenes.length) return noScenes();
+  const written = applySynopses(planSynopses(scenes, ctx.elements));
+  if (!written.length) return none('Every scene has a synopsis already, or no action line to read one from.');
+  return {
+    status: 'done', wrote: written.length, count: written.length,
+    detail: plural(written.length, 'scene') + ' given a one-line synopsis from its first action line.',
+    surgical: () => { undoSynopses(written); }
+  };
+}
+
+function stepExtras(ctx) {
+  const scenes = listScenes();
+  if (!scenes.length) return noScenes();
+  if (!wants(ctx, 'extras')) return none('Background and extras was left unticked.');
+  const written = tagMany(planExtras(scenes, ctx.elements).map(({ sceneId, category, name }) => ({ sceneId, category, name })));
+  if (!written.length) return none('No crowd words left to tag.');
+  return {
+    status: 'done', wrote: written.length, count: written.length,
+    detail: plural(written.length, 'background tag') + ' read from the action lines, with the count where the script states one.',
+    surgical: () => { untagMany(written); }
+  };
+}
+
+function stepTags(ctx) {
+  const scenes = listScenes();
+  if (!scenes.length) return noScenes();
+  const written = tagMany(planTags(scenes, ctx.elements, ctx.categories));
+  ctx.tagged = written.length;
+  if (!written.length) return none('No element left to tag.');
+  return {
+    status: 'done', wrote: written.length, count: written.length,
+    detail: plural(written.length, 'element') + ' tagged on the scenes, from the categories you left ticked.',
+    surgical: () => { untagMany(written); }
+  };
+}
+
+function stepCastContacts(ctx) {
+  const scenes = listScenes();
+  if (!scenes.length) return noScenes();
+  const r = seedCastContacts({ scenes, elements: ctx.elements });
+  const made = (r && r.made) || [];
+  if (!made.length) return none('Every speaker already has a contact.');
+  return {
+    status: 'done', wrote: made.length, count: made.length,
+    detail: plural(made.length, 'speaking character') + ' added to Contacts as "To be cast".',
+    surgical: () => { undoCastContacts(made); }
+  };
+}
+
+function stepRecce() {
+  const scenes = listScenes();
+  if (!scenes.length) return noScenes();
+  const made = (seedRecce(scenes) || {}).made || [];
+  if (!made.length) return none('Every location already has a recce card.');
+  return {
+    status: 'done', wrote: made.length, count: made.length,
+    detail: plural(made.length, 'recce card') + ' started, with the time of day each location needs.',
+    surgical: () => { undoRecce(made); }
+  };
+}
+
+function stepSheets() {
+  const scenes = listScenes();
+  if (!scenes.length) return noScenes();
+  const made = (seedCallSheets(scenes) || {}).made || [];
+  if (!made.length) return none('Every shooting day has a call sheet, or none is scheduled yet.');
+  return {
+    status: 'done', wrote: made.length, count: made.length,
+    detail: plural(made.length, 'call sheet') + ' drafted with scenes and cast; every time is left blank.',
+    surgical: () => { undoCallSheets(made); }
+  };
+}
+
+function stepBudgetLines(ctx) {
+  const scenes = listScenes();
+  if (!scenes.length) return noScenes();
+  const made = (seedBudgetLines({ scenes, elements: ctx.elements }) || {}).made || [];
+  if (!made.length) return none('Every line the schedule calls for is in the estimate, or no day is scheduled yet.');
+  return {
+    status: 'done', wrote: made.length, count: made.length,
+    detail: plural(made.length, 'budget line') + ' added from the schedule and the Breakdown; rates are left blank.',
+    surgical: () => { undoBudgetLines(made); }
+  };
+}
+
 const RUN = {
   scenes: { keys: [SCENES_KEY, BIN_KEY], fn: stepScenes },
   characters: { keys: [CHARACTERS_KEY], fn: stepCharacters },
+  synopsis: { keys: [SCENES_KEY], fn: stepSynopsis },
+  extras: { keys: [SCENES_KEY], fn: stepExtras },
+  tags: { keys: [SCENES_KEY], fn: stepTags },
   locations: { keys: [], fn: stepLocations },
   props: { keys: [], fn: stepProps },
   shots: { keys: [SHOTS_KEY], fn: stepShots },
   days: { keys: [SCENES_KEY, LOCATIONS_KEY], fn: stepDays },
+  castcontacts: { keys: [CONTACTS_KEY], fn: stepCastContacts },
+  recce: { keys: [LOCATIONS_KEY], fn: stepRecce },
+  sheets: { keys: [CONTACTS_KEY], fn: stepSheets },
   budget: { keys: [CALC_KEY], fn: stepBudget },
+  budgetlines: { keys: [CALC_KEY], fn: stepBudgetLines },
   analysis: { keys: [], fn: stepAnalysis }
 };
 
@@ -397,8 +550,9 @@ export async function runPipeline(opts = {}) {
   const { elements, numbering } = elementsOf(opts);
   const only = opts.only ? new Set(opts.only) : null;
   const onStep = typeof opts.onStep === 'function' ? opts.onStep : () => {};
-  const ctx = { elements, numbering };
-  const steps = STEPS.filter((s) => !only || only.has(s.id)).map((s) => ({ ...s, status: 'waiting', wrote: 0, count: 0, detail: '' }));
+  const lock = !!opts.lock;
+  const ctx = { elements, numbering, lock, categories: Array.isArray(opts.categories) ? opts.categories : undefined };
+  const steps = STEPS.filter((s) => (lock || !s.lockOnly) && (!only || only.has(s.id))).map((s) => ({ ...s, status: 'waiting', wrote: 0, count: 0, detail: '' }));
   for (let i = 0; i < steps.length; i++) {
     const st = steps[i];
     st.status = 'running';
@@ -455,6 +609,11 @@ export function summarizeRun(steps) {
   if (by.has('props')) parts.push(c('props') + ' ' + (c('props') === 1 ? 'prop or element' : 'props and elements') + ' suggested');
   if (by.has('shots')) parts.push(plural(c('shots'), 'shot'));
   if (by.has('days')) parts.push(plural(c('days'), 'shooting day'));
+  const w = (id) => (by.get(id) || {}).wrote || 0;
+  if (w('castcontacts')) parts.push(plural(w('castcontacts'), 'cast contact') + ' to be cast');
+  if (w('recce')) parts.push(plural(w('recce'), 'recce card'));
+  if (w('sheets')) parts.push(plural(w('sheets'), 'call sheet'));
+  if (w('budgetlines')) parts.push(plural(w('budgetlines'), 'budget line') + ' (rates blank)');
   const an = by.get('analysis');
   const runtime = an && an.analysis && an.analysis.totals.seconds ? formatDuration(an.analysis.totals.seconds) + ' estimated running time' : '';
   if (runtime) parts.push(runtime);
@@ -462,6 +621,8 @@ export function summarizeRun(steps) {
     text: parts.join(', ') + (parts.length ? '.' : ''),
     scenes: c('scenes'), characters: c('characters'), locations: c('locations'),
     props: c('props'), shots: c('shots'), days: c('days'),
+    synopses: w('synopsis'), extras: w('extras'), tagged: w('tags'), contacts: w('castcontacts'),
+    recces: w('recce'), sheets: w('sheets'), budgetLines: w('budgetlines'),
     pages: formatEighths(totalEighths(listScenes())), runtime
   };
 }

@@ -1904,10 +1904,15 @@ delegate(document, 'change', '[data-scene-field]', (e, el) => {
     }
   }
 });
-function attachElement(el) {
+let _ptrDown = false;
+addEventListener('pointerdown', () => { _ptrDown = true; }, true);
+addEventListener('pointerup', () => { _ptrDown = false; }, true);
+addEventListener('pointercancel', () => { _ptrDown = false; }, true);
+function attachElement(el, quiet) {
   const adder = el.closest('.bd-add-el');
   const name = adder.querySelector('.bd-add-name');
   if (!name.value.trim()) {
+    if (quiet) return;   // a blur with nothing typed is just leaving the field
     name.focus();
     StudioUI.toast('Name the element first, then attach it.', { type: 'info' });
     return;
@@ -1918,9 +1923,22 @@ function attachElement(el) {
      Cast and the next prop typed into the same scene became a cast member. */
   SL.cat.set(id, cat);
   const typed = name.value.trim();
+  /* Emptied BEFORE the render: Enter re-renders, and the field being removed
+     can still raise a blur, which must find nothing left to commit (no
+     double-add). */
+  name.value = '';
   const added = Scenes.tagMany([{ sceneId: id, category: cat, name: typed }]);
   // Back into the same scene's field, for the next element.
-  render(inScene(id, '[data-action-key="el-add"]'));
+  // A blur commit must not pull focus back to the field the reader just left.
+  if (!quiet) render(inScene(id, '[data-action-key="el-add"]'));
+  else if (!_ptrDown) render();
+  else {
+    /* The blur came from a press on some other control. render() replaces
+       <main>, and a click whose mousedown target is gone is never fired, so
+       the press would be swallowed. Redraw after the press ends, one tick
+       later than the click that follows it. */
+    addEventListener('pointerup', () => setTimeout(() => render(), 0), { once: true, capture: true });
+  }
   if (!added.length) {   // the box empties on re-render, so say why nothing changed
     const c = ELEMENT_CATEGORIES.find((x) => x.id === cat);
     StudioUI.toast(typed + ' is already on this scene\u2019s ' + (c ? c.label : cat) + '.', { type: 'info' });
@@ -1930,6 +1948,15 @@ delegate(document, 'keydown', '[data-action-key="el-add"]', (e, el) => {
   if (e.key !== 'Enter') return;
   e.preventDefault();
   attachElement(el);
+});
+/* Commit on blur too: a value typed and clicked away from used to vanish.
+   Skipped when focus moves inside the same adder (the category select, the
+   Attach button) so the element is not committed under the wrong category
+   and the button's own click still lands. */
+delegate(document, 'focusout', '[data-action-key="el-add"]', (e, el) => {
+  const to = e.relatedTarget;
+  if (to && to.closest && to.closest('.bd-add-el') === el.closest('.bd-add-el')) return;
+  attachElement(el, true);
 });
 delegate(document, 'click', '[data-action="el-attach"]', (e, el) => attachElement(el));
 

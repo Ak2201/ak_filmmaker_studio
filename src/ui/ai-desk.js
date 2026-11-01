@@ -96,6 +96,7 @@
      answer       .ai-hunk input[type=checkbox] ('text'),
                   .ai-desk-item input[type=checkbox] ('list'),
                   .ai-desk-read + span.ai-mark ('read'),
+                  button[data-action="ai-desk-copy"] ('read' only),
                   button.ai-desk-ver ('v1', 'v2' … aria-pressed)
      chat         textarea.ai-desk-chat,
                   button[data-action="ai-desk-send"],
@@ -338,7 +339,10 @@ function answerList(v) {
 function answerRead(v) {
   return [h('div.ai-desk-read', {}, [
     aiMark(),
-    h('div.ai-desk-readtext', { text: String(v.result.text ?? '') })
+    h('div.ai-desk-readtext', { text: String(v.result.text ?? '') }),
+    /* Every read result can be copied out (docs/AI-EVERYWHERE.md, task 5):
+       it changes nothing, and the writer often wants it in a message. */
+    h('button.btn.ai-desk-copy', { type: 'button', 'data-action': 'ai-desk-copy', text: 'Copy' })
   ])];
 }
 
@@ -455,6 +459,21 @@ function render() {
   body.scrollTop = keepScroll;
 }
 
+/** Text to the clipboard: the async API, else a hidden textarea. */
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) { /* fall through */ }
+  try {
+    const t = h('textarea', { 'aria-hidden': 'true', tabindex: '-1', readonly: 'readonly' });
+    t.value = text;
+    t.style.position = 'fixed'; t.style.opacity = '0';
+    desk.append(t);
+    t.select();
+    const okay = document.execCommand('copy');
+    t.remove();
+    return !!okay;
+  } catch (e) { return false; }
+}
+
 function setStatus(text) {
   statusText = text || '';
   const el = desk && desk.querySelector('.ai-desk-lines .ai-status');
@@ -565,6 +584,12 @@ function wire() {
   wired = true;
   delegate(desk, 'click', '[data-action="ai-desk-close"]', () => closeDesk());
   delegate(desk, 'click', '[data-action="ai-desk-skip"]', () => closeDesk());
+  delegate(desk, 'click', '[data-action="ai-desk-copy"]', () => {
+    const v = sess && sess.versions[sess.current];
+    if (!v || !v.result) return;
+    copyText(String(v.result.text ?? '')).then(
+      (okay) => setStatus(okay ? 'Copied. Nothing was changed.' : 'Could not copy. Select the text and copy it by hand.'));
+  });
   delegate(desk, 'click', '[data-action="ai-desk-run"]', () => run());
   delegate(desk, 'click', '[data-action="ai-desk-unblock"]', (e, el) => {
     if (!task || typeof task.unblock !== 'function') return;

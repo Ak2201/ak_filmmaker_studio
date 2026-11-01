@@ -36,6 +36,7 @@ import { ask, askDanger } from './dialog.js';
 import { brandPrint } from './footer.js';   // CORE: the "Made with" line on a plain print
 import { revealTarget } from './tabs.js';
 import { button, badge, sym } from './kit/index.js';
+import { aiPill } from './ai-pill.js';
 
 /* ============================================================
    THE CALCULATOR
@@ -325,6 +326,16 @@ function loadCalc() {
   } catch (e) {}
 }
 
+/** Draw the rows again from the saved blob (after the Desk adds or takes
+    away lines). The blob is already current: every keystroke saves it. */
+function redrawCalc() {
+  const wrap = document.getElementById('calcRows');
+  if (!wrap) return;
+  wrap.replaceChildren();
+  loadCalc();
+  document.dispatchEvent(new CustomEvent('budget:calc-cleared'));
+}
+
 async function resetCalc() {
   if (!await askDanger('Clear all calculator rows?')) return;
   // A row number is a line's identity in fms_costs_v1 (expenses, crew,
@@ -503,6 +514,12 @@ function renderCalculator() {
       h('div.calc-actions', {}, [
         button({ label: 'Add item', icon: 'add', size: 'sm', action: 'add-row' }),
         button({ label: 'Add 5', icon: 'add', size: 'sm', action: 'add-5' }),
+        /* The AI Desk's first-pass lines (budget-estimate): new rows only,
+           added on Accept, never an edit to a line that is there. */
+        aiPill({
+          label: 'Estimate from my schedule', tasks: ['budget-estimate'],
+          ctx: () => ({ say: (m) => { if (window.StudioUI && StudioUI.toast) StudioUI.toast(m, { type: 'info', duration: 4000 }); }, after: redrawCalc })
+        }),
         h('span.bud-spacer', { 'aria-hidden': 'true' }),
         button({ label: 'Print', icon: 'print', size: 'sm', variant: 'ghost', action: 'print' }),
         button({ label: 'Reset', icon: 'restart_alt', size: 'sm', variant: 'danger', action: 'reset' })

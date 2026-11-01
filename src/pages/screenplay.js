@@ -442,6 +442,43 @@ const editor = mountEditor(document, {
   rowChrome: false
 });
 
+/* ---- the block AI clean-up works on ----------------------------
+   script-cleanup (src/lib/ai-tasks-story.js) replaces ONLY the lines the
+   writer pointed at: the text selected inside a line (the whole line is
+   the unit), else the lines the last paste or import made. Both are
+   remembered by id, in memory only, so opening the Desk (which moves the
+   focus) does not lose them. Nothing here writes. */
+let selIds = null;           // [id] of the line holding the last non-empty selection
+let pastedIds = null;        // ids a paste or an import made, in script order
+let pasteBefore = null;      // the ids before a paste, until the editor reports the result
+let pasteTarget = '';
+function noteSelection(e) {
+  const ta = e.target;
+  if (!ta || !ta.matches || !ta.matches('.wr-text')) return;
+  const row = ta.closest('[data-el]');
+  const id = row && row.dataset.el;
+  selIds = id && ta.selectionStart !== ta.selectionEnd ? [id] : null;
+}
+['select', 'keyup', 'mouseup'].forEach((n) => document.addEventListener(n, noteSelection, true));
+document.addEventListener('paste', (e) => {
+  const ta = e.target;
+  const row = ta && ta.closest && ta.closest('.wr-text') && ta.closest('[data-el]');
+  if (!row) return;
+  pasteBefore = new Set(doc.elements.map((x) => x.id));
+  pasteTarget = row.dataset.el;
+  setTimeout(() => { pasteBefore = null; }, 4000);
+}, true);
+function cleanupBlock() {
+  const live = new Set(doc.elements.map((x) => x.id));
+  const pick = (ids) => (ids || []).filter((id) => live.has(id));
+  let ids = pick(selIds);
+  if (!ids.length) ids = pick(pastedIds);
+  if (!ids.length) return null;
+  const keep = new Set(ids);
+  const els = doc.elements.filter((x) => keep.has(x.id));
+  return { ids: els.map((x) => x.id), text: els.map((x) => x.text).join('\n') };
+}
+
 /* ---- find and replace (Ctrl/Cmd+Shift+H, or Tools) ------------- */
 const replaceBar = mountReplaceBar({
   editor,
@@ -759,15 +796,21 @@ function buildTop() {
     tasks: [
       { id: 'coverage', label: 'Coverage report' },
       { id: 'dialogue-pass', label: 'Dialogue pass (speech at the caret)' },
-      { id: 'beat-critique', label: 'Critique this scene' }
+      { id: 'beat-critique', label: 'Critique this scene' },
+      { id: 'script-cleanup', label: 'Clean up pasted text' }
     ],
     ctx: () => ({
       identity: 'script:' + (curId || ''),
       getDoc: () => doc,
       cursorId: () => curId,
+      /* script-cleanup: the lines selected in a line or just pasted /
+         imported, and the editor's one type path. */
+      getSelection: () => cleanupBlock(),
+      setType: (id, type) => editor.setElementType(id, type),
       save: () => persistNow(),
       render: (id) => renderPage(id ? elFocus(id) : null),
-      after: () => refreshDraftLabel()
+      after: () => refreshDraftLabel(),
+      say: (m) => say(m)
     })
   });
 
@@ -905,6 +948,16 @@ function refreshDerivedUi() {
   }
 }
 editor.on('type', refreshDerivedUi);
+/* A paste that split into several lines: the line pasted into and the
+   lines it made are the block AI clean-up offers to format. */
+editor.on('change', () => {
+  if (!pasteBefore) return;
+  const fresh = doc.elements.filter((x) => !pasteBefore.has(x.id)).map((x) => x.id);
+  if (!fresh.length) return;
+  const into = pasteBefore.has(pasteTarget) ? [pasteTarget] : [];
+  pastedIds = [...into, ...fresh];
+  pasteBefore = null;
+});
 
 /* The top bar's height, MEASURED (it wraps, and the hint row comes
    and goes), so the pinned beats column can sit under it instead of
@@ -1618,12 +1671,14 @@ delegate(document, 'click', '[data-action="sc-imp-commit"]', async () => {
   if (imp.replace && !blank && !(await ask({ title: 'Replace the screenplay?', body: importReplaceBody(Scenes.listScenes().length), confirm: 'Replace' }))) return;
   if (!imp) return;
   if (blank) doc.elements = [];
+  const idsBefore = new Set(doc.elements.map((x) => x.id));
   const done = commitImportedScript(imp.plan, {
     replaceScript: blank || imp.replace, replaceScenes: blank || imp.replace,
     doc, persist: persistNow, importName: imp.name
   });
   closeImport();
   curId = null;
+  pastedIds = doc.elements.filter((x) => !idsBefore.has(x.id)).map((x) => x.id);   // what AI clean-up offers
   renderPage();
   const d = document.querySelector('[data-sc="draft"]');
   if (d) d.textContent = draftLabel();

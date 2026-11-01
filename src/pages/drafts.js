@@ -37,6 +37,7 @@ import { h, delegate } from '../lib/dom.js';
 import * as Script from '../lib/script.js';
 import * as Drafts from '../lib/drafts.js';
 import { pageHeader, button, badge, emptyState } from '../ui/kit/index.js';
+import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
 import { choiceDialog, installLeavePrompt } from '../ui/leave-prompt.js';
 import { mountRevisionTools, renderCompareTool, renderRevisedPagesTool, renderNumberingTool, presetCompare } from '../ui/write-revisions.js';
 import { subscribe, onWriteElsewhere, currentProjectId } from '../lib/store.js';
@@ -167,6 +168,27 @@ delegate(document, 'input', '[data-tp-field]', (e, input) => {
   tpTimer = setTimeout(() => { fresh(); refreshState(); }, 400);
 });
 
+/* The AI Desk's 'draft-changes' task: a read of what changed between the
+   two drafts the Compare selects name AT THE CLICK. It changes nothing.
+   The page hands the two element lists in; src/lib never reads a select. */
+function changesPill() {
+  const picked = () => {
+    fresh();
+    const val = (id) => { const s = document.getElementById(id); return s ? s.value : ''; };
+    const label = (id) => { const s = document.getElementById(id); const o = s && s.selectedOptions[0]; return o ? o.textContent : ''; };
+    const lists = (v) => (v === 'live' ? doc.elements : ((doc.revisions.find((r) => r.id === v) || {}).elements || null));
+    const olderId = val('wr-cmp-from'), newerId = val('wr-cmp-to');
+    return { olderId, newerId, older: lists(olderId), newer: lists(newerId), olderLabel: label('wr-cmp-from'), newerLabel: label('wr-cmp-to') };
+  };
+  return h('p.dr-ai', {}, [aiPill({
+    label: 'Summarise changes', tasks: ['draft-changes'],
+    ctx: () => {
+      const c = picked();
+      return { olderId: c.olderId, newerId: c.newerId, compare: () => c };
+    }
+  })]);
+}
+
 /* ---- the list ---------------------------------------------------- */
 function row(d, isLatest) {
   const li = h('li.dr-row' + (isLatest ? '.is-current' : ''), { 'data-draft': d.id });
@@ -246,7 +268,8 @@ function render() {
     main.append(h('ol.dr-list', { 'aria-label': 'Drafts, newest first' }, drafts.map((d) => row(d, !!last && d.id === last.id))));
   }
 
-  main.append(h('div#dr-compare', {}, [renderCompareTool()]));
+  const compareTool = renderCompareTool();
+  main.append(h('div#dr-compare', {}, [compareTool, compareTool ? changesPill() : null].filter(Boolean)));
   main.append(h('div#dr-revised', {}, [renderRevisedPagesTool()].filter(Boolean)));
   /* The scene-number lock: the stripboard's "Manage numbering" lands
      here. Filtered — Element.append(null) prints "null". */

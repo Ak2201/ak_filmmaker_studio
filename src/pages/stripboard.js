@@ -66,6 +66,7 @@ import '../styles/pdf.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { actionMenu, wireActionBar } from '../ui/actionbar.js';
+import { aiPill } from '../ui/ai-pill.js';
 import { h, delegate } from '../lib/dom.js';
 import { isDisabledEverywhere } from '../lib/plan-gate.js';
 import PDF from '../lib/pdf.js';
@@ -423,6 +424,9 @@ function renderControls() {
     h('div.sb-seg', {}, [h('span.sb-seg-lab', { text: 'Group by', 'aria-hidden': 'true' }), seg]),
     h('div.sb-acts.pdf-menu-host', {}, [
       button({ label: 'Schedule by location', icon: 'auto_awesome', action: 'sb-auto', class: 'sb-btn' }),
+      /* The AI Desk's day order (shoot-order, src/lib/ai-tasks-preprod.js):
+         a draft to tick, written only on Accept, by placeScene(). */
+      aiPill({ label: 'Suggest day order', tasks: ['shoot-order'], ctx: () => ({ say: (m) => toast(m), after: render }) }),
       exportMenu,
       /* The destructive one stands apart from the action it undoes (it
          sat touching "Schedule by location"). It stays pressable when no

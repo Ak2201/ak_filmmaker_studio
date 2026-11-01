@@ -426,8 +426,10 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
   const sw1 = await scriptWrites(page);
   ok(sw1 - sw0 >= 1 && sw1 - sw0 <= 2, 'one Accept is one write (' + (sw1 - sw0) + ')', sw1 - sw0);
 
-  /* Undo */
-  const undo = page.locator('.toast-action', { hasText: /Undo/ }).last();
+  /* Undo. Scoped to the Desk's own "…: applied." toast: an Accept that
+     edits the script can also start the first scene sync, whose "N scenes
+     added to the Breakdown" toast carries its own Undo (Phase 0). */
+  const undo = page.locator('.toast', { hasText: /applied\./ }).locator('.toast-action', { hasText: /Undo/ }).last();
   const hasUndo = await undo.waitFor({ state: 'visible', timeout: 3000 }).then(() => true, () => false);
   ok(hasUndo, 'an Undo toast is offered');
   if (hasUndo) await undo.click();
@@ -623,7 +625,7 @@ async function untick(page, i) {
   await page.waitForTimeout(150);
 }
 async function clickUndo(page) {
-  const undo = page.locator('.toast-action', { hasText: /Undo/ }).last();
+  const undo = page.locator('.toast', { hasText: /applied\./ }).locator('.toast-action', { hasText: /Undo/ }).last();
   const has = await undo.waitFor({ state: 'visible', timeout: 3000 }).then(() => true, () => false);
   ok(has, 'an Undo toast is offered');
   if (has) await undo.click();

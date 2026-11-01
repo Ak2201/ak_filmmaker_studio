@@ -19,7 +19,7 @@
    ============================================================ */
 import {
   makeRevision, restoreElements, revisionColour, normaliseTitlePage, hasTitlePage, pageCount,
-  isNumberingLocked
+  isNumberingLocked, isHeld
 } from './script.js';
 import { isSideCopy, issuedColour } from './script-incoming.js';
 
@@ -117,6 +117,10 @@ export function saveNewDraft(doc, { note = '' } = {}) {
 export function updateDraft(doc, id, { note } = {}) {
   const i = (doc.revisions || []).findIndex((r) => r.id === id);
   if (i < 0) return null;
+  /* The baseline of a held lock is what the change report compares the
+     script against: overwriting it would silently erase every change made
+     since the lock. Callers fall back to saveNewDraft() and say why. */
+  if (isHeld(doc.numbering) && id === doc.numbering.base) return null;
   const entry = doc.revisions[i];
   if (!entry.number) entry.number = i + 1;   // an old entry gains its number only when rewritten
   snapshot(doc, entry, note);

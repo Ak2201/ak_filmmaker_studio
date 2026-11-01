@@ -15,9 +15,9 @@
    and that line is saved only when the writer types in it.
    ============================================================ */
 import { flushStorage, currentProject, currentProjectId, subscribe, onWriteElsewhere } from '../lib/store.js';
-import { incomingAction, keepBoth, takeTheirs, scriptSignature, displacedCopy, crossedSave, settleCrossed, ARRIVAL_PREFIX, ARRIVAL_WINDOW_PREFIX, YOURS_PREFIX } from '../lib/script-incoming.js';
+import { incomingAction, numberingOnly, keepBoth, takeTheirs, scriptSignature, displacedCopy, crossedSave, settleCrossed, ARRIVAL_PREFIX, ARRIVAL_WINDOW_PREFIX, YOURS_PREFIX } from '../lib/script-incoming.js';
 import { mergeScript } from '../lib/script-merge.js';
-import { ask, askDanger } from '../ui/dialog.js';
+import { ask, askDanger, tell } from '../ui/dialog.js';
 import { holdFocus, releaseFocus } from '../ui/modal-focus.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
@@ -28,6 +28,7 @@ import '../styles/print.css';
 import '../styles/write.css';
 import '../styles/pdf.css';
 import '../styles/screenplay.css';
+import '../styles/script-lock.css';   // the lock button's phone rule; the sheets' own styles load with them
 import { notesButton } from '../ui/notes-button.js';   // sticky notes beside the page (owner, 23 Oct 2026)
 import '../ui/format-guide.js';   // Check format (its dock bar is hidden; the menu drives it)
 
@@ -38,10 +39,10 @@ import { mountFocusMode } from '../ui/focus-mode.js';
 import '../ui/read-as.js';        // dictation lives in its bar (hidden; the menu drives it)
 import { mountTamilType, setTamilTyping, isTamilTyping } from '../ui/tamil-type.js';
 import { h, delegate } from '../lib/dom.js';
-import { button, sym, sheet as kitSheet, closeSheet } from '../ui/kit/index.js';
+import { button, badge, sym, sheet as kitSheet, closeSheet } from '../ui/kit/index.js';
 import PDF from '../lib/pdf.js';
 import { commitImportedScript } from '../lib/script-commit.js';
-import { sceneSyncLater, mountHandoff, offerPipeline, runPipelineHere } from '../ui/handoff.js';
+import { sceneSyncLater, mountHandoff, offerPipeline, runPipelineHere, resetSyncBaseline } from '../ui/handoff.js';
 import Keys from '../lib/write-keys.js';
 import { writeHintsOn, setWriteHints } from '../lib/write-prefs.js';
 import { createSmartType } from '../ui/smarttype.js';
@@ -69,6 +70,7 @@ import { pageAnchors } from '../lib/write-format.js';
 import { mountStageGuide } from '../ui/stage-guide.js';
 import { learn } from '../ui/learn.js';
 import Script, {
+  isHeld, isNumberingLocked,
   ELEMENT_TYPES, ELEMENT_TYPE_IDS, typeLabel, blankElement, withContd,
   formatPages, formatRuntime
 } from '../lib/script.js';
@@ -102,7 +104,9 @@ try {
     getDoc: () => doc,
     save: () => persistNow(),
     // a run (or its Undo) changed the scenes: the stats and the analysis follow
-    afterPipeline: () => { refreshStats(); refreshAnalysis(); }
+    afterPipeline: () => { refreshStats(); refreshAnalysis(); },
+    // a change-report action (opened from the hand-off banner or its toast)
+    afterLock: () => refreshLockUi()
   });
 } catch (e) { console.warn('[screenplay] hand-off', e); }
 
@@ -261,12 +265,41 @@ function dropTheirsOffer() {
   try { theirsToast.dismiss(); } catch (e) { /* already gone */ }
   theirsToast = null;
 }
+/* What an arriving copy is compared with, to tell "only the lock's marks
+   changed" from "a different script". Not pageBase: that is the copy last
+   LOADED or RECEIVED, so its lines are the page as it opened, and every
+   writer who has typed since would read as having a different script. The
+   lines are what this page last SAVED (or what is on screen when nothing is
+   unsaved); the draft ids, title page and numbering are this page's own,
+   which a deliberate act saves at once. */
+function numberingBase(dirty) {
+  const lines = !dirty ? doc.elements : (savedLines || (pageBase && pageBase.elements) || doc.elements);
+  const dual = new Map(doc.elements.map((e) => [e.id, e.dual]));
+  return {
+    elements: lines.map((l) => ({ id: l.id, type: l.type, text: l.text, dual: l.dual !== undefined ? l.dual : dual.get(l.id) })),
+    revisions: doc.revisions, titlePage: doc.titlePage, numbering: doc.numbering
+  };
+}
 function onIncomingScript(live, where = 'device') {
   const fresh = Script.loadScript();
   const dirty = !!(saveTimer || saving || saveOwed) || scriptSignature(doc) !== savedSig;
   if (coEditOn()) { dropTheirsOffer(); mergeIncoming(fresh); return; }
   const base = pageBase;   // the copy this page last loaded or received, before this one
+  /* Taken BEFORE notePageBase(fresh): numberingBase() falls back to pageBase
+     when the page is dirty and has saved nothing yet, and by then pageBase
+     would BE the arriving copy, so its lines would match themselves and
+     another window's line edits would pass as "numbering only" and be lost. */
+  const numBase = numberingBase(dirty);
   notePageBase(fresh);
+  /* A change-report mark (or a lock) made in another window or on another
+     device changes ONLY `numbering`. That is not a competing version of the
+     script: adopt it, keep every unsaved line, and never file a side copy. */
+  if (numberingOnly(numBase, fresh)) {
+    if (fresh.numbering) doc.numbering = fresh.numbering; else delete doc.numbering;
+    if (!dirty) savedSig = scriptSignature(doc);
+    refreshLockButton();
+    return;
+  }
   const act = incomingAction({ mine: doc, fresh, dirty });
   if (act === 'same') { dropTheirsOffer(); return; }
   if (act === 'load') {
@@ -427,8 +460,101 @@ function refreshDraftLabel() {
   const d = document.querySelector('[data-sc="draft"]');
   const t = draftLabel();
   if (d && d.textContent !== t) d.textContent = t;
+  refreshLockButton();   // an autosave, a draft or an arrival can change what is open
 }
 document.addEventListener('fms:drafts-changed', refreshDraftLabel);
+
+/* ---- the script lock (docs/SCRIPT-LOCK.md) ----------------------
+   ONE button, three states, read off the script itself: unlocked
+   ("Lock the script": the review sheet), locked with change tracking
+   ("Changes" and how many are still to review: the change report) and
+   a lock taken before tracking existed ("Locked": the same report, which
+   offers to start tracking). The sheets are src/ui/script-lock-ui.js, a
+   dynamic import, so this page's first paint carries none of it. The
+   open count is read at idle, after a save settles, never inside a
+   keystroke, and it writes nothing. Hidden on the phone (script-lock.css):
+   the Tools sheet carries the same two items. */
+const lockState = () => (isHeld(doc.numbering) ? 'locked' : isNumberingLocked(doc.numbering) ? 'legacy' : 'draft');
+const LOCK_LABEL = { draft: ['Lock the script', 'lock'], locked: ['Changes', 'fact_check'], legacy: ['Locked', 'lock'] };
+function paintLockButton(btn, state, open) {
+  if (btn.dataset.state === state && btn.dataset.lockOpen === String(open)) return;
+  btn.dataset.state = state;
+  btn.dataset.lockOpen = String(open);
+  const [label, icon] = LOCK_LABEL[state];
+  const focused = document.activeElement === btn;
+  btn.replaceChildren(...[sym(icon), h('span', { text: label }),
+    open ? badge({ label: String(open), tone: 'warn', title: open + ' to review', attrs: { 'data-lock-open-badge': '' } }) : null].filter(Boolean));
+  if (open) btn.setAttribute('aria-label', label + ', ' + open + ' to review'); else btn.removeAttribute('aria-label');
+  if (focused) btn.focus({ preventScroll: true });
+}
+let lockTimer = 0;
+let lockSeq = 0;
+function refreshLockButton() {
+  const btn = document.querySelector('.sc-lock-btn');
+  if (!btn) return;
+  const state = lockState();
+  paintLockButton(btn, state, state === 'locked' ? (Number(btn.dataset.lockOpen) || 0) : 0);
+  if (state !== 'locked') return;
+  clearTimeout(lockTimer);
+  lockTimer = setTimeout(async () => {
+    const seq = ++lockSeq;
+    try {
+      const L = await import('../lib/script-lock.js');
+      if (seq !== lockSeq || lockState() !== 'locked') return;
+      paintLockButton(btn, 'locked', L.changeReport(doc, { scenes: Scenes.listScenes() }).open);
+    } catch (e) { console.warn('[script] lock count', e); }
+  }, 600);
+}
+/* After a change-report action: the button, the label, the analysis. */
+function refreshLockUi() { refreshLockButton(); refreshDraftLabel(); refreshAnalysis(); }
+/* After a lock or an unlock: the rows and the headings agree again, so the
+   sync compares against the script as it is now, and the caret's scene number
+   is read afresh. */
+function afterLockChange() { resetSyncBaseline(); refreshLockUi(); refreshPos(); }
+const lockUi = () => import('../ui/script-lock-ui.js');
+/* ONE way to open it, however it is reached (the button, the File menu, an
+   arrival at #lock or #changes): the page saves first, so the sheet reads
+   what is on screen. A locked script opens the report, an unlocked one the
+   review. */
+async function openLockSheet(returnTo, onClose) {
+  persistNow();
+  try {
+    const M = await lockUi();
+    const o = { getDoc: () => doc, save: () => persistNow(), returnTo, onClose };
+    return await (isNumberingLocked(doc.numbering)
+      ? M.openChangeReport({ ...o, after: refreshLockUi })
+      : M.openLockReview({ ...o, afterLock: afterLockChange }));
+  } catch (e) {
+    console.warn('[script] lock', e);
+    say('The lock could not open. Check the connection and try again.');
+    return null;
+  }
+}
+delegate(document, 'click', '[data-action="sc-lock"]', (e, btn) => { openLockSheet(btn); });
+delegate(document, 'click', '[data-action="sc-unlock"]', async (e, btn) => {
+  if (!isNumberingLocked(doc.numbering)) {
+    tell({ eyebrow: 'Script lock', icon: 'lock_open', title: 'The script is not locked', body: 'The script is not locked. Scene numbers already follow the script.' });
+    return;
+  }
+  persistNow();
+  try { (await lockUi()).confirmUnlock({ getDoc: () => doc, save: () => persistNow(), after: afterLockChange }); }
+  catch (err) { console.warn('[script] unlock', err); say('Unlocking could not open. Check the connection and try again.'); }
+});
+/* screenplay.html#lock and #changes open the sheet exactly as #import
+   opens its dialog: once, and the hash goes when the sheet does, so a
+   reload does not reopen it. */
+let hashSheet = false;
+const lockHash = () => location.hash === '#lock' || location.hash === '#changes';
+function stripLockHash() {
+  hashSheet = false;
+  if (lockHash()) history.replaceState(null, '', location.pathname + location.search);
+}
+async function openLockFromHash() {
+  if (!lockHash() || hashSheet) return;
+  hashSheet = true;
+  const r = await openLockSheet(null, stripLockHash);
+  if (!(r instanceof Element)) stripLockHash();   // a note, not a sheet: nothing will close it
+}
 
 /* ---- chrome ----------------------------------------------------- */
 let typeSel = null;
@@ -446,6 +572,8 @@ let beatsOpen = false;
    the same features in different places (owner, parity rule). */
 const FILE_ITEMS = [
   { label: 'Import Screenplay', action: 'sc-import', icon: 'upload_file' },
+  { label: 'Lock or review the script', action: 'sc-lock', icon: 'lock' },
+  { label: 'Unlock the script…', action: 'sc-unlock', icon: 'lock_open' },
   { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy', icon: 'picture_as_pdf' },
   { label: 'Export Word (.docx)', action: 'sc-docx', hint: 'to edit in Word', icon: 'description' },
   { label: 'Export Final Draft (.fdx)', action: 'sc-fdx', hint: 'US Letter, opens in Final Draft', icon: 'description' },
@@ -611,6 +739,8 @@ function buildTop() {
     label: 'Tools', icon: 'more_horiz', iconOnly: true, size: 'sm', action: 'sc-tools-sheet', class: 'sc-tools-sheet-btn',
     attrs: { 'aria-haspopup': 'dialog' }
   });
+  const lockBtn = button({ label: 'Lock the script', icon: 'lock', size: 'sm', action: 'sc-lock', class: 'sc-lock-btn' });
+  paintLockButton(lockBtn, lockState(), 0);   // the right state on the first paint; the count follows at idle
   /* actionbar.js builds its toggles as the chrome's `.btn`; on this
      page they wear the kit's button, like everything else in the bar. */
   [fileMenu, menu].forEach((m) => {
@@ -658,7 +788,7 @@ function buildTop() {
     h('div.sc-tools', {}, [
       h('div.sc-tools-l', {}, [typePill, h('span.sc-vsep', { 'aria-hidden': 'true' }), beatsBtn, ai, notesButton({ label: 'Notes' }), h('span#scFocusSlot.sc-focus-slot')]),
       pos,
-      h('div.sc-tools-r', {}, [fileMenu, menu, toolsBtn])
+      h('div.sc-tools-r', {}, [lockBtn, fileMenu, menu, toolsBtn])
     ]),
     runtime,
     h('p#scPeerWarn.sc-peer-warn', { role: 'status', 'aria-live': 'polite', hidden: true }),
@@ -1530,6 +1660,8 @@ mountFocusMode(() => doc, {
 }
 installLeavePrompt({ getDoc: () => doc, persistNow: () => persistNow() });
 if (location.hash === '#import') openImport();
+openLockFromHash();
+refreshLockButton();
 /* script.html#line-<id>: a search result opens the page at that line. */
 installLineLanding(editor);
 function syncGuide() {
@@ -1541,6 +1673,7 @@ function syncGuide() {
 }
 addEventListener('hashchange', () => {
   if (location.hash === '#import') openImport();
+  openLockFromHash();
   syncGuide();
   if (viewFromHash() !== view && (location.hash === '#analysis' || view === 'analysis')) setView(viewFromHash(), false);
 });

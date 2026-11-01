@@ -50,8 +50,8 @@
    segmented group-by, buttons, badges, cast chips, the implied
    company-move banner, the DOOD codes and the grid's table classes
    are src/ui/kit components; stripboard.css is layout only. The
-   "Lock production draft" action at the top is the screenplay's own
-   scene-number lock — see the section above the events.
+   "Lock the script" action at the top is a link to the Screenplay Writer's
+   one lock step — see the section above the events.
    ============================================================ */
 import '../lib/store.js';
 import '../styles/base.css';
@@ -82,11 +82,11 @@ import {
   CAST, GROUPINGS, shootDayOf, castOf, locationOf, shootDays, groupScenes as groupBy, localDate as localDateIn, dayMonth, todayISO,
   daysNote as daysNoteFor, runtimeNote, screenTimeByDay, uncoveredMoves, nextUncoveredMove,
   doodRows as doodRowsFor, LONG, describeMove as moveSentence, scheduleByLocation,
-  sceneHeadings, latestDraft, lockPreset, boardSummary, boardCsv, doodCsv
+  latestDraft, boardSummary, boardCsv, doodCsv
 } from '../lib/stripboard-model.js';
 import {
   pageHeader, statStrip, statCard, meter, button, badge, chip, todBadge, todKey, doodCode,
-  segmented, panel, stripBanner, emptyState, eyebrow, sym, ask, askDanger, tell
+  segmented, panel, stripBanner, emptyState, eyebrow, sym, askDanger
 } from '../ui/kit/index.js';
 
 const app = document.getElementById('app');
@@ -951,44 +951,51 @@ function render() {
   } catch (e) { console.warn('[stripboard] chrome', e); }
 }
 
-/* ---- Lock production draft -------------------------------------
-   The owner's TYPE-TO-CONFIRM lock (14 Oct 2026). It is NOT a second
-   mechanism: it is the screenplay's existing scene-number lock —
-   `numbering` inside the script blob (src/lib/script.js,
-   lockNumbering / saveScript), with the Breakdown's rows renumbered
-   to match through scene-sync's applyNumbers() — exactly what the
-   "Lock scene numbers" button in the revision tools does. No new key.
-   From the lock on, an inserted scene is 12A, a deleted one stays as
-   OMITTED and a moved one keeps its number, so the strips, the sides
-   and the call sheets keep pointing at the same scene.
+/* ---- Lock the script ------------------------------------------
+   THE LOCK MOVED TO THE SCREENPLAY WRITER (owner, 1 Nov 2026). This
+   page used to take it itself with a type-to-confirm "Lock production
+   draft" (14 Oct 2026), the Drafts page had a second "Lock scene
+   numbers", and the writer a third: three buttons for one thing. There
+   is ONE lock now, `screenplay.html#lock`: a review sheet that shows
+   what will be extracted (scenes, cast, locations, elements, extras),
+   and on confirm freezes the scene numbers AND runs the rules-based
+   pre-production pass. A type-to-confirm word is a weaker deliberate
+   step than a sheet that says what the lock will do, so the sheet
+   replaced it. The button here is only the way there; its handler is
+   gone. It is still the screenplay's own scene-number lock —
+   `numbering` inside the script blob (src/lib/script.js), the
+   Breakdown's rows renumbered through scene-sync's applyNumbers() — no
+   new key. From the lock on, an inserted scene is 12A, a deleted one
+   stays as OMITTED and a moved one keeps its number, so the strips, the
+   sides and the call sheets keep pointing at the same scene.
 
-   UNLOCK DRAFT sits beside it (owner, hand-off Q3, 14 Oct 2026). It is
-   the revision tools' own unlock — `numbering` deleted from the script
-   blob, the Breakdown's rows renumbered by position through
-   applyNumbers(doc.elements, null) — and, because it renumbers every
-   scene, it asks first through dialog.js's askDanger. The revision
-   tools keep their copy and stay linked: Manage numbering opens it on
-   drafts.html#numbering, beside the drafts it numbers.
+   UNLOCK DRAFT sits beside the badge. It is the SHARED unlock,
+   confirmUnlock() in src/ui/script-lock-ui.js — the one the Screenplay
+   Writer and drafts.html#numbering call too — which asks first through
+   dialog.js's askDanger with the counts, because unlocking renumbers
+   every scene and clears the change report. Manage numbering opens the
+   revision tools' panel on drafts.html#numbering, beside the drafts it
+   numbers.
 
    The DRAFT badge names the latest numbered draft — the newest entry
    in the script blob's `revisions`, which is what drafts.html lists —
    and is absent when there is none: nothing is named that was not.
 
-   script.js and scene-sync.js are dynamic imports: neither is in this
-   page's first paint (fillHours() loads script.js the same way). */
-const scriptLib = () => Promise.all([import('../lib/script.js'), import('../lib/scene-sync.js')]);
+   script.js and the unlock sheet are dynamic imports: neither is in
+   this page's first paint (fillHours() loads script.js the same way). */
+const scriptLib = () => import('../lib/script.js');
 
-/* With no scenes there is nothing to number, so the filled CTA is not
-   drawn at all (the empty board already points at the Breakdown). A
-   disabled button would explain itself only in a tooltip that keyboard,
+/* With no scenes there is nothing to number, so the CTA is not drawn at
+   all (the empty board already points at the Breakdown). A disabled
+   button would explain itself only in a tooltip that keyboard,
    screen-reader and touch users never get. Returns null then: filter
-   before a native append. */
+   before a native append. A LINK: it only navigates. */
 function lockButton(empty = !Scenes.listScenes().length) {
   if (empty) return null;
   return button({
-    label: 'Lock production draft', variant: 'primary', pill: true, icon: 'lock',
-    action: 'sb-lock', class: 'sb-lock-btn',
-    title: 'Freeze the scene numbers, so every strip, side and call sheet keeps pointing at the same scene'
+    label: 'Lock the script', variant: 'primary', pill: true, icon: 'lock',
+    href: 'screenplay.html#lock', class: 'sb-lock-btn',
+    title: 'Review what the lock will extract, then freeze the scene numbers so every strip, side and call sheet keeps pointing at the same scene'
   });
 }
 
@@ -996,7 +1003,7 @@ function lockButton(empty = !Scenes.listScenes().length) {
    says so instead of offering the lock. Filled in place; no storage
    is written here. */
 function fillLock() {
-  scriptLib().then(([S]) => {
+  scriptLib().then((S) => {
     const host = document.querySelector('.sb-lock-host');
     if (!host) return;
     const doc = S.loadScript();
@@ -1029,103 +1036,21 @@ function fillLock() {
 }
 
 delegate(document, 'click', '[data-action="sb-unlock"]', async () => {
-  let S, Sync;
-  try { [S, Sync] = await scriptLib(); } catch (e) {
-    toast('The script tools could not be loaded. Check the connection and try again.', { type: 'error' });
+  let U;
+  try { U = await import('../ui/script-lock-ui.js'); } catch (e) {
+    toast('The unlock could not be loaded. Check the connection and try again.', { type: 'error' });
     return;
   }
-  const before = S.loadScript();
-  if (!S.isNumberingLocked(before.numbering)) { render(); return; }
-  const res = S.sceneNumbers(before.elements, before.numbering);
-  const omitted = res.omitted.length;
-  const ok = await askDanger({
-    eyebrow: 'Production draft', icon: 'lock_open',
-    title: 'Unlock the production draft',
-    body: `Every scene is renumbered by its position, 1 to ${res.byId.size} — lettered inserts `
-        + 'like 12A become whole numbers'
-        + (omitted ? `, and the ${omitted} OMITTED ${omitted === 1 ? 'placeholder goes' : 'placeholders go'}` : '')
-        + '. The Breakdown, the strips and the call sheets follow.\n\n'
-        + 'Pages already handed out will no longer match. Cancel keeps the numbers locked.',
-    confirm: 'Unlock and renumber'
-  });
-  if (!ok) return;
-  /* Re-read after the dialog, as the lock does. */
-  const doc = S.loadScript();
-  if (!S.isNumberingLocked(doc.numbering)) { render(); return; }
-  delete doc.numbering;
-  if (!S.saveScript(doc)) {
-    toast('The unlock could not be saved: the browser refused the write. Nothing changed.', { type: 'error' });
-    return;
-  }
-  let moved = 0;
-  try { moved = Sync.applyNumbers(doc.elements, null); } catch (e) { console.warn('[stripboard] numbers', e); }
-  render();
-  const said = 'Production draft unlocked: scenes renumbered by position.'
-    + (moved ? ` ${moved} ${moved === 1 ? 'strip' : 'strips'} renumbered.` : '');
-  announce(said);
-  toast(said, { type: 'success' });
-  document.querySelector('.sb-lock-btn')?.focus();
+  /* The shared unlock re-reads the blob after its dialog, saves, settles
+     the Breakdown and repaints through `after`. */
+  const done = await U.confirmUnlock({ after: render });
+  if (done) document.querySelector('.sb-lock-btn')?.focus();
 });
 
 delegate(document, 'click', '[data-action="sb-dood-matrix"]', () => {
   view.matrix = !view.matrix;
   render();
   document.querySelector('.sb-dood-toggle')?.focus({ preventScroll: true });
-});
-
-delegate(document, 'click', '[data-action="sb-lock"]', async () => {
-  let S, Sync;
-  try { [S, Sync] = await scriptLib(); } catch (e) {
-    toast('The script tools could not be loaded. Check the connection and try again.', { type: 'error' });
-    return;
-  }
-  const before = S.loadScript();
-  if (S.isNumberingLocked(before.numbering)) { fillLock(); return; }
-  const heads = sceneHeadings(before);
-  if (!heads) {
-    await tell({
-      eyebrow: 'Production draft', icon: 'lock', title: 'Nothing to lock yet',
-      body: 'Scene numbers lock on the screenplay’s scene headings, and this project’s '
-          + 'screenplay has none yet. Write or import it first; the strips then carry '
-          + 'the locked numbers.'
-    });
-    return;
-  }
-  const ok = await ask({
-    eyebrow: 'Production draft', icon: 'lock', tone: 'warn',
-    title: 'Lock the production draft',
-    body: `This freezes the numbers of all ${heads} ${heads === 1 ? 'scene' : 'scenes'} as they read now.\n\n`
-        + 'From then on a scene inserted after 12 is 12A, a deleted scene stays on the page as '
-        + 'OMITTED, and a moved scene keeps its number — so the strips, the sides and the call '
-        + 'sheets keep pointing at the same scene.',
-    notice: { tone: 'info', title: 'Unlocking renumbers', body: 'It can be unlocked later here, with Unlock draft beside the lock, and unlocking renumbers every scene by position.' },
-    confirm: 'Lock numbering',
-    typeToConfirm: 'LOCK'
-  });
-  if (!ok) return;
-  /* Re-read after the dialog: the script may have been saved in
-     another tab while it was open. */
-  const doc = S.loadScript();
-  if (S.isNumberingLocked(doc.numbering)) { render(); return; }
-  /* An imported shooting script's numbers live on the Breakdown's
-     rows (the importer never puts them in the element text). When
-     every heading's row carries one, they are what is locked — the
-     same preset the revision tools build. */
-  let preset = new Map();
-  try { preset = lockPreset(Scenes.listScenes()); } catch (e) { /* no scenes */ }
-  doc.numbering = S.lockNumbering(doc.elements, preset);
-  if (!S.saveScript(doc)) {
-    toast('The lock could not be saved: the browser refused the write. Nothing changed.', { type: 'error' });
-    return;
-  }
-  let moved = 0;
-  try { moved = Sync.applyNumbers(doc.elements, doc.numbering); } catch (e) { console.warn('[stripboard] numbers', e); }
-  render();
-  const n = Object.keys(doc.numbering.ids).length;
-  const said = `Production draft locked: ${n} ${n === 1 ? 'scene number' : 'scene numbers'} frozen.`
-    + (moved ? ` ${moved} ${moved === 1 ? 'strip' : 'strips'} renumbered to match.` : '');
-  announce(said);
-  toast(said, { type: 'success' });
 });
 
 /* ---- events — delegated, no inline handlers ------------------- */

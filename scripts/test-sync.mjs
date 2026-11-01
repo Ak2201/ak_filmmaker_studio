@@ -348,5 +348,66 @@ Sync.syncScript(base());
   }
 }
 
+/* ---- held mode (docs/SCRIPT-LOCK.md §3) ------------------------------ */
+{
+  const SS = await import('../src/lib/script.js');
+  const rowsOf = (...hs) => hs.map((h, i) => ({ ...Scenes.blankScene(), id: 'r' + (i + 1), number: String(i + 1), scriptElId: h, location: 'X' + i }));
+  const lock = (els) => SS.lockNumbering(els, null);
+  const els0 = base();
+  const num = lock(els0);
+  const rows0 = rowsOf('h1', 'h2', 'h3');
+
+  eq(Sync.reconcile(els0, rows0, {}).pending, { add: [], omit: [] }, 'unheld plans always carry an empty pending');
+  const dropped = els0.filter((e) => e.id !== 'h2' && e.type !== 'action' || (e.type === 'action' && e.text !== 'Rain.'));
+  const unheld = Sync.reconcile(dropped, rows0, { numbering: num });
+  eq(unheld.bin.map((b) => b.sceneId), ['r2'], 'unheld: a gone heading bins its row (unchanged)');
+  const heldPlan = Sync.reconcile(dropped, rows0, { numbering: num, held: true });
+  eq([heldPlan.bin, heldPlan.add, heldPlan.restore], [[], [], []], 'held: no bin, no add, no restore');
+  eq(heldPlan.pending.omit, [{ sceneId: 'r2', heading: '', number: '2' }], 'held: the gone heading is pending.omit with its number');
+  ok(Sync.reconcile(dropped, rows0, { numbering: num, held: true, keepLinked: true }).bin.length === 0, 'held with keepLinked: still no bin');
+  ok(Sync.reconcile(dropped, rows0, { held: true }).bin.length === 1, 'held is not inferred: with no lock the sync is today\'s');
+
+  // a new heading is pending.add, with its locked letter
+  const withNew = els0.slice(); withNew.splice(2, 0, el('scene', 'INT. CAFE - DAY', 'hn'), el('action', 'Steam.'));
+  const numNew = SS.settleNumbering(withNew, num);
+  const unheldAdd = Sync.reconcile(withNew, rows0, { numbering: numNew });
+  const heldAdd = Sync.reconcile(withNew, rows0, { numbering: numNew, held: true });
+  eq(unheldAdd.add.map((a) => a.headingId), ['hn'], 'unheld: a new heading adds a row');
+  eq([heldAdd.add, heldAdd.pending.add], [[], [{ headingId: 'hn', text: 'INT. CAFE - DAY', number: '1A' }]], 'held: it is pending.add instead');
+
+  // restores do not come back by themselves
+  const binned = [{ id: 'be1', reason: 'script', heading: 'INT. CAFE - DAY', scene: { row: { id: 'rx', scriptElId: 'hn' } } }];
+  eq(Sync.reconcile(withNew, rows0, { numbering: numNew, held: true, bin: binned }).restore, [], 'held: step 4 is skipped');
+  eq(Sync.reconcile(withNew, rows0, { numbering: numNew, bin: binned }).restore.map((r) => r.entryId), ['be1'], 'unheld: the restore still happens');
+
+  // the number relink: a restore re-keyed the headings and changed no number
+  const renamed = els0.map((e) => (e.type === 'scene' ? { ...e, id: 'n' + e.id, text: e.text + ' (REVISED)' } : e));
+  // the lock re-keyed through liveId, as restoreDraft does; the headings' words have changed
+  const numRe = { ...num, ids: Object.fromEntries(Object.entries(num.ids).map(([k, v]) => ['n' + k, { ...v }])) };
+  const relink = Sync.reconcile(renamed, rows0, { numbering: numRe, held: true });
+  eq(relink.update.map((u) => [u.id, u.patch.scriptElId]).sort(), [['r1', 'nh1'], ['r2', 'nh2'], ['r3', 'nh3']], 'held: rows relink to the heading carrying their locked number, words changed');
+  eq([relink.pending.omit, relink.bin], [[], []], 'and nothing is omitted');
+  eq(Sync.reconcile(renamed, rows0, { numbering: numRe }).bin.map((b) => b.sceneId).sort(), ['r1', 'r2', 'r3'], 'unheld: the same change bins all three (unchanged)');
+
+  // plan subsets and the apply
+  const plan = Sync.reconcile(withNew, rows0, { numbering: numNew, keepLinked: true, bin: [] });
+  const sub = Sync.planFor(plan, { headingId: 'hn' });
+  eq([sub.add.map((a) => a.headingId), sub.bin, sub.restore, sub.mass], [['hn'], [], [], false], 'planFor: the add for that heading only');
+  const gone = Sync.reconcile(dropped, rows0, { numbering: num, keepLinked: true });
+  const subBin = Sync.planFor(gone, { sceneId: 'r2' });
+  eq([subBin.bin.map((b) => b.sceneId), subBin.add], [['r2'], []], 'planFor: the bin entry for that scene');
+  eq(Sync.planFor(gone, { sceneId: 'nope' }).bin, [], 'planFor: an unknown scene selects nothing');
+  eq(Sync.planFor(gone, {}).add, [], 'planFor: an empty selection selects nothing');
+
+  reset();
+  Scenes.saveScenes(rowsOf('h1', 'h2', 'h3'));
+  const res = Sync.applyFor(withNew, numNew, { headingId: 'hn' });
+  eq([res.added.length, res.added[0] && res.added[0].number, Scenes.listScenes().length], [1, '1A', 4], 'applyFor adds the one row, numbered by the lock');
+  const res2 = Sync.applyFor(dropped, num, { sceneId: 'r2' });
+  eq([res2.binned.length, Bin.listBin().length, Scenes.listScenes().some((x) => x.id === 'r2')], [1, 1, false], 'applyFor bins the one scene through the bin');
+  eq(Sync.headingPatch('INT. CAFE - DAY', { location: 'X', intExt: 'EXT', dayNight: 'DAY', number: '' }), { intExt: 'INT', location: 'CAFE' }, 'headingPatch: only the differing fields');
+  reset();
+}
+
 console.log(`test:sync — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

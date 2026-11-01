@@ -38,12 +38,22 @@
    Breakdown stay this banner's "Add them", because adding them by
    surprise on the first keystroke of a session is not what "a new
    heading adds its scene" means. The banner also counts the bin.
+
+   UNDER A LOCK THE SYNC STOPS ADDING AND BINNING (docs/SCRIPT-LOCK.md
+   §3). `isHeld(doc.numbering)` is passed to reconcile() from here, never
+   inferred inside it, so the pipeline and the lock pass are unaffected:
+   a held sync keeps identity and numbers right and REPORTS a new or a
+   gone heading (plan.pending) instead of acting on it. The banner then
+   says "N new scenes since the lock wait in the change report" with a
+   "Review changes" button, and one quiet toast names the first scene that
+   joined the report. Unlocked, and under a legacy lock, everything above
+   is as it was.
    ============================================================ */
 import Scenes, { SCENES_KEY } from '../lib/scenes.js';
 import { matchScenes } from '../lib/screenplay-analysis.js';
 import { headingsOf, headingMap, reconcile, applySync, isEmptyPlan, renumberInOrder } from '../lib/scene-sync.js';
 import * as Bin from '../lib/scene-bin.js';
-import { elementLines, LINES_PER_PAGE } from '../lib/script.js';
+import { elementLines, LINES_PER_PAGE, isHeld } from '../lib/script.js';
 import StudioUI from './chrome.js';
 import { h, delegate } from '../lib/dom.js';
 
@@ -86,8 +96,9 @@ function binNote(k) {
     : `${k} scenes removed from the screenplay are in the bin, with everything that was attached to them.`;
 }
 
-function sentence(n, rows) {
+function sentence(n, rows, held) {
   const s = n === 1 ? '' : 's';
+  if (held) return `${n} new scene${s} since the lock ${n === 1 ? 'waits' : 'wait'} in the change report.`;
   return rows
     ? `${n} new scene${s} since your last breakdown.`
     : `${n} scene${s} in this screenplay ${n === 1 ? 'is' : 'are'} not in the Breakdown yet.`;
@@ -102,19 +113,23 @@ function render() {
   const fresh = newHeadings(doc.elements, scenes);
   const n = fresh.length;
   const k = Bin.listBin().length;
-  const sig = n + '|' + k;
+  const held = isHeld(doc.numbering);
+  const sig = n + '|' + k + (held ? '|held' : '');
   if ((!n && !k) || sig === dismissedAt) { if (old) old.remove(); return; }
 
   if (old && old.dataset.count === sig && old.dataset.rows === String(scenes.length > 0)) return;
 
   const copy = [];
   if (n) {
-    copy.push(h('p.wx-handoff-msg', { text: sentence(n, scenes.length > 0) }));
+    copy.push(h('p.wx-handoff-msg', { text: sentence(n, scenes.length > 0, held) }));
     copy.push(h('p.wx-handoff-list', { text: fresh.slice(0, 3).map((s) => s.heading).join(' · ') + (n > 3 ? ' · …' : '') }));
   }
   if (k) copy.push(h(n ? 'p.wx-handoff-list' : 'p.wx-handoff-msg', { text: binNote(k) }));
   const acts = [];
-  if (n) {
+  if (n && held) {
+    // The lock decides what reaches the Breakdown: the writer reviews it there.
+    acts.push(h('button.btn.primary', { type: 'button', 'data-action': 'lock-report', text: 'Review changes' }));
+  } else if (n) {
     acts.push(h('button.btn.primary', {
       type: 'button', 'data-action': 'handoff-add',
       text: n === 1 ? 'Add it to the Breakdown' : 'Add them to the Breakdown'
@@ -294,6 +309,51 @@ function afterSync(res, plan) {
 }
 
 let emptyNoted = false;   // the "no headings left" note, once per emptying
+let syncRuns = 0;         // bumped after every sync that read a changed script
+const told = new Set();   // report entries already announced this session; memory only
+
+/* A proof's signal (a fixed wait is a flaky one): the count moves once a
+   sync has run, whether or not it had anything to apply. */
+const ranSync = () => { try { document.documentElement.dataset.sceneSync = String(++syncRuns); } catch (e) { /* no document */ } };
+
+/** One quiet notice when the change report grows under a lock. */
+function noteHeld(plan) {
+  const items = [
+    ...plan.pending.add.map((a) => ['a:' + a.headingId, a.number]),
+    ...plan.pending.omit.map((o) => ['o:' + o.sceneId, o.number])
+  ].filter(([id]) => !told.has(id));
+  if (!items.length) return;
+  for (const [id] of items) told.add(id);
+  const [, first] = items[0];
+  StudioUI.toast(items.length === 1
+    ? `Scene ${first || '?'} is in the change report; the Breakdown waits for your review.`
+    : `${items.length} scenes are in the change report; the Breakdown waits for your review.`, {
+    type: 'info', action: 'Review',
+    onAction: () => { openReport(); }
+  });
+}
+
+/** The change report, in place, over whatever page this is. A dynamic import:
+    a page that never locks carries none of it. */
+async function openReport(returnTo) {
+  try {
+    const m = await import('./script-lock-ui.js');
+    await m.openChangeReport({
+      getDoc: () => getDoc(), save: () => saveDoc(), returnTo,
+      after: () => { resetSyncBaseline(); safeRender(); try { afterLock(); } catch (e) { /* the page's repaint */ } }
+    });
+  } catch (e) {
+    console.warn('[handoff] report', e);
+    StudioUI.toast('The change report could not open. Try again in a moment.', { type: 'error' });
+  }
+}
+
+/** The heading baseline, set to the script as it is now: after a lock or an
+    unlock the rows and the headings agree, and the next sync must compare
+    against THAT, not against the page's first load. */
+export function resetSyncBaseline() {
+  try { const d = getDoc(); if (d && Array.isArray(d.elements)) syncPrev = headingMap(d.elements); } catch (e) { /* no doc */ }
+}
 
 /** Run the sync now, if the headings changed since the last one. */
 export function syncNow() {
@@ -303,7 +363,8 @@ export function syncNow() {
   const cur = headingMap(doc.elements);
   if (!syncPrev) { syncPrev = cur; return null; }
   if (cur.size === syncPrev.size && [...cur].every(([id, t]) => syncPrev.get(id) === t)) return null;
-  const plan = reconcile(doc.elements, Scenes.listScenes(), { prev: syncPrev, bin: Bin.listBin(), numbering: doc.numbering });
+  const held = isHeld(doc.numbering);
+  const plan = reconcile(doc.elements, Scenes.listScenes(), { prev: syncPrev, bin: Bin.listBin(), numbering: doc.numbering, held });
   // An empty script is "no script": nothing planned, and the baseline
   // is kept, so headings that come back are not mistaken for new ones.
   if (plan.empty) {
@@ -314,10 +375,12 @@ export function syncNow() {
       emptyNoted = true;
       StudioUI.toast('The screenplay has no scene headings now, so the Breakdown keeps its scenes as they are. Delete them there if that is what you meant.', { type: 'info', duration: 8000 });
     }
+    ranSync();
     return plan;
   }
   emptyNoted = false;
-  if (isEmptyPlan(plan)) { syncPrev = cur; return plan; }
+  if (held && plan.pending) { noteHeld(plan); safeRender(); }
+  if (isEmptyPlan(plan)) { syncPrev = cur; ranSync(); return plan; }
   const res = applySync(plan);
   /* After the apply, not before it: an exception halfway through
      applySync (a scene binned, its replacement not yet added) used to
@@ -326,6 +389,7 @@ export function syncNow() {
   syncPrev = cur;
   afterSync(res, plan);
   safeRender();
+  ranSync();
   return plan;
 }
 
@@ -347,6 +411,7 @@ export function sceneSyncLater() {
    are dynamic imports, so a page that never imports carries neither. */
 let saveDoc = () => {};
 let afterPipeline = () => {};
+let afterLock = () => {};
 
 export async function offerPipeline() {
   const section = document.getElementById('screenplay');
@@ -395,11 +460,13 @@ export async function runPipelineHere(P) {
 
 /** Wire the banner. `opts.getDoc` returns the page's in-memory script;
     `opts.save` is the page's save (the coverage pass stores through it);
-    `opts.afterPipeline(result)` repaints after a run or its Undo. */
+    `opts.afterPipeline(result)` repaints after a run or its Undo;
+    `opts.afterLock()` repaints the page after a change-report action. */
 export function mountHandoff(opts = {}) {
   if (typeof opts.getDoc === 'function') getDoc = opts.getDoc;
   if (typeof opts.save === 'function') saveDoc = opts.save;
   if (typeof opts.afterPipeline === 'function') afterPipeline = opts.afterPipeline;
+  if (typeof opts.afterLock === 'function') afterLock = opts.afterLock;
   // The baseline the first sync compares against: the script as loaded.
   try { const d = getDoc(); if (d && Array.isArray(d.elements)) syncPrev = baselineOf(d.elements); } catch (e) { /* no doc yet */ }
   /* A sync still waiting on the writer's pause runs on the way out,
@@ -429,6 +496,7 @@ export function mountHandoff(opts = {}) {
     if (!e.key || e.key.startsWith(SCENES_KEY)) later();
   });
   delegate(document, 'click', '[data-action="handoff-add"]', addThem);
+  delegate(document, 'click', '[data-action="lock-report"]', (e, btn) => { openReport(btn); });
   delegate(document, 'click', '[data-action="handoff-dismiss"]', () => {
     const b = document.getElementById('wr-handoff');
     dismissedAt = b ? b.dataset.count : -1;
@@ -437,4 +505,4 @@ export function mountHandoff(opts = {}) {
   safeRender();
 }
 
-export default { mountHandoff, newHeadings, addThem, sceneSyncLater, syncNow, offerPipeline, runPipelineHere };
+export default { mountHandoff, newHeadings, addThem, sceneSyncLater, syncNow, offerPipeline, runPipelineHere, resetSyncBaseline };

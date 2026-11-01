@@ -292,9 +292,16 @@ delegate(document, 'click', '[data-dr="update"]', async (e, btn) => {
   });
   if (res.id !== 'go') return;
   fresh();
-  Drafts.updateDraft(doc, last.id);
-  save();
-  say('Updated ' + last.label + '.', 'success');
+  /* updateDraft() refuses the locked baseline (the change report compares
+     the script with it): save a new draft instead and say why. */
+  if (Drafts.updateDraft(doc, last.id)) {
+    save();
+    say('Updated ' + last.label + '.', 'success');
+  } else {
+    const made = Drafts.saveNewDraft(doc);
+    save();
+    say('The locked script is kept as it is; saved as ' + (made ? made.name : 'a new draft') + '.', 'success');
+  }
   renderFocusing(opener);
 });
 
@@ -321,13 +328,19 @@ delegate(document, 'click', '[data-dr="restore"]', async (e, btn) => {
   const prev = Sync ? Sync.headingMap(doc.elements) : null;
   Drafts.restoreDraft(doc, id);
   save();
-  let binned = 0;
+  let binned = 0, waiting = 0;
   try {
-    const r = Sync ? Sync.syncScript(doc.elements, { prev, numbering: doc.numbering }) : null;
+    /* `held` is passed here, never inferred inside the sync: under a held
+       lock a scene the draft lacks is not binned, it waits in the change
+       report for the writer to act on. */
+    const held = Script.isHeld(doc.numbering);
+    const r = Sync ? Sync.syncScript(doc.elements, { prev, numbering: doc.numbering, held }) : null;
     binned = (r && r.result && r.result.binned.length) || 0;
+    waiting = held && r && r.plan && r.plan.pending ? (r.plan.pending.omit || []).length : 0;
   } catch (e) { console.warn('[drafts] scene sync', e); }
   say('Restored ' + d.label + ' as the working copy.'
-    + (binned ? ' ' + binned + (binned === 1 ? ' scene it does not have went' : ' scenes it does not have went') + ' to the Breakdown’s bin.' : ''), 'success');
+    + (binned ? ' ' + binned + (binned === 1 ? ' scene it does not have went' : ' scenes it does not have went') + ' to the Breakdown’s bin.' : '')
+    + (waiting ? ' ' + waiting + (waiting === 1 ? ' scene it does not have waits' : ' scenes it does not have wait') + ' in the change report.' : ''), 'success');
   renderFocusing(opener);
 });
 

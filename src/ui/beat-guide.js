@@ -189,7 +189,7 @@ function body(d) {
       + pct(d.pos) + ' of the way through.'
     : d.how === 'inferred' && d.from
       ? 'Linked in ' + d.from.fw.label + ' to ' + d.from.beat.label + '; the nearest ' + d.fw.short + ' beat.'
-      : 'Linked to this scene on the Outline tab.';
+      : 'Linked to this scene on the Beat Sheet in Story.';
   out.push(h('p.bg-where', { text: whereText }));
   out.push(h('p.bg-pages', {}, [
     h('strong', { text: 'Expected around p. ' + d.expectedPage }),

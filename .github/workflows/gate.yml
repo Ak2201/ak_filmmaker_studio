@@ -117,6 +117,8 @@ jobs:
       - run: npm run prove:beat-sync
       # The Beat Sheet's two views, Lanes and Spine (owner, 31 Oct 2026).
       - run: npm run prove:beat-views
+      # The short-film walk end to end: hub door, typed screenplay, live sync, breakdown, stripboard.
+      - run: npm run prove:shortflow
       - run: npm run prove:story-coedit
       - run: npm run prove:visual
       - run: npm run prove:board-frames

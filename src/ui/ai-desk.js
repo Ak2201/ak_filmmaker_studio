@@ -57,6 +57,10 @@
                                Undo toast. One Accept is one write. An undo
                                with a string `said` is the toast's words
                                instead of '<label>: applied.'
+                               Returning null means nothing was written;
+                               an undo returning false refused. A task
+                               that reported through ctx.say is not
+                               echoed by the Desk (ai-desk-outcome.js).
      }
 
    RULES
@@ -124,6 +128,7 @@ import { holdFocus, releaseFocus } from './modal-focus.js';
 import StudioUI from './chrome.js';
 import { disclose, aiMark } from './ai-panel.js';
 import { LOCAL_TASKS, ready as localReady } from '../lib/local-tasks.js';
+import { listenSay, acceptNote, undoNote } from '../lib/ai-desk-outcome.js';
 import '../styles/ai.css';
 import '../styles/ai-desk.css';
 
@@ -555,8 +560,11 @@ async function accept(all) {
   }
   if (typeof task.apply !== 'function') { closeDesk(); return; }
   let undo;
+  /* A task that told the page what happened (ctx.say) is not followed by
+     the Desk's own "applied." / "Undone." — ai-desk-outcome.js. */
+  const heard = listenSay(ctx);
   try {
-    undo = await task.apply(selected, ctx, v.result);
+    undo = await task.apply(selected, heard.ctx, v.result);
   } catch (e) {
     errorText = (e && e.message) || 'The change could not be written. Nothing was changed.';
     render();
@@ -575,13 +583,16 @@ async function accept(all) {
     StudioUI.toast(head + said, {
       action: 'Undo',
       onAction: () => {
-        Promise.resolve().then(undo)
-          .then(() => StudioUI.toast('Undone.', { type: 'info' }))
+        heard.reset();
+        Promise.resolve().then(() => undo())
+          .then((ret) => { const t = undoNote(ret, heard.spoke()); if (t) StudioUI.toast(t, { type: 'info' }); })
           .catch(() => StudioUI.toastError('It could not be undone.'));
       }
     });
   } else {
-    StudioUI.toastSuccess(label + ': applied.');
+    const n = acceptNote(undo, heard.spoke(), label);
+    if (n && n.type === 'success') StudioUI.toastSuccess(n.text);
+    else if (n) StudioUI.toast(n.text, { type: 'info' });
   }
 }
 

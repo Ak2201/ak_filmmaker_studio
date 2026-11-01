@@ -52,7 +52,7 @@ import { h, delegate } from '../lib/dom.js';
 import { button, badge, sheet, closeSheet, statStrip, notice, tell, askDanger } from './kit/index.js';
 import StudioUI from './chrome.js';
 import Script, { isNumberingLocked, isHeld } from '../lib/script.js';
-import Scenes from '../lib/scenes.js';
+import Scenes, { ELEMENT_CATEGORIES } from '../lib/scenes.js';
 import * as Bin from '../lib/scene-bin.js';
 import { headingsOf, applyNumbers, syncScript, applyFor, headingPatch } from '../lib/scene-sync.js';
 import { formatEighths } from '../lib/sample-figures.js';
@@ -124,7 +124,7 @@ export async function openLockReview(opts = {}) {
   // Locked already: this entry point is the review of changes, not a second lock.
   if (isNumberingLocked(doc.numbering)) return openChangeReport({ getDoc, save, returnTo, onClose });
 
-  const rows = P.planPipeline({ elements: doc.elements, numbering: doc.numbering });
+  const rows = P.planPipeline({ elements: doc.elements, numbering: doc.numbering, lock: true });
   const props = (Array.isArray(rows) ? rows : []).find((r) => r.id === 'props') || {};
   const preview = L.lockPreview(doc, props.byCategory, Scenes.listScenes()) || {};
 
@@ -138,6 +138,19 @@ export async function openLockReview(opts = {}) {
       h('p.lk-step-note', { text: r.note || r.what || '' })
     ])));
 
+  /* One tick per category the tags row found something for; all on. The
+     rows above stay generic: only the tags row's byCategory is read. */
+  const tagsRow = (Array.isArray(rows) ? rows : []).find((r) => r.id === 'tags') || {};
+  const byCat = tagsRow.byCategory || {};
+  const catIds = ELEMENT_CATEGORIES.filter((c) => (byCat[c.id] || 0) > 0);
+  const cats = catIds.length ? h('fieldset.lk-cats', {}, [
+    h('legend.lk-cats-legend', { text: 'Tag these kinds of element' }),
+    ...catIds.map((c) => h('label.lk-cat', {}, [
+      h('input', { type: 'checkbox', checked: true, 'data-lock-cat': c.id }),
+      h('span', { text: c.label + ' (' + byCat[c.id] + ')' })
+    ]))
+  ]) : null;
+
   const confirmBtn = button({ label: 'Lock and generate', variant: 'primary', pill: true, icon: 'lock', action: 'lock-confirm' });
   const card = h('div#lock.lk-review', {}, [
     h('p.lk-lede', { text: 'Locking freezes the scene numbers and generates pre-production from the script, by rules, on this device. Only blank places are filled; nothing you have written is overwritten.' }),
@@ -146,6 +159,7 @@ export async function openLockReview(opts = {}) {
     steps,
     h('p.lk-base', { 'data-lock': 'baseline', text: baselineLine(preview) }),
     h('p.lk-means', { text: 'After the lock, scene numbers stay put: a scene added later becomes 12A and a scene cut stays as OMITTED. The Breakdown waits for your review of later changes in the change report, and nothing downstream moves until you act. You can unlock it again, which renumbers every scene.' }),
+    cats,
     h('div.lk-actions', {}, [confirmBtn, button({ label: 'Cancel', variant: 'ghost', action: 'lock-cancel' })])
   ]);
 
@@ -173,6 +187,7 @@ export async function openLockReview(opts = {}) {
       StudioUI.toast('Script locked: ' + plural(n, 'scene') + ' numbered. Later edits wait in the change report.', { type: 'success' });
       // The pass is the act that generates pre-production, so it runs with
       // sync NOT held; its one Undo takes the run back, never the lock.
+      const categories = cats ? [...cats.querySelectorAll('input[data-lock-cat]')].filter((i) => i.checked).map((i) => i.dataset.lockCat) : undefined;
       const { openPipeline } = await import('./pipeline-checklist.js');
       await openPipeline({
         getElements: () => { const d = call(getDoc); return d ? d.elements : []; },
@@ -180,7 +195,7 @@ export async function openLockReview(opts = {}) {
         getDoc: () => call(getDoc),
         save: () => call(save),
         onChange: () => call(afterLock),
-        returnTo, ai: false, title: 'Generate pre-production'
+        returnTo, lock: true, categories, ai: 'lock', title: 'Generate pre-production'
       });
     } catch (err) {
       console.warn('[script-lock] lock', err);

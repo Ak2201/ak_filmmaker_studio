@@ -28,7 +28,8 @@
   ],
   "extras": [
     "crowd", "crowds", "villagers", "passersby", "passers-by", "onlookers", "mob", "audience", "spectators", "customers",
-    "students", "devotees", "guests", "bystanders", "pedestrians", "extras", "commuters", "fans", "protesters"
+    "students", "devotees", "guests", "bystanders", "pedestrians", "extras", "commuters", "fans", "protesters",
+    "townspeople", "locals", "shoppers", "travellers", "travelers", "passengers", "worshippers", "mourners", "wedding guests"
   ],
   "setdressing": [
     "curtain", "curtains", "sofa", "couch", "bed", "cot", "table", "chair", "chairs", "lamp", "lamps", "poster", "posters",

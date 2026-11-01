@@ -55,3 +55,9 @@
    the scope's own surface and ink. */
 .lk-facts .k-stat, .pl-stats .k-stat { background: var(--surface-card); border: 1px solid var(--border-hair); }
 .lk-facts .k-stat-value, .pl-stats .k-stat-value { color: var(--ink); }
+
+/* per-category ticks above the confirm button */
+.lk-cats { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin: 0; padding: var(--s3); border: 1px solid var(--border-hair); border-radius: var(--sk-radius, var(--radius)); min-width: 0; }
+.lk-cats-legend { padding: 0 var(--s1); color: var(--ink); font-weight: 600; font-size: var(--t-ui); }
+.lk-cat { display: inline-flex; align-items: center; gap: var(--s2); color: var(--ink); font-size: var(--t-small); min-width: 0; }
+.lk-cat input { accent-color: var(--brand); flex: none; }

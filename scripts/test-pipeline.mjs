@@ -49,13 +49,14 @@ seed(dragon.elements, { [CALC_KEY]: CALC });
 {
   const plan = P.planPipeline();
   const before = snapshot();
-  eq(plan.map((s) => s.id), P.STEPS.map((s) => s.id), 'plan lists every step in order');
+  const BASE = P.STEPS.filter((s) => !s.lockOnly);
+  eq(plan.map((s) => s.id), BASE.map((s) => s.id), 'plan lists every step in order (the lock-only steps only with lock: true)');
   eq(plan.find((s) => s.id === 'scenes').todo, headings, 'plan: every heading is still to become a scene');
   ok(snapshot() === before, 'planPipeline writes nothing');
 
   const seen = [];
   const res = await run({ onStep: (st) => seen.push(st.id + ':' + st.status) });
-  eq(seen.filter((x) => x.endsWith(':running')).length, P.STEPS.length, 'onStep: a running call per step');
+  eq(seen.filter((x) => x.endsWith(':running')).length, BASE.length, 'onStep: a running call per step');
   const scenes = Scenes.listScenes();
   eq(scenes.length, headings, 'every heading is a scene row');
   ok(scenes.every((s) => s.scriptElId), 'every row is linked to its heading');
@@ -238,6 +239,81 @@ seed([E('action', 'Notes to self. No scene yet.')]);
     'characters: an empty Bible is not claimed to hold them — got ' + JSON.stringify(ch.detail));
   const pr = step(res, 'props');
   ok(!/\b1 (vehicles|props|animals|stunts)\b/.test(pr.detail || ''), 'props: one of a kind is singular — got ' + JSON.stringify(pr.detail));
+}
+
+
+/* ---- 9. the lock's seven (lock: true) -------------------------------- */
+const LOCKED = [
+  E('scene', 'EXT. COLLEGE GATE - DAY'),
+  E('action', 'Forty STUDENTS (40) crowd the bus stop. A TRUCK idles by the gate. Ravi waits.'),
+  E('character', 'RAVI'), E('dialogue', 'Late again.'), E('character', 'MEENA'), E('dialogue', 'Always.'),
+  E('scene', 'INT. CHAI SHOP - NIGHT'),
+  E('action', 'A crowd of fifty cheers. Ravi lifts a glass. They crowd the door.'),
+  E('character', 'RAVI'), E('dialogue', 'One tea.'), E('character', 'MEENA'), E('dialogue', 'Two.')
+];
+const LOCK_CALC = { ci_1_item: 'DOP', ci_1_rate: '20000' };
+const contactsOf = () => JSON.parse(mem.get('fms_contacts_v1') || '{}');
+seed(LOCKED, { [CALC_KEY]: LOCK_CALC });
+{
+  const plain = P.planPipeline();
+  eq(plain.some((s) => s.lockOnly || ['synopsis', 'extras', 'tags'].includes(s.id)), false, 'lock: a plan without lock shows no lock-only row');
+  const pre = P.planPipeline({ lock: true });
+  eq(pre.map((s) => s.id), P.STEPS.map((s) => s.id), 'lock: plan lists all fifteen steps in order');
+  ok(/once the scenes exist/.test(pre.find((s) => s.id === 'synopsis').note), 'lock: pre-run rows say they are made once the scenes exist');
+  ok(pre.find((s) => s.id === 'tags').byCategory && typeof pre.find((s) => s.id === 'tags').byCategory === 'object', 'lock: tags row carries byCategory');
+
+  const before = snapshot();
+  const first = await run({ lock: true });
+  ok(first.steps.length === P.STEPS.length, 'lock: every step ran');
+  for (const id of ['synopsis', 'extras', 'tags', 'castcontacts', 'recce', 'sheets', 'budgetlines']) eq(step(first, id).count, step(first, id).wrote, 'lock: ' + id + ' count === wrote');
+  const rows = Scenes.listScenes();
+  eq(rows[0].synopsis, 'Forty STUDENTS (40) crowd the bus stop.', 'lock: synopsis is the first sentence of the first action line');
+  ok((rows[0].elements.extras || []).includes('Students (40)'), 'lock: STUDENTS (40) tagged as Students (40) — ' + JSON.stringify(rows[0].elements.extras));
+  eq((rows[0].elements.extras || []).length, 1, 'lock: a counted line yields no bare noun beside it');
+  ok((rows[1].elements.extras || []).includes('Crowd (50)'), 'lock: a crowd of fifty is Crowd (50) — ' + JSON.stringify(rows[1].elements.extras));
+  ok((rows[0].elements.vehicles || []).length > 0, 'lock: the truck is tagged as a vehicle');
+  ok(first.summary.synopses === 2 && first.summary.tagged > 0, 'lock: summary counts what this run wrote');
+  ok(/^.*scene/.test(first.summary.text), 'lock: summary text — ' + first.summary.text);
+  ok(/tagged at the lock/.test(step(first, 'props').detail), 'lock: props says how many were tagged at the lock — ' + step(first, 'props').detail);
+  ok(contactsOf().contacts.some((c) => c.name === 'To be cast'), 'lock: a To be cast contact was made');
+  ok((contactsOf().callSheets || []).length >= 1, 'lock: a draft call sheet was made');
+  const budgetRows = Object.keys(JSON.parse(mem.get(CALC_KEY))).filter((k) => /_custom$/.test(k));
+  ok(budgetRows.length >= 1, 'lock: budget lines added');
+  ok(!Object.keys(JSON.parse(mem.get(CALC_KEY))).some((k) => /^ci_(?!1_)\d+_rate$/.test(k)), 'lock: no rate is written on a new line');
+  eq(JSON.parse(mem.get(CALC_KEY)).ci_1_rate, '20000', 'lock: a typed budget row is untouched');
+
+  const mid = snapshot();
+  const again = await run({ lock: true });
+  eq(again.wrote, 0, 'lock: second run wrote 0');
+  ok(snapshot() === mid, 'lock: second run left storage byte-identical');
+  for (const id of ['synopsis', 'extras', 'tags', 'castcontacts', 'recce', 'sheets', 'budgetlines']) ok(step(again, id).status !== 'done', 'lock: second run, ' + id + ' not done');
+  eq(again.summary.contacts + again.summary.sheets + again.summary.budgetLines + again.summary.synopses, 0, 'lock: second-run summary fields are 0');
+
+  first.undo();
+  ok(snapshot() === before, 'lock: undo restores storage byte for byte');
+}
+/* typed work survives a run, and a surgical undo keeps a later edit */
+seed(LOCKED, { [CALC_KEY]: { ...LOCK_CALC, ci_2_custom: 'Unit shoot days', ci_2_days: '9' } });
+{
+  await run({ only: ['scenes'] });
+  const [a] = Scenes.listScenes();
+  Scenes.updateScene(a.id, { synopsis: 'My own line.' });
+  Scenes.tagElement(a.id, 'extras', 'Students');
+  mem.set('fms_contacts_v1', JSON.stringify({ contacts: [{ id: 'c_mine', name: 'Priya', role: 'Meena', department: 'Cast', phone: '', email: '', notes: '' }], callSheets: [] }));
+  const res = await run({ lock: true });
+  const rows = Scenes.listScenes();
+  eq(rows[0].synopsis, 'My own line.', 'lock: a typed synopsis survives');
+  eq((rows[0].elements.extras || []), ['Students'], 'lock: a typed extras item stops a second Students (40)');
+  ok(contactsOf().contacts.some((c) => c.id === 'c_mine' && c.name === 'Priya'), 'lock: a typed contact survives');
+  ok(!contactsOf().contacts.some((c) => c.role === 'Meena' && c.id !== 'c_mine'), 'lock: a speaker a contact claims gets no second contact');
+  eq(Object.keys(JSON.parse(mem.get(CALC_KEY))).filter((k) => /_custom$/.test(k) && JSON.parse(mem.get(CALC_KEY))[k] === 'Unit shoot days').length, 1, 'lock: a typed budget row blocks its line');
+  eq(JSON.parse(mem.get(CALC_KEY)).ci_2_days, '9', 'lock: …and keeps its own days');
+  Scenes.updateScene(rows[1].id, { synopsis: rows[1].synopsis + ' (edited)' });
+  res.undo();
+  const after = Scenes.listScenes();
+  eq(after[0].synopsis, 'My own line.', 'lock: surgical undo keeps a typed synopsis');
+  ok(/\(edited\)$/.test(after[1].synopsis), 'lock: surgical undo keeps a synopsis edited after the run');
+  ok(contactsOf().contacts.some((c) => c.id === 'c_mine'), 'lock: surgical undo keeps the typed contact');
 }
 
 console.log(`\ntest:pipeline — ${pass} passed, ${fail} failed`);

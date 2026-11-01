@@ -81,9 +81,9 @@ export function provenanceLine(asOf, nowYear) {
 
 /* ---- the 2026 check layer ----------------------------------- */
 export const CONFIDENCE_LABEL = {
-  checked: 'CHECKED',
-  corroborating: 'CONTEXT',
-  stale: 'NOT UPDATED'
+  checked: 'Checked',
+  corroborating: 'Context',
+  stale: 'Not updated'
 };
 
 /**

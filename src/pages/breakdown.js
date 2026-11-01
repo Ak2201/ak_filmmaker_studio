@@ -547,8 +547,8 @@ function renderSceneBar(scenes) {
       [h('option', { value: '', text: 'Set INT / EXT…' })].concat(INT_EXT.map((v) => h('option', { value: v, text: v })))),
     h('select.bd-sel', { 'data-sl-bulk': 'dayNight', 'aria-label': 'Set time of day on the selected scenes' },
       [h('option', { value: '', text: 'Set time…' })].concat(DAY_NIGHT.map((v) => h('option', { value: v, text: v })))),
-    button({ label: 'MOVE TO BIN', variant: 'danger', action: 'sl-bulk-bin' }),
-    button({ label: 'CLEAR SELECTION', action: 'sl-clear' })
+    button({ label: 'Move to bin', variant: 'danger', action: 'sl-bulk-bin' }),
+    button({ label: 'Clear selection', action: 'sl-clear' })
   ]);
   const names = h('datalist#bdElementNames');
   for (const el of Scenes.elementIndex()) names.append(h('option', { value: el.name }));
@@ -573,7 +573,7 @@ function renderPresets() {
     const active = on && presetOn(p);
     return h('span.bd-sl-preset' + (active ? '.is-on' : ''), { 'data-preset': p.id }, [
       h('button.bd-sl-preset-apply', { type: 'button', 'data-action': 'sl-preset', 'aria-pressed': String(active), title: 'Show: ' + describeFilter(p), text: p.name }),
-      h('button.bd-sl-preset-x', { type: 'button', 'data-action': 'sl-preset-x', 'aria-label': 'Remove the saved filter ' + p.name, title: 'Remove this saved filter', text: '\u2715' })
+      h('button.bd-sl-preset-x', { type: 'button', 'data-action': 'sl-preset-x', 'aria-label': 'Remove the saved filter ' + p.name, title: 'Remove this saved filter', }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })])
     ]);
   })));
 }
@@ -985,7 +985,7 @@ function renderSuggestions(scenes) {
   wrap.append(h('div.bd-sug-tools', {}, [
     h('span.bd-sug-count', { text: suggestCountText({ total, scenes: rows.length, guessed: guessed.length, labelOf: (c) => catById[c].label }) }),
     bulkLeft
-      ? button({ label: 'ADD ALL', action: 'sug-all' })
+      ? button({ label: 'Add all', action: 'sug-all' })
       : null
   ]));
   const list = h('ol.bd-sug-list');
@@ -995,7 +995,7 @@ function renderSuggestions(scenes) {
       h('strong', { text: `Scene ${r.scene.number || '\u2014'}` }),
       h('span.bd-sug-slug', { text: r.heading }),
       isConfident(r.how) ? null : h('span.bd-sug-guess', { text: 'paired by position, check the heading' }),
-      button({ label: 'ADD THESE', size: 'sm', action: 'sug-scene', class: 'bd-sug-scene-all' })
+      button({ label: 'Add these', size: 'sm', action: 'sug-scene', class: 'bd-sug-scene-all' })
     ]));
     const tags = h('div.bd-tags');
     for (const cat of SUGGEST_CATS) {
@@ -1214,22 +1214,62 @@ function render(focus) {
   const mine = ++keepToken;
   if (keepAbort) keepAbort.abort();
   keepAbort = new AbortController();
-  if (focus && wasTop !== null && wasTop >= 0 && wasTop <= innerHeight) {
+  if (focus && wasTop !== null) {
     const node = document.querySelector(focus);
+    /* A control that was partly or wholly off screen when the key was
+       pressed (scrolled past, or under the pinned band) is kept at the
+       NEAREST on-screen spot instead of being left to whatever the growth
+       below does: before, the loop simply stood down for it, and the
+       moved row was carried a screen away (prove:cards 9, Gate run 383:
+       a grip at 913 on a 900px window ended at 641 after two moves). */
+    const band = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+    const tall = node ? node.getBoundingClientRect().height : 0;
+    const keepAt = Math.max(band, Math.min(wasTop, innerHeight - tall));
     let live = true;
-    const stop = () => { live = false; };
-    for (const t of ['wheel', 'touchstart', 'pointerdown']) addEventListener(t, stop, { once: true, passive: true, signal: keepAbort.signal });
+    const signal = keepAbort.signal;
+    const stop = () => { live = false; if (keepAbort && keepAbort.signal === signal) keepAbort.abort(); };
+    /* The reader taking the scroll (wheel, touch, a press, a key: Space and
+       PageDown scroll too) or leaving the control ends it: it holds the
+       control you are ON, and once focus has gone elsewhere a late resize
+       must not drag the page back to it (it undid a scroll made after
+       focus moved on, with the ResizeObserver below). */
+    /* CAPTURE: the key that caused this render is still bubbling to window
+       when this runs, and a bubble listener added now would hear it. */
+    for (const t of ['wheel', 'touchstart', 'pointerdown', 'keydown']) addEventListener(t, stop, { once: true, passive: true, capture: true, signal });
+    if (node) node.addEventListener('blur', stop, { once: true, signal });
     const settle = () => {
       if (!live || mine !== keepToken || !node || !node.isConnected) return;
-      const d = node.getBoundingClientRect().top - wasTop;
+      const d = node.getBoundingClientRect().top - keepAt;
       if (Math.abs(d) > 1) scrollBy({ top: d, behavior: 'instant' });
     };
     settle();
     requestAnimationFrame(() => requestAnimationFrame(settle));
     for (const ms of [120, 300, 500]) setTimeout(settle, ms);
+    /* AND ON EVERY RESIZE OF THE PAGE until it has been still for
+       KEEP_IDLE_MS. The fixed half second above assumed the late growth
+       (the shell's band, the tab fold, the stage guide's videos) lands
+       inside it; on a loaded machine it landed 1-2s later, after the loop
+       had stopped, and carried the row 150-270px (Gate run 383). A
+       ResizeObserver fires before the paint that would show the move,
+       so the row never visibly leaves its place; the timers stay because
+       a tab that is not compositing gets no RO callbacks (the
+       --step-tab-w trap). Ends with the loop: a newer render, or the
+       reader taking the scroll. */
+    if (typeof ResizeObserver !== 'undefined') {
+      let idle = 0;
+      const ro = new ResizeObserver(() => {
+        settle();
+        clearTimeout(idle);
+        idle = setTimeout(() => ro.disconnect(), KEEP_IDLE_MS);
+      });
+      ro.observe(document.body);
+      idle = setTimeout(() => ro.disconnect(), KEEP_IDLE_MS);
+      signal.addEventListener('abort', () => { clearTimeout(idle); ro.disconnect(); }, { once: true });
+    }
   }
 }
 let keepToken = 0, keepAbort = null;
+const KEEP_IDLE_MS = 2000;
 const inScene = (id, sel) => scopeSelector('[data-scene="' + CSS.escape(id || '') + '"] ', sel);
 
 /* ---- events — delegated, no inline handlers ----------------- */
@@ -1277,7 +1317,7 @@ delegate(document, 'click', '[data-action="sl-preset-x"]', (e, el) => {
   refreshPresets();
   document.querySelector('[data-action="sl-save"]:not([disabled]), .bd-sl-search')?.focus();
   StudioUI.toast('Removed the saved filter \u201C' + p.name + '\u201D.', {
-    type: 'success', action: 'UNDO',
+    type: 'success', action: 'Undo',
     onAction: () => {
       if (SL.presets.some((x) => x.id === p.id)) return;
       SL.presets.splice(Math.min(at, SL.presets.length), 0, p);
@@ -1291,7 +1331,7 @@ delegate(document, 'click', '[data-action="sl-save"]', async () => {
   const name = await askText({
     title: 'Save this filter',
     body: 'Showing: ' + describeFilter(snap) + '. Give it a name. Saved filters stay until you reload this page.',
-    value: describeFilter(snap), confirm: 'SAVE'
+    value: describeFilter(snap), confirm: 'Save'
   });
   if (!name) return;
   const clash = SL.presets.find((x) => x.name.toLowerCase() === name.toLowerCase());
@@ -1332,7 +1372,7 @@ function binScenes(ids) {
 const UNDOS = new Map();   // toast handle → the bin entry ids it would restore
 function undoBin(entryIds, message) {
   const t = StudioUI.toast(message, {
-    type: 'success', action: 'UNDO',
+    type: 'success', action: 'Undo',
     onAction: () => { UNDOS.delete(t); Bin.restoreMany(entryIds); syncSteps(); render(); }   // a step edited meanwhile reaches it now
   });
   if (t && t.dismiss) UNDOS.set(t, entryIds);

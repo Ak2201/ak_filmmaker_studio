@@ -262,7 +262,10 @@ check('the favourite film is a Settings link under an example, not a switcher', 
 
 /* the cover sheet: the dashboard's Title page, through the same keys */
 await page.goto(url('dashboard.html'), { waitUntil: 'networkidle' });
-await page.waitForSelector('#title-page [data-key="meta_title"]', { timeout: 15000 });
+/* The Title page sits under the closed "Project details" disclosure
+   since 28 Oct 2026 (layout only; the keys and the writes are unchanged). */
+await page.click('details[data-more="details"] > summary');
+await page.waitForSelector('#title-page [data-key="meta_title"]', { state: 'visible', timeout: 15000 });
 await page.fill('#title-page [data-key="meta_title"]', 'DRAGON TITLE');
 await page.selectOption('#title-page [data-key="v1_genre"]', 'Fantasy');
 await settle();
@@ -389,6 +392,9 @@ await page.waitForTimeout(300);
 await page.keyboard.type('A second step');
 await page.waitForTimeout(800);
 const sid = (await story()).outline[0].id;
+/* A step's controls are on its OPEN card (the Beat Sheet's views, 31 Oct
+   2026): the caret in its text opens it, as a writer's click would. */
+await page.focus(`#stStep_${sid}`);
 await page.focus(`select[data-st-field="step-beat"][data-step="${sid}"]`);
 await page.keyboard.press('ArrowDown');
 await page.waitForTimeout(400);
@@ -472,6 +478,7 @@ check('pacing: the edge dots’ labels stay inside the window at 390px', tipFits
 await project('feature', 'QA empty');
 await page.goto(url('dashboard.html'), { waitUntil: 'networkidle' });
 await page.waitForTimeout(900);
+await page.click('details[data-more="details"] > summary');
 check('title page: PROJECT TITLE shows the project’s name', await page.inputValue('#tp_meta_title'), 'QA empty');
 await page.fill('#tp_meta_title', '');
 await page.click('#tp_meta_title');

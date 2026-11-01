@@ -1,138 +1,367 @@
 /* ============================================================
    THE HOME PAGE (start.html) — what it adds to marketing.css
    ------------------------------------------------------------
-   marketing.css (imported by marketing.js) holds the header, the buttons,
-   the bands, the player, the footer and the sign-up modal. This sheet is
-   only the home page's own pieces: the hero's brand glow, the facts strip,
-   the product explorer's alternating rows, the Local-first panel, the
-   pricing teaser and the closing band.
-
-   Same rules as marketing.css: tokens only (no colour literal), shapes from
-   --sk-radius, every transform times --motion, hue as text is --hue-lift.
+   marketing.css (imported by marketing.js) holds the header, the bands,
+   the type, the buttons, the cards, the player, the footer and the
+   sign-up modal. This sheet is only the home page's own pieces: the
+   stage cards' pictures, the plans teaser and the opt-out line. Layout
+   (the card grid, the teaser's columns) is Tailwind utilities in the
+   markup; nothing here sets a colour literal or a typed radius, and every
+   translate is multiplied by --motion.
    ============================================================ */
 
-/* the hero: the brand's violet, soft, from the top. No photograph. */
-.st-hero { --hue: var(--accent-primary); --hue-lift: var(--brand-lift); }
-/* the first screen shows the product, large: words 5, picture 7. The
-   picture stays inside the wrap (equal outer margins) at the footage's own
-   16:9, uncropped: it is the live UI, and a crop cuts the UI off */
-.st-hero { min-height: 0; }
-.st-hero .mk-h1 { font-size: clamp(var(--t-3xl), 3.3vw, var(--t-4xl)); max-width: none; }
-.st-hero .mk-sub { font-size: clamp(var(--t-base), 1.6vw, var(--t-lg)); }
-.st-hero-grid {
-  display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: clamp(var(--s6), 5vw, var(--s8)); align-items: center;
-}
-.st-hero-copy { min-width: 0; }
-.st-hero-media { max-width: none; aspect-ratio: 16 / 9; }
+.st-hero .mk-h1 { max-width: 16ch; }
 .st-hero-media video { object-fit: contain; }
-.st-note { margin: var(--s5) 0 0; max-width: 48ch; font-size: var(--t-small); line-height: 1.5; color: var(--ink-muted); }
+/* the video now opens the scroll story (#tools), under its heading */
+.st-tools .st-tools-media { margin: 0 0 var(--s3); max-width: none; }
+.st-tools .st-tools-caption { margin: 0 0 clamp(var(--s7), 6vw, var(--s9)); }
 
-/* the facts strip, where a badge strip would be */
-.st-facts-band { background: var(--surface-rail); border-block: 1px solid var(--border-hair); padding-block: var(--s6); }
-.st-facts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s5); }
-.st-facts li { display: flex; flex-direction: column; gap: var(--s1); max-width: none; }
-.st-fact-n { font-family: var(--sk-display, var(--f-display)); font-size: var(--t-xl); font-weight: 700; line-height: 1.2; color: var(--ink); text-wrap: balance; }
-.st-fact-l { font-size: var(--t-small); line-height: 1.45; color: var(--ink-muted); }
+/* ============================================================
+   THE OFFER (30 Oct 2026): the hero card, the closing band's copy and
+   the slide-in / phone bar. Every one is [hidden] in the markup and drawn
+   by start.js only while the server makes an offer. Colours are tokens
+   (the three surfaces sit on data-surface="dark"); radii are the skin's;
+   every travel and scale is times --motion, and html.st-still (Playwright,
+   the device switch, the OS setting) stops every animation here.
+   ============================================================ */
+@property --st-glow-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
 
-/* the product explorer: five alternating rows on the dark band */
-.st-explorer { background: var(--surface-canvas); }
-.st-stages { display: grid; gap: clamp(var(--s8), 9vw, var(--s9)); }
-.st-stage {
-  --hue: var(--accent-primary);
-  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: clamp(var(--s6), 6vw, var(--s9)); align-items: center;
+/* the hero: two columns on a desk while there is a card to show.
+
+   NOTHING MOVES WHEN THE ANSWER ARRIVES (30 Oct 2026). The card is drawn
+   from two server replies, so it used to appear late and push the hero
+   about (the h1 moved 60px and narrowed by 77px at 1440; layout-shift
+   0.11 there and 0.21 at 390). Now, while scripts run and start.js has
+   not yet decided (no html[data-offer-ready]), the card's box is RESERVED
+   invisibly at its drawn height, the desk grid is already two columns,
+   the text column is top-aligned (so the card's exact height can never
+   move the h1), and the plain "Get started" door keeps its place but is
+   invisible (it is the LAST thing in the text column, so it moves
+   nothing when an offer hides it). With no offer the reservation goes and
+   the door shows: a shift only in that state. A page whose script never
+   runs shows the door after 6s (CSS alone); with scripts off, none of
+   this applies and the page is the plain door, as before. */
+@media (min-width: 1100px) {
+  .st-hero-in:has(> .st-offer:not([hidden])) {
+    display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--s8); align-items: start;
+  }
 }
-.st-stage.hue-library { --hue: var(--library); }
-.st-stage.hue-feature { --hue: var(--feature); }
-.st-stage.hue-plan { --hue: var(--plan); }
-.st-stage.hue-shoot { --hue: var(--shoot); }
-.st-stage--brand { --hue-lift: var(--brand-lift); --hue-wash: color-mix(in srgb, var(--accent-primary) 16%, transparent); }
-/* media left on 1, 3, 5; right on 2, 4 */
-.st-media { grid-column: 1; grid-row: 1; min-width: 0; }
-.st-copy { grid-column: 2; grid-row: 1; min-width: 0; }
-.st-stage--flip .st-media { grid-column: 2; }
-.st-stage--flip .st-copy { grid-column: 1; }
-/* the stage's icon, bare in its hue: no tinted square behind it */
-.st-glyph { display: block; margin-bottom: var(--s3); color: var(--hue-lift); }
-.st-glyph .sym { font-size: 28px; }
-.st-copy .mk-h2 { max-width: 20ch; margin-bottom: var(--s4); }
-/* ratios vary: stages 2 and 4 give the picture 7 of 12, and a stage
-   marked "mediaWide" in marketing-home.json does too (picture left) */
-.st-stage--flip { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
-.st-stage--media-wide { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
-
-/* stage 1, WIDE: the words in one row (heading left, text right), the
-   loop full width beneath them */
-.st-stage--wide { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); row-gap: var(--s6); align-items: start; }
-.st-stage--wide .st-copy {
-  grid-column: 1 / -1; grid-row: 1;
-  display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: clamp(var(--s6), 6vw, var(--s9)); align-items: start;
+@media (scripting: enabled) and (min-width: 1100px) {
+  html:not([data-offer-ready]) .st-hero-in { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--s8); align-items: start; }
 }
-.st-stage--wide .st-glyph { grid-column: 1; grid-row: 1; }
-.st-stage--wide .mk-h2 { grid-column: 1; grid-row: 2; margin-bottom: 0; }
-.st-stage--wide .mk-body { grid-column: 2; grid-row: 2; }
-.st-stage--wide .mk-link { grid-column: 2; grid-row: 3; justify-self: start; }
-.st-stage--wide .st-media { grid-column: 1 / -1; grid-row: 2; }
-.st-stage--wide .st-player { aspect-ratio: 16 / 9; }
-
-/* stage 5, FIELD: no picture; the whole row is one tone-stepped surface
-   and the three local-first facts sit across it */
-.st-stage--field {
-  grid-template-columns: 1fr; gap: var(--s6);
-  padding: clamp(var(--s6), 5vw, var(--s8)); box-sizing: border-box;
-  background: var(--surface-card); border-radius: var(--sk-radius, var(--radius-lg));
+@media (scripting: enabled) {
+  /* a pseudo-element, not the card: [hidden] is display:none !important
+     here (base.css), so the card itself cannot hold the place */
+  html:not([data-offer-ready]) .st-hero-in::after { content: ''; display: block; order: 1; min-height: var(--st-offer-h); margin-bottom: var(--st-offer-gap, 0px); }
+  html:not([data-offer-ready]) .st-hero [data-o-fallback] { visibility: hidden; animation: st-late 0s linear 6s forwards; }
 }
-.st-stage--field .st-copy, .st-stage--field .st-media { grid-column: 1; }
-.st-stage--field .st-copy {
-  grid-row: 1;
-  display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: clamp(var(--s6), 6vw, var(--s9)); align-items: start;
+@keyframes st-late { to { visibility: visible; } }
+/* the founding card's drawn height (measured: 602px + its gap at 390,
+   623px at 1440); the pass card is a little shorter, which moves nothing
+   above it */
+.st-hero-in { --st-offer-h: 37.625rem; --st-offer-gap: var(--s6); }
+@media (min-width: 1100px) { .st-hero-in { --st-offer-h: 39rem; --st-offer-gap: 0px; } }
+.st-hero-in > .st-offer { margin-top: var(--s6); }
+@media (min-width: 1100px) { .st-hero-in > .st-offer { margin-top: 0; } }
+
+/* A PHONE SEES THE PRESS ON ITS FIRST SCREEN (30 Oct 2026): at 390x844
+   the Pay button sat at y≈970, under the fold. Below 720px the hero text
+   column dissolves into the hero's own column so the card follows the h1
+   directly, the sentence and the secondary link come after it, and
+   inside the card the button follows the price and its terms; what the
+   offer includes, the clock and the places left follow the button. */
+@media (max-width: 720px) {
+  .st-hero { padding-top: var(--s6); }
+  .st-hero-in { display: flex; flex-direction: column; }
+  .st-hero-text { display: contents; }
+  .st-hero-in > .st-offer { order: 1; margin-top: 0; margin-bottom: var(--s6); }
+  .st-hero .mk-sub, .st-hero .mk-cta-row { order: 2; }
+  .st-hero .mk-h1 { margin-bottom: var(--s4); font-size: clamp(2.25rem, 9vw, 2.75rem); }
+  .st-offer:not([hidden]) { display: flex; flex-direction: column; padding: var(--s5); }
+  .st-offer > * { order: 0; }
+  .st-offer > .st-offer-terms { order: 1; }
+  .st-offer > .st-offer-cta { order: 2; margin: var(--s2) 0 var(--s3); }
+  .st-offer > :is(.st-offer-timer, .st-offer-seats) { order: 3; }
+  .st-offer > .st-offer-incl { order: 4; margin: var(--s3) 0; }
+  .st-offer > .st-offer-trust { order: 5; }
+  .st-offer-price { margin-top: var(--s2); }
+  .st-offer-day { margin-bottom: var(--s3); }
+  .st-offer-terms { margin-bottom: var(--s2); }
 }
-.st-stage--field .st-glyph { grid-column: 1; grid-row: 1; }
-.st-stage--field .mk-h2 { grid-column: 1; grid-row: 2; margin-bottom: 0; }
-.st-stage--field .mk-body { grid-column: 2; grid-row: 2; margin-bottom: 0; }
-.st-stage--field .st-media { grid-row: 2; }
-.st-stage--field .st-copy .mk-h2 { max-width: 16ch; }
-.st-player { max-width: none; aspect-ratio: 16 / 9; }
-.st-player video { object-fit: cover; }
 
-/* Local-first: the three facts as a row inside the field */
-.st-panel ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s6); width: 100%; }
-.st-panel li { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s3); max-width: none; }
-.st-panel .sym { flex: none; font-size: 28px; color: var(--brand-lift); }
-.st-panel b { display: block; font-size: var(--t-lg); font-weight: 600; color: var(--ink); }
-.st-panel span:not(.sym) { display: block; margin-top: var(--s1); font-size: var(--t-base); line-height: 1.5; color: var(--ink-body); }
-
-/* closing */
-.st-closing { --hue: var(--accent-primary); }
-.st-closing-sub { max-width: 44ch; margin-inline: auto; }
-.st-closing-note { margin-inline: auto; text-align: center; }
-
-@media (max-width: 899px) {
-  .st-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s5) var(--s4); }
-  .st-hero-grid { grid-template-columns: 1fr; }
-  .st-stage, .st-stage--flip, .st-stage--media-wide, .st-stage--wide { grid-template-columns: 1fr; gap: var(--s5); }
-  .st-copy, .st-stage--flip .st-copy { grid-column: 1; grid-row: 1; }
-  .st-media, .st-stage--flip .st-media { grid-column: 1; grid-row: 2; }
-  .st-stage--wide .st-copy, .st-stage--field .st-copy { display: block; }
-  .st-stage--wide .mk-h2, .st-stage--field .mk-h2 { margin-bottom: var(--s4); }
-  .st-stage--wide .st-media { grid-row: 2; }
-  .st-panel ul { grid-template-columns: 1fr; gap: var(--s5); }
+.st-offer {
+  position: relative; isolation: isolate; box-sizing: border-box; max-width: 32rem;
+  padding: var(--s7) var(--s6) var(--s6);
+  color: var(--ink-body); text-align: left;
 }
-/* a phone keeps the facts 2 by 2 (its own composition, not a tall stack) */
+/* the card's own ground, over the glow */
+.st-offer::after {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: var(--surface-card); border: 1px solid var(--border-strong);
+  border-radius: var(--sk-radius, var(--radius)); box-shadow: var(--shadow-card-hover);
+}
+/* the glow: a soft ring of the one violet behind the card */
+.st-offer::before {
+  content: ''; position: absolute; inset: calc(-1 * var(--s3)); z-index: -2; pointer-events: none;
+  border-radius: var(--sk-radius, var(--radius));
+  background: conic-gradient(from var(--st-glow-a), var(--brand), var(--accent-primary), transparent 45%, var(--brand));
+  filter: blur(32px); opacity: .45;
+}
+.st-offer-tag { margin: 0 0 var(--s2); font-size: var(--t-tiny); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--brand-deep); }
+.st-offer-name { margin: 0 0 var(--s2); font-family: var(--face-display); font-size: var(--t-2xl); font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; color: var(--ink); }
+.st-offer-what { margin: 0 0 var(--s3); color: var(--ink-body); }
+.st-offer-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s1) var(--s3); margin: var(--s3) 0 var(--s1); }
+.st-offer-amt {
+  display: inline-block; font-family: var(--face-display); font-size: clamp(2.5rem, 5vw, 3.75rem); font-weight: 800;
+  line-height: 1; letter-spacing: -0.035em; color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.st-offer-was { font-size: var(--t-lg); color: var(--ink-muted); text-decoration-thickness: 2px; }
+.st-offer-unit { font-size: var(--t-base); font-weight: 600; color: var(--ink-body); }
+.st-offer-day { margin: 0 0 var(--s4); font-size: var(--t-base); font-weight: 600; color: var(--brand-deep); }
+.st-offer-usd { margin: 0 0 var(--s3); }
+.st-offer-incl { list-style: none; margin: var(--s4) 0; padding: 0; display: grid; gap: var(--s2); }
+.st-offer-incl li { position: relative; padding-left: var(--s6); color: var(--ink-body); }
+.st-offer-incl li::before {
+  content: ''; position: absolute; left: var(--s1); top: .45em; width: .7em; height: .38em;
+  border-left: 2px solid var(--brand-deep); border-bottom: 2px solid var(--brand-deep); transform: rotate(-45deg);
+}
+.st-offer-timer { margin: 0 0 var(--s1); font-size: var(--t-small); color: var(--ink-muted); }
+.st-clock { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--ink); }
+.st-offer-seats { margin: 0 0 var(--s3); font-size: var(--t-small); color: var(--ink-muted); }
+.st-offer-terms { margin: 0 0 var(--s4); }
+.st-offer-terms:empty, .st-offer-terms:not(:has([data-offer-terms]:not(:empty))) { display: none; }
+.st-offer .st-offer-cta { display: flex; width: 100%; white-space: normal; text-align: center; line-height: 1.2; margin: var(--s4) 0 var(--s3); }
+.st-offer-trust { max-width: none; }
+.st-offer .mk-link--inline { color: var(--brand-deep); }
+
+/* the closing band's copy: the same facts, centred, without the list */
+.st-offer--close { margin: var(--s2) auto 0; width: 100%; max-width: 28rem; text-align: center; padding: var(--s6); }
+.st-offer--close .st-offer-price { justify-content: center; }
+.st-offer--close .st-offer-name { font-size: var(--t-xl); }
+
+/* the CTA lifts a little; the press is the kit's */
+.st-offer-cta { transition: background-color var(--speed) var(--ease), transform var(--speed-slow) var(--ease-out), box-shadow var(--speed-slow) var(--ease-out); }
+.st-offer-cta:is(:hover, :focus-visible) { transform: translateY(calc(-2px * var(--motion))); box-shadow: 0 0 0 4px var(--accent-glow); }
+.st-offer-cta:active { transform: scale(calc(1 - (1 - var(--sk-press, .97)) * var(--motion))); }
+
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.st-still) .st-hero-in > .st-offer:not([hidden]) { animation: st-offer-in .6s cubic-bezier(.2, .7, .2, 1) .5s both; }
+  html:not(.st-still) .st-hero-in > .st-offer:not([hidden]) .st-offer-amt { animation: st-price-pop .4s var(--ease-out) .9s both; }
+  html:not(.st-still) .st-dock:not([hidden]) { animation: st-dock-in .35s var(--ease-out) both; }
+}
+/* THE GLOW TURNS TWICE ON A DESK AND THEN STANDS STILL (30 Oct 2026): it
+   animates a registered angle under a 32px blur, which repaints the
+   blurred layer every frame and cannot run on the compositor. Running for
+   ever on a phone works against a fast first screen, so a phone (and any
+   width under 1100px) gets the still ring, and a desk two slow turns. */
+@media (prefers-reduced-motion: no-preference) and (min-width: 1100px) {
+  html:not(.st-still) .st-offer:not([hidden])::before { animation: st-glow 12s linear 2; }
+}
+html.st-still .st-offer::before { animation: none; }
+@keyframes st-offer-in { from { opacity: 0; transform: translateY(calc(24px * var(--motion))) scale(calc(1 - .04 * var(--motion))); } }
+@keyframes st-glow { to { --st-glow-a: 360deg; } }
+@keyframes st-price-pop { 50% { transform: scale(calc(1 + .06 * var(--motion))); } }
+@keyframes st-dock-in { from { opacity: 0; transform: translateX(calc(110% * var(--motion))); } }
+@keyframes st-bar-in { from { transform: translateY(calc(100% * var(--motion))); } }
+
+/* ---- the slide-in (a desk) ---------------------------------------- */
+.st-dock {
+  position: fixed; z-index: 45; right: var(--s5); bottom: 24px;
+  width: 320px; max-width: calc(100vw - 2 * var(--s4)); box-sizing: border-box;
+  padding: var(--s4) var(--s4) var(--s4) var(--s5);
+  background: var(--surface-elevated); color: var(--ink-body);
+  border: 1px solid var(--border-strong); border-radius: var(--sk-radius, var(--radius));
+  box-shadow: 0 12px 40px var(--accent-glow);
+}
+.st-dock-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s2) var(--s3); align-items: center; }
+.st-dock-what { grid-column: 1; grid-row: 1; margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s2); }
+.st-dock-name { flex: 1 1 100%; font-size: var(--t-small); color: var(--ink); }
+.st-dock .st-offer-amt { font-size: var(--t-2xl); }
+.st-dock-timer { grid-column: 1 / -1; grid-row: 2; margin: 0; }
+.st-dock .st-offer-cta { grid-column: 1 / -1; grid-row: 3; width: 100%; white-space: normal; text-align: center; line-height: 1.2; }
+.st-dock-google { grid-column: 1 / -1; grid-row: 4; margin: calc(-1 * var(--s1)) 0 0; text-align: center; font-size: var(--t-tiny); }
+.st-dock-close {
+  grid-column: 2; grid-row: 1; align-self: start; display: grid; place-items: center;
+  width: 44px; height: 44px; margin: calc(-1 * var(--s2)) calc(-1 * var(--s2)) 0 0; padding: 0;
+  border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--ink-muted);
+  font: inherit; font-size: var(--t-lg); cursor: pointer;
+}
+.st-dock-close:hover { background: var(--surface-hover); color: var(--ink); }
+.st-dock-close:focus-visible, .st-offer-cta:focus-visible { outline: 3px solid var(--accent-primary); outline-offset: 2px; }
+
+/* ---- the bottom bar (a phone): one row, never over the content ---- */
+body { padding-bottom: var(--offer-dock-h, 0px); }
+@media (max-width: 720px) {
+  .st-dock {
+    left: 0; right: 0; bottom: 0; width: auto; max-width: none;
+    padding: var(--s2) var(--s2) calc(var(--s2) + env(safe-area-inset-bottom)) var(--s4);
+    border-width: 1px 0 0; border-radius: var(--sk-radius, var(--radius)) var(--sk-radius, var(--radius)) 0 0;
+  }
+  .st-dock-in { grid-template-columns: minmax(0, 1fr) auto auto; gap: 0 var(--s2); }
+  .st-dock-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .st-dock .st-offer-amt { font-size: var(--t-xl); }
+  .st-dock-what { grid-row: 1; }
+  .st-dock-timer { grid-column: 1; grid-row: 2; font-size: var(--t-tiny); }
+  .st-dock .st-offer-cta { grid-column: 2; grid-row: 1 / span 2; width: auto; padding: 0 var(--s4); }
+  .st-dock-close { grid-column: 3; grid-row: 1 / span 2; align-self: center; margin: 0; }
+  .st-dock-google { display: none; }   /* the bar has one row; the button's name says it instead */
+  @media (prefers-reduced-motion: no-preference) {
+    html:not(.st-still) .st-dock:not([hidden]) { animation-name: st-bar-in; }
+  }
+}
+
+/* ---- the value stack ---------------------------------------------- */
+.st-value-groups { list-style: none; margin: 0 0 var(--s5); padding: 0; display: grid; gap: var(--s4); align-items: start; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
+.st-value-group {
+  margin: 0; padding: var(--s5); box-sizing: border-box;
+  background: var(--surface-card); border: 1px solid var(--border-hair); border-radius: var(--sk-radius, var(--radius));
+}
+.st-value-h { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s2); margin: 0 0 var(--s3); font-size: var(--t-lg); font-weight: 700; color: var(--ink); }
+.st-value-n { font-size: var(--t-small); font-weight: 600; color: var(--brand-deep); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.st-value-mods { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); font-size: var(--t-small); line-height: 1.45; color: var(--ink-body); }
+.st-value-later { background: transparent; border-style: dashed; }
+.st-value-more { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
+.st-value-also { margin: 0 0 var(--s3); max-width: 70ch; color: var(--ink-body); }
+.st-value-also b { color: var(--ink); }
+.st-value-price { margin: 0; font-size: var(--t-lg); font-weight: 700; color: var(--ink); }
+
+/* ---- the FAQ: native disclosures ----------------------------------- */
+.st-faq-list { display: grid; gap: var(--s3); max-width: 52rem; }
+.st-faq-item { border: 1px solid var(--border-hair); border-radius: var(--sk-radius, var(--radius)); background: var(--surface-canvas); }
+.st-faq-q {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--s3);
+  min-height: 48px; padding: var(--s3) var(--s5); box-sizing: border-box;
+  cursor: pointer; font-weight: 700; color: var(--ink); list-style: none;
+}
+.st-faq-q::-webkit-details-marker { display: none; }
+.st-faq-q::after { content: '+'; font-size: var(--t-xl); line-height: 1; color: var(--brand-deep); transition: transform var(--speed) var(--ease); }
+.st-faq-item[open] > .st-faq-q::after { transform: rotate(45deg); }
+.st-faq-q:focus-visible { outline: 3px solid var(--accent-primary); outline-offset: 2px; border-radius: var(--sk-radius, var(--radius)); }
+.st-faq-a { margin: 0; padding: 0 var(--s5) var(--s5); max-width: 68ch; line-height: 1.6; color: var(--ink-body); }
+
+@media print {
+  .st-dock { display: none !important; }
+  .st-offer::before { display: none; }
+  body { padding-bottom: 0; }
+}
+
+/* ---- the four stage cards: the tool's own poster frame on top ------ */
+.st-stage { padding: 0; overflow: hidden; }
+.st-shot {
+  display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; object-position: top left;
+  border-bottom: 1px solid var(--border-hair); background: var(--surface-active);
+}
+.st-stage-in { display: flex; flex-direction: column; align-items: flex-start; flex: 1; width: 100%; box-sizing: border-box; padding: var(--s5) var(--s6) var(--s6); }
+
+/* ---- the plans teaser --------------------------------------------- */
+.st-plans .mk-body { margin-bottom: var(--s3); }
+.st-note { margin: 0; max-width: 60ch; }
+.st-plans-cta { display: flex; }
+@media (min-width: 1024px) { .st-plans-cta { justify-content: flex-end; } }
+
+/* ---- "Don't count this visit" -------------------------------------
+   privacy.html promises the control, so it stays on the page that counts. */
+/* In the footer's legal row since 28 Oct 2026, a quiet text button on the
+   footer's ground: an analytics opt-out is not a band of its own. */
+.st-optout { display: inline-flex; }
+.st-optout-btn {
+  min-height: 32px; padding: 0; border: 0; background: transparent; cursor: pointer;
+  font: inherit; font-size: var(--t-small); color: var(--ink-body); text-decoration: none;
+}
+.st-optout-btn:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.st-optout-btn:focus-visible { outline: 3px solid var(--accent-primary); outline-offset: 2px; }
+.st-optout-btn:disabled { cursor: default; text-decoration: none; }
+
 @media (max-width: 560px) {
-  .st-facts-band { padding-block: var(--s5); }
-  .st-facts { gap: var(--s4) var(--s3); }
-  .st-fact-n { font-size: var(--t-lg); }
+  .st-stage-in { padding: var(--s4) var(--s5) var(--s5); }
 }
 
-/* the opt-out the privacy page promises: quiet, below the closing band */
-.st-optout { padding-block: var(--s4); text-align: center; background: var(--surface-card); max-width: none; }
-.st-optout-btn { min-height: 44px; padding: 0 var(--s4); border: 0; background: transparent; color: var(--ink-muted); font: inherit; font-size: var(--t-tiny); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
-.st-optout-btn:hover:not(:disabled) { color: var(--ink); }
-.st-optout-btn:disabled { text-decoration: none; cursor: default; }
+/* "Your work stays yours": the list sits on the .mk-wrap edge like the
+   stage cards above it (28 Oct 2026: the UA list indent put it 25px in). */
+.st-points { list-style: none; margin: 0 0 var(--s5); padding: 0; }
 
-/* the line under the export cards had no rule of its own and sat flush on them */
-.mk-ex-foot { margin-top: var(--s5); }
-/* the answers: one long answer stretched every card in its row to its height,
-   leaving the short ones with a block of empty space */
-#answers .mk-stages { align-items: start; }
+/* ============================================================
+   THE SCROLL STORY (29 Oct 2026) — the CSS half
+   ------------------------------------------------------------
+   src/pages/start-motion.js is the other half (Motion's scroll()). What
+   lives here works with no script at all and hides nothing: with JS off,
+   in print, under reduced motion and under the device switch
+   (html.ma-off) the page reads as written.
+   ============================================================ */
+
+/* 1. The hero's words rise in one after another, then the line under
+   them, then the one action, then the video. CSS, so it needs no script
+   and is done before anybody could start reading. The h1 itself has an id
+   (a fragment target), so IT does not travel; its words do. */
+.st-hero .st-w { display: inline-block; }
+@media (prefers-reduced-motion: no-preference) {
+  .st-hero .mk-h1 { animation: none; }
+  .st-hero .st-w { animation: mk-rise .7s var(--ease-out) both; }
+  .st-hero .st-w:nth-child(2) { animation-delay: .05s; }
+  .st-hero .st-w:nth-child(3) { animation-delay: .1s; }
+  .st-hero .st-w:nth-child(4) { animation-delay: .15s; }
+  .st-hero .st-w:nth-child(5) { animation-delay: .2s; }
+  .st-hero .st-w:nth-child(6) { animation-delay: .25s; }
+  .st-hero .st-w:nth-child(7) { animation-delay: .3s; }
+  .st-hero .st-w:nth-child(n+8) { animation-delay: .35s; }
+  .st-hero .mk-h1::after { animation: mk-fade .5s var(--ease-out) .4s both; }   /* the violet full stop arrives with the last word */
+  .st-hero .mk-sub { animation-delay: .32s; }
+  .st-hero .mk-cta-row { animation-delay: .42s; }
+  .st-hero :is(.mk-player, .mk-caption) { animation-delay: .52s; }
+}
+
+/* 2. Buttons lift a little on hover and on keyboard focus (cards already
+   do, in marketing.css); a card a keyboard is inside is drawn lifted. */
+:is(.st-hero, .mk-close, .st-plans) .mk-btn {
+  transition: background-color var(--speed) var(--ease), border-color var(--speed) var(--ease), color var(--speed) var(--ease), transform var(--speed-slow) var(--ease-out), box-shadow var(--speed-slow) var(--ease-out);
+}
+:is(.st-hero, .mk-close, .st-plans) .mk-btn:is(:hover, :focus-visible) { transform: translateY(calc(-2px * var(--motion))); box-shadow: var(--shadow-card-hover); }
+:is(.st-hero, .mk-close, .st-plans) .mk-btn:active { transform: translateY(0) scale(calc(1 - .03 * var(--motion))); }
+.st-stage:focus-within { border-color: var(--border-strong); box-shadow: var(--shadow-card-hover); }
+
+/* 3. THE STAGE STACK. On a desk-sized window the four stage cards stop
+   being a grid and become a stack: each card is sticky a step below the
+   one before it, so the next slides up over it. Sticky, not a pinned
+   scroller: no nested scroll container, the page's own scroll carries
+   it, and the stack ends with its section, so the end of the page is
+   reached as before (prove:scroll). start-motion.js adds the dimming and
+   the progress line; without it the stack still works.
+
+   A CARD A KEYBOARD IS INSIDE COMES TO THE FRONT, whole: z-index over the
+   cards stacked on it, and the dimming dropped (!important beats the
+   script's inline style), so a focused link is never under another card
+   (WCAG 2.4.11). Phones and short windows keep the grid, and so do
+   reduced motion and the device switch. The query is repeated in
+   start-motion.js (STACK); change both. */
+@media (min-width: 1100px) and (min-height: 700px) and (prefers-reduced-motion: no-preference) {
+  html:not(.ma-off) .st-tools .st-stages { display: block; position: relative; padding-left: var(--s8); }
+  html:not(.ma-off) .st-tools .st-stage {
+    position: sticky; top: calc(var(--mk-top-h) + var(--s6));
+    display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: stretch;
+    margin: 0; transform-origin: 50% 0;
+  }
+  /* the scroll between two cards is the LATER card's top margin: a sticky
+     box's margin box must stay inside the stack, so a bottom margin would
+     push the earlier cards off before the last one arrived */
+  html:not(.ma-off) .st-tools .st-stage + .st-stage { margin-top: 32vh; }
+  html:not(.ma-off) .st-tools .st-stage:nth-child(2) { top: calc(var(--mk-top-h) + var(--s6) + var(--s4)); }
+  html:not(.ma-off) .st-tools .st-stage:nth-child(3) { top: calc(var(--mk-top-h) + var(--s6) + 2 * var(--s4)); }
+  html:not(.ma-off) .st-tools .st-stage:nth-child(4) { top: calc(var(--mk-top-h) + var(--s6) + 3 * var(--s4)); }
+  html:not(.ma-off) .st-tools .st-shot { height: 100%; border-bottom: 0; border-right: 1px solid var(--border-hair); }
+  html:not(.ma-off) .st-tools .st-stage-in { justify-content: center; padding: var(--s7); }
+  html:not(.ma-off) .st-tools .st-stage:focus-within { z-index: 5; scale: none !important; filter: none !important; }
+  /* the progress line: a track in the gutter the stack leaves on its
+     left, and start-motion.js's .st-fill drawn down it from the top */
+  html:not(.ma-off) .st-tools .st-stages::before, html:not(.ma-off) .st-fill {
+    content: ''; display: block; position: absolute; left: calc(var(--s3) - 1px); top: 0; bottom: 0; width: 2px;
+    border-radius: var(--radius-pill); background: var(--border-hair);
+  }
+  html:not(.ma-off) .st-fill { background: var(--brand); transform-origin: 50% 0; transform: scaleY(0); }
+}
+.st-fill { display: none; }
+@media print {
+  .st-tools .st-stages { display: grid !important; padding-left: 0 !important; }
+  .st-tools .st-stages::before, .st-fill { display: none !important; }
+  .st-hero .mk-h1::after { animation: none !important; }
+  .st-tools .st-stage { position: static !important; scale: none !important; filter: none !important; }
+}

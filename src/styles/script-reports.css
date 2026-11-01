@@ -59,15 +59,35 @@
 :is(#screentime, #cast-matrix) .rp-table td.loc { font-weight: 600; color: var(--ink); min-width: 12rem; }
 :is(#screentime, #cast-matrix) .rp-table td.numeric {
   width: 1%;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   text-align: right;
 }
 :is(#screentime, #cast-matrix) .rp-table th { white-space: nowrap; }
+/* Quiet table heads (develop, 28 Oct 2026, restated for these two
+   sections): a pale header row in the body face; a ROW header reads as
+   a name in ink, not as a second header column. */
+:is(#screentime, #cast-matrix) .rp-table thead th {
+  background: var(--paper-sunk);
+  color: var(--ink-muted);
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
+  border-bottom: 1px solid var(--rule-hair);
+}
+:is(#screentime, #cast-matrix) .rp-table tbody th {
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: var(--t-small);
+  letter-spacing: 0;
+  font-weight: 600;
+  border-top: 1px solid var(--rule-hair);
+}
 :is(#screentime, #cast-matrix) .rp-table td.mono {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
   color: var(--ink-muted);
 }
@@ -85,7 +105,7 @@
    is never carried by colour alone. */
 :is(#screentime, #cast-matrix) .rp-scroll { position: relative; /* the visually-hidden header cells inside are absolute: without this they escape the box and widen the page */ max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 :is(#screentime, #cast-matrix) .rp-stats { margin-block: var(--s4); }
-.rp-matrix th.rp-mx-col { text-align: center; font-family: var(--f-mono); font-size: var(--t-tiny); min-width: 2.2rem; }
+.rp-matrix th.rp-mx-col { text-align: center; font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-tiny); min-width: 2.2rem; }
 .rp-matrix .rp-mx-cell { text-align: center; color: var(--accent-deep); font-size: var(--t-small); }
 .rp-matrix .is-dense { background: var(--warn-wash); }
 .rp-matrix th.is-dense { box-shadow: inset 0 -3px 0 var(--warn); color: var(--ink); }

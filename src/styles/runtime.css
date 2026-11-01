@@ -29,7 +29,7 @@
 .rt-len {
   width: 6rem;
   max-width: 100%;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-small);
   font-variant-numeric: tabular-nums;
   border-radius: var(--sk-field-radius, var(--sk-radius, var(--radius)));

@@ -19,7 +19,7 @@
 <meta name="twitter:image" content="https://{{brand:host}}/og.png">
 <meta name="twitter:image:alt" content="{{brand:name}}: {{brand:tagline}}">
 <meta property="og:locale" content="en_IN">
-<meta name="theme-color" content="#0d0e13">
+<meta name="theme-color" content="#0d0c11">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -37,7 +37,7 @@
      launch pass's slots from the server. -->
 <a class="mk-skip" href="#main">Skip to content</a>
 <div class="mk-sentinel" id="mkSentinel" aria-hidden="true"></div>
-<header class="mk-top" id="mkTop">
+<header class="mk-top" id="mkTop" data-surface="dark">
   <div class="mk-top-in">
     <a class="mk-brand" href="start.html"><span class="mk-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
     <nav class="mk-nav" id="mkNav" aria-label="Main">
@@ -75,16 +75,20 @@
               <li><a href="product-call-sheets.html"><span class="sym" aria-hidden="true" translate="no">assignment</span><span>Call sheets</span></a></li>
             </ul>
           </div>
+          <div class="mk-mega-col mk-mega-col--more">
+            <p class="mk-mega-h">Learn</p>
+            <ul>
+              <li><a href="guides.html"><span class="sym" aria-hidden="true" translate="no">menu_book</span><span>Guides</span></a></li>
+              <li><a href="guides.html#compare"><span class="sym" aria-hidden="true" translate="no">swap_horiz</span><span>Switching</span></a></li>
+              <li><a href="trust.html"><span class="sym" aria-hidden="true" translate="no">lock</span><span>Your work stays yours</span></a></li>
+            </ul>
+          </div>
         </div>
       </div>
       <a class="mk-nav-link mk-nav-pricing" href="pricing.html" aria-current="page">Pricing</a>
-      <a class="mk-nav-link" href="guides.html">Guides</a>
-      <a class="mk-nav-link" href="guides.html#compare">Switching</a>
-      <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">Sign in</a>
     </nav>
     <div class="mk-top-end">
-      <a class="mk-nav-link mk-end-login" href="invite.html" data-start-auth="google">Sign in</a>
-      <a class="mk-btn mk-btn--outline mk-btn--sm" href="invite.html" data-open-signup>Sign up</a>
+      <a class="gbtn mk-btn mk-btn--primary mk-btn--sm mk-top-google" href="invite.html" data-open-signup><img class="gbtn-g" src="/google-g.svg" width="18" height="18" alt="" aria-hidden="true"><span class="gbtn-l">Continue with Google</span></a>
       <a class="mk-burger" id="mkBurger" href="#mkFoot" aria-controls="mkNav" aria-expanded="false" aria-label="Menu"><span class="sym" aria-hidden="true" translate="no">menu</span></a>
     </div>
   </div>
@@ -97,17 +101,17 @@
     <a class="mk-btn mk-btn--primary mk-btn--sm mk-pass-cta" href="invite.html" data-open-signup data-pass-cta><span>Try it for <span data-pass-price></span></span></a>
   </div>
 </aside>
-<section class="mk-hero pr-hero" id="top" aria-labelledby="mkH1">
+<section class="mk-hero pr-hero" id="top" aria-labelledby="mkH1" data-surface="dark">
   <div class="mk-wrap mk-hero-in">
-    <h1 class="mk-h1" id="mkH1">Less than the price of a tea a day.</h1>
-    <p class="mk-sub"><span data-charge="INR">Three plans, and each one includes everything in the plan below it. A plan is one year of the studio in Indian rupees, from about <span data-price-day="from">{{fms:price.from.day}}</span> a day. <span data-offer-terms data-offer-product="year"></span> <span data-mode-answer="renew" data-offer-product="year" hidden>Your price is locked while you stay, and cancelling takes two taps.</span> Nothing in a plan is sold as an add-on.</span><span data-charge="USD" hidden>Three plans, and each one includes everything in the plan below it. A plan is one year of the studio in US dollars, from about <span data-price-day="from">{{fms:price.from.day}}</span> a day. <span data-offer-terms data-offer-product="year"></span> <span data-mode-answer="renew" data-offer-product="year" hidden>Your price is locked while you stay, and cancelling takes two taps.</span> Nothing in a plan is sold as an add-on.</span></p>
+    <h1 class="mk-h1" id="mkH1">Simple plans, one year at a time</h1>
+    <p class="mk-sub"><span data-charge="INR">Three plans, each a year of the studio in Indian rupees, from about <span data-price-day="from">{{fms:price.from.day}}</span> a day. Each one includes everything in the plan below it. <span data-offer-terms data-offer-product="year"></span> <span data-mode-answer="renew" data-offer-product="year" hidden>Your price is locked while you stay, and cancelling takes two taps.</span></span><span data-charge="USD" hidden>Three plans, each a year of the studio in US dollars, from about <span data-price-day="from">{{fms:price.from.day}}</span> a day. Each one includes everything in the plan below it. <span data-offer-terms data-offer-product="year"></span> <span data-mode-answer="renew" data-offer-product="year" hidden>Your price is locked while you stay, and cancelling takes two taps.</span></span></p>
   </div>
 </section>
 <section class="mk-sec mk-band-b pr-plans" id="pricing" aria-labelledby="prPlansH">
   <div class="mk-wrap">
     <div class="pr-head">
       <h2 class="mk-h2" id="prPlansH">Pick the stage you need</h2>
-      <p class="mk-body pr-lede">Every plan runs for one year from the day you buy it. Buy it again to add another year; move up a plan mid-year and the unused part of your year is credited.</p>
+      <p class="mk-body pr-lede">A plan runs for one year from the day you buy it. Move up mid-year and the unused part is credited.</p>
     </div>
 
     <aside class="pr-pass" data-pass data-pass-only hidden aria-label="Launch offer">
@@ -128,9 +132,9 @@
     </div>
 
     <ul class="pr-tiers" id="tiersIndividual">
-      <li class="pr-tier" data-tier="starter"><span class="pr-tier-tag">Writer</span><strong class="pr-tier-name">{{fms:plan.starter}}</strong><p class="pr-tier-line">{{fms:tier.line.starter}}</p><b class="pr-price"><span data-price="starter">{{fms:price.starter}}</span></b><span class="pr-once">a year<span class="pr-keep"> &middot; about <span data-price-day="starter">{{fms:price.starter.day}}</span> a day</span></span><span class="pr-charge" data-price-charge="starter" hidden></span><span class="pr-charge pr-terms" data-offer-wrap hidden><span data-offer-terms data-offer-product="year" data-offer-form="chip"></span></span><ul class="pr-inc">{{fms:tier.list.starter}}</ul><a class="mk-btn mk-btn--primary mk-btn--block pr-buy" href="purchase.html?plan=starter" data-start-buy="starter" data-plan="starter" data-off-text="Sign in" data-open-text="Buy {{fms:plan.starter}}">Buy {{fms:plan.starter}}</a><a class="pr-alt" href="invite.html" data-start-auth="google" data-pass-only hidden data-open-text="or open the studio">or try it first: <span data-pass-length></span> for <span data-pass-price></span></a></li>
-      <li class="pr-tier pr-pick" data-tier="indie"><p class="pr-pick-flag">Recommended for filmmakers</p><span class="pr-tier-tag">Director</span><strong class="pr-tier-name">{{fms:plan.indie}}</strong><p class="pr-tier-line">{{fms:tier.line.indie}}</p><b class="pr-price"><span data-price="indie">{{fms:price.indie}}</span></b><span class="pr-once">a year<span class="pr-keep"> &middot; about <span data-price-day="indie">{{fms:price.indie.day}}</span> a day</span></span><span class="pr-charge" data-price-charge="indie" hidden></span><span class="pr-charge pr-terms" data-offer-wrap hidden><span data-offer-terms data-offer-product="year" data-offer-form="chip"></span></span><ul class="pr-inc">{{fms:tier.list.indie}}</ul><a class="mk-btn mk-btn--primary mk-btn--block pr-buy" href="purchase.html?plan=indie" data-start-buy="indie" data-plan="indie" data-off-text="Sign in" data-open-text="Buy {{fms:plan.indie}}">Buy {{fms:plan.indie}}</a><a class="pr-alt" href="invite.html" data-start-auth="google" data-pass-only hidden data-open-text="or open the studio">or try it first: <span data-pass-length></span> for <span data-pass-price></span></a></li>
-      <li class="pr-tier" data-tier="pro"><span class="pr-tier-tag">Production house</span><strong class="pr-tier-name">{{fms:plan.pro}}</strong><p class="pr-tier-line">{{fms:tier.line.pro}}</p><b class="pr-price"><span data-price="pro">{{fms:price.pro}}</span></b><span class="pr-once">a year<span class="pr-keep"> &middot; about <span data-price-day="pro">{{fms:price.pro.day}}</span> a day</span></span><span class="pr-charge" data-price-charge="pro" hidden></span><span class="pr-charge pr-terms" data-offer-wrap hidden><span data-offer-terms data-offer-product="year" data-offer-form="chip"></span></span><ul class="pr-inc">{{fms:tier.list.pro}}</ul><a class="mk-btn mk-btn--primary mk-btn--block pr-buy" href="purchase.html?plan=pro" data-start-buy="pro" data-plan="pro" data-off-text="Sign in" data-open-text="Buy {{fms:plan.pro}}">Buy {{fms:plan.pro}}</a><a class="pr-alt" href="invite.html" data-start-auth="google" data-pass-only hidden data-open-text="or open the studio">or try it first: <span data-pass-length></span> for <span data-pass-price></span></a></li>
+      <li class="pr-tier" data-tier="starter"><span class="pr-tier-tag">Writer</span><strong class="pr-tier-name">{{fms:plan.starter}}</strong><p class="pr-tier-line">{{fms:tier.line.starter}}</p><b class="pr-price"><span data-price="starter">{{fms:price.starter}}</span></b><span class="pr-once">a year<span class="pr-keep"> &middot; about <span data-price-day="starter">{{fms:price.starter.day}}</span> a day</span></span><span class="pr-charge" data-price-charge="starter" hidden></span><span class="pr-charge pr-terms" data-offer-wrap hidden><span data-offer-terms data-offer-product="year" data-offer-form="chip"></span></span><ul class="pr-inc">{{fms:tier.list.starter}}</ul><a class="mk-btn mk-btn--outline mk-btn--block pr-buy" href="purchase.html?plan=starter" data-start-buy="starter" data-plan="starter" data-off-text="Continue with Google" data-open-text="Buy {{fms:plan.starter}}">Buy {{fms:plan.starter}}</a><a class="pr-alt" href="invite.html" data-start-auth="google" data-pass-only hidden data-open-text="or open the studio">or try it first: <span data-pass-length></span> for <span data-pass-price></span></a></li>
+      <li class="pr-tier pr-pick" data-tier="indie"><p class="pr-pick-flag">Recommended for filmmakers</p><span class="pr-tier-tag">Director</span><strong class="pr-tier-name">{{fms:plan.indie}}</strong><p class="pr-tier-line">{{fms:tier.line.indie}}</p><b class="pr-price"><span data-price="indie">{{fms:price.indie}}</span></b><span class="pr-once">a year<span class="pr-keep"> &middot; about <span data-price-day="indie">{{fms:price.indie.day}}</span> a day</span></span><span class="pr-charge" data-price-charge="indie" hidden></span><span class="pr-charge pr-terms" data-offer-wrap hidden><span data-offer-terms data-offer-product="year" data-offer-form="chip"></span></span><ul class="pr-inc">{{fms:tier.list.indie}}</ul><a class="mk-btn mk-btn--primary mk-btn--block pr-buy" href="purchase.html?plan=indie" data-start-buy="indie" data-plan="indie" data-off-text="Continue with Google" data-open-text="Buy {{fms:plan.indie}}">Buy {{fms:plan.indie}}</a><a class="pr-alt" href="invite.html" data-start-auth="google" data-pass-only hidden data-open-text="or open the studio">or try it first: <span data-pass-length></span> for <span data-pass-price></span></a></li>
+      <li class="pr-tier" data-tier="pro"><span class="pr-tier-tag">Production house</span><strong class="pr-tier-name">{{fms:plan.pro}}</strong><p class="pr-tier-line">{{fms:tier.line.pro}}</p><b class="pr-price"><span data-price="pro">{{fms:price.pro}}</span></b><span class="pr-once">a year<span class="pr-keep"> &middot; about <span data-price-day="pro">{{fms:price.pro.day}}</span> a day</span></span><span class="pr-charge" data-price-charge="pro" hidden></span><span class="pr-charge pr-terms" data-offer-wrap hidden><span data-offer-terms data-offer-product="year" data-offer-form="chip"></span></span><ul class="pr-inc">{{fms:tier.list.pro}}</ul><a class="mk-btn mk-btn--outline mk-btn--block pr-buy" href="purchase.html?plan=pro" data-start-buy="pro" data-plan="pro" data-off-text="Continue with Google" data-open-text="Buy {{fms:plan.pro}}">Buy {{fms:plan.pro}}</a><a class="pr-alt" href="invite.html" data-start-auth="google" data-pass-only hidden data-open-text="or open the studio">or try it first: <span data-pass-length></span> for <span data-pass-price></span></a></li>
     </ul>
     <p class="pr-fine" id="authMsg" role="status" aria-live="polite"></p>
     <p class="pr-note"><span data-charge="INR">Yearly list prices in Indian rupees, for one year from the day you buy, paid through Razorpay and confirmed at checkout with the plan's terms. <span data-offer-terms data-offer-product="year"></span> The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href="refund.html">Refund and Cancellation Policy</a>, so compare what each plan includes below before you buy.</span><span data-charge="USD" hidden>Yearly list prices in US dollars, for one year from the day you buy, paid through Razorpay and confirmed at checkout with the plan's terms. <span data-offer-terms data-offer-product="year"></span> The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href="refund.html">Refund and Cancellation Policy</a>, so compare what each plan includes below before you buy.</span></p>
@@ -147,7 +151,9 @@
 <section class="mk-sec mk-band-a pr-compare" id="compare" aria-labelledby="prCompH">
   <div class="mk-wrap">
     <h2 class="mk-h2" id="prCompH">Compare every feature</h2>
-    <p class="mk-body pr-lede">Generated from the same list the studio uses to decide what to open, so it cannot disagree with the product.</p>
+    <p class="mk-body pr-lede">Built from the same list the studio uses to decide what to open, so it always matches the product.</p>
+    <details class="pr-more" id="compare-table">
+      <summary class="pr-more-s"><span>Show the full comparison</span><span class="sym" aria-hidden="true" translate="no">expand_more</span></summary>
     <table class="pr-table">
       <caption class="mk-vh">What each plan includes</caption>
       <colgroup><col class="pr-col-what"><col><col><col></colgroup>
@@ -206,13 +212,14 @@
         <tr><th scope="row">Remove branding</th><td class="pr-no"><span aria-hidden="true">—</span><span class="mk-vh">Not included</span></td><td class="pr-no"><span aria-hidden="true">—</span><span class="mk-vh">Not included</span></td><td class="pr-yes"><span aria-hidden="true">✓</span><span class="mk-vh">Included</span></td></tr>
       </tbody>
     </table>
+    </details>
   </div>
 </section>
 <section class="mk-sec mk-band-b pr-faq" id="faq" aria-labelledby="prFaqH">
   <div class="mk-wrap pr-faq-grid">
     <div class="pr-faq-head">
       <h2 class="mk-h2" id="prFaqH">Questions about billing, plans and your data</h2>
-      <p class="mk-body pr-lede">Short answers, in plain words. Anything not covered is a message away.</p>
+      <p class="mk-body pr-lede">Short answers. Anything else is a message away.</p>
       <p class="mk-body pr-lede pr-contact">Something else? Talk to the team at <a class="mk-link mk-link--inline" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a>. A person reads every message, and payment and refund questions are answered within two working days.</p>
       <p class="mk-body pr-lede"><a class="mk-link" href="trust.html">How your work is kept, and how it comes out<span class="sym" aria-hidden="true" translate="no">arrow_forward</span></a></p>
     </div>
@@ -221,13 +228,9 @@
         <summary><span>Billing</span><span class="sym" aria-hidden="true" translate="no">expand_more</span></summary>
         <dl class="pr-qa">
           <dt data-mode-faq>Is it a subscription?</dt>
-          <dd data-mode-faq><span data-mode-answer="neutral" data-offer-product="year">Each plan card says what a plan costs, how long it lasts and what happens when it ends, before you pay, and checkout says it again. A plan is a year of the studio, from about <span data-price-day="from">{{fms:price.from.day}}</span> a day, and your work stays in your browser either way.</span><span data-mode-answer="once" data-offer-product="year" hidden>No. A plan is one payment for one year, from about <span data-price-day="from">{{fms:price.from.day}}</span> a day. When the year ends nothing is charged: buy the next year when you want it, and your work stays in your browser either way, so there is nothing to cancel.</span><span data-mode-answer="renew" data-offer-product="year" hidden>Yes: a plan renews every year until you cancel, from about <span data-price-day="from">{{fms:price.from.day}}</span> a day. Cancel anytime, in two taps, under Settings, Plan &amp; purchases, Cancel auto-pay: nothing more is charged, and the plan runs to the end of the year you paid for. Your price is locked while you stay, and your bank or UPI app tells you before each charge.</span> <span data-charge="INR">Payment is through Razorpay, and checkout confirms the currency and the exact amount before you pay.</span><span data-charge="USD" hidden>Prices are in US dollars, paid through Razorpay, and the amount is confirmed at checkout before you pay.</span></dd>
+          <dd data-mode-faq><span data-mode-answer="neutral" data-offer-product="year">Each plan card says what a plan costs, how long it lasts and what happens when it ends, before you pay, and checkout says it again. A plan is a year of the studio, from about <span data-price-day="from">{{fms:price.from.day}}</span> a day, and your work stays in your browser either way.</span><span data-mode-answer="once" data-offer-product="year" hidden>No. A plan is one payment for one year, from about <span data-price-day="from">{{fms:price.from.day}}</span> a day. When the year ends nothing is charged: buy the next year when you want it, and your work stays in your browser either way, so there is nothing to cancel.</span><span data-mode-answer="renew" data-offer-product="year" hidden>Yes: a plan renews every year until you cancel, from about <span data-price-day="from">{{fms:price.from.day}}</span> a day. Cancel anytime from the mandate itself, using the link in your Razorpay e-mail or your bank or UPI app: nothing more is charged, and the plan runs to the end of the year you paid for. Your price is locked while you stay, and your bank or UPI app tells you before each charge.</span> <span data-charge="INR">Payment is through Razorpay, and checkout confirms the currency and the exact amount before you pay.</span><span data-charge="USD" hidden>Prices are in US dollars, paid through Razorpay, and the amount is confirmed at checkout before you pay.</span></dd>
           <dt>Can I get a refund?</dt>
           <dd>Purchases are final, with three exceptions that are not discretionary: a duplicate or erroneous charge, a payment for a plan that was never activated on your account, and any refund the law of India requires. The Refund and Cancellation Policy has the detail.<span data-mode-answer="renew" data-offer-product="year" hidden> On auto-pay the same three cases apply to each charge, and cancelling stops the charges still to come without refunding the year already paid.</span></dd>
-          <dt>How do I ask for a refund in one of those cases?</dt>
-          <dd>Email us from the address on your account with the Razorpay payment or order ID and a line about what went wrong. We reply within two working days. An issued refund goes to your original payment method and reaches it in 5 to 7 working days.</dd>
-          <dt>Where do I find my invoices?</dt>
-          <dd>On the Purchase page once you are signed in. It lists your plan, your invoices and a way to request a refund in the cases above.</dd>
           <dt data-pass-faq>Is there a free trial?</dt>
           <dd data-pass-faq><span data-pass-off>No. A plan is a year of the studio, and you pay the price of the day you buy it. The Dragon sample shows the studio filled in first.</span><span data-pass-only hidden>No. While the launch offer lasts, <span data-pass-length></span> of the whole studio is <span data-pass-price></span>, once per account. <span data-offer-terms data-offer-product="pass"></span> After it, a plan costs what it costs on the day you buy it.</span></dd>
         </dl>
@@ -237,18 +240,12 @@
         <dl class="pr-qa">
           <dt>Which plan is right for me?</dt>
           <dd>Basic is for writing: story, screenplay, drafts and import. Intermediate is for preparing the shoot: breakdown, storyboard, shot list, stripboard, budget, cast and crew, and sides. Pro adds call sheets, the AI tools and removal of branding. Each plan includes everything below it.</dd>
-          <dt>Why are the AI tools and call sheets on Pro?</dt>
-          <dd>Pro is the plan for the shoot itself. Call sheets are the tool a unit runs on during production, so they sit with the plan for running it. The AI tools use your own key: your provider bills you directly for what you run, and the studio adds no charge per use and sells no credits. What Pro pays for is the tools built into every page, not the model's tokens.</dd>
           <dt>Can I move up a plan later?</dt>
           <dd>Yes. Moving up mid-year credits the unused part of your current year against the new plan; moving down waits until your year ends. The work you have already done stays where it is either way.</dd>
           <dt>Is there a free plan?</dt>
           <dd>No. There is no free plan. Whether purchases are required is a setting that can change, so the pricing page always shows what applies today.</dd>
-          <dt>Where can I see exactly what each plan includes?</dt>
-          <dd>In the comparison table on the pricing page. It is generated from the same list the studio uses to decide what to open, so it cannot disagree with the product.</dd>
           <dt>Do I need a plan to try the sample films?</dt>
           <dd>The Dragon sample project is there so you can see the studio filled in before you commit.</dd>
-          <dt>Can I talk to a person before I buy?</dt>
-          <dd>Yes. Write to the team at {{brand:email}} with any question about the studio, a plan or your work, and a person reads it. Payment and refund questions are answered within two working days.</dd>
         </dl>
       </details>
       <details class="pr-acc" name="pr-faq" id="faq-3">
@@ -256,20 +253,12 @@
         <dl class="pr-qa">
           <dt>Where is my screenplay stored?</dt>
           <dd>In your own browser, on your device, first. Once you are signed in, your films also sync to the studio's cloud so they reach your other devices, and row-level security limits each project to you and the people you share it with (a view link can read it, an edit link can change it). Anyone you share a project with can see its budget, unless you keep the budget private; then only you and people with an edit link can see the estimate, petty cash, crew payments and cost report. Figures typed into a blueprint's budget questions are not covered by that switch. You can switch sync off in Settings; the browser copy stays either way.</dd>
-          <dt>Why do I sign in with Google if my work is local?</dt>
-          <dd>Sign-in is the door: it tells the studio who you are, so it can check your plan before it opens. It is also what lets your projects sync between your devices and lets you connect your own Google Drive. Your work is written to your browser first either way.</dd>
-          <dt>What leaves my browser, and when?</dt>
-          <dd>Your projects, when you are signed in and sync is on. A backup, when you connect your own Google Drive. The text you give an AI tool, when you run one with your own key, to the provider you chose. The studio also talks to its server to sign you in, check your plan and take a payment through Razorpay. While it is open and you are signed in, the device checks in about every 30 seconds so your account stays on one device at a time, and the server sees that device's IP address and browser type. Signed in, it also sends daily counts of which tools are opened and the reason code when a save is refused, never anything you wrote; you can switch both off in Settings, under Privacy. Visit counts on the public pages are daily totals with no name on them. The privacy policy lists every record in full.</dd>
           <dt>Does it work offline on a film set?</dt>
           <dd>Yes. The studio installs like an app and caches itself, so you can keep writing, reordering the stripboard and printing call sheets when the signal drops, and what you changed is still there when you reconnect. It works on set without a signal for up to 14 days after you last signed in on that device, even opened from scratch. After that it needs a connection once, to check your sign-in and your plan again.</dd>
-          <dt>Can I back my work up?</dt>
-          <dd>Yes. You can download a backup file of your studio, and on the plans that include it you can back up to your own Google Drive. The Drive file belongs to you and the studio only writes to it when you have connected it.</dd>
           <dt>Can I get my work out?</dt>
           <dd>Yes, in open formats. The screenplay exports as PDF, Word (.docx), Final Draft (.fdx) and Fountain from the Screenplay Writer's File menu. The breakdown's element index, the table read, script notes, the shot list, and the budget, actuals and expenses download as CSV, as do the edit log and the dialogue list on Pro, each on the plans that include that tool. A backup file holds every project and restores into any browser, and on Intermediate and Pro you can also back up to your own Google Drive.</dd>
           <dt>Can I bring in a script from Final Draft or Fountain?</dt>
           <dd>Yes. Import a Fountain, Final Draft, Word, text or PDF screenplay and the studio reads the scene headings, action, characters and dialogue into its own format. Scanned or encrypted PDFs are refused with a reason rather than guessed at.</dd>
-          <dt>What does a Final Draft (.fdx) file keep on the way in and out?</dt>
-          <dd>Both ways: scene headings, action, characters, parentheticals, dialogue, transitions and shots stay the same element types; dual dialogue stays a pair; a locked scene number stays exactly as written, 12A and A12 included; the title page comes across as title, credit, writer, source, draft, date and contact; and Tamil and Tanglish text arrives as written. A paragraph of a kind the studio has no element for is kept as action and counted, never dropped. What does not travel either way: bold, italic and underline, revision marks and colours, script notes, and locked pages. Final Draft lays out its own pages when it opens the file.</dd>
           <dt>Does the AI see my script?</dt>
           <dd>Only if you choose to use the AI tools, which are optional and use your own key from a provider you pick. Nothing is sent to an AI provider unless you run one of those tools.</dd>
         </dl>
@@ -294,43 +283,34 @@
     </form>
   </div>
 </section>
-<section class="mk-sec mk-band-c mk-mid pr-close" id="start" aria-labelledby="mkMidH">
+<section class="mk-sec mk-close" id="start" aria-labelledby="mkMidH" data-surface="dark">
   <div class="mk-wrap mk-center">
     <h2 class="mk-h2" id="mkMidH">See the studio filled in before you decide</h2>
-    <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>Get started</a>
+    <div class="mk-cta-row mk-cta-row--center">
+      <a class="gbtn mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup><img class="gbtn-g" src="/google-g.svg" width="18" height="18" alt="" aria-hidden="true"><span class="gbtn-l">Continue with Google</span></a>
+    </div>
   </div>
 </section>
 </main>
-<footer class="mk-foot" id="mkFoot">
+<footer class="mk-foot" id="mkFoot" data-surface="dark">
   <div class="mk-wrap">
     <div class="mk-foot-grid">
-      <div class="mk-foot-col hue-library">
-        <p class="mk-foot-h">Writing</p>
+      <div class="mk-foot-brand">
+        <a class="mk-brand" href="start.html"><span class="mk-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
+        <p class="mk-foot-note">Your work is saved in your browser first. Syncing to the cloud is optional.</p>
+      </div>
+      <div class="mk-foot-col mk-foot-col--tools">
+        <p class="mk-foot-h">Product</p>
         <ul>
           <li><a href="product-writing.html">Writing</a></li>
-        </ul>
-      </div>
-      <div class="mk-foot-col hue-feature">
-        <p class="mk-foot-h">Story development</p>
-        <ul>
           <li><a href="product-story.html">Story</a></li>
           <li><a href="product-storyboard.html">Storyboard</a></li>
-        </ul>
-      </div>
-      <div class="mk-foot-col hue-plan">
-        <p class="mk-foot-h">Pre-production</p>
-        <ul>
           <li><a href="product-breakdown.html">Breakdown</a></li>
           <li><a href="product-catalog.html">Elements</a></li>
           <li><a href="product-shot-list.html">Shot list</a></li>
           <li><a href="product-schedule.html">Schedule</a></li>
           <li><a href="product-cast-crew.html">Cast and crew</a></li>
           <li><a href="product-sides.html">Sides</a></li>
-        </ul>
-      </div>
-      <div class="mk-foot-col hue-shoot">
-        <p class="mk-foot-h">Production</p>
-        <ul>
           <li><a href="product-budget.html">Budget</a></li>
           <li><a href="product-call-sheets.html">Call sheets</a></li>
         </ul>
@@ -340,20 +320,26 @@
         <ul>
           <li><a href="pricing.html">Pricing</a></li>
           <li><a href="about.html">About us</a></li>
-          <li><a href="trust.html">Your work stays yours</a></li>
-          <li><a href="guides.html">Guides</a></li>
-          <li><a href="guides.html#compare">Switching to the studio</a></li>
           <li><a href="contact.html">Contact us</a></li>
-          <li><a href="privacy.html">Privacy</a></li>
-          <li><a href="terms.html">Terms</a></li>
-          <li><a href="refund.html">Refunds</a></li>
+          <li><a href="trust.html">Your work stays yours</a></li>
+        </ul>
+      </div>
+      <div class="mk-foot-col">
+        <p class="mk-foot-h">Learn</p>
+        <ul>
+          <li><a href="guides.html">Guides</a></li>
+          <li><a href="guides.html#compare">Switching guides</a></li>
           <li><a href="mailto:{{brand:email}}">Support</a></li>
         </ul>
       </div>
     </div>
     <div class="mk-foot-base">
-      <p class="mk-foot-note">Your work is saved in your browser first. Syncing to the cloud is optional.</p>
       <p class="mk-foot-copy">© {{brand:name}}</p>
+      <ul class="mk-foot-legal">
+        <li><a href="privacy.html">Privacy</a></li>
+        <li><a href="terms.html">Terms</a></li>
+        <li><a href="refund.html">Refunds</a></li>
+      </ul>
     </div>
   </div>
 </footer>
@@ -361,12 +347,11 @@
   <div class="mk-modal-scrim" data-close></div>
   <div class="mk-modal-card" tabindex="-1">
     <button class="mk-modal-x" type="button" data-close aria-label="Close"><span class="sym" aria-hidden="true" translate="no">close</span></button>
-    <h2 class="mk-modal-h" id="mkSignupTitle"><span data-pass-off>Sign in to get started</span><span data-pass-only hidden>Sign in to try the whole studio for <span data-pass-price></span></span></h2>
-    <p class="mk-modal-offer" id="mkOffer" data-off-text="The studio is open: sign in with Google and use it, with your work saved in your browser." data-open-text="You are already signed in."><span data-pass-off>Sign in with Google, then choose a yearly plan. Each plan states its price and terms before you pay. <span data-offer-terms data-offer-product="year"></span></span><span data-pass-only hidden><span data-pass-length></span> of the whole studio for <span data-pass-price></span>, once per account. You pay on the next page, after you sign in.</span></p>
-    <a class="mk-btn mk-btn--primary mk-btn--block" id="mkGoogle" href="invite.html" data-start-auth="google" data-open-text="Open the studio">Continue with Google</a>
+    <h2 class="mk-modal-h" id="mkSignupTitle"><span data-pass-off>Continue with Google</span><span data-pass-only hidden>Continue with Google to try the whole studio for <span data-pass-price></span></span></h2>
+    <p class="mk-modal-offer" id="mkOffer" data-off-text="The studio is open: continue with Google and use it, with your work saved in your browser." data-open-text="You are already signed in."><span data-pass-off>New here or coming back, it is the same button. Then choose a yearly plan. Each plan states its price and terms before you pay. <span data-offer-terms data-offer-product="year"></span></span><span data-pass-only hidden><span data-pass-length></span> of the whole studio for <span data-pass-price></span>, once per account. You pay on the next page, after you continue with Google.</span></p>
+    <a class="gbtn mk-btn mk-btn--primary mk-btn--block" id="mkGoogle" href="invite.html" data-start-auth="google" data-open-text="Open the studio"><img class="gbtn-g" src="/google-g.svg" width="18" height="18" alt="" aria-hidden="true"><span class="gbtn-l">Continue with Google</span></a>
     <p class="mk-msg" id="mkMsg" role="status"></p>
     <p class="mk-modal-terms">By continuing you agree to the <a href="terms.html">Terms</a> and the <a href="privacy.html">Privacy Policy</a>.</p>
-    <p class="mk-modal-have">Already have an account? <a href="invite.html" data-start-auth="google" data-open-text="Open the studio">Sign in</a></p>
   </div>
 </div>
 <script type="module" src="/src/pages/pricing.js"></script>

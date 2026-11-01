@@ -64,14 +64,14 @@
   gap: var(--s3);
 }
 
-/* Shared small type: the mono label that names a row or a field. */
+/* Shared small type: the label that names a row or a field — sentence
+   case in the body face, like the kit's .k-field-label. */
 .pl-rowlab,
 .pl-flabel {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 
@@ -100,7 +100,7 @@
 }
 .pl-chip.is-loc { border-left: var(--sk-hue-rule-w) solid var(--hue, var(--plan)); }
 .pl-chip.is-day {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
   border-color: var(--rule);
@@ -136,12 +136,12 @@
   min-height: 30px;
   padding-inline: var(--s3);
   border-radius: var(--sk-radius, var(--radius));
-  background: var(--accent);
-  color: var(--accent-on);
-  font-family: var(--f-mono);
+  background: var(--brand);
+  color: var(--brand-on);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   white-space: nowrap;
 }
 /* The date field. `min-width: 0` on the label as well as the input:
@@ -160,7 +160,7 @@
   background: var(--paper);
   border: 1px solid var(--rule-hair);
   border-radius: var(--sk-radius, var(--radius));
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
 }
 .pl-day-when {
@@ -169,7 +169,7 @@
 }
 .pl-day-meta {
   margin-left: auto;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
   color: var(--ink-muted);
@@ -189,7 +189,7 @@
 .pl-table td.pl-ie,
 .pl-table td.pl-tod,
 .pl-table td.pl-pages {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   white-space: nowrap;
   color: var(--ink-muted);
@@ -223,10 +223,10 @@
 /* Permission sets --perm, and the left rule and the chip both read
    it. One declaration per state, in one place, so the card and its
    badge cannot end up disagreeing. */
-.pl-loc.perm-none { --perm: var(--rule); }
-.pl-loc.perm-open { --perm: var(--warn); }
-.pl-loc.perm-ok   { --perm: var(--ok); }
-.pl-loc.perm-no   { --perm: var(--danger); }
+.pl-loc.perm-none { --perm: var(--rule); --perm-ink: var(--ink-muted); }
+.pl-loc.perm-open { --perm: var(--warn); --perm-ink: var(--warn-deep); }
+.pl-loc.perm-ok   { --perm: var(--ok); --perm-ink: var(--ok-deep); }
+.pl-loc.perm-no   { --perm: var(--danger); --perm-ink: var(--danger-deep, var(--danger)); }
 
 .pl-loc-head {
   display: flex;
@@ -245,17 +245,19 @@
   padding: 2px var(--s2);
   border: 1px solid var(--perm, var(--rule));
   border-radius: var(--sk-radius, var(--radius));
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--perm, var(--ink-muted));
+  letter-spacing: 0;
+  text-transform: none;
+  /* A fill is not a text colour: the border wears the status hue, the
+     word its -deep ink (AA; it was 2.15-2.54:1 on the white card). */
+  color: var(--perm-ink, var(--ink-muted));
   white-space: nowrap;
 }
 .pl-loc.perm-none .pl-perm-chip { color: var(--ink-muted); }
 .pl-loc-meta {
   margin-left: auto;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
   color: var(--ink-muted);
@@ -287,6 +289,37 @@
 .pl-input:focus-visible,
 .pl-sel:focus-visible,
 .pl-notes:focus-visible { border-color: var(--accent); outline: none; }
+
+.pl-recce-more { display: none; }
+.pl-loc.is-more .pl-recce-more { display: grid; }
+.pl-more-toggle {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 2.25rem;
+  padding: var(--s1) var(--s3);
+  background: transparent;
+  color: var(--accent-deep);
+  border: 1px solid var(--rule-hair);
+  border-radius: var(--sk-field-radius, var(--radius));
+  font: inherit;
+  font-size: var(--t-tiny);
+  font-weight: 600;
+  cursor: pointer;
+}
+.pl-more-toggle::after {
+  content: '';
+  width: .45em; height: .45em;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--speed) var(--ease);
+}
+.pl-more-toggle[aria-expanded="true"]::after { transform: translateY(1px) rotate(-135deg); }
+.pl-more-toggle:hover { border-color: var(--accent); }
+.pl-more-toggle:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-primary); outline-offset: 2px; }
+.pl-more-count { font-weight: 500; color: var(--ink-muted); }
 
 .pl-loc-scenes {
   display: flex;
@@ -399,17 +432,17 @@
   font-size: var(--t-small);
 }
 .pl-media-title { flex: 1 1 14rem; }
-.pl-media-url { flex: 1 1 16rem; font-family: var(--f-mono); font-size: var(--t-micro); }
+.pl-media-url { flex: 1 1 16rem; font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); }
 .pl-media-notes { width: 100%; }
 .pl-media-bar .pl-sel { flex: 0 1 11rem; }
 .pl-media .bd-icon { margin-left: auto; flex: 0 0 auto; }
 
 .pl-media-open {
   flex: 0 0 auto;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
   white-space: nowrap;
 }
@@ -479,6 +512,9 @@
   /* A one-line input clips and prints its placeholder; the mirror wraps
      and prints only what was written. */
   .pl-input { display: none !important; }
+  /* "More details" is a screen convenience: paper gets every answer. */
+  .pl-recce-more { display: grid !important; }
+  .pl-more-toggle { display: none !important; }
   .pl-print { display: block; min-height: 1.3em; white-space: pre-wrap; overflow-wrap: anywhere;
     color: var(--print-ink); border-bottom: 1px solid var(--print-rule); }
   .pl-day-no { background: var(--print-paper); color: var(--print-ink); border: 1px solid var(--print-ink); }
@@ -514,7 +550,7 @@
 }
 .pl-light-row strong { color: var(--ink); }
 .pl-light-times {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
   color: var(--ink-muted);
@@ -557,3 +593,14 @@
   .pl-loc { background-image: var(--surface-card-sheen); }
 }
 .pl-back-sb { white-space: nowrap; }
+
+/* The day card's scene table: a quiet header row in the body face
+   (28 Oct 2026), the same as the Reports tables. */
+.pl-table thead th {
+  background: var(--paper-sunk);
+  color: var(--ink-muted);
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
+  border-bottom: 1px solid var(--rule-hair);
+}

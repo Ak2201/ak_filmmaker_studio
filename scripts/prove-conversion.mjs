@@ -21,12 +21,13 @@
      (d) "Made with" on a staged PDF for a plan that keeps branding, the
          last child of <body>, shown in print; absent on Pro; removed on unstage;
          and on the plain prints of the budget, stripboard and reports
-     (d2) What's new from the rail's avatar menu
+     (d2) What's new from the rail's avatar menu: hidden while the list is empty,
+          there once one entry is injected
      (e) Settings → What's in my plan: the plan's modules, the next plan's
          extras, the upgrade figure; a full trial is not told it may remove
          the PDF line; an ended trial and a lapsed year list nothing and
          offer a plan; a grant shows no section; absent signed out
-     (f) What's new: the drawer opens with every entry, "New" goes, the
+     (f) What's new: hidden while the list is empty; with one injected entry the drawer opens, "New" goes, the
          seen id lands in fms_studio_prefs_v1 (no new key), and stays gone
      (g) the first-week list's "Choose a plan": listed during a trial,
          ticked once paid, absent signed out, absent for a year-long
@@ -100,9 +101,29 @@ function proHolder() {
   F.db.payments[0].plan_id = 'pro';
 }
 
-async function newContext({ tok = null, width = 1280 } = {}) {
+/* What's new is hidden while src/data/changelog.json holds no entry (owner,
+   1 Nov 2026: launching). To prove it comes back with no rebuild, a context
+   can be given ONE injected entry: the build bundles the data into a chunk
+   (the one carrying the file's _about text), and the route below rewrites
+   its empty list on the way to the page. */
+const NEWS_CHUNK = fs.readdirSync(path.join(DIST, 'assets')).find((f) => f.endsWith('.js') && fs.readFileSync(path.join(DIST, 'assets', f), 'utf8').includes('NOTHING IS SHOWN WHILE'));
+const INJECTED = { id: '2099-01-01-proof', date: '2099-01-01', title: 'Proof entry', items: ['One thing a member would notice.'] };
+async function newContext({ tok = null, width = 1280, keepWall = false, news = false } = {}) {
   const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width, height: 900 }, timezoneId: 'Asia/Kolkata', locale: 'en-IN' });
+  /* Since "one payment page" (0c92506, 28 Oct 2026) a walled member is
+     SENT to purchase.html; plan-gate.js keeps the in-page wall as the
+     fallback and names window.__fmsKeepWall as the proof hook that holds
+     it in place. The checks below that are about the wall's or Settings'
+     own wording use it; the redirect itself is asserted in (h2). */
+  if (keepWall) await ctx.addInitScript(() => { window.__fmsKeepWall = true; });
   await ctx.route(SB + '/**', handle);
+  if (news && NEWS_CHUNK) {
+    await ctx.route('**/assets/' + NEWS_CHUNK, async (r) => {
+      const body = fs.readFileSync(path.join(DIST, 'assets', NEWS_CHUNK), 'utf8')
+        .replace(/(NOTHING IS SHOWN WHILE[\s\S]*?)entries:\[\]/, '$1entries:[' + JSON.stringify(INJECTED) + ']');
+      await r.fulfill({ status: 200, contentType: 'text/javascript', body });
+    });
+  }
   await ctx.route(new RegExp('https://' + BRAND.host.replace(/\./g, '\\.') + '/.*'), (r) => r.fulfill({ status: 200, body: '' }));
   await ctx.addInitScript(() => { try { localStorage.setItem('fms_region_v1', 'IN'); } catch (e) { /* */ } });
   if (tok) {
@@ -143,7 +164,7 @@ try {
     ok(refused === false, 'a PDF export is refused on a plan without exports');
     const hit = await waitToast(page, /Upgrade to Intermediate for ₹5,000 more/);
     ok(hit, 'the toast names Intermediate and the difference the server quotes (₹5,000, not the ₹7,999 list price): ' + JSON.stringify(await toasts(page)));
-    ok(/UPGRADE TO INTERMEDIATE/.test(await toasts(page)), 'its button says UPGRADE TO INTERMEDIATE');
+    ok(/Upgrade to Intermediate/.test(await toasts(page)), 'its button says Upgrade to Intermediate');
     allErrors.push(...errors); await ctx.close();
   }
   /* No quote: the RPC is missing. The plan is named, no figure is printed. */
@@ -289,7 +310,7 @@ try {
     await page.goto(BASE + 'dashboard.html');
     await page.waitForTimeout(2500);
     ok(!(await page.$('.gr-share')), 'signed out: no referral row');
-    ok(!!(await page.$('[data-action="db-whatsnew"]')), 'signed out: What’s new is still there');
+    ok(!(await page.$('[data-action="db-whatsnew"]')) && !(await page.$('.db-member-news')), 'signed out: no What’s new button while the list is empty');
     allErrors.push(...errors); await ctx.close();
   }
 
@@ -323,13 +344,56 @@ try {
     if (want) {
       await page.evaluate(() => window.StudioPDF.stage({ scope: 'board' }));
       await page.emulateMedia({ media: 'print' });
+      /* CI run 374 missed the line in the PDF text while every staging check
+         passed: print a PDF only once the faces are loaded and the line is laid
+         out, never straight after the stage on a slow runner. */
+      await page.evaluate(async () => {
+        try { await document.fonts.ready; } catch (e) { /* */ }
+        for (let t = 0; t < 40; t++) {
+          const el = document.getElementById('pdf-made-with');
+          if (el && el.getBoundingClientRect().height > 0) break;
+          await new Promise((r) => setTimeout(r, 100));
+        }
+      });
       const pdf = await page.pdf({ format: 'A4', landscape: true });
       await page.emulateMedia({ media: 'screen' });
       await page.evaluate(() => window.StudioPDF.unstage());
       const { extractLayoutText } = await import('../src/lib/pdf-text.js');
       let text = '';
-      try { const r = await extractLayoutText(pdf); text = JSON.stringify(r); } catch (e) { text = 'ERR ' + e.message; }
-      ok(text.includes('Made with') && text.includes(BRAND.host), 'a real page.pdf() of the stripboard carries the line in its text');
+      try { const r = await extractLayoutText(pdf); text = r.text || ''; } catch (e) { text = 'ERR ' + e.message; }
+      /* CI run 379 read "M ade with FilmMakerStudio" here: extractLayoutText
+         is the SCREENPLAY reader, and it places every text run on a Courier
+         column grid (0.6em cells). This line is proportional Onest, centred,
+         and Chromium wrote its "M" as a run of its own; whether the next run
+         rounds to the column after "M" or one past it depends on where the
+         centred line starts, which moves with the width of the random
+         referral code. So the reader's spaces are not the PDF's text.
+         Reproduced locally: the old comparison missed 6 of 42 loaded runs,
+         every miss "M ade with" on page 2 (the codes that missed are wide
+         ones, M and W); this one passed all 18 runs of a batch in which the
+         old one missed once. Compared with every whitespace run
+         removed on both sides, and against the WHOLE line (name, dash and
+         host), which is stricter than the two words it checked before.
+         ("NO PROJECT OPEN" in that log is expected: this check opens the
+         stripboard with no project; the line prints either way.) */
+      const squash = (x) => String(x).replace(/\s+/g, '');
+      const wantLine = 'Made with ' + BRAND.name + ' — ' + BRAND.host;
+      const has = squash(text).includes(squash(wantLine));
+      let seen = '';
+      if (!has) {
+        seen = JSON.stringify(await page.evaluate(() => {
+          const S = window.StudioStore || {};
+          let pointer = null; try { pointer = Object.keys(localStorage).filter((k) => /current_project/.test(k)).map((k) => k + '=' + localStorage.getItem(k)); } catch (e) { /* */ }
+          /* The plan as the page shows it: plan-gate's wall says which plan. */
+          const wall = document.querySelector('.pg-lock');
+          const plan = { wall: wall ? wall.textContent.replace(/\s+/g, ' ').trim().slice(0, 80) : null,
+            exports: window.StudioPlan ? window.StudioPlan.allowed('exports') : '(no StudioPlan)' };
+          return { url: location.href, current: S.currentProjectId ? S.currentProjectId() : '(no StudioStore)', pointer,
+            projects: S.listProjects ? S.listProjects().map((p) => p.id + ':' + p.title) : '(no StudioStore)', plan };
+        }).catch((e) => ({ evalError: e.message })));
+      }
+      const near = (text.match(/.{0,20}ade.{0,90}/) || [''])[0];
+      ok(has, 'a real page.pdf() of the stripboard carries the line in its text' + (has ? '' : ': ' + JSON.stringify(near) + ' | page: ' + seen + ' | text: ' + JSON.stringify(text.slice(0, 200)) + ' … ' + JSON.stringify(text.slice(-200))));
     }
     allErrors.push(...errors); await ctx.close();
   }
@@ -373,17 +437,28 @@ try {
 
   console.log('(d2) What’s new from the avatar menu');
   F.reset();
+  ok(!!NEWS_CHUNK, 'the build carries the changelog data in a chunk the proof can rewrite (' + NEWS_CHUNK + ')');
+  ok(CHANGELOG.entries.length === 0, 'src/data/changelog.json holds no entry while the site is launching');
   {
     const { ctx, page, errors } = await newContext({});
     await page.goto(BASE + 'stripboard.html');
     await page.waitForSelector('#studioRail .sh-rail-account', { timeout: 10000 });
     await page.click('#studioRail .sh-rail-account');
+    await page.waitForSelector('#shAcctMenu .sh-acct-item', { timeout: 5000 });
+    ok(!(await page.$('#shAcctMenu [data-action="rail-whatsnew"]')) && !/What.s new/.test(await page.textContent('#shAcctMenu')), 'empty list: the account menu has no What’s new row');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    const { ctx, page, errors } = await newContext({ news: true });
+    await page.goto(BASE + 'stripboard.html');
+    await page.waitForSelector('#studioRail .sh-rail-account', { timeout: 10000 });
+    await page.click('#studioRail .sh-rail-account');
     const row = await page.waitForSelector('#shAcctMenu [data-action="rail-whatsnew"]', { timeout: 5000 }).then(() => true, () => false);
-    ok(row, 'the account menu has a What’s new row');
+    ok(row, 'one injected entry: the account menu has a What’s new row');
     if (row) {
       await page.click('#shAcctMenu [data-action="rail-whatsnew"]');
       const n = await page.waitForSelector('[data-mn-sheet="changelog"] .cl-entry', { timeout: 5000 }).then(() => page.$$eval('[data-mn-sheet="changelog"] .cl-entry', (e) => e.length), () => 0);
-      ok(n === CHANGELOG.entries.length, 'it opens the changelog drawer with every entry (' + n + ')');
+      ok(n === 1, 'it opens the changelog drawer with the entry (' + n + ')');
       ok(!(await page.$('#shAcctMenu')), 'and the menu closes');
       await page.keyboard.press('Escape');
       ok(await page.evaluate(() => !!document.activeElement && document.activeElement.matches('.sh-rail-account')), 'Escape returns focus to the avatar');
@@ -424,7 +499,7 @@ try {
   /* An ENDED trial (purchases required): no module list, the way back. */
   let planShots = 0;
   const planContents = async () => {
-    const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy', keepWall: true });
     await page.goto(BASE + 'settings.html#plan-contents');
     await page.waitForTimeout(4000);
     await page.evaluate(() => { const s = document.getElementById('plan-contents'); if (s) s.scrollIntoView(); });
@@ -467,15 +542,24 @@ try {
   {
     const { ctx, page, errors } = await newContext({});
     await page.goto(BASE + 'dashboard.html');
+    await page.waitForTimeout(2500);
+    ok(!(await page.$('[data-action="db-whatsnew"]')) && !(await page.$('.db-member-news')), 'empty list: no What’s new button and no New badge on the dashboard');
+    const seen = await page.evaluate(() => JSON.parse(localStorage.getItem('fms_studio_prefs_v1') || '{}').whatsNewSeen);
+    ok(!seen, 'and nothing is written to the prefs blob');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    const { ctx, page, errors } = await newContext({ news: true });
+    await page.goto(BASE + 'dashboard.html');
     await page.waitForSelector('[data-action="db-whatsnew"]', { timeout: 10000 });
-    ok(!!(await page.$('.db-member-news .k-badge')), 'a first visit says New');
+    ok(!!(await page.$('.db-member-news .k-badge')), 'one injected entry: the button appears and a first visit says New');
     const before = await page.evaluate(() => Object.keys(localStorage).sort());
     await page.click('[data-action="db-whatsnew"]');
     await page.waitForSelector('[data-mn-sheet="changelog"] .cl-entry', { timeout: 5000 });
-    ok((await page.$$eval('[data-mn-sheet="changelog"] .cl-entry', (e) => e.length)) === CHANGELOG.entries.length, 'the drawer lists every entry (' + CHANGELOG.entries.length + ')');
+    ok((await page.$$eval('[data-mn-sheet="changelog"] .cl-entry', (e) => e.length)) === 1, 'the drawer lists the entry');
     ok(!(await page.$('.db-member-news .k-badge')), 'New is gone once opened');
     const seen = await page.evaluate(() => JSON.parse(localStorage.getItem('fms_studio_prefs_v1') || '{}').whatsNewSeen);
-    ok(seen === CHANGELOG.entries[0].id, 'the newest id is kept in fms_studio_prefs_v1: ' + seen);
+    ok(seen === INJECTED.id, 'the newest id is kept in fms_studio_prefs_v1: ' + seen);
     const after = await page.evaluate(() => Object.keys(localStorage).sort());
     ok(after.every((k) => before.includes(k) || k === 'fms_studio_prefs_v1'), 'no new localStorage key: ' + after.filter((k) => !before.includes(k)).join(', '));
     await page.keyboard.press('Escape');
@@ -523,7 +607,7 @@ try {
     const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
     await page.goto(BASE + 'dashboard.html');
     ok(await waitToast(page, /Your free trial ends in about 23 hours/), 'a day left: "ends in about 23 hours": ' + JSON.stringify(await toasts(page)));
-    ok(/CHOOSE A PLAN/.test(await toasts(page)), 'with CHOOSE A PLAN');
+    ok(/Choose a plan/.test(await toasts(page)), 'with Choose a plan');
     await page.goto(BASE + 'stripboard.html');
     await page.waitForTimeout(4000);
     ok(!/free trial ends/.test(await toasts(page)), 'the next page in the same session does not repeat it');
@@ -598,7 +682,7 @@ try {
     const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
     await page.goto(BASE + 'dashboard.html');
     ok(await waitToast(page, /Your 7-day pass ends in about 23 hours/), 'a pass with a day left: "Your 7-day pass ends in about 23 hours": ' + JSON.stringify(await toasts(page)));
-    ok(/Keep going with a yearly plan from about ₹[\d.]+ a day/.test(await toasts(page)) && /CHOOSE A PLAN/.test(await toasts(page)), 'with the yearly plans by the day (from the plan rows) and CHOOSE A PLAN');
+    ok(/Keep going with a yearly plan from about ₹[\d.]+ a day/.test(await toasts(page)) && /Choose a plan/.test(await toasts(page)), 'with the yearly plans by the day (from the plan rows) and CHOOSE A PLAN');
     ok(!/free trial/.test(await toasts(page)), 'and no trial wording');
     allErrors.push(...errors); await ctx.close();
   }
@@ -625,10 +709,18 @@ try {
   F.db.members.set(AMY, { role: 'user', disabled_at: null, trial_started_at: null });
   Object.assign(F.db.settings, { pass_enabled: true, pass_ends_at: new Date(Date.now() + 86400e3).toISOString() });
   {
+    /* the one payment page: the walled member lands on purchase.html, and its pass card is there */
     const { ctx, page, errors } = await newContext({ tok: 'tok-amy' });
     await page.goto(BASE + 'dashboard.html');
+    ok(await page.waitForURL(/purchase(\.html)?/, { timeout: 12000 }).then(() => true, () => false), 'a walled member is sent to the purchase page');
+    ok(await page.waitForSelector('#pass [data-pu-action="buy-pass"]', { timeout: 12000 }).then(() => true, () => false), 'and the purchase page offers the pass');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    const { ctx, page, errors } = await newContext({ tok: 'tok-amy', keepWall: true });
+    await page.goto(BASE + 'dashboard.html');
     await page.waitForSelector('.pg-wall [data-action="pg-buy-pass"]', { timeout: 12000 }).then(() => ok(true, 'the wall offers the pass'), () => ok(false, 'the wall offers the pass'));
-    ok(/TRY THE WHOLE STUDIO FOR ₹49 · 7 DAYS/.test(await page.textContent('.pg-wall').catch(() => '')), 'TRY THE WHOLE STUDIO FOR ₹49 · 7 DAYS');
+    ok(/Try the whole studio for ₹49 · 7 days/.test(await page.textContent('.pg-wall').catch(() => '')), 'Try the whole studio for ₹49 · 7 days');
     await page.waitForFunction(() => /^\d\d:\d\d:\d\d$|^1d /.test((document.querySelector('.pg-wall [data-pass-timer]') || {}).textContent || ''), null, { timeout: 5000 })
       .then(() => ok(true, 'with the countdown to the server deadline'), () => ok(false, 'with the countdown to the server deadline'));
     ok(!(await page.$('.pg-wall [data-action="pg-start-trial"]')), 'and no free trial button');

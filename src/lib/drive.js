@@ -45,6 +45,15 @@
    on settings.html is a button, and why an expired token surfaces
    as an error there rather than quietly refreshing itself.
 
+   DRIVE-ONLY STORAGE CHANGES THE LAST PARAGRAPH, NOT THE FIRST.
+   With storage_mode 'drive' (schema §66) the refresh token DOES exist
+   — on the server, encrypted, behind the google-token edge function,
+   which holds the client secret. cloud.js registers that function as a
+   token source (setTokenSource), and getToken() asks it before
+   anything else: a fresh access token, silently. The access token is
+   still held only here, in memory; the refresh token never reaches
+   the browser after sign-in hands it to the function once.
+
    THE CLIENT ID IS A BUILD SETTING, NOT A STORAGE KEY.
    `VITE_GOOGLE_CLIENT_ID` at build time. An OAuth client id is
    public (it ships in the page either way), it belongs to whoever
@@ -123,8 +132,12 @@ export function forgetToken() { _token = null; }
 
    That last point is the reason this is an addition rather than a
    replacement. Supabase returns `provider_token` on the sign-in
-   response ONLY and persists nothing, so after a reload there is
-   nothing to adopt and the silent GIS mint is the only way back. */
+   response only. supabase-js DOES persist it (and, in drive mode,
+   `provider_refresh_token`) inside its stored session until the first
+   refresh; cloud.js strips both from that stored copy right after the
+   sign-in is handled (stripStoredProviderTokens), so after a reload
+   there is nothing to adopt and the token source or the silent GIS
+   mint is the way back. */
 export function adoptToken(value, expiresInSeconds) {
   if (typeof value !== 'string' || !value) return false;
   const ttl = (Number(expiresInSeconds) || 3600) * 1000;
@@ -189,6 +202,36 @@ function loadGIS() {
 export function getToken(opts) {
   opts = opts || {};
   if (hasToken() && !opts.force) return Promise.resolve(_token.value);
+  /* DRIVE-ONLY STORAGE: a server-held refresh token (the google-token
+     edge function) mints a fresh access token with NO popup. Tried
+     first whenever cloud.js has set a source (storage_mode 'drive');
+     a failure falls through to the paths below unchanged, except a
+     'regrant', which only a new consent can answer. */
+  if (_tokenSource && !opts.interactive) {
+    return mintFromSource().catch((e) => {
+      if (e && e.code === 'regrant') throw e;
+      return fallbackToken(opts, e);
+    });
+  }
+  return fallbackToken(opts);
+}
+
+/* One in-flight mint for the whole document (the ensureClient race:
+   two callers in one tick must not both ask the server). */
+let _tokenSource = null;
+let _mintP = null;
+export function setTokenSource(fn) { _tokenSource = typeof fn === 'function' ? fn : null; if (!_tokenSource) _mintP = null; }
+export function hasTokenSource() { return !!_tokenSource; }
+function mintFromSource() {
+  if (_mintP) return _mintP;
+  _mintP = Promise.resolve().then(() => _tokenSource()).then((r) => {
+    if (!r || !adoptToken(r.access_token, r.expires_in)) throw new Error('The token service answered without a token.');
+    return _token.value;
+  }).finally(() => { _mintP = null; });
+  return _mintP;
+}
+
+function fallbackToken(opts, prior) {
   if (!isConfigured()) {
     return Promise.reject(new Error('This build has no Google client id (VITE_GOOGLE_CLIENT_ID).'));
   }
@@ -214,9 +257,11 @@ export function getToken(opts) {
      a window. The only path that may open one is a click: connect()
      on settings.html. */
   if (!opts.interactive) {
-    return Promise.reject(new Error(
+    const e = new Error(
       'Drive needs a click to issue a new token — Google will not do it in the background.'
-    ));
+    );
+    if (prior && prior.message) e.cause = prior;
+    return Promise.reject(e);
   }
 
   if (_interactiveP) return _interactiveP;
@@ -264,7 +309,7 @@ export function getToken(opts) {
 let _fetch = (...a) => window.fetch(...a);
 export function __setFetch(fn) { _fetch = fn || ((...a) => window.fetch(...a)); }
 
-async function call(url, opts, tokenOpts) {
+async function send(url, opts, tokenOpts) {
   opts = opts || {};
   let token = await getToken(tokenOpts);
   let res = await _fetch(url, withAuth(opts, token));
@@ -275,6 +320,11 @@ async function call(url, opts, tokenOpts) {
     token = await getToken(Object.assign({ force: true }, tokenOpts));
     res = await _fetch(url, withAuth(opts, token));
   }
+  return res;
+}
+
+async function call(url, opts, tokenOpts) {
+  const res = await send(url, opts, tokenOpts);
   if (!res.ok) {
     let detail = '';
     try {
@@ -297,6 +347,27 @@ const q = (o) => Object.entries(o)
   .filter(([, v]) => v !== undefined && v !== null)
   .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v))
   .join('&');
+
+/* THE TRANSPORT drive-store.js is written against (drive-only
+   storage): `request(method, url, { query, headers, body, keepalive })`
+   → `{ status, text, json, headers }`, never throwing on an HTTP
+   status — the store decides what a 404 or a 403 means. The token and
+   the one 401 retry are this module's, as for every other call here;
+   no request ever opens a popup. */
+export const transport = {
+  async request(method, url, o) {
+    const r = o || {};
+    const u = new URL(url);
+    for (const [k, v] of Object.entries(r.query || {})) if (v !== undefined && v !== null) u.searchParams.set(k, String(v));
+    const res = await send(u.href, { method, headers: r.headers || {}, body: r.body, keepalive: !!r.keepalive });
+    const text = res.status === 204 ? '' : await res.text();
+    let json = null;
+    if (text) { try { json = JSON.parse(text); } catch (e) { json = null; } }
+    const headers = {};
+    try { res.headers.forEach((v, k) => { headers[k.toLowerCase()] = v; }); } catch (e) { /* no headers */ }
+    return { status: res.status, text, json, headers };
+  }
+};
 
 /* ------------------------------------------------------------
    THE FILE
@@ -491,5 +562,6 @@ export default {
   findBackupFile, createBackupFile, uploadBackup,
   createFile, downloadFileBlob, deleteFileQuiet, driveRef, driveFileIdOf, DRIVE_REF_PREFIX,
   readMeta, deleteFile, downloadBackup, listRevisions, downloadRevision,
+  transport, setTokenSource, hasTokenSource,
   __setFetch
 };

@@ -1,0 +1,234 @@
+/* ============================================================
+   BEAT SHEET VIEWS — design B "Lanes" and design C "Spine"
+   ------------------------------------------------------------
+   story.html's Beat Sheet (owner, 31 Oct 2026). One step card in
+   both views (`li.st-card`, story.js renderStepRow); the view is the
+   device pref `beatView`. Tokens only (tokens.css); shapes read the
+   skin's variables; every transform is multiplied by --motion.
+   ============================================================ */
+
+/* ---- the bar: coverage on the left, the view switch on the right ---- */
+.st-bv-bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: var(--s2) var(--s4); margin: var(--s3) 0; min-width: 0;
+}
+.st-bv-bar > .st-coverage { margin: 0; flex: 1 1 18rem; min-width: 0; }
+.st-bv-switch { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.st-bv-label { font-size: var(--t-small); color: var(--ink-body); }
+
+/* ---- the step card ----------------------------------------------- */
+.st-bv-steps { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--s2); align-content: start; min-width: 0; }
+.st-bv-steps > .st-card[hidden], .st-bv-steps > .st-card.is-dragging { display: none; }
+.st-card.st-ol-step {
+  position: relative;
+  display: grid; gap: var(--s1);
+  padding: var(--s2) var(--s2) var(--s2) var(--s3);
+  background: var(--surface-card);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-field-radius, var(--radius));
+  min-width: 0;
+}
+.st-card.st-ol-step.bc-strip { padding-inline-start: calc(var(--s3) + 4px); }
+.st-card:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-deep); outline-offset: 2px; }
+.st-card.is-open { border-color: var(--accent-primary); box-shadow: var(--shadow-card-hover); }
+.st-card-top { display: flex; align-items: center; gap: var(--s1); min-width: 0; }
+.st-card-top .st-ol-n { flex: 0 1 auto; min-width: 0; }
+.st-card-badge {
+  flex: none;
+  font-size: var(--t-tiny); line-height: 1.4; color: var(--ink-body);
+  padding: 0 var(--s1);
+  border: 1px solid var(--rule); border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.st-card-badge.is-warn { color: var(--warn-deep); background: var(--warn-wash); border-color: var(--warn-line); }
+.st-grip, .st-card-open {
+  flex: none;
+  display: inline-grid; place-items: center;
+  inline-size: 28px; block-size: 28px; padding: 0;
+  border: 0; border-radius: var(--sk-field-radius, var(--radius));
+  background: transparent; color: var(--ink-body);
+  cursor: pointer;
+}
+.st-card-open { margin-inline-start: auto; }
+.st-grip { cursor: grab; touch-action: none; }
+.st-grip:hover, .st-card-open:hover { background: var(--surface-hover); color: var(--ink); }
+.st-grip:focus-visible, .st-card-open:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-deep); outline-offset: 1px; }
+.st-grip:active { transform: scale(calc(1 - (1 - var(--sk-press, .97)) * var(--motion, 1))); }
+@media (pointer: coarse) {
+  .st-grip, .st-card-open { inline-size: 44px; block-size: 44px; }
+}
+/* The step's paper, sized for a card (paper-field.css's own note: a grid
+   of shadowed pages is not a beat sheet). The face is the paper's own,
+   never restated; only its size, padding and shadow are the card's. */
+:root .st-card textarea.paper-field.paper-field.paper-field {
+  padding: var(--s2) var(--s3);
+  font-size: var(--t-small);
+  box-shadow: none;
+  min-height: calc(2lh + 2 * var(--s2) + 2px);
+  max-height: calc(12lh + 2 * var(--s2) + 2px);
+}
+/* closed: three lines of the step, no controls; open: everything */
+:root .st-card:not(.is-open) textarea.paper-field.paper-field.paper-field { max-height: calc(3lh + 2 * var(--s2) + 2px); overflow: hidden; resize: none; }
+.st-card:not(.is-open) > .st-ol-ctl { display: none; }
+.st-card > .st-ol-ctl { gap: var(--s1) var(--s2); }
+.st-card .st-ol-ctl .st-retag { flex: 1 1 10rem; }
+.st-ol-moves { display: flex; flex-wrap: wrap; gap: 2px; }
+.st-card .ss-note { padding: var(--s1) var(--s2); }
+.st-card .ss-note > span { flex-basis: 100%; }
+.st-beat-count { font-size: var(--t-tiny); color: var(--ink-body); }
+
+/* ---- dragging (src/ui/beat-drag.js) -------------------------------- */
+.st-dnd-ph {
+  list-style: none;
+  min-height: 3rem;
+  border: 2px dashed var(--accent-primary);
+  border-radius: var(--sk-field-radius, var(--radius));
+  background: var(--brand-wash);
+}
+.st-dnd-ghost {
+  position: fixed; z-index: 1000;
+  margin: 0; list-style: none;
+  pointer-events: none;
+  box-shadow: var(--shadow-card-hover);
+  transform: rotate(calc(1.5deg * var(--motion, 1)));
+}
+html.st-dnd-on, html.st-dnd-on * { cursor: grabbing; user-select: none; }
+
+/* ---- design B: lanes ---------------------------------------------- */
+.st-bl { margin-top: var(--s3); min-width: 0; }
+.st-bl-nav { display: none; }
+.st-bl-scroll {
+  overflow-x: auto; overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  padding: 2px 2px var(--s2);
+  min-width: 0;
+}
+.st-bl-scroll:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-deep); outline-offset: 2px; }
+.st-bl-track {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-auto-flow: column; grid-auto-columns: 15rem;
+  gap: var(--s3); align-items: stretch;
+}
+@media (min-width: 1100px) { .st-bl-track { grid-auto-columns: 16rem; } }
+.st-bl-lane {
+  --act-c: var(--accent-primary);
+  box-sizing: border-box;
+  display: flex; flex-direction: column; gap: var(--s2);
+  height: clamp(22rem, 62vh, 40rem);
+  padding: 0 var(--s3) var(--s3);
+  background: var(--surface-rail);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-top: 4px solid var(--act-c);
+  border-radius: var(--sk-radius, var(--radius));
+  scroll-snap-align: start;
+  min-width: 0;
+}
+.st-bl-lane[data-act="2"] { --act-c: var(--brand-deep); }
+.st-bl-lane[data-act="3"], .st-bl-lane[data-act="4"] { --act-c: var(--ink-muted); }
+.st-bl-lane.is-empty { border-style: dashed; border-top-style: solid; }
+.st-bl-lane > * { flex: none; min-width: 0; }
+.st-bl-ribbon { block-size: 1.25rem; box-sizing: content-box; overflow: hidden; white-space: nowrap; padding-top: var(--s1); font-size: var(--t-tiny); font-weight: 700; color: var(--brand-deep); }
+.st-bl-ribbon:not(.is-first) { font-weight: 500; color: var(--ink-muted); text-overflow: ellipsis; }
+.st-bl-lane .st-ol-head { gap: 0 var(--s2); }
+.st-bl-lane .st-beat-prompt, .st-bl-lane .st-ol-bp {
+  margin: 0;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
+  font-size: var(--t-small);
+}
+.st-bl-lane .st-ol-bp { -webkit-line-clamp: 2; }
+.st-bl-lane > .st-bv-steps {
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; overscroll-behavior: contain;
+  padding: 2px;
+  margin: 0 -2px;
+}
+.st-bl-lane > .st-ol-actions { margin-top: 0; }
+.st-bl-lane.st-unplaced { margin-top: 0; padding: 0 var(--s3) var(--s3); border-style: dashed; border-top: 4px dashed var(--warn); box-shadow: none; }
+.st-bl-lane.st-unplaced.is-empty { border-top-color: var(--rule); }
+.st-bl-lane.st-unplaced > .st-muted { margin: 0; font-size: var(--t-small); }
+@media (max-width: 719px) {
+  .st-bl-nav { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-bottom: var(--s2); }
+  .st-bl-nav .k-btn { min-height: 44px; }
+  .st-bl-pos { font-size: var(--t-small); color: var(--ink-body); text-align: center; }
+  .st-bl-track { grid-auto-columns: 85%; }
+  .st-bl-scroll { scroll-snap-type: x mandatory; }
+}
+
+/* ---- design C: the spine ------------------------------------------ */
+.st-sp { margin-top: var(--s3); min-width: 0; }
+.st-sp-spine {
+  list-style: none; margin: 0; padding: 0;
+  position: relative;
+  display: flex; flex-direction: column; gap: var(--s4);
+}
+.st-sp-spine::before {
+  content: ""; position: absolute;
+  inset-block: 0; inset-inline-start: 15px; inline-size: 2px;
+  background: var(--rule);
+}
+.st-sp-act { position: relative; z-index: 1; display: flex; }
+.st-sp-act > span {
+  padding: var(--s1) var(--s3);
+  font-size: var(--t-small); font-weight: 700;
+  color: var(--brand-deep); background: var(--brand-wash);
+  border: 1px solid var(--accent-primary); border-radius: var(--radius-pill);
+}
+.st-sp-station {
+  position: relative;
+  box-sizing: border-box;
+  margin-inline-start: 48px;
+  display: grid; gap: var(--s2);
+  padding: var(--s3);
+  background: var(--surface-card);
+  border: var(--sk-card-line-w, 1px) solid var(--rule);
+  border-radius: var(--sk-radius, var(--radius));
+  box-shadow: var(--sk-card-shadow, var(--shadow-card-rest));
+  min-width: 0;
+}
+.st-sp-station.is-empty { border-style: dashed; box-shadow: none; }
+.st-sp-station::before {
+  content: ""; position: absolute;
+  top: calc(var(--s3) + 15px); inset-inline-start: -16px;
+  inline-size: 16px; block-size: 2px;
+  background: var(--rule);
+}
+.st-sp-num {
+  position: absolute; z-index: 1;
+  top: var(--s3); inset-inline-start: -48px;
+  display: grid; place-items: center;
+  inline-size: 32px; block-size: 32px;
+  border-radius: var(--radius-pill);
+  background: var(--brand); color: var(--brand-on);
+  font-size: var(--t-small); font-weight: 700;
+}
+.st-sp-station > .st-beat-prompt, .st-sp-station > .st-ol-bp { margin: 0; font-size: var(--t-small); }
+.st-sp-station .st-bv-steps { background: var(--surface-rail); padding: var(--s2); border-radius: var(--sk-field-radius, var(--radius)); }
+.st-sp-station .st-bv-steps:empty { display: none; }
+.st-sp-more { justify-self: start; }
+.st-sp-station > .st-ol-actions { margin-top: 0; }
+.st-sp-station.st-unplaced { margin-top: 0; border-color: var(--warn); border-style: dashed; background: var(--surface-rail); }
+.st-sp-station.st-unplaced.is-empty { border-color: var(--rule); }
+.st-sp-station.st-unplaced > .st-sp-num { background: var(--surface-rail); color: var(--ink); border: 2px dashed var(--rule); box-sizing: border-box; }
+.st-sp-station.st-unplaced > .st-muted { margin: 0; font-size: var(--t-small); }
+@media (min-width: 900px) {
+  .st-sp-spine::before { inset-inline-start: calc(50% - 1px); }
+  .st-sp-act { align-self: center; }
+  .st-sp-station { inline-size: calc(50% - 28px); margin-inline-start: 0; }
+  .st-sp-station[data-side="r"] { align-self: flex-end; }
+  /* stations zig-zag: each one starts beside the one before it, not
+     under it. The floor keeps a station taller than twice the overlap,
+     so a station never reaches the one two before it on its own side. */
+  .st-sp-station { min-block-size: 13rem; }
+  .st-sp-station + .st-sp-station:not(.st-unplaced) { margin-block-start: -6rem; }
+  .st-sp-station[data-side="l"] > .st-sp-num { inset-inline-start: auto; inset-inline-end: -44px; }
+  .st-sp-station[data-side="r"] > .st-sp-num { inset-inline-start: -44px; }
+  .st-sp-station[data-side="l"]::before { inset-inline-start: auto; inset-inline-end: -12px; inline-size: 12px; }
+  .st-sp-station[data-side="r"]::before { inset-inline-start: -12px; inline-size: 12px; }
+}
+
+@media print {
+  .st-bl-nav, .st-grip, .st-card-open, .st-bv-switch { display: none; }
+  .st-bl-lane { height: auto; }
+  .st-bl-lane > .st-bv-steps { overflow: visible; }
+}

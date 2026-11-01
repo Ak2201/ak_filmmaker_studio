@@ -94,10 +94,10 @@
 }
 .ds-film-meta {
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 
@@ -121,11 +121,11 @@
   color: var(--sk-slab-ink);
 }
 .ds-claim-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--sk-slab-accent);
 }
 .ds-claim-sub { font-size: var(--t-tiny); color: var(--sk-slab-ink); }
@@ -166,10 +166,10 @@
   color: var(--ink);
 }
 .ds-act-count {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 
@@ -187,10 +187,10 @@
 }
 .ds-seq-top { display: grid; gap: 2px; }
 .ds-seq-at {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .ds-seq-label {
@@ -205,10 +205,10 @@
    studio uses for "this is a field, not prose". */
 .ds-seq-body { display: grid; gap: var(--s1); margin: 0; }
 .ds-seq-body dt {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .ds-seq-body dd {
@@ -264,10 +264,10 @@
   color: var(--ink-body);
 }
 .ds-chain-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .ds-chain-arrow { align-self: center; color: var(--ink-muted); }
@@ -292,11 +292,11 @@
   min-width: 0;
 }
 .ds-craft-area {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .ds-craft-lesson {
@@ -319,7 +319,7 @@
   color: var(--ink-body);
 }
 .ds-question::marker {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--ink-muted);
 }
@@ -350,11 +350,11 @@
   background: var(--paper-sunk);
 }
 .ds-dangle-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink);
 }
 .ds-dangle.is-clear .ds-dangle-lab { color: var(--ink-body); }
@@ -457,7 +457,7 @@
   padding-inline: var(--s2);
   border-radius: var(--sk-radius, var(--radius));
   background: var(--paper-sunk);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
@@ -470,7 +470,7 @@
 /* flex-basis, not a width: the bar wraps at 390px rather than
    forcing the row wider than the column it sits in. */
 .ds-row-title { flex: 1 1 16rem; min-width: 0; }
-.ds-row-at { flex: 0 1 7rem; min-width: 0; font-family: var(--f-mono); }
+.ds-row-at { flex: 0 1 7rem; min-width: 0; font-family: var(--f-body); font-variant-numeric: tabular-nums; }
 .ds-row-act { flex: 0 1 9rem; min-width: 0; }
 .ds-row-area { flex: 1 1 10rem; min-width: 0; }
 .ds-row-acts { display: flex; gap: var(--s1); margin-left: auto; }
@@ -484,11 +484,11 @@
 .ds-field { display: grid; gap: var(--s1); min-width: 0; }
 .ds-flabel { display: grid; gap: 1px; }
 .ds-flabel-main {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .ds-flabel-sub { font-size: var(--t-tiny); line-height: var(--lh-snug); color: var(--ink-muted); }

@@ -70,4 +70,18 @@ export function addedBy(planId) {
   return matrix.features.filter((r) => !r.inverted && planHas(r, planId) && !(prev && planHas(r, prev)));
 }
 
-export default { MATRIX, PAID, labelOf, planHas, matrixFeatures, matrixLimits, addedBy };
+/** How many of this plan's additions its card COUNTS ("N more in the
+ *  comparison") instead of listing: the one rule behind purchase.html's
+ *  cards (plan-cards.js) and the public cards (vite.config.js). A limit row
+ *  is a cap, not a bullet, so it is never counted; a card lists at most
+ *  FIVE, and when it must cut it names the matrix `card` picks (four at most). */
+export const CARD_MAX = 5;
+export function cardMore(planId) {
+  const n = addedBy(planId).filter((r) => r.kind !== 'limit').length;
+  if (n <= CARD_MAX) return 0;
+  const order = (matrix.card && matrix.card[planId]) || [];
+  const pickN = order.length ? Math.min(order.length, CARD_MAX - 1) : CARD_MAX - 1;
+  return n - pickN;
+}
+
+export default { MATRIX, PAID, labelOf, planHas, matrixFeatures, matrixLimits, addedBy, cardMore, CARD_MAX };

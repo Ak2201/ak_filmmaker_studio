@@ -25,7 +25,7 @@
 <!-- mk:header -->
 <a class="mk-skip" href="#main">Skip to content</a>
 <div class="mk-sentinel" id="mkSentinel" aria-hidden="true"></div>
-<header class="mk-top" id="mkTop">
+<header class="mk-top" id="mkTop" data-surface="dark">
   <div class="mk-top-in">
     <a class="mk-brand" href="start.html"><span class="mk-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
     <nav class="mk-nav" id="mkNav" aria-label="Main">
@@ -63,16 +63,20 @@
               <li><a href="product-call-sheets.html"><span class="sym" aria-hidden="true" translate="no">assignment</span><span>Call sheets</span></a></li>
             </ul>
           </div>
+          <div class="mk-mega-col mk-mega-col--more">
+            <p class="mk-mega-h">Learn</p>
+            <ul>
+              <li><a href="guides.html"><span class="sym" aria-hidden="true" translate="no">menu_book</span><span>Guides</span></a></li>
+              <li><a href="guides.html#compare"><span class="sym" aria-hidden="true" translate="no">swap_horiz</span><span>Switching</span></a></li>
+              <li><a href="trust.html"><span class="sym" aria-hidden="true" translate="no">lock</span><span>Your work stays yours</span></a></li>
+            </ul>
+          </div>
         </div>
       </div>
       <a class="mk-nav-link mk-nav-pricing" href="pricing.html">Pricing</a>
-      <a class="mk-nav-link" href="guides.html">Guides</a>
-      <a class="mk-nav-link" href="guides.html#compare">Switching</a>
-      <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">Sign in</a>
     </nav>
     <div class="mk-top-end">
-      <a class="mk-nav-link mk-end-login" href="invite.html" data-start-auth="google">Sign in</a>
-      <a class="mk-btn mk-btn--outline mk-btn--sm" href="invite.html" data-open-signup>Sign up</a>
+      <a class="gbtn mk-btn mk-btn--primary mk-btn--sm mk-top-google" href="invite.html" data-open-signup><img class="gbtn-g" src="/google-g.svg" width="18" height="18" alt="" aria-hidden="true"><span class="gbtn-l">Continue with Google</span></a>
       <a class="mk-burger" id="mkBurger" href="#mkFoot" aria-controls="mkNav" aria-expanded="false" aria-label="Menu"><span class="sym" aria-hidden="true" translate="no">menu</span></a>
     </div>
   </div>
@@ -83,7 +87,6 @@
 <nav class="legal-toc" aria-label="On this page">
   <p class="legal-toc-h">On this page</p>
   <ol>
-      <li><a href="#changes-h">What changed on 28 October 2026</a></li>
       <li><a href="#about-these-terms">1. About these terms</a></li>
       <li><a href="#eligibility-and-accounts">2. Eligibility and accounts</a></li>
       <li><a href="#access-free-trials-and-invite-codes">3. Access, the launch pass, free trials and invite codes</a></li>
@@ -108,7 +111,6 @@
 <details class="legal-toc-m">
   <summary>On this page</summary>
   <ol>
-      <li><a href="#changes-h">What changed on 28 October 2026</a></li>
       <li><a href="#about-these-terms">1. About these terms</a></li>
       <li><a href="#eligibility-and-accounts">2. Eligibility and accounts</a></li>
       <li><a href="#access-free-trials-and-invite-codes">3. Access, the launch pass, free trials and invite codes</a></li>
@@ -136,7 +138,6 @@
 
 <h1>Terms of Service</h1>
 <p class="legal-sub">The agreement between you and {{brand:name}} when you use the studio.</p>
-<p class="legal-date">Last updated 28 October 2026</p>
 
 <div class="legal-key">
   <p><strong>Your work is yours.</strong> We do not claim ownership of anything you write
@@ -145,45 +146,6 @@
   Clearing browser data can delete it permanently, so download a backup, connect Google
   Drive, or use cloud sync.</p>
 </div>
-
-<section class="legal-changes" id="changes" aria-labelledby="changes-h">
-  <h2 id="changes-h">What changed on 28 October 2026</h2>
-  <ul>
-<!-- Auto-renew, finalised 28 Oct 2026 from schema section 62:
-     billing_settings.pass_mode / plan_mode ('once' | 'renew', both 'once'
-     by default), set by the owner in the console per product, for new
-     purchases only; a Razorpay Subscription holds the mandate; a cancel
-     stops future charges and the paid period runs out; the amount is the
-     Razorpay plan amount, so a running auto-pay keeps the price it started
-     at; an upgrade over a running lower year is always one-time. -->
-    <li>Section 3: the launch pass, which, while a launch offer runs, opens a plan&rsquo;s
-    tools for a set number of days, once per person. While it is on offer, a free trial is
-    given through an invite code, by us, or after a refund of a plan, rather than started by
-    anyone who asks.</li>
-    <li>Section 4: a paid plan or a launch pass may be sold either as a one-time purchase or on
-    auto-renew, and which one is shown beside the price before you pay. Section 4 sets out how
-    auto-renew works: the amount and how often, the notice sent before each charge, how to
-    cancel, and the price staying the same while you stay.</li>
-    <li>Section 5: a launch pass is covered by the same three exceptions; on auto-renew they
-    apply to each charge, and a charge taken after you cancelled is refunded in full.</li>
-    <li>Section 7: which plans and passes include the AI tools, worded so that it stays true
-    whatever a free trial opens.</li>
-    <li>On 21 October 2026, section 4: prices are shown in Indian Rupees in India and in US dollars elsewhere,
-    the currency you are charged in is shown at checkout before you pay, and conversion fees
-    charged by your bank or card issuer are theirs, not ours.</li>
-    <li>On 21 October 2026, section 4: a paid plan became a purchase of <strong>one year</strong>, not for good. Nothing
-    renews or is charged automatically; buying the plan again adds another year, and an
-    upgrade credits the unused part of your current year.</li>
-    <li>If you bought a plan before 21 October 2026, it runs for one year from the day the
-    change took effect on your account; we have e-mailed you the date.</li>
-    <li>On 21 October 2026, section 5: a refund takes off the year that payment bought, not
-    other years on the plan.</li>
-    <li>On 19 October 2026: section 3 described access as it works now; section 4 added promo
-    and referral codes, other currencies, invoices and price-rise notices; sections 4 and 12
-    stopped promising that a plan keeps every tool; sections 6 and 7 covered share links,
-    screening passes and AI tools.</li>
-  </ul>
-</section>
 
 <h2 id="about-these-terms">1. About these terms</h2>
 <p>These Terms of Service (&ldquo;Terms&rdquo;) govern your use of {{brand:name}}, its
@@ -208,7 +170,7 @@ use the Service.</p>
   are authorised to accept these Terms on its behalf.</li>
 </ul>
 
-<!-- The launch pass, finalised 28 Oct 2026 from the contract: schema
+<!-- The launch pass, from the contract: schema
      section 61 (quote_pass: once per person, a refunded pass included,
      INR only, refused while a yearly plan runs, closed after pass_ends_at
      or once pass_cap passes are sold; activate_payment applies
@@ -301,9 +263,9 @@ use the Service.</p>
       a pre-debit notice with the amount and the date, by your bank, your UPI app or the
       payment processor, as Indian payment rules require. We may also e-mail you a reminder
       before the charge.</li>
-      <li><strong>How to cancel.</strong> You can cancel anytime in the app: Settings &rarr;
-      Plan &amp; purchases &rarr; Cancel auto-pay. You can also revoke the mandate in your UPI
-      app or with your bank, which cancels it the same way.</li>
+      <li><strong>How to cancel.</strong> You can cancel anytime, from the mandate itself:
+      use the link in the Razorpay mandate e-mail, or cancel it in your bank or UPI app. The app
+      shows that auto-pay is on and when it renews, but does not cancel it.</li>
       <li><strong>After you cancel.</strong> Nothing more is charged. Your access continues to
       the end of the period you have already paid for, and then ends; your work is kept.</li>
       <li><strong>No refund for the rest of a period.</strong> Cancelling does not refund the
@@ -323,7 +285,7 @@ use the Service.</p>
   <!-- NO GSTIN SENTENCE, DELIBERATELY. src/data/brand.json carries gstin: "" and
        says why: the seller is an individual not registered for GST, so what buyers
        receive is a Bill of Supply rather than a tax invoice (schema section 28).
-       An unfilled owner placeholder was live on this page until 12 Oct 2026 —
+       An unfilled owner placeholder was once live on this page,
        the page a buyer reads before paying, and one Razorpay checks during
        website verification. (Not quoted here: the literal string would then ship
        in the page source and trip the very grep that found it.)
@@ -495,10 +457,10 @@ Nadu, will have exclusive jurisdiction, subject to any right you have as a consu
 approach a consumer commission where you live.</p>
 
 <h2 id="changes-to-these-terms">18. Changes to these Terms</h2>
-<p>We may update these Terms. The date at the top shows the latest version, and the note
-under it says what changed. If a change is
-significant, we will tell signed-in members in the app or by e-mail before it takes
-effect. Continuing to use the Service after that means you accept the updated Terms.</p>
+<p>If we change these Terms, the version on this page is the one that applies. If a change
+is significant, we will tell signed-in members in the app or by e-mail before it takes
+effect. Continuing to use the Service after that means you accept the Terms as they then
+read.</p>
 
 <h2 id="contact">19. Contact</h2>
 <p>Questions about these Terms, or a complaint about the Service:
@@ -508,36 +470,25 @@ effect. Continuing to use the Service after that means you accept the updated Te
 </main>
 </div>
 <!-- mk:footer -->
-<footer class="mk-foot" id="mkFoot">
+<footer class="mk-foot" id="mkFoot" data-surface="dark">
   <div class="mk-wrap">
     <div class="mk-foot-grid">
-      <div class="mk-foot-col hue-library">
-        <p class="mk-foot-h">Writing</p>
+      <div class="mk-foot-brand">
+        <a class="mk-brand" href="start.html"><span class="mk-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
+        <p class="mk-foot-note">Your work is saved in your browser first. Syncing to the cloud is optional.</p>
+      </div>
+      <div class="mk-foot-col mk-foot-col--tools">
+        <p class="mk-foot-h">Product</p>
         <ul>
           <li><a href="product-writing.html">Writing</a></li>
-        </ul>
-      </div>
-      <div class="mk-foot-col hue-feature">
-        <p class="mk-foot-h">Story development</p>
-        <ul>
           <li><a href="product-story.html">Story</a></li>
           <li><a href="product-storyboard.html">Storyboard</a></li>
-        </ul>
-      </div>
-      <div class="mk-foot-col hue-plan">
-        <p class="mk-foot-h">Pre-production</p>
-        <ul>
           <li><a href="product-breakdown.html">Breakdown</a></li>
           <li><a href="product-catalog.html">Elements</a></li>
           <li><a href="product-shot-list.html">Shot list</a></li>
           <li><a href="product-schedule.html">Schedule</a></li>
           <li><a href="product-cast-crew.html">Cast and crew</a></li>
           <li><a href="product-sides.html">Sides</a></li>
-        </ul>
-      </div>
-      <div class="mk-foot-col hue-shoot">
-        <p class="mk-foot-h">Production</p>
-        <ul>
           <li><a href="product-budget.html">Budget</a></li>
           <li><a href="product-call-sheets.html">Call sheets</a></li>
         </ul>
@@ -547,20 +498,26 @@ effect. Continuing to use the Service after that means you accept the updated Te
         <ul>
           <li><a href="pricing.html">Pricing</a></li>
           <li><a href="about.html">About us</a></li>
-          <li><a href="trust.html">Your work stays yours</a></li>
-          <li><a href="guides.html">Guides</a></li>
-          <li><a href="guides.html#compare">Switching to the studio</a></li>
           <li><a href="contact.html">Contact us</a></li>
-          <li><a href="privacy.html">Privacy</a></li>
-          <li><a href="terms.html">Terms</a></li>
-          <li><a href="refund.html">Refunds</a></li>
+          <li><a href="trust.html">Your work stays yours</a></li>
+        </ul>
+      </div>
+      <div class="mk-foot-col">
+        <p class="mk-foot-h">Learn</p>
+        <ul>
+          <li><a href="guides.html">Guides</a></li>
+          <li><a href="guides.html#compare">Switching guides</a></li>
           <li><a href="mailto:{{brand:email}}">Support</a></li>
         </ul>
       </div>
     </div>
     <div class="mk-foot-base">
-      <p class="mk-foot-note">Your work is saved in your browser first. Syncing to the cloud is optional.</p>
       <p class="mk-foot-copy">© {{brand:name}}</p>
+      <ul class="mk-foot-legal">
+        <li><a href="privacy.html">Privacy</a></li>
+        <li><a href="terms.html">Terms</a></li>
+        <li><a href="refund.html">Refunds</a></li>
+      </ul>
     </div>
   </div>
 </footer>

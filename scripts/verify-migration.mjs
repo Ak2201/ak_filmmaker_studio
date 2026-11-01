@@ -355,15 +355,15 @@ const EXPECTED = /* every earlier row was emptied by the 27 Oct 2026 re-baseline
   "visualize": {},
   "write": {},
   "plan": {},
-  "breakdown": {},
+  "breakdown": /* emptied by the 1 Nov 2026 re-baseline (HISTORY 79), which absorbed the explainer-pill row */ {},
   "feature": {},
   "short": {},
-  "library": {},
-  "budget": {},
-  "dashboard": {},
+  "library": /* emptied by the 29 Oct 2026 explainer re-baseline, which absorbed the Tanglish clean-up rows */ {},
+  "budget": /* emptied by the 1 Nov 2026 re-baseline (HISTORY 79), which absorbed the pill-label rows */ {},
+  "dashboard": /* emptied by the 1 Nov 2026 re-baseline (HISTORY 79), which absorbed the hidden What's new rows (HISTORY 78) */ {},
   "preprod": {},
   "screenplay": {},
-  "settings": /* emptied by the 27 Oct 2026 re-baseline after the merge */ {},
+  "settings": /* emptied by the 1 Nov 2026 re-baseline (HISTORY 79), which absorbed the tour's 'two-minute' row (31 Oct 2026) */ {},
   shoot: {},
   /* EMPTIED THE SAME DAY IT WAS ADDED, by somebody else's recapture.
 
@@ -440,7 +440,7 @@ const EXPECTED = /* every earlier row was emptied by the 27 Oct 2026 re-baseline
   invite: /* emptied by the 27 Oct 2026 re-baseline after merging the full-app QA with auto-renew */ {},
   admin: {},
   vault: /* emptied by the 27 Oct 2026 re-baseline after merging the full-app QA with auto-renew */ {},
-  purchase: /* emptied by the 27 Oct 2026 re-baseline after merging the full-app QA with auto-renew */ {}
+  purchase: /* emptied by the 29 Oct 2026 explainer re-baseline, which absorbed the redesign and r2b rows */ {}
 };
 /* The 26 Oct 2026 `currency` / `rupee` allowance (budget rail icon) was absorbed by the 27 Oct 2026 re-baseline. */
 
@@ -1069,6 +1069,12 @@ for (const spec of PAGES) {
     viewport: { width: 1280, height: 900 }
   });
   await PIN_REGION(ctx);
+  /* The baseline is captured with no server answering (the note above), but the
+     committed .env names the LIVE Supabase project, so a run reached it and drew
+     whatever the owner had switched on that day: the 28 Oct launch pass changed
+     the invite and purchase pages and failed both with no copy edited. Refuse the
+     project's host so every run sees the same offline page. */
+  await ctx.route(/\.supabase\.co\//, (route) => route.abort());
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
@@ -2250,7 +2256,12 @@ let scriptsOff = { checked: false };
     return '';
   };
   const decl = (block, prop) => ((block.match(new RegExp('(?:^|[;\\s])' + prop.replace(/[-]/g, '\\-') + '\\s*:\\s*([^;]+);')) || [])[1] || '').trim();
-  const bare = blockAfter(css.search(/^:root\s*\{/m));
+  /* "Bare :root" is every block whose selector list STARTS with :root:
+     the palette block itself, and (since 28 Oct 2026) the alias blocks
+     whose selector is `:root, .sh-rail, …` so the same aliases are
+     re-evaluated inside the dark chrome scope. --paper lives in an
+     alias block now (var(--surface-canvas)), so read them together. */
+  const bare = [...css.matchAll(/^:root\s*[,{]/gm)].map((m) => blockAfter(m.index)).join('\n');
   const themed = {};
   for (const m of css.matchAll(/^:root\[data-theme="([a-z]+)"\]\s*\{/gm)) themed[m[1]] = blockAfter(m.index);
   const media = {};
@@ -2272,7 +2283,12 @@ let scriptsOff = { checked: false };
   };
   const defaultPaper = resolveIn(bare, decl(bare, '--paper'));
   const defaultScheme = decl(bare, 'color-scheme');
-  /* ONE THEME SINCE 14 OCT 2026. With no second palette, the default
+  /* ONE PALETTE SINCE 14 OCT 2026 — dark-only until 28 Oct 2026, the
+     8B mix since: bare :root is the LIGHT work surface (color-scheme
+     light) and a class-scoped block restates the same names dark for
+     the chrome. That scope is not a theme: nothing toggles it, it is
+     not on :root, and it is not a prefers-color-scheme fork, so this
+     probe still sees exactly one palette. With no second palette, the default
      theme is whichever [data-theme] block does NOT restate --paper (it
      only restates the scheme), and BOTH OS preferences must paint the
      bare :root ground — there is no prefers-color-scheme block any more,

@@ -24,10 +24,14 @@
 .pu-actions { display: flex; flex-wrap: wrap; gap: var(--s3); }
 .pu-deck { margin: 0; }
 
-/* ---- the currency: "Show prices in ₹ INR / $ USD" and what is charged */
+/* ---- the currency and the term, said once: the sentence and the
+   one-time terms on the left, "Show prices in ₹ INR / $ USD" on the
+   right, directly above the row ---------------------------------- */
 .pu-currency { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3) var(--s5); min-width: 0; }
-.pu-currency-line { margin: 0; max-width: var(--measure); font-size: var(--t-small); line-height: 1.5; color: var(--ink-muted); }
-/* the card's charge line reads as a fact, not a footnote */
+.pu-currency-text { display: grid; gap: var(--s1); min-width: 0; flex: 1 1 20rem; }
+.pu-currency-line { margin: 0; max-width: var(--measure); font-size: var(--t-small); line-height: 1.5; color: var(--ink-body); }
+.pu-currency-text > .pl-row-terms { margin: 0; }
+/* the card's charge line (a dollar card charged in rupees) reads as a fact, not a footnote */
 .pl-price-cap.pl-charge { color: var(--ink-body); font-weight: 600; }
 
 /* ---- the current plan: one strip, identity left, usage right ------ */
@@ -46,7 +50,7 @@
 .pu-current-id > .bd-h2 { overflow-wrap: anywhere; }
 .pu-current-state { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); font-size: var(--t-small); color: var(--ink-body); }
 .pu-current-use { display: grid; gap: var(--s2); min-width: 0; }
-.pu-use-h { margin: 0; font-family: var(--f-mono); font-size: var(--t-micro); font-weight: 600; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.pu-use-h { margin: 0; font-family: var(--f-body); font-size: var(--t-micro); font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 @media (max-width: 960px) { .pu-current.is-buyer { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 719px) { .pu-current { padding: var(--s4); } }
 
@@ -74,6 +78,9 @@
 
 /* ---- refunds and invoices, each its own section ------------------- */
 .pu-aside > * { margin: 0; }
+#yourwork.pu-sec { gap: var(--s3); }
+/* a section's one button sits at its own width, never the column's */
+.pu-aside > .k-btn { justify-self: start; }
 
 /* ---- the referral panel (growth-panels.js) -----------------
    Drawn under the plan cards. growth.css owns the panel's own shape
@@ -97,30 +104,111 @@
   min-inline-size: 0;
 }
 .gr-stat-label {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .gr-stat-figure { font-size: var(--t-lg); color: var(--ink); overflow-wrap: anywhere; }
 .gr-intro { background: var(--paper-sunk); }
 .pu-ref { margin: 0; overflow-wrap: anywhere; }
 
-/* ---- before you pay: one year, and when a refund is given ---------- */
+/* ---- read this before you purchase (purchase.js buyTerms) ----------
+   One card, a numbered list, one fact a row: an icon in a brand-wash
+   disc, a bold head, the sentence under it (owner, 28 Oct 2026: "a nice
+   format, not a wall of text"). ONE column at every width (QA r2b,
+   29 Oct 2026: two equal-height columns left ~200px holes beside the
+   short rows); the refund exceptions are the last row, a full-width
+   block on a sunk ground with its cases as a compact list, and the
+   legal line sits directly under it. */
 .pu-terms {
   display: grid;
-  gap: var(--s2);
-  padding: var(--s4) var(--s5);
+  gap: var(--s4);
+  padding: var(--s5);
   background: var(--paper-raised);
   border: 1px solid var(--border-hair);
   border-radius: var(--sk-radius, var(--radius));
-  max-width: var(--measure-text, 72ch);
 }
 .pu-terms > * { margin: 0; }
-.pu-terms-lead { color: var(--ink); }
-.pu-terms-sub { color: var(--ink-muted); }
-.pu-terms-list { display: grid; gap: var(--s2); padding-inline-start: var(--s5); color: var(--ink-muted); }
-.pu-terms-list strong { color: var(--ink); font-weight: 600; }
-.pu-terms a { overflow-wrap: anywhere; }
-@media (max-width: 719px) { .pu-terms { padding: var(--s4); } }
+.pu-terms-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s3);
+  counter-reset: pu-term;
+}
+.pu-term { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s3); align-items: start; counter-increment: pu-term; min-width: 0; }
+.pu-term-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-pill);
+  background: var(--brand-wash);
+  color: var(--brand-deep);
+}
+.pu-term-icon .k-sym { font-size: 1.25rem; }
+.pu-term-text { display: grid; gap: var(--s1); min-width: 0; max-width: var(--measure-text); color: var(--ink-body); font-size: var(--t-small); line-height: var(--lh-body); }
+/* the refund exceptions: the whole width, its own ground */
+.pu-term.is-block {
+  margin-top: var(--s1);
+  padding: var(--s4);
+  background: var(--paper-sunk);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.pu-term.is-block > .pu-term-text { max-width: none; }
+.pu-term-text > p { margin: 0; }
+.pu-term-h { color: var(--ink); font-size: var(--t-base); font-weight: 600; }
+.pu-term-h::before { content: counter(pu-term) '. '; color: var(--brand-deep); font-variant-numeric: tabular-nums; }
+.pu-terms-cases { margin: 0; padding-inline-start: var(--s4); display: grid; gap: var(--s-half); }
+.pu-terms-cases strong { color: var(--ink); font-weight: 600; }
+.pu-terms a { color: var(--accent-deep); text-underline-offset: 2px; overflow-wrap: anywhere; }
+.pu-terms-legal { font-size: var(--t-tiny); color: var(--ink-muted); }
+@media (max-width: 719px) { .pu-terms { padding: var(--s4); } .pu-term.is-block { padding: var(--s3); } }
+
+/* ---- your plan: the facts (purchase.js currentSummary) ------------ */
+.pu-facts { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: var(--s3) var(--s5); }
+.pu-fact { display: grid; gap: var(--s-half); min-width: 0; }
+.pu-fact > dt { font-size: var(--t-tiny); color: var(--ink-muted); }
+.pu-fact > dd { margin: 0; font-size: var(--t-small); color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pu-fact.is-soon > dd { color: var(--warn-deep, var(--ink)); font-weight: 600; }
+/* the sentence-long facts (payment, includes) take the whole row */
+.pu-fact.is-wide { grid-column: 1 / -1; }
+
+/* THE REFUND ANNOUNCEMENT (owner, 28 Oct 2026): large, first in the plan card,
+   on the one page an unpaid person can reach, until they buy again. */
+.pu-refund-banner {
+  margin: 0 0 var(--s4);
+  padding: var(--s4) var(--s5);
+  border: 1px solid var(--border-strong);
+  border-left: 4px solid var(--accent-primary);
+  border-radius: var(--sk-radius, var(--radius));
+  background: var(--surface-card);
+}
+.pu-refund-eyebrow {
+  margin: 0 0 var(--s1);
+  font-family: var(--f-body);
+  font-size: var(--t-micro);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--brand-deep);
+}
+.pu-refund-h {
+  margin: 0 0 var(--s2);
+  font-size: var(--t-xl);
+  font-family: var(--f-display);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.pu-refund-p {
+  margin: 0;
+  font-size: var(--t-base);
+  color: var(--ink-body);
+  line-height: var(--lh-body);
+  max-width: var(--measure-text);
+}

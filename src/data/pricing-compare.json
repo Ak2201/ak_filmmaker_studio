@@ -5,9 +5,9 @@
     "description": "Three plans, each a year of the studio. Compare what Basic, Intermediate and Pro include, feature by feature, with each plan's price and terms."
   },
   "hero": {
-    "h1": "Less than the price of a tea a day.",
-    "sub": "Three plans, and each one includes everything in the plan below it. A plan is one year of the studio in Indian rupees, from about {{fms:price.from.day}} a day. {planTerms} {planRenewNote} Nothing in a plan is sold as an add-on.",
-    "subUsd": "Three plans, and each one includes everything in the plan below it. A plan is one year of the studio in US dollars, from about {{fms:price.from.day}} a day. {planTerms} {planRenewNote} Nothing in a plan is sold as an add-on."
+    "h1": "Simple plans, one year at a time",
+    "sub": "Three plans, each a year of the studio in Indian rupees, from about {{fms:price.from.day}} a day. Each one includes everything in the plan below it. {planTerms} {planRenewNote}",
+    "subUsd": "Three plans, each a year of the studio in US dollars, from about {{fms:price.from.day}} a day. Each one includes everything in the plan below it. {planTerms} {planRenewNote}"
   },
   "pass": {
     "h": "Not sure yet?",
@@ -18,14 +18,14 @@
   },
   "plans": {
     "h": "Pick the stage you need",
-    "lede": "Every plan runs for one year from the day you buy it. Buy it again to add another year; move up a plan mid-year and the unused part of your year is credited.",
+    "lede": "A plan runs for one year from the day you buy it. Move up mid-year and the unused part is credited.",
     "once": "a year",
     "keep": "about {{day}} a day",
     "tags": { "starter": "Writer", "indie": "Director", "pro": "Production house" },
     "pickFlag": "Recommended for filmmakers",
     "pick": "indie",
     "buy": "Buy {name}",
-    "buySignIn": "Sign in",
+    "buySignIn": "Continue with Google",
     "alt": "or try it first: {length} for {price}",
     "altOpen": "or open the studio",
     "noteHtml": "Yearly list prices in Indian rupees, for one year from the day you buy, paid through Razorpay and confirmed at checkout with the plan's terms. {planTerms} The learning library and your local work are on every plan. A plan is final apart from the three cases in the <a href=\"refund.html\">Refund and Cancellation Policy</a>, so compare what each plan includes below before you buy.",
@@ -49,7 +49,8 @@
   },
   "compare": {
     "h": "Compare every feature",
-    "lede": "Generated from the same list the studio uses to decide what to open, so it cannot disagree with the product.",
+    "lede": "Built from the same list the studio uses to decide what to open, so it always matches the product.",
+    "toggle": "Show the full comparison",
     "caption": "What each plan includes",
     "what": "What you get",
     "yes": "Included",
@@ -57,7 +58,7 @@
   },
   "faq": {
     "h": "Questions about billing, plans and your data",
-    "lede": "Short answers, in plain words. Anything not covered is a message away.",
+    "lede": "Short answers. Anything else is a message away.",
     "contact": {
       "before": "Something else? Talk to the team at",
       "after": "A person reads every message, and payment and refund questions are answered within two working days."
@@ -65,7 +66,7 @@
   },
   "close": {
     "h": "See the studio filled in before you decide",
-    "cta": "Get started"
+    "cta": "Continue with Google"
   },
   "groups": [
     { "id": "basics",  "label": "Account basics",       "keys": ["new_projects", "exports", "drive_backup", "extension"] },

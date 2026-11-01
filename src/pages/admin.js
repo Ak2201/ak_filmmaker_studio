@@ -104,6 +104,7 @@ import { errorSentence } from '../lib/gate.js';
 import { planFeaturesSection, wirePlanFeatures } from '../ui/plan-features.js';
 import { purchasesSwitchBlock, accessAdminSection, wireAccessAdmin, purchasesRequiredNow } from '../ui/access-admin.js';
 import { coEditSwitchBlock } from '../ui/coedit-admin.js';
+import { storageModeBlock } from '../ui/storage-admin.js';
 import { billingAdminSection, wireBillingAdmin, billingSnapshot } from '../ui/billing-admin.js';
 import { invoiceAdminSection } from '../ui/invoice-panels.js';
 import { growthAdminSection, wireGrowthAdmin, growthSnapshot } from '../ui/growth-admin.js';
@@ -388,6 +389,7 @@ function peopleTab(st) {
     adminSection(block, st, { part: 'members' }),
     accessAdminSection(block, st),
     coEditSwitchBlock(() => renderSoon()),
+    storageModeBlock(() => renderSoon()),
     ov.data ? signedInBlock() : null,
     ov.data ? organisationsBlock() : null
   ]);
@@ -496,7 +498,7 @@ function render() {
   } else if (!signedIn) {
     /* A filmmaker who lands here by accident is told where their films
        are, rather than being asked for an administrator's account. */
-    body = h('div.ad-body', {}, [state('signin', 'Sign in', 'Use an administrator’s Google account.',
+    body = h('div.ad-body', {}, [state('signin', 'Continue with Google', 'Use an administrator’s Google account.',
       [button({ label: 'Continue with Google', variant: 'primary', attrs: { 'data-auth-action': 'google' } })],
       h('p.ad-meta', {}, ['For studio administrators. Looking for your films? ', h('a', { href: 'index.html', text: 'Go to the Studio' }), '.']))]);
   } else if (!st && stError) {

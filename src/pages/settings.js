@@ -56,7 +56,7 @@
    attributes the toolbar menu uses; the listener at the bottom of
    this file applies nothing and only repaints the checked state.
 
-   NO PAGE-LOCAL MIRROR OF "IS THERE A KEY". Every render asks
+   NO PAGE-LOCAL MIRROR OF "Is there a key". Every render asks
    ai.js, through the panel module, and the page redraws on
    `onAIChange` — which is what makes Forget and Replace land here
    the same way they land in a panel.
@@ -86,7 +86,7 @@ import '../styles/settings.css';
 import '../styles/kit-scope.css';   /* the kit's look for the legacy .btn / fields the account, invite and key modules draw */
 
 import StudioUI from '../ui/chrome.js';
-import { pageHeader, eyebrow as kitEyebrow, button } from '../ui/kit/index.js';
+import { pageHeader, eyebrow as kitEyebrow, button, kGoogleBtn } from '../ui/kit/index.js';
 import { mountShell } from '../ui/shell.js';
 import { h, delegate, commitMain } from '../lib/dom.js';
 /* The provider table. The key area is composed by ai-panel.js; this
@@ -125,7 +125,7 @@ import { renderActivityLog } from '../ui/activity-log.js';
 import { ALL_KEYS } from './hub/all-keys.js';
 import { usageOptedOut } from '../lib/usage.js';
 import { movedAnchor, plural, formatWhen, fmtQuota, storageReadout, bigTierFigure, roleLine, seatsKey, planSummary, cloudDeleteReport, setUsageCounting, autopaySummary } from '../lib/settings-model.js';
-import { cancelledText } from '../lib/offer-terms.js';
+import { CANCEL_AT_MANDATE } from '../lib/offer-terms.js';
 import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
 import { mountMotionChoice } from '../ui/motion-choice.js';
 import { renderFilmPicker, onFavChange, hasOpenProject } from '../ui/fav-film.js';
@@ -642,9 +642,9 @@ function renderCloudSync() {
   if (sw) { sec.append(sw); return sec; }
   sec.append(h('p.st-note', { text: signedIn
     ? 'Cloud sync is not available in this build.'
-    : 'Sign in to turn on cloud sync. Everything works without an account; your projects stay on this device.' }));
+    : 'Continue with Google to turn on cloud sync. Everything works without an account; your projects stay on this device.' }));
   if (!signedIn && c && c.isConfigured && c.isConfigured()) {
-    sec.append(h('p', {}, [h('button.k-btn.k-btn--primary', { type: 'button', 'data-action': 'plan-sign-in', text: 'Sign in' })]));
+    sec.append(h('p', {}, [kGoogleBtn({ action: false, attrs: { 'data-action': 'plan-sign-in' } })]));
   }
   return sec;
 }
@@ -810,7 +810,7 @@ function renderAdmin() {
     h('span.st-dot' + (override ? '.is-warn' : '.is-ok'), { 'aria-hidden': 'true' }),
     h('span', {
       text: override
-        ? 'THIS BROWSER IS OVERRIDING THE BUILD'
+        ? 'This browser is overriding the build'
         : 'USING THE BUILD\u2019S OWN PROJECT'
     })
   ]));
@@ -865,14 +865,14 @@ function consolePointer() {
 function renderAccountMine() {
   const c = window.StudioCloud;
   const signedIn = !!(c && c.getSession && c.getSession());
-  const sec = section('you', 'You', signedIn ? 'Your account.' : 'Sign in.',
+  const sec = section('you', 'You', signedIn ? 'Your account.' : 'Continue with Google.',
     signedIn
       ? 'You are signed in. Signing in is what lets your films sync between devices and be shared.'
-      : 'Everything works without an account. Signing in adds sync between devices and sharing.');
+      : 'Everything works without an account. An account adds sync between devices and sharing; new or returning, it is the same button.');
   const slot = h('div#accountBlockHost');
   const make = AuthUI['renderAccountBlock'];   // not a named import: that export belongs to another lane and may not exist yet
   let block = null;
-  /* Signed out, the shared block is a caps menu row ("SIGN IN") beside
+  /* Signed out, the shared block is a caps menu row ("Sign in") beside
      this page's own k-btn sign-in under Cloud sync: two styles for one
      action (UI review, 22 Oct 2026). Signed out, this page draws the
      same primary button as the cloud-sync panel instead. */
@@ -881,7 +881,7 @@ function renderAccountMine() {
   else if (signedIn) slot.append(h('p', { text: 'Signed in as ' + ((c.getUserEmail && c.getUserEmail()) || 'your Google account') + '.' }));
   else if (c && c.isConfigured && c.isConfigured()) {
     slot.append(h('p.hint', { text: 'You are not signed in. Your projects are saved on this device either way.' }));
-    slot.append(h('p', {}, [h('button.k-btn.k-btn--primary', { type: 'button', 'data-action': 'plan-sign-in', text: 'Sign in' })]));
+    slot.append(h('p', {}, [kGoogleBtn({ action: false, attrs: { 'data-action': 'plan-sign-in' } })]));
   } else {
     slot.append(h('p.hint', { text: 'This build is not connected to a cloud project, so there is no account to sign in to.' }));
   }
@@ -1032,56 +1032,26 @@ function renderPlanCard() {
 }
 
 /* ---- Auto-pay (§62) -------------------------------------------------
-   Only while there is one: what it charges and when, and the way to stop
-   it. CANCEL is cancel-at-period-end (rzp-cancel): nothing more is
-   charged, the time already paid for is kept, and a cancel is not a
-   refund. The words are offer-terms.js's, through settings-model.js. */
-const autopayState = { busy: false, msg: '', bad: false };
+   Only while there is one: a status line (what it charges and when) and
+   where to cancel. There is NO cancel button here (owner, 28 Oct 2026):
+   cancelling is done at the mandate, from the Razorpay e-mail link or the
+   bank / UPI app. The console's admin cancel (billing.js) is untouched.
+   The words are offer-terms.js's, through settings-model.js. */
 function renderAutopay() {
   const cp = PlanGate.currentPlan();
   const nameOf = (p) => (p === 'pass' ? passName(cp.passDays) : Billing.planName(p));
   const sum = autopaySummary(cp.autopay, nameOf);
-  if (!sum && !autopayState.msg) return null;
+  if (!sum) return null;
   const sec = section('autopay', 'Plan & purchases', 'Auto-pay.',
-    'The payment that repeats by itself, and the way to stop it. Stopping keeps the time already paid for.');
+    'The payment that repeats by itself, and how to stop it.');
   const card = h('div.st-plan-card.st-autopay');
-  if (sum) {
-    card.append(h('p.st-plan-pills', {}, [h('span.st-led.is-' + sum.led[1], {}, [h('span.st-dot.is-' + sum.led[1], { 'aria-hidden': 'true' }), sum.led[0]])]));
-    card.append(h('p.st-plan-line', { text: sum.name + ' · ' + sum.line }));
-    if (sum.note) card.append(h('p.st-plan-note', { text: sum.note }));
-    if (sum.canCancel) {
-      card.append(h('p.st-plan-link', {}, [h('button.k-btn.k-btn--secondary', {
-        type: 'button', 'data-action': 'autopay-cancel', 'data-until': sum.until, disabled: autopayState.busy ? true : null,
-        text: autopayState.busy ? 'CANCELLING…' : 'CANCEL AUTO-PAY' })]));
-    }
-  }
-  if (autopayState.msg) card.append(h('p.st-plan-note' + (autopayState.bad ? '.gt-error' : ''), { role: autopayState.bad ? 'alert' : 'status', text: autopayState.msg }));
+  card.append(h('p.st-plan-pills', {}, [h('span.st-led.is-' + sum.led[1], {}, [h('span.st-dot.is-' + sum.led[1], { 'aria-hidden': 'true' }), sum.led[0]])]));
+  card.append(h('p.st-plan-line', { text: sum.name + ' · ' + sum.line }));
+  if (sum.note) card.append(h('p.st-plan-note', { text: sum.note }));
+  if (sum.canCancel) card.append(h('p.st-plan-note', { text: CANCEL_AT_MANDATE }));
   sec.append(card);
   return sec;
 }
-delegate(document, 'click', '[data-action="autopay-cancel"]', async (e, btn) => {
-  if (autopayState.busy) return;
-  const until = btn.dataset.until || '';
-  const ok = await ask({
-    title: 'Cancel auto-pay?',
-    body: 'You keep access until ' + (until || 'the end of the period already paid for') + '. Nothing more will be charged.',
-    confirm: 'CANCEL AUTO-PAY', cancel: 'Keep auto-pay'
-  });
-  if (!ok) return;
-  autopayState.busy = true; autopayState.msg = ''; autopayState.bad = false;
-  render();
-  try {
-    const out = await Billing.cancelAutopay();
-    const end = out && out.current_end ? new Date(out.current_end).toLocaleDateString(undefined, { dateStyle: 'medium' }) : until;
-    autopayState.msg = cancelledText(end) + '.';
-  } catch (err) {
-    autopayState.msg = (err && err.message) || 'Auto-pay could not be cancelled just now. Please try again.';
-    autopayState.bad = true;
-  } finally {
-    autopayState.busy = false;
-    render();
-  }
-});
 
 /* ---- What's in my plan ---------------------------------------------
    The current plan's modules and tools, and what the NEXT plan adds with
@@ -1188,7 +1158,7 @@ function renderActivitySection() {
   const host = h('div.st-activity');
   renderActivityLog(host);
   /* ONE BUTTON LANGUAGE (item 48): activity-log.js draws its two actions
-     as mono-caps `.mini-btn` ('↻ REFRESH', 'CLEAR LOG'), which the
+     as mono-caps `.mini-btn` ('↻ REFRESH', 'Clear log'), which the
      k-scope sheet does not cover. Restate them as kit small buttons in
      sentence case. The log redraws itself on Refresh and Clear, so this
      re-applies on each redraw; it touches only class and label, and the
@@ -1229,7 +1199,7 @@ function renderPrivacySection() {
 
 function renderTourSection() {
   const sec = section('tour', 'Help', 'Take the tour.',
-    'A two-minute walk through the studio. It never starts by itself; this is the button for it.');
+    'A walk through every page of the studio, on the Dragon sample. It starts by itself once, the first time an account signs in; this button takes it again. Pause it any time and resume it from your account menu.');
   sec.append(h('p', {}, [h('button.k-btn.k-btn--secondary', { type: 'button', 'data-action': 'tour-start', text: 'Take the tour again' })]));
   return sec;
 }
@@ -1264,7 +1234,7 @@ delegate(document, 'click', '[data-action="erase-all"]', async () => {
     body: 'Every project, setting and saved key in this browser is erased. You stay signed in; the cloud copies of your projects are not touched, and cloud sync is paused so the empty device does not upload over them. This cannot be undone.',
     typeToConfirm: 'ERASE',
     checkbox: { label: 'Also delete my Google Drive backup file', checked: false },
-    confirm: 'ERASE EVERYTHING', danger: true
+    confirm: 'Erase everything', danger: true
   });
   if (!r || !r.ok) return;
   const alsoDrive = !!r.checked;
@@ -1285,7 +1255,7 @@ delegate(document, 'click', '[data-action="delete-cloud"]', async () => {
   const ok = await ask({
     title: 'Delete my cloud projects?',
     body: 'Deletes the cloud copy of every project you own. The copies on this device stay. Cloud sync will be paused so nothing re-uploads.',
-    typeToConfirm: 'DELETE', confirm: 'DELETE CLOUD COPIES', danger: true
+    typeToConfirm: 'DELETE', confirm: 'Delete cloud copies', danger: true
   });
   if (!ok) return;
   const c = window.StudioCloud;
@@ -1326,9 +1296,8 @@ function render() {
   const panes = [
     tabPane('account', 'Account', 'You', [renderAccountMine(), renderActivitySection(), inviteSection(section, gateStatus), renderBuild()], { icon: 'person', hint: 'Your sign-in, your activity and invites.' }),
     /* PLAN & PURCHASES (27 Oct 2026): its own tab, because the public
-       copy and the legal draft name the cancel path as Settings → Plan &
-       purchases → Cancel auto-pay: the button is tap one, the dialog.js
-       confirm tap two. Id 'purchases', not 'plan' (#plan is an old
+       copy points here for the auto-pay status. Cancelling is at the
+       mandate (Razorpay e-mail, bank / UPI app), never a button here. Id 'purchases', not 'plan' (#plan is an old
        billing anchor that redirects to purchase.html). */
     tabPane('purchases', 'Plan & purchases', 'You', [renderPlanCard(), renderAutopay(), renderPlanContents()], { icon: 'payments', hint: 'Your plan, auto-pay and what the plan opens.' }),
     tabPane('preferences', 'Preferences', 'This device', [renderRegion(), renderMotion(), renderFavourite(), renderKey(), renderPrivacySection(), renderTourSection()], { icon: 'tune', hint: 'Region, motion, favourite film, your AI key and privacy.' }),
@@ -1422,7 +1391,7 @@ const DRIVE_ACTIONS = {
     if (!await ask({
       title: 'Stop syncing to Drive from this browser?',
       body: 'The file in your Drive is not deleted and nothing you have written is touched.',
-      confirm: 'STOP SYNCING'
+      confirm: 'Stop syncing'
     })) return;
     DriveSync.disconnect();
     versions = null;
@@ -1454,7 +1423,7 @@ const DRIVE_ACTIONS = {
       if (!await ask({
         title: 'Replace this browser\u2019s copy?',
         body: [...sentences, 'The file in Drive is not changed by this.'],
-        confirm: 'REPLACE', danger: true
+        confirm: 'Replace', danger: true
       })) return;
       const r = p.kind === 'theirs'
         ? await DriveSync.resolveConflict('theirs')
@@ -1507,7 +1476,7 @@ delegate(document, 'click', '[data-action="admin-use-built-in"]', async () => {
   if (!await ask({
     title: 'Use the build\u2019s own Supabase project?',
     body: 'Drops this browser\u2019s own Supabase project and goes back to the one this build ships with. Nothing you have written is touched. You will be signed out of the current project.',
-    confirm: 'USE BUILT-IN'
+    confirm: 'Use built-in'
   })) return;
   /* setCfg(null) CLEARS THE OVERRIDE, it does not un-configure the app
      — getCfg() falls through to the build's own. That is only true
@@ -1546,7 +1515,7 @@ delegate(document, 'change', '[data-action="cloud-sync-toggle"]', async (e, el) 
     const yes = await ask({
       title: 'Turn off cloud sync?',
       body: 'Changes on this device won\u2019t reach your other devices until you turn it back on. Nothing is deleted.',
-      confirm: 'TURN OFF'
+      confirm: 'Turn off'
     });
     if (!yes) { el.checked = true; return; }
     c.setSyncEnabled(false).then(render);

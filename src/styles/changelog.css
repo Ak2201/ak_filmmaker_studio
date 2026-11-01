@@ -6,10 +6,10 @@
 .cl-entry:first-child { border-top: 0; padding-top: 0; }
 .cl-date {
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-small);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .cl-title { margin: 0; color: var(--ink); }

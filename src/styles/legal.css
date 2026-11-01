@@ -28,9 +28,8 @@
   width: 100%;
   max-width: var(--mk-wrap, 1200px);
   margin-inline: auto;
-  /* The header is position: fixed, so the page starts below it, as the
-     marketing hero does. */
-  padding: calc(var(--mk-top-h, 72px) + var(--s7)) var(--gutter) var(--s9);
+  /* The header is sticky (in the flow), so the page starts under it. */
+  padding: var(--s8) var(--gutter) var(--s9);
   box-sizing: border-box;
 }
 /* a page in the frame with no contents list (404.html): one column */
@@ -78,10 +77,11 @@
 .legal-toc-h,
 .legal-toc-m > summary {
   margin: 0 0 var(--s3);
-  font-family: var(--f-mono);
-  font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-family: var(--f-body);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-small);
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .legal-toc ol,
@@ -158,29 +158,15 @@
   text-wrap: balance;
 }
 
-/* `.legal .legal-sub` / `.legal .legal-date`, not the bare class: both are
-   <p>s, and `.legal p` (one class and a tag) outranked a single class, so
-   the deck lost its --t-lg and the date its tiny muted mono (it printed at
-   body size, ink-body, and its rule stopped at --measure short of the
-   callouts below it). */
+/* `.legal .legal-sub`, not the bare class: it is a <p>, and `.legal p`
+   (one class and a tag) outranked a single class, so the deck lost its
+   --t-lg. */
 .legal .legal-sub {
   color: var(--ink-body);
   font-size: var(--t-lg);
   line-height: var(--lh-body);
-  margin: 0 0 var(--s3);
-  max-width: 52ch;
-}
-
-.legal .legal-date {
-  max-width: none;
-  font-family: var(--f-mono);
-  font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--ink-muted);
   margin: 0 0 var(--s6);
-  padding-bottom: var(--s4);
-  border-bottom: 1px solid var(--border-hair);
+  max-width: 52ch;
 }
 
 .legal h2 {
@@ -212,9 +198,6 @@
 }
 
 .legal p { margin: 0 0 var(--s3); }
-/* The date's rule runs the column's width, like the boxes below it;
-   .legal p would otherwise cap it at --measure. */
-.legal p.legal-date { max-width: none; margin-bottom: var(--s6); }
 .legal ul,
 .legal ol { margin: 0 0 var(--s3); padding-left: var(--s5); }
 .legal li { margin-bottom: var(--s2); }
@@ -229,7 +212,7 @@
 .legal a:hover { color: var(--ink); }
 
 .legal code {
-  font-family: var(--f-code);
+  font-family: var(--f-body);
   font-size: 0.92em;
   background: var(--surface-elevated);
   border: 1px solid var(--border-hair);
@@ -248,24 +231,6 @@
   margin: 0 0 var(--s5);
 }
 .legal-key p:last-child { margin-bottom: 0; }
-
-/* "What changed" — a note about the document, quieter than the key box. */
-.legal-changes {
-  background: var(--surface-card);
-  border: 1px solid var(--border-hair);
-  border-radius: var(--radius-lg);
-  padding: var(--s4) var(--s5);
-  margin: 0 0 var(--s5);
-}
-.legal-changes h2 {
-  font-size: var(--t-base);
-  margin: 0 0 var(--s2);
-  padding-top: 0;
-  border-top: 0;
-}
-.legal-changes ul { margin-bottom: 0; }
-.legal-changes li { font-size: var(--t-small); }
-.legal-changes li:last-child { margin-bottom: 0; }
 
 /* A detail the OWNER has still to supply, marked so nobody reads it as
    filled in. */
@@ -295,10 +260,10 @@
   .legal-page { display: block; max-width: none; padding: 0; }
   .legal h1, .legal h2, .legal h3, .legal strong { color: var(--print-ink); }
   .legal p, .legal li, .legal-sub { color: var(--print-ink); }
-  .legal .legal-date, .legal li::marker { color: var(--print-muted); }
-  .legal h2, .legal-date { border-color: var(--print-rule); }
+  .legal li::marker { color: var(--print-muted); }
+  .legal h2 { border-color: var(--print-rule); }
   .legal a { color: var(--print-ink); }
-  .legal-key, .legal-changes, .legal code {
+  .legal-key, .legal code {
     background: var(--print-wash);
     border-color: var(--print-rule);
   }

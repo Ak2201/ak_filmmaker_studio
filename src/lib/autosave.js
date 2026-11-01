@@ -92,6 +92,25 @@ addEventListener('visibilitychange', () => {
  * text is saved first, so the redraw reads it back; then the same field
  * (matched by its data-* attributes) gets the focus and the caret back.
  */
+/* THE FIELD BEING REPLACED SPEAKS ONE LAST TIME. Chromium fires
+   `change` — synchronously, with the element still connected — when a
+   focused field whose value changed since it was focused is removed by
+   the redraw. Its value is what was typed BEFORE the redraw, and the
+   redraw is usually there because the store moved on (another window
+   saved): the page's change handler then wrote that older text back
+   over the newer one, and the sync carried it on (prove:beat-sync, the
+   stale field saved over the other window's edit — intermittent,
+   because the field is only still "changed" until its first blur).
+   The typed text is already safe: flushAutosave() runs first. So that
+   one element's `change` during its own redraw is dropped here, before
+   any page listener (window, capture) sees it. */
+let replacing = null;
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('change', (e) => {
+    if (replacing && e.target === replacing) e.stopImmediatePropagation();
+  }, true);
+}
+
 export function preservingFocus(render) {
   const el = document.activeElement;
   if (!el || !isTyped(el)) { render(); return; }
@@ -104,7 +123,9 @@ export function preservingFocus(render) {
   let start = null, end = null;
   try { start = el.selectionStart; end = el.selectionEnd; } catch (e) { /* not a text type */ }
   flushAutosave();
-  render();
+  const outer = replacing;
+  replacing = el;
+  try { render(); } finally { replacing = outer; }
   if (!attrs.length || index < 0 || el.isConnected) return;
   const next = document.querySelectorAll(sel)[index];
   if (!next) return;

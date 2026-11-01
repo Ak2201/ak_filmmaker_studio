@@ -29,7 +29,7 @@
    path.
    ============================================================ */
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { checkCronSecret, sendRenewalReminders } from '../_shared/mail.js';
+import { checkCronSecret, sendRenewalReminders, mailEnvFrom, mailConfigured } from '../_shared/mail.js';
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -41,9 +41,9 @@ Deno.serve(async (req) => {
   if (auth === 'unset') return json(503, { error: 'CRON_SECRET is not set on this project.' });
   if (auth !== 'ok') return json(401, { error: 'bad cron secret' });
 
-  const env = { RESEND_API_KEY: Deno.env.get('RESEND_API_KEY') ?? '', MAIL_FROM: Deno.env.get('MAIL_FROM') ?? '' };
-  if (!env.RESEND_API_KEY || !env.MAIL_FROM) {
-    return json(503, { error: 'Mail is not configured (RESEND_API_KEY / MAIL_FROM); nothing was claimed.', sent: 0, failed: 0 });
+  const env = mailEnvFrom((k) => Deno.env.get(k));
+  if (!mailConfigured(env)) {
+    return json(503, { error: 'Mail is not configured (MAIL_FROM and RESEND_API_KEY, or SMTP_USER and SMTP_PASSWORD); nothing was claimed.', sent: 0, failed: 0 });
   }
 
   const svc = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');

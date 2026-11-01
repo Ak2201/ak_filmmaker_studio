@@ -274,7 +274,11 @@ ok(ph.need <= ph.have, '8  the search placeholder fits its box', ph);
   // the bar's labels are kit sentence case
   ok(/^Expand all$/.test(await q.$eval('.bd-sl-expand', (b) => b.textContent.trim())) && /^Save this filter$/.test(await q.$eval('.bd-sl-save', (b) => b.textContent.trim())), '9  Expand all and Save this filter are sentence case');
   // keyboard reorder: the grip stays where it was on screen
-  await q.evaluate(() => window.scrollTo(0, 0));
+  /* INSTANT: base.css sets scroll-behavior: smooth, so a bare scrollTo(0, 0)
+     is an animation, and on a loaded runner it was still running while the
+     focus and the first key landed, so where the grip started depended on
+     the runner's speed (Gate run 383). */
+  await q.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   await q.focus('[data-scene="sc2"] .bd-sl-grip');
   const top0 = await q.$eval('[data-scene="sc2"] .bd-sl-grip', (g) => g.getBoundingClientRect().top);
   await q.keyboard.press('ArrowDown');

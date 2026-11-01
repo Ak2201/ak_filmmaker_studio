@@ -30,7 +30,7 @@
   padding: var(--s-half) var(--s1h);
   background: var(--surface-elevated); color: var(--ink);
   border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
-  font-family: var(--f-mono); font-size: var(--t-micro); white-space: nowrap;
+  font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); white-space: nowrap;
 }
 .sa-key-dot::before { width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--ink-muted); }
 
@@ -52,7 +52,7 @@
 .sa-cast { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
 .sa-cast-row { display: grid; grid-template-columns: minmax(7rem, 12rem) minmax(8rem, 12rem) minmax(0, 1fr); align-items: center; gap: var(--s3); }
 .sa-cast-name { color: var(--ink); font-weight: 600; font-size: var(--t-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sa-cast-n { font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); white-space: nowrap; }
+.sa-cast-n { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); color: var(--ink-muted); white-space: nowrap; }
 .sa-track { position: relative; height: 14px; background: var(--surface-rail); border-radius: var(--radius-sm); }
 .sa-span { position: absolute; top: 6px; height: 2px; background: var(--border-strong); }
 .sa-tick { position: absolute; top: 2px; width: 2px; height: 10px; margin-left: -1px; background: var(--accent-primary); border-radius: 1px; }
@@ -100,7 +100,7 @@
 }
 .sa-walk-n {
   position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-  font-family: var(--f-mono); font-size: var(--t-micro); line-height: 1.2; color: var(--ink-muted);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); line-height: 1.2; color: var(--ink-muted);
 }
 
 /* the scrubber: one slider over the whole plot */
@@ -116,7 +116,7 @@
 .sa-aud-draft {
   display: inline-block; margin-left: var(--s2); padding: 0 var(--s1h);
   border: 1px solid var(--status-warning); border-radius: var(--radius-pill);
-  color: var(--ink); font-size: var(--t-micro); font-family: var(--f-mono); text-transform: uppercase; letter-spacing: .04em;
+  color: var(--ink); font-size: var(--t-micro); font-family: var(--f-body); text-transform: none; letter-spacing: 0;
 }
 .sa-aud-draft[hidden] { display: none; }
 .sa-aud-who { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); }
@@ -131,13 +131,13 @@
 .sa-aud-hint { margin: 0; font-size: var(--t-tiny); color: var(--ink-muted); }
 .sa-aud-read { min-width: 0; }
 .sa-aud-at { margin: 0 0 var(--s1); color: var(--ink-body); font-size: var(--t-small); overflow-wrap: anywhere; }
-.sa-aud-at b { color: var(--ink); font-family: var(--f-mono); }
+.sa-aud-at b { color: var(--ink); font-family: var(--f-body); font-variant-numeric: tabular-nums; }
 .sa-aud-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); }
 .sa-aud-row { display: grid; grid-template-columns: minmax(8rem, 13rem) 3rem minmax(0, 1fr); gap: var(--s2); align-items: baseline; font-size: var(--t-tiny); color: var(--ink-body); }
 .sa-aud-row.is-gone { color: var(--ink-muted); }
 .sa-aud-name { color: var(--ink); overflow-wrap: anywhere; }
 .sa-aud-row.is-gone .sa-aud-name { color: var(--ink-muted); }
-.sa-aud-score { font-family: var(--f-mono); text-align: right; }
+.sa-aud-score { font-family: var(--f-body); font-variant-numeric: tabular-nums; text-align: right; }
 .sa-aud-score.is-up { color: var(--ok-deep); }
 .sa-aud-score.is-down { color: var(--danger-deep, var(--ink)); }
 .sa-aud-moment { min-width: 0; overflow-wrap: anywhere; }

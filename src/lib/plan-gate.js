@@ -409,7 +409,7 @@ function remindTrial() {
   const toast = (text) => {
     try {
       const ui = window.StudioUI;
-      if (ui && ui.toast) ui.toast(text, { type: 'info', action: 'CHOOSE A PLAN', onAction: () => { location.href = 'purchase.html'; } });
+      if (ui && ui.toast) ui.toast(text, { type: 'info', action: 'Choose a plan', onAction: () => { location.href = 'purchase.html'; } });
     } catch (err) { /* no chrome on this page: the rail still counts */ }
   };
   if (!pe) { toast('Your free trial ends ' + left + ' (' + when + '). Choose a plan to keep working; everything you made stays.'); return; }
@@ -555,7 +555,7 @@ export function nudgeText(o) {
   return 'It comes with the ' + o.name + ' plan.';
 }
 /** The toast button that goes with nudgeText(). */
-export const nudgeAction = (o) => (!o ? 'SEE PLANS' : (o.more ? 'UPGRADE TO ' : 'SEE ') + o.name.toUpperCase());
+export const nudgeAction = (o) => (!o ? 'See plans' : (o.more ? 'Upgrade to ' : 'See ') + o.name);
 /** The lowest plan above this one whose cap on `key` (projects, shares,
  *  collaborators, seats) is higher than this plan's — the plan a P0402
  *  limit should name. Read from the plans rows, like offerFor(). */
@@ -671,13 +671,13 @@ function lockCard(mods) {
     });
     card.append(ul);
   }
-  const cta = h('a.btn.primary', { href: 'purchase.html', text: 'SEE PLANS' });
+  const cta = h('a.btn.primary', { href: 'purchase.html', text: 'See plans' });
   card.append(
     h('p.pg-lock-p', { text: (names ? names + (list.length > 1 ? ' are' : ' is') : 'This part of the studio is') + ' part of a higher tier. Everything you have written here is still saved on this device; it reappears the moment the plan includes it.' }),
     includedLine(list.map((m) => m.id), cta),
     h('div.pg-lock-actions', {}, [
       cta,
-      h('a.btn', { href: 'index.html', text: 'BACK TO THE STUDIO' })
+      h('a.btn', { href: 'index.html', text: 'Back to the studio' })
     ])
   );
   return card;
@@ -693,7 +693,7 @@ function gonePanel() {
     h('p.bd-eyebrow', { text: 'Not available' }),
     h('h2.pg-lock-h', { text: 'This part of the studio is not available yet.' }),
     h('p.pg-lock-p', { text: 'It is not switched on for any plan right now. Anything you wrote here is still saved on this device.' }),
-    h('div.pg-lock-actions', {}, [h('a.btn.primary', { href: 'index.html', text: 'BACK TO THE STUDIO' })])
+    h('div.pg-lock-actions', {}, [h('a.btn.primary', { href: 'index.html', text: 'Back to the studio' })])
   ]);
   const el = h('div.pg-lock', { role: 'region', 'aria-label': 'Not available' }, [card]);
   el.dataset.gone = '1';
@@ -730,7 +730,14 @@ function gonePanel() {
    `/settings`, not `/settings.html`, and a regex anchored to `.html`
    would have walled the page you buy from on the live site and nowhere
    else. modulesHere() strips the extension for the same reason. */
-const WALL_EXEMPT = /^(settings|purchase|purchases|invite|start|screening|admin|pricing|contact|about|product-[a-z-]+|guides|guide-[a-z-]+|compare-[a-z-]+|trust)$/;
+/* OWNER, 28 Oct 2026: ONE page for somebody who has not paid, the purchase page.
+   A person with no running plan, pass or trial reaches nothing else of the
+   studio, Settings included (it was exempt, and it holds backup and Drive,
+   which are the studio). What stays: the purchase page itself, the doorway
+   and the public pages (terms, privacy, refund, contact and the rest of the
+   marketing site), and admin, which is role-gated and never walls an
+   administrator. */
+const WALL_EXEMPT = /^(purchase|purchases|invite|start|screening|admin|pricing|contact|about|privacy|terms|refund|product-[a-z-]+|guides|guide-[a-z-]+|compare-[a-z-]+|trust)$/;
 const pageName = () => file().replace(/\.html$/, '');
 
 /* ---- PASS TIMER — the launch offer's countdown, in the studio's pages
@@ -852,18 +859,17 @@ function wallPanel() {
         : 'A plan opens the desk for your own film: your script, your breakdown, your schedule, your budget, your call sheets.' }),
     /* The promise the owner made, kept where it is visible rather than
        in a FAQ: nothing a person wrote is held hostage to a sale. */
-    h('p.pg-lock-p.pg-wall-safe', { text: 'Everything you wrote is still here. Nothing has been deleted and nothing is locked away from you — download all of it, right now, with no plan.' }),
+    h('p.pg-lock-p.pg-wall-safe', { text: 'Everything you wrote is still saved on this device. Nothing has been deleted.' }),
     /* The plans themselves, ON the wall: a name, a price and one line
-       each, every row a link straight to that plan's card. "SEE PLANS"
+       each, every row a link straight to that plan's card. "See plans"
        alone made the person leave the wall to learn what it would cost.
        Not for somebody being offered their trial — that card has one
        job. Filled from the plans rows; empty (and hidden) if they
        cannot be read, which leaves the wall exactly as it was. */
     fresh ? null : wallPlans(),
     h('div.pg-lock-actions', {}, [
-      fresh ? h('button.btn.primary', { type: 'button', 'data-action': 'pg-start-trial', text: len ? 'START MY ' + len.toUpperCase() : 'START MY FREE TRIAL' }) : null,
-      h('a.btn' + (fresh ? '' : '.primary'), { href: 'purchase.html', text: 'SEE PLANS' }),
-      h('button.btn', { type: 'button', 'data-action': 'pg-export', text: 'DOWNLOAD MY WORK' }),
+      fresh ? h('button.btn.primary', { type: 'button', 'data-action': 'pg-start-trial', text: len ? 'Start my ' + len : 'Start my free trial' }) : null,
+      h('a.btn' + (fresh ? '' : '.primary'), { href: 'purchase.html', text: 'See plans' }),
       /* THE WAY OUT. The wall hides the band (.sh-bar) and the phone's
          bar (.mab) — plan-gate.css, [data-paywall] — and those held the
          only sign-out route there was (the account pill, then
@@ -872,7 +878,7 @@ function wallPanel() {
          invite.html said "You're in", start.html's sign-in came straight
          back here. It is the ordinary sign-out (auth.js's delegated
          [data-auth-action] handler), not a second implementation. */
-      h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
+      h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'Sign out' })
     ].filter(Boolean)),
     h('p.pg-lock-p.pg-wall-msg', { role: 'status', 'aria-live': 'polite', text: '' })
   ]);
@@ -892,15 +898,14 @@ function passWallPanel(e) {
     /* The pass's button straight under its price and clock: at 390px the
        plans below would otherwise push it two screens down. */
     h('div.pg-lock-actions', {}, [
-      h('button.btn.primary', { type: 'button', 'data-action': 'pg-buy-pass', text: passMode(wallPass) === 'renew' ? 'TRY THE WHOLE STUDIO' : 'TRY THE WHOLE STUDIO FOR ' + f.price + ' · ' + f.length.toUpperCase() })
+      h('button.btn.primary', { type: 'button', 'data-action': 'pg-buy-pass', text: passMode(wallPass) === 'renew' ? 'Try the whole studio' : 'Try the whole studio for ' + f.price + ' · ' + f.length })
     ]),
     h('p.pg-lock-p.pg-wall-msg', { role: 'status', 'aria-live': 'polite', text: '' }),
-    h('p.pg-lock-p.pg-wall-safe', { text: 'Everything you wrote is still here. Nothing has been deleted and nothing is locked away from you — download all of it, right now, with no plan.' }),
+    h('p.pg-lock-p.pg-wall-safe', { text: 'Everything you wrote is still saved on this device. Nothing has been deleted.' }),
     wallPlans(),
     h('div.pg-lock-actions', {}, [
-      h('a.btn', { href: 'purchase.html', text: 'SEE PLANS' }),
-      h('button.btn', { type: 'button', 'data-action': 'pg-export', text: 'DOWNLOAD MY WORK' }),
-      h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'SIGN OUT' })
+      h('a.btn', { href: 'purchase.html', text: 'See plans' }),
+      h('button.btn', { type: 'button', 'data-auth-action': 'signout', text: 'Sign out' })
     ])
   ]);
   return h('div.pg-lock.pg-wall', { role: 'region', 'aria-label': 'Launch offer' }, [card]);
@@ -965,7 +970,7 @@ async function startTrialFromWall(btn) {
   const msg = card && card.querySelector('.pg-wall-msg');
   const say = (t) => { if (msg) msg.textContent = t; };
   const was = btn.textContent;
-  btn.disabled = true; btn.textContent = 'STARTING…';
+  btn.disabled = true; btn.textContent = 'Starting…';
   try {
     const r = await Billing.startTrial();
     if (!r || !r.started) {
@@ -992,12 +997,12 @@ async function startTrialFromWall(btn) {
 async function exportFromWall(btn) {
   const was = btn ? btn.textContent : '';
   try {
-    if (btn) { btn.disabled = true; btn.textContent = 'PREPARING…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Preparing…'; }
     const { downloadBackup } = await import('./backup.js');
     await downloadBackup();
-    if (btn) btn.textContent = 'DOWNLOADED';
+    if (btn) btn.textContent = 'Downloaded';
   } catch (e) {
-    if (btn) btn.textContent = 'COULD NOT DOWNLOAD';
+    if (btn) btn.textContent = 'Could not download';
     try { console.error('[paywall] export failed', e); } catch (_) { /* */ }
   } finally {
     if (btn) setTimeout(() => { btn.disabled = false; btn.textContent = was; }, 2400);
@@ -1126,6 +1131,7 @@ function anyLockedHere() {
   return shelves().some((s) => s.modules.some(on)) || phases().some((p) => p.modules.some(on));
 }
 
+let sentToPurchase = false;
 function apply() {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
@@ -1136,6 +1142,17 @@ function apply() {
   /* The wall outranks the module lock: there is no point telling
      somebody which tier a module is on when their trial has ended. */
   const wall = walled();
+  /* THE ONE PAGE (owner, 28 Oct 2026): a walled person is SENT to the purchase
+     page, which holds the plans, the pass and the refund announcement, rather
+     than shown a copy of the offer on whatever page they asked for. The wall
+     below stays as the fallback (a blocked navigation, a build with no
+     purchase page), so nothing is ever left showing the studio. */
+  /* window.__fmsKeepWall is a PROOF hook: prove:billing's wall checks are
+     about the wall's own logic (the fallback), so they hold it in place. */
+  if (wall && !sentToPurchase && typeof location !== 'undefined' && !window.__fmsKeepWall) {
+    sentToPurchase = true;
+    try { location.replace('purchase.html'); } catch (e) { /* draw the wall instead */ }
+  }
   const gone = !wall && pageGone();
   const lock = !wall && (gone || pageLocked());
   if (wall || lock) {
@@ -1171,7 +1188,7 @@ function apply() {
 }
 
 /* ---- the marks ---------------------------------------------------- */
-/* The flag says WHICH plan opens the door ("INTERMEDIATE"), not just
+/* The flag says WHICH plan opens the door ("Intermediate"), not just
    that one does. The rows are read once (Billing caches them); until
    they answer, or if they cannot, the flag says PLAN as it always did —
    prove:billing reads .pg-flag by name and not by its text. */
@@ -1223,7 +1240,7 @@ export function markLocked(scope) {
     el.classList.toggle('is-locked', locked);
     let flag = el.querySelector(':scope > .pg-flag');
     const name = locked ? flagName(el.dataset.moduleId) : '';
-    const text = name ? name.toUpperCase() : 'PLAN';
+    const text = name ? name : 'Plan';
     const title = name ? 'Comes with the ' + name + ' plan' : 'Not on your plan';
     if (locked && !flag) el.append(h('span.pg-flag', { text, title }));
     else if (locked && flag && flag.textContent !== text) { flag.textContent = text; flag.title = title; }

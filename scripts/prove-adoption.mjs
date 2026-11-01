@@ -211,7 +211,7 @@ const pc = await page.evaluate(probe);
 check('(c) signed in: store offers exactly the device-only projects',
   pc.adoptable.slice().sort(), ['Desk Film', 'Night Shoot']);
 check('(c) signed in: notice host visible', pc.hostHidden, false);
-check('(c) signed in: adopt button present', pc.button, 'ADD ALL 2 TO THIS ACCOUNT');
+check('(c) signed in: adopt button present', pc.button, 'Add all 2 to this account');
 check('(c) signed in: names the right projects, by name', pc.names.slice().sort(),
   ['Desk Film', 'Night Shoot']);
 check('(c) the account project is NOT named in the panel',
@@ -227,7 +227,7 @@ check('(c) copy says the projects stay on this device',
 check('(c) copy says one copy listed in both places',
   /One copy of the work, listed in both places/i.test(copy), true);
 console.log('\n--- the copy, as rendered ---');
-console.log('eyebrow : ON THIS DEVICE ONLY');
+console.log('eyebrow : On this device only');
 ['title', 'deck', 'affects', 'fine'].forEach((k) => console.log(k.padEnd(8) + ': ' + pc[k]));
 console.log('button  : ' + pc.button);
 console.log('-----------------------------\n');
@@ -445,6 +445,45 @@ check(`AA pass actually measured text (${aa.total} nodes over ${aa.themes * aa.s
   aa.total >= 10 * aa.themes * aa.skins, true);
 check(`every text node in the panel clears 4.5:1, all ${aa.themes * aa.skins} combination(s)`, aa.fails, []);
 console.log(`        (${aa.total} measurements across ${aa.themes} themes x ${aa.skins} skins)`);
+
+// ------------------------------------------------------------
+// (e) THE SAMPLE IS OPENABLE AT ANY TIME, from Home and from the account
+//     menu, idempotently, beside the user's own film. Signed-out context.
+// ------------------------------------------------------------
+{
+  const sctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const sp = await sctx.newPage();
+  sp.on('pageerror', (e) => errors.push('sample: ' + e.message));
+  const titles = () => sp.evaluate(() => window.StudioStore.listProjects().map((p) => p.title));
+  await sp.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'networkidle' });
+  await sp.evaluate(() => {
+    localStorage.clear();
+    const S = window.StudioStore; S.createProject({ title: 'Dragon', format: 'feature' });   // the user's own film, same title as a sample
+    const p = S.createProject({ title: 'My Own Film', format: 'feature' });
+    S.setCurrentProject(p.id); S.notify('projects:changed', { reason: 'test' });
+  });
+  await sp.reload({ waitUntil: 'networkidle' });
+  await sp.click('[data-action="sample-project"][data-go]');
+  await sp.waitForURL(/dashboard\.html/, { timeout: 20000 });
+  let t = await titles();
+  check('Home: Open the sample project adds the sample beside the user\'s films (a namesake is not the sample)', t.length, 3);
+  const stamps = () => sp.evaluate(() => window.StudioStore.listProjects().map((p) => p.title + ':' + (p.sample || '')));
+  check('Home: exactly one entry is stamped as the sample, the user\'s Dragon is not', (await stamps()).sort(), ['Dragon:', 'Dragon:dragon', 'My Own Film:']);
+  check('Home: the user\'s own film is untouched', t.includes('My Own Film'), true);
+  check('Home: the open project is the sample', await sp.evaluate(() => window.StudioStore.currentProject().title !== 'My Own Film'), true);
+  // The account menu, from another page, a second time: re-opens, no duplicate.
+  await sp.evaluate(() => window.StudioStore.setCurrentProject(window.StudioStore.listProjects().find((p) => p.title === 'My Own Film').id));
+  await sp.reload({ waitUntil: 'networkidle' });
+  await sp.click('[data-action="rail-account"]');
+  await sp.click('#shAcctMenu a[href*="sample=1"]');
+  await sp.waitForURL(/dashboard\.html/, { timeout: 20000 });
+  t = await titles();
+  check('Menu: re-opens the existing sample, no duplicate', t.length, 3);
+  check('Menu: still exactly one stamped sample', (await stamps()).sort(), ['Dragon:', 'Dragon:dragon', 'My Own Film:']);
+  check('Menu: the open project is the stamped one', await sp.evaluate(() => window.StudioStore.currentProject().sample), 'dragon');
+  check('Menu: the sample is the open project again', await sp.evaluate(() => window.StudioStore.currentProject().title !== 'My Own Film'), true);
+  await sctx.close();
+}
 
 check('no page errors anywhere in this run', errors, []);
 

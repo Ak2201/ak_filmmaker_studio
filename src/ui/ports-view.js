@@ -15,3 +15,6 @@ import { setPort } from '../lib/ports.js';
 
 // cloud.js: "your account is active in another window — take over?"
 setPort('takeoverDialog', (info) => import('./gate-ui.js').then((m) => m.takeoverDialog(info)));
+/* Drive-only storage's sheets and toasts (src/lib/drive-project-sync.js),
+   lazy: nothing is fetched until a drive-mode page has something to show. */
+setPort('driveUI', () => import('./drive-ui.js'));

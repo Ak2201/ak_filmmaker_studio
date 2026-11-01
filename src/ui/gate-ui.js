@@ -37,6 +37,11 @@ export { DEMO_PENDING_KEY, DEMO_LAND_KEY, demoPending, markDemoPending, enterAdd
 export const demoLink = (code) => new URL('invite.html#code=' + formatCode(code) + '&demo=1', location.href).href;
 
 const cloud = () => window.StudioCloud || null;
+/* Drive-only storage (schema §66): the console's films are the admin's
+   own Drive films, and a screening pass carries a Drive file id. */
+const driveMode = () => { const c = cloud(); return !!(c && c.storageModeNow && c.storageModeNow() === 'drive'); };
+const driveProjects = () => ((window.StudioStore && window.StudioStore.listProjects()) || [])
+  .filter((p) => p.drive && p.drive.role === 'owner').map((p) => ({ id: p.id, title: p.title, format: p.format }));
 const gate = () => (cloud() && cloud().gate) || null;
 const toast = (msg, type, duration) => {
   if (!window.StudioUI || !StudioUI.toast) return;
@@ -255,7 +260,7 @@ async function loadAdmin({ quiet = false } = {}) {
   try {
     const [codes, members, redemptions, requests] = await Promise.all([g.admin.listCodes(), g.admin.listMembers(), g.admin.listRedemptions(), g.admin.listRequests()]);
     admin.codes = codes; admin.members = members || []; admin.redemptions = redemptions; admin.requests = requests || [];
-    try { admin.projects = await g.admin.listProjects(); } catch (e) { admin.projects = []; }
+    try { admin.projects = driveMode() ? driveProjects() : await g.admin.listProjects(); } catch (e) { admin.projects = []; }
     try { admin.role = await g.admin.studioRole(); } catch (e) { admin.role = null; }
     admin.loaded = true;
   } catch (e) {
@@ -324,8 +329,8 @@ function requestsPart(sec) {
         h('td', { text: r.note || '—' }),
         h('td', { text: browserOf(r.user_agent) || '—' }),
         h('td.gt-row-actions', {}, [
-          h('button.btn.primary', { type: 'button', 'data-gate-action': 'approve', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Approve ' + r.email, text: 'APPROVE' }),
-          h('button.btn.danger', { type: 'button', 'data-gate-action': 'decline', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Decline ' + r.email, text: 'DECLINE' })
+          h('button.btn.primary', { type: 'button', 'data-gate-action': 'approve', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Approve ' + r.email, text: 'Approve' }),
+          h('button.btn.danger', { type: 'button', 'data-gate-action': 'decline', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Decline ' + r.email, text: 'Decline' })
         ])
       ]));
     }
@@ -355,19 +360,19 @@ function requestsPart(sec) {
         h('span', { text: line }),
         h('span.gt-row-actions', {}, [
           r.status === 'declined'
-            ? h('button.btn.primary', { type: 'button', 'data-gate-action': 'recover', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Let ' + r.email + ' in', text: 'LET THEM IN' })
+            ? h('button.btn.primary', { type: 'button', 'data-gate-action': 'recover', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Let ' + r.email + ' in', text: 'Let them in' })
             : null,
           protectedEmails.has(String(r.email || '').toLowerCase()) ? null
-            : h('button.btn.danger', { type: 'button', 'data-gate-action': 'reset-user', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Clear access for ' + r.email, text: 'CLEAR ACCESS' }),
+            : h('button.btn.danger', { type: 'button', 'data-gate-action': 'reset-user', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Clear access for ' + r.email, text: 'Clear access' }),
           protectedEmails.has(String(r.email || '').toLowerCase()) || admin.role !== 'owner' ? null
-            : h('button.btn.danger', { type: 'button', 'data-gate-action': 'delete-user', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Delete ' + r.email + ' totally', text: 'DELETE TOTALLY' })
+            : h('button.btn.danger', { type: 'button', 'data-gate-action': 'delete-user', 'data-id': r.user_id, 'data-email': r.email, 'aria-label': 'Delete ' + r.email + ' totally', text: 'Delete totally' })
         ].filter(Boolean))
       ]));
     });
     det.append(ul);
     if (decided.length > 30) {
       det.append(h('p', {}, [h('button.btn', { type: 'button', 'data-gate-action': 'toggle-decided',
-        text: admin.showAllDecided ? 'SHOW FEWER' : `SHOW ALL (${decided.length})` })]));
+        text: admin.showAllDecided ? 'Show fewer' : `Show all (${decided.length})` })]));
     }
     sec.append(det);
   }
@@ -394,14 +399,14 @@ function requestsPart(sec) {
     field('gtDur', 'Expires after', durSel), field('gtProj', 'Project (screening pass)', projSel),
     field('gtLabel', 'Label', labelIn)
   ]));
-  form.append(h('button.btn.primary', { type: 'submit', text: 'ISSUE CODE' }));
+  form.append(h('button.btn.primary', { type: 'submit', text: 'Issue code' }));
   /* docs/BILLING.md §8: a visitor who enters on a code alone is not
      signed in, has no organisation and so no plan — the plan gate does
      not apply to them. Say so where the code is made. */
   form.append(h('p.gt-meta', { text: 'A code is spent when its holder signs in, and buys them a 7-day trial; tier locks apply as usual.' }));
   if (admin.made) {
     form.append(h('p.gt-made', { role: 'status' }, [h('span', { text: 'New code: ' }), h('code.gt-codeval', { text: formatCode(admin.made.code) }),
-      h('button.btn', { type: 'button', 'data-gate-action': 'copy', 'data-code': admin.made.code, text: 'COPY CODE' })]));
+      h('button.btn', { type: 'button', 'data-gate-action': 'copy', 'data-code': admin.made.code, text: 'Copy code' })]));
     if (admin.made.pass_type === 'standard') {
       /* The same code as a link: the thing to send, where the code is
          the thing to read aloud when a link cannot travel. Whoever opens
@@ -419,7 +424,7 @@ function requestsPart(sec) {
          there and a code is a thing people paste into a group chat
          months later. */
       form.append(h('p.gt-made', { role: 'status' }, [h('span', { text: 'Or share the link: ' }), h('code.gt-codeval.gt-link', { text: startInviteLink(admin.made.code) }),
-        h('button.btn.primary', { type: 'button', 'data-gate-action': 'copy-link', 'data-code': admin.made.code, text: 'COPY LINK' })]));
+        h('button.btn.primary', { type: 'button', 'data-gate-action': 'copy-link', 'data-code': admin.made.code, text: 'Copy link' })]));
     }
   }
   sec.append(form);
@@ -435,10 +440,10 @@ function requestsPart(sec) {
     h('div.gt-field', {}, [h('label', { for: 'gtDemoUses', text: 'Uses' }), dUses]),
     h('div.gt-field', {}, [h('label', { for: 'gtDemoDur', text: 'Expires after' }), dDur])
   ]));
-  demo.append(h('button.btn.primary', { type: 'button', 'data-gate-action': 'create-demo', text: 'CREATE DEMO LINK' }));
+  demo.append(h('button.btn.primary', { type: 'button', 'data-gate-action': 'create-demo', text: 'Create demo link' }));
   if (admin.demo) {
     demo.append(h('p.gt-made', { role: 'status' }, [h('span', { text: 'Demo link: ' }), h('code.gt-codeval.gt-link', { text: demoLink(admin.demo.code) }),
-      h('button.btn.primary', { type: 'button', 'data-gate-action': 'copy-demo', 'data-code': admin.demo.code, text: 'COPY DEMO LINK' })]));
+      h('button.btn.primary', { type: 'button', 'data-gate-action': 'copy-demo', 'data-code': admin.demo.code, text: 'Copy demo link' })]));
   }
   sec.append(demo);
 
@@ -460,8 +465,8 @@ function requestsPart(sec) {
         h('td', { text: fmtDate(c.expires_at) }),
         h('td', { text: state }),
         h('td.gt-row-actions', {}, [
-          state === 'Active' && c.pass_type === 'standard' ? h('button.btn', { type: 'button', 'data-gate-action': 'copy-link', 'data-code': c.code, text: 'COPY LINK' }) : null,
-          state === 'Active' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'revoke', 'data-id': c.id, text: 'REVOKE' }) : null
+          state === 'Active' && c.pass_type === 'standard' ? h('button.btn', { type: 'button', 'data-gate-action': 'copy-link', 'data-code': c.code, text: 'Copy link' }) : null,
+          state === 'Active' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'revoke', 'data-id': c.id, text: 'Revoke' }) : null
         ].filter(Boolean))
       ]));
     }
@@ -486,8 +491,8 @@ function membersPart(sec) {
         h('td', { text: live(m) ? 'Active · ' + since(m.last_heartbeat) : m.last_heartbeat ? 'Idle since ' + fmtDate(m.last_heartbeat) : 'None' }),
         h('td', { text: [browserOf(m.user_agent), m.client_ip].filter(Boolean).join(' · ') }),
         h('td.gt-row-actions', {}, [
-          live(m) ? h('button.btn', { type: 'button', 'data-gate-action': 'terminate', 'data-id': m.user_id, text: 'END SESSION' }) : null,
-          !m.disabled_at && m.role !== 'admin' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'disable', 'data-id': m.user_id, 'data-email': m.email, 'aria-label': 'Disable ' + m.email, text: 'DISABLE' }) : null,
+          live(m) ? h('button.btn', { type: 'button', 'data-gate-action': 'terminate', 'data-id': m.user_id, text: 'End session' }) : null,
+          !m.disabled_at && m.role !== 'admin' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'disable', 'data-id': m.user_id, 'data-email': m.email, 'aria-label': 'Disable ' + m.email, text: 'Disable' }) : null,
           /* DISABLE keeps the row and stops them; CLEAR ACCESS removes the
              row and makes the next sign-in a new one (their films and
              payments stay); DELETE TOTALLY removes the person, their
@@ -495,8 +500,8 @@ function membersPart(sec) {
              invoice. Neither is offered for an admin — schema sections 25
              and 45 refuse it anyway, and a button that always errors is
              worse than no button. DELETE TOTALLY is the owner's alone. */
-          m.role !== 'admin' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'reset-user', 'data-id': m.user_id, 'data-email': m.email, 'aria-label': 'Clear access for ' + m.email, text: 'CLEAR ACCESS' }) : null,
-          m.role !== 'admin' && admin.role === 'owner' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'delete-user', 'data-id': m.user_id, 'data-email': m.email, 'aria-label': 'Delete ' + m.email + ' totally', text: 'DELETE TOTALLY' }) : null
+          m.role !== 'admin' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'reset-user', 'data-id': m.user_id, 'data-email': m.email, 'aria-label': 'Clear access for ' + m.email, text: 'Clear access' }) : null,
+          m.role !== 'admin' && admin.role === 'owner' ? h('button.btn.danger', { type: 'button', 'data-gate-action': 'delete-user', 'data-id': m.user_id, 'data-email': m.email, 'aria-label': 'Delete ' + m.email + ' totally', text: 'Delete totally' }) : null
         ].filter(Boolean))
       ]));
     }
@@ -532,11 +537,23 @@ async function createCode(form) {
   if (passType === 'screening_pass' && !v('project')) { toast('Choose the project the pass opens.', 'error'); return; }
   if (passType === 'screening_pass' && !hours) { toast('A screening pass needs an expiry.', 'error'); return; }
   try {
+    const expiresAt = hours ? new Date(Date.now() + Number(hours) * 3600e3).toISOString() : null;
+    /* In drive mode the film is not on the server: the pass is made with
+       no target project, then the film's screening export is written to
+       the owner's Drive, link-shared, and its FILE ID put on the pass
+       (screening_set_drive_file, schema §66). The id never goes in a
+       URL; screening_open hands it over only while the pass is valid. */
+    const viaDrive = passType === 'screening_pass' && driveMode();
     admin.made = await g.admin.createCode({
       passType, maxRedemptions: Math.max(1, parseInt(v('max'), 10) || 1),
-      expiresAt: hours ? new Date(Date.now() + Number(hours) * 3600e3).toISOString() : null,
-      projectId: passType === 'screening_pass' ? v('project') : null, label: v('label')
+      expiresAt,
+      projectId: passType === 'screening_pass' && !viaDrive ? v('project') : null, label: v('label')
     });
+    if (viaDrive && admin.made) {
+      const D = await cloud().drive();
+      try { await D.attachScreening(v('project'), admin.made.id, expiresAt); }
+      catch (e) { try { await g.admin.revokeCode(admin.made.id); } catch (er) { /* shown below */ } throw e; }
+    }
     admin.draft = {};
     await loadAdmin({ quiet: true });
     rerender();
@@ -611,7 +628,9 @@ delegate(document, 'click', '[data-gate-action]', async (e, el) => {
   try {
     if (act === 'revoke') {
       if (!await askDanger('Revoke this code? Nobody can redeem or open it again. Accounts already made with it are not affected.', { confirm: 'Revoke code' })) return;
-      await g.admin.revokeCode(el.dataset.id); await loadAdmin();
+      await g.admin.revokeCode(el.dataset.id);
+      if (driveMode()) { try { const D = await cloud().drive(); if (D) await D.revokeScreening(el.dataset.id); } catch (e) { /* the owner's next pull removes it */ } }
+      await loadAdmin();
     } else if (act === 'terminate') {
       await g.admin.terminate(el.dataset.id, false); await loadAdmin();
       toast('Session ended. If that device is still open it can take the session back.');
@@ -656,6 +675,7 @@ delegate(document, 'click', '[data-gate-action]', async (e, el) => {
         confirm: 'Delete totally', typeToConfirm: String(el.dataset.email || '')
       })) return;
       try {
+        /* Their Google grant is revoked inside g.admin.deleteUser (§66). */
         const out = await g.admin.deleteUser(el.dataset.id, el.dataset.email);
         await loadAdmin();
         const n = out && typeof out.invoices_retained === 'number' ? out.invoices_retained : 0;

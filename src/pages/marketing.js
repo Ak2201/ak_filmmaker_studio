@@ -38,12 +38,14 @@ import '../styles/base.css';
 import '../styles/marketing.css';
 import { bumpEvent, bumpOnce, sourceBucket, purchasesRequired, trialOffer, addLead } from '../lib/funnel.js';
 import { captureAttribution, attribution } from '../lib/attribution.js';
+import { deviceReducedMotion } from '../lib/device-motion.js';
 import { passCopy, validEmail, consentText } from '../lib/start-model.js';
 import * as PassOffer from '../lib/pass-offer.js';
 import { offerTerms, readMode } from '../lib/offer-terms.js';
 import { codeFromLocation, setCodePass } from '../lib/invite-code.js';
 import * as StartAuth from '../lib/start-auth.js';
 import { visitorRegion } from '../lib/visitor-region.js';
+import { animate } from 'motion/mini';   // the motion package's WAAPI animate(), ~8 KB; see 10
 
 /* First, before a script below can strip or rewrite the address. */
 try { captureAttribution(location); } catch (e) { /* never breaks the page */ }
@@ -61,6 +63,11 @@ try {
 } catch (e) { /* a counter never breaks the page */ }
 
 const root = document.documentElement;
+/* The device's own "Reduce motion" switch (Settings > Preferences), read
+   here as well as the OS preference (28 Oct 2026), and applied the way
+   src/ui/motion-pref.js applies it: html.ma-off and --motion: 0. */
+const deviceReduce = deviceReducedMotion();
+if (deviceReduce) { root.classList.add('ma-off'); root.style.setProperty('--motion', '0'); }
 const $ = (sel, from = document) => from.querySelector(sel);
 const $$ = (sel, from = document) => Array.from(from.querySelectorAll(sel));
 const byId = (id) => document.getElementById(id);
@@ -151,11 +158,17 @@ if (prod && item) {
     if (e.key === ' ') { e.preventDefault(); prod.click(); }
     if (e.key === 'ArrowDown') { e.preventDefault(); setMega(true); const first = $('.mk-mega a', item); if (first) first.focus(); }
   });
-  item.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse' && wide.matches && !item.hasAttribute('data-open')) { setMega(true); hoverOpened = true; } });
+  /* Re-entering (trigger -> gap -> panel is a leave and an enter) must CANCEL the pending close;
+     it used to run only when the panel was closed, so the 160ms timer from the leave always won. */
+  item.addEventListener('pointerenter', (e) => {
+    if (e.pointerType !== 'mouse' || !wide.matches) return;
+    clearTimeout(closeTimer);
+    if (!item.hasAttribute('data-open')) { setMega(true); hoverOpened = true; }
+  });
   item.addEventListener('pointerleave', (e) => {
     if (e.pointerType !== 'mouse' || !wide.matches) return;
     clearTimeout(closeTimer);
-    closeTimer = setTimeout(() => setMega(false), 160);
+    closeTimer = setTimeout(() => setMega(false), 260);
   });
   item.addEventListener('focusout', (e) => {
     if (wide.matches && !item.contains(e.relatedTarget) && item.hasAttribute('data-open')) setMega(false);
@@ -420,6 +433,7 @@ const offerSlots = (function () {
   };
 })();
 
+let shared = null;
 const launchPass = (function () {
   const band = byId('mkPass');
   let raw = null, readAt = 0, timer = 0, wasOpen = false, off = false, lastSpoken = '';
@@ -462,22 +476,55 @@ const launchPass = (function () {
     if (v.timer && !timer) timer = setInterval(apply, 1000);
     if (!v.timer) stop();
   }
+  /* THE LANDING PAGE'S SHARE (30 Oct 2026). start.js draws the launch
+     offer card from the SAME reply (no second fetch) and may not import
+     pass-offer.js itself (the start.js allowlist), so this hands it the
+     reading as closures over pass-offer.js, never the raw reply, so
+     pass-offer.js stays the one reader of the pass: the pass's state and
+     copy, the server's clock (from this reply's pass, or from any other
+     pass block the page holds, e.g. price_notice()'s), and the reply's two
+     switches through offerFlags(). Announced as 'mk:pass' on every change
+     of what is known (a reply, no reply, purchases off), and kept for a
+     late listener (passNow()). */
+  let flags = PassOffer.offerFlags(null);
+  function share() {
+    shared = {
+      off: off || flags.off, trialOpen: flags.trialOpen,
+      state: () => (raw && !off ? PassOffer.passState(raw, Date.now(), readAt) : { state: 'none' }),
+      copy: (st) => passCopy(st, PassOffer),
+      serverNow: () => (raw ? PassOffer.serverNowOf(raw, readAt, Date.now()) : null),
+      serverNowOf: (block, at) => PassOffer.serverNowOf(block, at, Date.now())
+    };
+    try { document.dispatchEvent(new CustomEvent('mk:pass', { detail: shared })); } catch (e) { /* never breaks the page */ }
+  }
   return {
     take(t) {
-      if (!t || typeof t !== 'object') return;
-      if (t.purchase_required === false) off = true;
+      if (!t || typeof t !== 'object') { share(); return; }
+      flags = PassOffer.offerFlags(t);
+      if (flags.off) off = true;
       raw = t.pass || null;
       readAt = Date.now();
       apply();
+      share();
     },
-    off() { off = true; apply(); }
+    off() { off = true; apply(); if (shared) share(); }
   };
 })();
+/** What marketing.js knows of the launch pass right now, or null before
+ *  trial_offer() has answered (see 'mk:pass'). */
+export const passNow = () => shared;
+/** The Google sign-in, for a page that may not import start-auth.js:
+ *  false when the build has no project (let the link do its own thing). */
+export function startSignIn() {
+  if (!StartAuth.configured()) return false;
+  return StartAuth.startGoogle({ redirectTo: StartAuth.defaultRedirect() });
+}
+export const signedIn = () => SIGNED_IN;
 /* A signed-in visitor's pass button goes to the checkout page (the pass
    card is there), not through the sign-up modal. */
 if (SIGNED_IN) for (const a of $$('[data-pass-cta]')) a.setAttribute('href', 'purchase.html');
 try {
-  trialOffer().then((t) => { offerSlots.take(t); launchPass.take(t); }, () => {});
+  trialOffer().then((t) => { offerSlots.take(t); launchPass.take(t); }, () => launchPass.take(null));
 } catch (e) { /* never breaks the page */ }
 
 /* ---- 6. an invite code in the address bar ---------------------------
@@ -516,7 +563,7 @@ try {
   const vids = $$('video');
   if (!vids.length || !('IntersectionObserver' in window)) return;
   try {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (deviceReduce || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if (navigator.connection && navigator.connection.saveData) return;
   } catch (e) { return; }
   const auto = new WeakSet(); /* play/pause calls the observer made */
@@ -621,3 +668,78 @@ document.addEventListener('submit', (e) => {
     if (btn) btn.disabled = false;
   });
 });
+
+/* ---- 10. calm motion (28 Oct 2026) ------------------------------------
+   The 8B template's entrances, made with the bundled `motion` package and
+   motion/mini only (WAAPI, about 8 KB; the full package is 69 KB). What moves: a section's heading rises in as the
+   section enters, and its cards, points, facts and steps stack in after
+   it, a beat apart. The hero's own entrance is CSS (marketing.css), so it
+   needs no script at all. Hover is CSS too.
+
+   WHAT NEVER HAPPENS. Nothing is hidden that is already on screen when
+   this runs (no flash of a painted page): only sections wholly below the
+   fold are prepared, and they are prepared synchronously, before any
+   paint can show them. A fragment target only FADES (an element with an
+   id that travels would be measured where it was; prove:scroll caught
+   that once). Reduced motion, a --motion of 0, a browser with no
+   IntersectionObserver and Playwright (navigator.webdriver, like
+   src/ui/motion-app.js) get no motion at all and the page as written.
+   If anything throws, every prepared element is put back. */
+(function calmMotion() {
+  let k = 1;
+  try {
+    if (deviceReduce || navigator.webdriver || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    /* the landing page has its own scroll story (src/pages/start-motion.js,
+       29 Oct 2026); two veils on one element would fight */
+    if (document.querySelector('.st-hero')) return;
+    if (!('IntersectionObserver' in window) || typeof Element.prototype.animate !== 'function') return;
+    const m = parseFloat(getComputedStyle(root).getPropertyValue('--motion'));
+    k = Number.isFinite(m) ? m : 1;
+  } catch (e) { return; }
+  if (!k) return;
+  const PARTS = ':is(.mk-h2, .mk-cards > *, .mk-stages > *, .st-stages > *, .st-points > *, .mk-facts > li, .mk-steps > li, .pr-tiers > li, .co-cards > *, .co-principles > li, .mk-slot)';
+  const fold = window.innerHeight || 800;
+  const groups = [];
+  for (const sec of $$('main .mk-sec')) {
+    if (sec.getBoundingClientRect().top < fold) continue;          // on screen, or above: leave it
+    const els = $$(PARTS, sec).filter((n) => !n.closest('[hidden]'));
+    if (!els.length) continue;
+    for (const n of els) n.style.opacity = '0';
+    groups.push({ sec, els });
+  }
+  if (!groups.length) return;
+  let restored = false;
+  const restore = () => { restored = true; groups.forEach((g) => g.els.forEach((n) => { n.style.opacity = ''; n.style.transform = ''; })); };
+  /* NOTHING STAYS VEILED FOR PRINT, or for a stalled observer: printing
+     straight after load printed blank sections (28 Oct 2026). The studio
+     helper (src/ui/motion.js) has the same two backstops. */
+  try {
+    window.addEventListener('beforeprint', restore);
+    const pm = matchMedia('print');
+    if (pm.addEventListener) pm.addEventListener('change', (e) => { if (e.matches) restore(); });
+  } catch (e) { /* the timeout below still restores */ }
+  setTimeout(restore, 8000);
+  /* motion/mini's animate() (imported statically: a dynamic import()
+     makes Vite add its preload helper, which the build puts in the studio
+     CORE chunk, and prove:growth asserts no studio-* chunk reaches a public
+     page). The "in view" trigger is the page's own IntersectionObserver. */
+  try {
+    const ease = [0.16, 1, 0.3, 1];
+    const run = (g) => restored || g.els.forEach((n, i) => {
+      const travel = !n.id;                                          // fragment targets: fade only
+      const a = animate(n, travel ? { opacity: [0, 1], transform: [`translateY(${20 * k}px)`, 'none'] } : { opacity: [0, 1] },
+        { duration: travel ? 0.7 : 0.6, delay: Math.min(i, 8) * 0.06, ease });
+      const done = () => { n.style.opacity = ''; n.style.transform = ''; };
+      if (a && typeof a.then === 'function') a.then(done, done); else done();
+    });
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        io.unobserve(e.target);
+        const g = groups.find((x) => x.sec === e.target);
+        if (g) run(g);
+      }
+    }, { threshold: 0, rootMargin: '0px 0px -12% 0px' });
+    groups.forEach((g) => io.observe(g.sec));
+  } catch (e) { restore(); }
+})();

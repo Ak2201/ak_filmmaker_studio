@@ -214,11 +214,11 @@ export function wordCounterState(value, target, lowerLabel) {
 export function charMapSVG({ protag, antag, ally, lover, mentor }) {
   const cx = 360, cy = 180;
   const positions = {
-    protagonist: { x: cx, y: cy, name: protag, label: 'PROTAGONIST', conn: 'Story · Step 4' },
-    antagonist:  { x: cx + 240, y: cy, name: antag, label: 'ANTAGONIST', conn: 'opposes' },
-    ally:        { x: cx - 240, y: cy - 90, name: ally, label: 'ALLY', conn: 'reflects' },
-    lover:       { x: cx - 240, y: cy + 90, name: lover, label: 'LOVE / MIRROR', conn: 'pulls toward need' },
-    mentor:      { x: cx, y: cy - 130, name: mentor, label: 'MENTOR / CATALYST', conn: 'hands over tool' }
+    protagonist: { x: cx, y: cy, name: protag, label: 'Protagonist', conn: 'Story · Step 4' },
+    antagonist:  { x: cx + 240, y: cy, name: antag, label: 'Antagonist', conn: 'opposes' },
+    ally:        { x: cx - 240, y: cy - 90, name: ally, label: 'Ally', conn: 'reflects' },
+    lover:       { x: cx - 240, y: cy + 90, name: lover, label: 'Love / mirror', conn: 'pulls toward need' },
+    mentor:      { x: cx, y: cy - 130, name: mentor, label: 'Mentor / catalyst', conn: 'hands over tool' }
   };
 
   let s = '';
@@ -295,8 +295,8 @@ export function sceneChargeChart(rows) {
 /** The bridge panel's body, or '' when there is nothing to carry over. */
 export function vol1BridgeHTML(logline, theme) {
   let html = '';
-  if (logline) html += `<strong style="display:block; margin-bottom:6px; font-style:normal; color:var(--accent-deep);">LOGLINE:</strong> "${escapeHTML(logline)}"`;
-  if (theme) html += `<br><br><strong style="display:block; margin-bottom:6px; font-style:normal; color:var(--accent-deep);">THEME:</strong> ${escapeHTML(theme)}`;
+  if (logline) html += `<strong style="display:block; margin-bottom:6px; font-style:normal; color:var(--accent-deep);">Logline:</strong> "${escapeHTML(logline)}"`;
+  if (theme) html += `<br><br><strong style="display:block; margin-bottom:6px; font-style:normal; color:var(--accent-deep);">Theme:</strong> ${escapeHTML(theme)}`;
   return html;
 }
 
@@ -558,89 +558,89 @@ export function buildPitchSlides(d) {
   }
   const slides = [
     {
-      label: 'SLIDE 01 · TITLE',
+      label: 'Slide 01 · title',
       title: fallback(d.meta_title, 'Untitled'),
       body: fallback(d.s2_log_final, fallback(d.s2_log2, fallback(d.s2_log1, 'Logline pending'))),
       footer: fallback(d.meta_writer, 'Writer / Director')
     },
     {
-      label: 'SLIDE 02 · WHAT IF',
+      label: 'Slide 02 · what if',
       title: 'What if?',
       body: fallback(d.s1_whatif, 'Define your spark in Step 01.'),
-      footer: 'THE SPARK'
+      footer: 'The spark'
     },
     {
-      label: 'SLIDE 03 · THEME & STAKES',
+      label: 'Slide 03 · theme & stakes',
       title: fallback(d.s3_theme, 'Theme pending'),
       bullets: [
         'External — ' + fallback(d.s3_ext, '?'),
         'Internal — ' + fallback(d.s3_int, '?'),
         'Philosophical — ' + fallback(d.s3_phil, '?')
       ],
-      footer: 'WHAT THE FILM ARGUES'
+      footer: 'What the film argues'
     },
     {
-      label: 'SLIDE 04 · PROTAGONIST',
+      label: 'Slide 04 · protagonist',
       title: fallback(d.s4_name, 'Protagonist'),
       bullets: [
-        'WANT — ' + fallback(d.s4_want, '?'),
-        'NEED — ' + fallback(d.s4_need, '?'),
-        'WOUND — ' + fallback(d.s4_wound, '?'),
-        'ARC — ' + fallback(d.s4_arc, '?')
+        'Want — ' + fallback(d.s4_want, '?'),
+        'Need — ' + fallback(d.s4_need, '?'),
+        'Wound — ' + fallback(d.s4_wound, '?'),
+        'Arc — ' + fallback(d.s4_arc, '?')
       ],
-      footer: 'OUR HERO'
+      footer: 'Our hero'
     },
     {
-      label: 'SLIDE 05 · ANTAGONIST',
+      label: 'Slide 05 · antagonist',
       title: fallback(d.s5_name, 'Antagonist'),
       bullets: [
-        'WANT — ' + fallback(d.s5_want, '?'),
-        'PHILOSOPHY — ' + fallback(d.s5_philosophy, '?'),
-        'HERO IN HIS OWN STORY — ' + fallback(d.s5_hero, '?')
+        'Want — ' + fallback(d.s5_want, '?'),
+        'Philosophy — ' + fallback(d.s5_philosophy, '?'),
+        'Hero in his own story — ' + fallback(d.s5_hero, '?')
       ],
-      footer: 'THE OPPOSITION'
+      footer: 'The opposition'
     },
     {
-      label: 'SLIDE 06 · WORLD & TONE',
+      label: 'Slide 06 · world & tone',
       title: 'The world.',
       bullets: [
-        'GENRE — ' + fallback(d.v1_genre, '?'),
-        'ERA — ' + fallback(d.s7_era, '?'),
-        'LOCATION — ' + fallback(d.s7_location, '?'),
-        'RULES — ' + fallback(d.s7_rules, '?'),
-        'TONE — ' + fallback(d.v2s2_tone1, '?') + (d.v2s2_tone2 ? ' (' + d.v2s2_tone2 + ')' : '')
+        'Genre — ' + fallback(d.v1_genre, '?'),
+        'Era — ' + fallback(d.s7_era, '?'),
+        'Location — ' + fallback(d.s7_location, '?'),
+        'Rules — ' + fallback(d.s7_rules, '?'),
+        'Tone — ' + fallback(d.v2s2_tone1, '?') + (d.v2s2_tone2 ? ' (' + d.v2s2_tone2 + ')' : '')
       ],
-      footer: 'WHERE WE LIVE'
+      footer: 'Where we live'
     },
     {
-      label: 'SLIDE 07 · REFERENCES',
+      label: 'Slide 07 · references',
       title: 'Reference films.',
       body: fallback(d.v2s2_refs, 'Pick 2-3 reference films and one out-of-medium reference. See Step 14.'),
-      bullets: d.v2s2_refuse ? ['REFUSE — ' + d.v2s2_refuse] : [],
-      footer: 'WHAT WE\'RE NOT'
+      bullets: d.v2s2_refuse ? ['Refuse — ' + d.v2s2_refuse] : [],
+      footer: 'What we\'re not'
     },
     {
-      label: 'SLIDE 08 · STORY',
+      label: 'Slide 08 · story',
       title: 'The 15-beat story.',
       bullets: beats.length ? beats.slice(0, 15) : ['Fill in your 15 beats in Step 08.'],
-      footer: 'STRUCTURE'
+      footer: 'Structure'
     },
     {
-      label: 'SLIDE 09 · PRODUCTION',
+      label: 'Slide 09 · production',
       title: 'Production overview.',
       bullets: [
-        'BUDGET — ' + fallback(d.v2s11_total, '?'),
-        'SHOOT DAYS — ' + fallback(d.v2s11_days, '?'),
-        'CAMERA — ' + fallback(d.v2s5_camera, '?') + (d.v2s5_aspect ? ' · ' + d.v2s5_aspect : ''),
+        'Budget — ' + fallback(d.v2s11_total, '?'),
+        'Shoot days — ' + fallback(d.v2s11_days, '?'),
+        'Camera — ' + fallback(d.v2s5_camera, '?') + (d.v2s5_aspect ? ' · ' + d.v2s5_aspect : ''),
         'DOP — ' + fallback(d.v2s11_dop, '?'),
-        'PRODUCTION DESIGN — ' + fallback(d.v2s11_pd, '?'),
-        'EDITOR — ' + fallback(d.v2s11_editor, '?'),
-        'COMPOSER — ' + fallback(d.v2s11_composer, '?')
+        'Production design — ' + fallback(d.v2s11_pd, '?'),
+        'Editor — ' + fallback(d.v2s11_editor, '?'),
+        'Composer — ' + fallback(d.v2s11_composer, '?')
       ],
-      footer: 'THE PLAN'
+      footer: 'The plan'
     },
     {
-      label: 'SLIDE 10 · DIRECTOR',
+      label: 'Slide 10 · director',
       title: 'The director.',
       body: fallback(d.s1_why_me, 'Why this film, told by you, now? Fill in Step 01.'),
       footer: fallback(d.meta_writer, '—') + (d.v2s11_dop ? ' · DOP ' + d.v2s11_dop : '')
@@ -694,7 +694,7 @@ export function buildPitchPptx(PptxGenJS, data, slides, brandName) {
     // Title
     slide.addText(s.title || '', {
       x: 0.7, y: 1.3, w: 11, h: 1.2,
-      fontSize: 32, fontFace: 'Georgia',
+      fontSize: 32, fontFace: 'Arial',
       color: PAPER, italic: true, bold: true
     });
     // Body or bullets
@@ -702,14 +702,14 @@ export function buildPitchPptx(PptxGenJS, data, slides, brandName) {
     if (s.body) {
       slide.addText(s.body, {
         x: 0.7, y: yCursor, w: 11, h: 1.5,
-        fontSize: 16, fontFace: 'Georgia',
+        fontSize: 16, fontFace: 'Arial',
         color: PAPER
       });
       yCursor += 1.5;
     }
     if (s.bullets && s.bullets.length) {
       slide.addText(
-        s.bullets.map(b => ({ text: b, options: { bullet: { code: '2014' }, color: PAPER, fontSize: 14, fontFace: 'Georgia' } })),
+        s.bullets.map(b => ({ text: b, options: { bullet: { code: '2014' }, color: PAPER, fontSize: 14, fontFace: 'Arial' } })),
         { x: 0.7, y: yCursor, w: 11, h: 4 }
       );
     }

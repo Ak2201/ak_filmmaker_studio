@@ -53,9 +53,9 @@ a:focus-visible { outline-offset: 3px; }
   background: var(--chrome);
   color: var(--chrome-ink);
   padding: var(--s2) var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   text-decoration: none;
   border-radius: var(--sk-radius, var(--radius));
@@ -82,7 +82,7 @@ a:focus-visible { outline-offset: 3px; }
      resting state, not a distance travelled, so it is NOT x --motion. */
   height: 100%;
   width: 100%;
-  background: var(--accent);
+  background: var(--brand);
   transform-origin: left center;
   transform: scaleX(0);
 }
@@ -148,9 +148,9 @@ a:focus-visible { outline-offset: 3px; }
 .nav-link,
 .mini-btn,
 .step-jumper {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
@@ -208,9 +208,9 @@ a:focus-visible { outline-offset: 3px; }
    as a hook for a proof (stepper.js's Back / Next) keeps the kit's paint.
    Zero specificity, so nothing that already beat these rules changes. */
 .btn.primary:where(:not(.k-btn)) {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-on);
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-on);
 }
 .btn.primary:where(:not(.k-btn)):hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
@@ -227,7 +227,7 @@ a:focus-visible { outline-offset: 3px; }
 .btn.danger:focus-visible {
   background: var(--danger);
   border-color: var(--danger);
-  color: var(--chrome);
+  color: var(--danger-on);
 }
 
 /* `.gold` is the chrome's emphatic link. The name is older than the
@@ -317,9 +317,9 @@ a:focus-visible { outline-offset: 3px; }
 }
 .progress-text,
 .save-status {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--chrome-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -359,7 +359,7 @@ a:focus-visible { outline-offset: 3px; }
   border: 0;
   cursor: pointer;
   padding: var(--s1) var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
   color: var(--chrome-muted);
@@ -385,9 +385,9 @@ a:focus-visible { outline-offset: 3px; }
   color: var(--chrome-ink);
   border: 1px solid var(--chrome-hair-strong);
   border-radius: var(--sk-radius, var(--radius));
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
 }
 .toolbar-search input::placeholder { color: var(--chrome-muted); }
 .toolbar-search::after {
@@ -404,7 +404,7 @@ a:focus-visible { outline-offset: 3px; }
   right: var(--s5);
   top: 50%;
   transform: translateY(-50%);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--chrome-accent);
   pointer-events: none;
@@ -440,7 +440,7 @@ a:focus-visible { outline-offset: 3px; }
   padding: var(--s1) var(--s2);
   background: var(--paper-sunk);
   border-radius: var(--sk-radius, var(--radius));
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--ink-muted);
   pointer-events: none;
@@ -460,7 +460,7 @@ a:focus-visible { outline-offset: 3px; }
   background: var(--paper-sunk);
   border: 1px solid var(--rule);
   border-radius: var(--sk-radius, var(--radius));
-  font-family: var(--f-code);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
   font-style: normal;
@@ -468,7 +468,7 @@ a:focus-visible { outline-offset: 3px; }
 }
 .kbd-hint {
   margin-top: var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-style: italic;
   color: var(--ink-muted);
@@ -501,9 +501,9 @@ a:focus-visible { outline-offset: 3px; }
 .search-result:hover,
 .search-result.active { background: var(--accent-wash); }
 .search-result .kind {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 700;
   color: var(--feature-deep);
   margin-bottom: 3px;
@@ -594,7 +594,7 @@ a:focus-visible { outline-offset: 3px; }
   z-index: var(--z-rail);
   background: var(--paper-raised);
   border-right: 1px solid var(--rule);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   /* visibility trails the slide out and leads the slide in: see below. */
   transition: transform var(--speed-slow) var(--ease), visibility 0s linear var(--speed-slow);
@@ -625,23 +625,23 @@ a:focus-visible { outline-offset: 3px; }
   border: 1px solid var(--rule);
   border-left: 0;
   border-radius: 0 var(--radius) var(--radius) 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   cursor: pointer;
   writing-mode: vertical-rl;
   text-orientation: mixed;
   transition: background var(--speed) var(--ease);
 }
-.step-rail-toggle:hover { background: var(--accent); color: var(--accent-on); }
+.step-rail-toggle:hover { background: var(--brand); color: var(--brand-on); }
 
 .step-rail-head {
   margin-bottom: var(--s3);
   padding-bottom: var(--s2);
   border-bottom: 1px solid var(--rule-hair);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   color: var(--ink-muted);
 }
@@ -649,7 +649,7 @@ a:focus-visible { outline-offset: 3px; }
 .step-rail-group-label {
   margin-bottom: var(--s2);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 700;
   color: var(--accent-deep);
 }
@@ -678,7 +678,7 @@ a:focus-visible { outline-offset: 3px; }
   top: var(--s1);
   bottom: var(--s1);
   width: 2px;
-  background: var(--accent);
+  background: var(--brand);
 }
 .step-rail-item .sri-num {
   min-width: 18px;
@@ -723,7 +723,7 @@ a:focus-visible { outline-offset: 3px; }
   color: var(--panel-ink);
   border-left: 3px solid var(--panel-gilt);
   box-shadow: var(--shadow-panel);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   line-height: var(--lh-snug);
   pointer-events: auto;
@@ -776,9 +776,9 @@ a:focus-visible { outline-offset: 3px; }
   color: var(--panel-ink);
   border-radius: var(--radius-pill);
   box-shadow: var(--shadow-panel);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   opacity: 0;
   transform: translateY(calc(var(--s2) * var(--motion)));
@@ -814,8 +814,8 @@ a:focus-visible { outline-offset: 3px; }
     text-align: center;
   }
 }
-body:not(.rail-shown) .save-indicator:not(.error) { padding: var(--s2); }
-body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
+body:not(.rail-shown) .save-indicator:not(.error):not(.in-band) { padding: var(--s2); }
+body:not(.rail-shown) .save-indicator:not(.error):not(.in-band) .si-msg {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -830,7 +830,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   top: var(--s2);
   width: var(--s4);
   height: var(--s4);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
   font-weight: 700;
   color: var(--ok-deep);
@@ -930,9 +930,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 .cm-card label {
   display: block;
   margin: var(--s3) 0 var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   color: var(--ink-muted);
 }
@@ -993,9 +993,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   border: 1px solid var(--rule);
   border-radius: var(--sk-radius, var(--radius));
   color: var(--ink);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 700;
   cursor: pointer;
   transition: background var(--speed) var(--ease), color var(--speed) var(--ease),
@@ -1005,9 +1005,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 .cm-btn:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .modal-actions .mbtn.primary,
 .cm-btn.primary {
-  background: var(--accent);
-  color: var(--accent-on);
-  border-color: var(--accent);
+  background: var(--brand);
+  color: var(--brand-on);
+  border-color: var(--brand);
 }
 .modal-actions .mbtn.primary:hover,
 .cm-btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
@@ -1027,9 +1027,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 .cm-eyebrow,
 .shortcut-sheet .deck + .cm-eyebrow {
   margin-bottom: var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 700;
   color: var(--accent-deep);
 }
@@ -1045,9 +1045,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   display: flex;
   align-items: center;
   margin: var(--s5) 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   /* --ink-faint is for text you are not meant to read yet; this is a
      word the user reads to understand the choice. 2.76:1 before. */
@@ -1061,9 +1061,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   margin-top: var(--s4);
   text-align: center;
   color: var(--accent-deep);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   text-decoration: none;
 }
@@ -1083,7 +1083,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 .shortcut-sheet table {
   width: 100%;
   border-collapse: collapse;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
 }
 .shortcut-sheet td {
@@ -1091,7 +1091,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   border-bottom: 1px solid var(--rule-hair);
   color: var(--ink-body);
 }
-.shortcut-sheet td:first-child { width: 38%; font-weight: 700; letter-spacing: var(--track-label); color: var(--ink); }
+.shortcut-sheet td:first-child { width: 38%; font-weight: 700; letter-spacing: 0; color: var(--ink); }
 .shortcut-sheet td:last-child { color: var(--ink-muted); }
 
 /* Share dialog */
@@ -1116,7 +1116,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   flex: 1;
   margin-bottom: 0;
   background: var(--paper-raised);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
 }
 .share-h3 {
@@ -1145,19 +1145,19 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 }
 .si-meta { display: flex; flex-direction: column; gap: 2px; }
 .si-role {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 700;
   color: var(--accent-deep);
 }
-.si-exp { font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink-muted); }
+.si-exp { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); color: var(--ink-muted); }
 .si-url {
   margin-bottom: 0;
   padding: var(--s1) var(--s2);
   background: var(--paper-raised);
   border: 1px solid var(--rule-hair);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
 }
 .si-revoke {
@@ -1246,7 +1246,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   margin-bottom: var(--s1);
   padding: var(--s3);
   border-bottom: 1px solid var(--rule-hair);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--ink-muted);
   word-break: break-all;
@@ -1260,9 +1260,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   border: 0;
   border-radius: var(--sk-radius, var(--radius));
   cursor: pointer;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   color: var(--ink);
   transition: background var(--speed) var(--ease);
@@ -1296,9 +1296,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   border: 1px solid var(--chrome-hair-strong);
   border-radius: var(--sk-radius, var(--radius));
   color: var(--chrome-ink);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   cursor: pointer;
   transition: background var(--speed) var(--ease), border-color var(--speed) var(--ease);
@@ -1370,9 +1370,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   font-weight: 600;
 }
 .switcher-dropdown .sd-item .sd-meta {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .switcher-dropdown .sd-new {
@@ -1381,9 +1381,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   border-top: 1px solid var(--rule-hair);
   text-align: center;
   color: var(--accent-deep);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   cursor: pointer;
 }
@@ -1410,9 +1410,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 }
 .projects-head .lab {
   margin-bottom: var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-wide);
+  letter-spacing: 0;
   color: var(--accent-deep);
 }
 .projects-head h1,
@@ -1455,9 +1455,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   border: 1px solid var(--rule);
   border-radius: var(--sk-radius, var(--radius));
   color: var(--ink-muted);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   cursor: pointer;
   transition: background var(--speed) var(--ease), color var(--speed) var(--ease),
@@ -1513,9 +1513,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
    sat under the rename button on every card you pointed at. */
 .project-card .pc-format {
   padding-right: calc(3 * var(--s6) + var(--s1));
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   color: var(--feature-deep);
 }
@@ -1550,7 +1550,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   justify-content: space-between;
   gap: var(--s2) var(--s3);
   margin-top: auto;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--ink-muted);
 }
@@ -1573,6 +1573,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 @media (hover: none) {
   .project-card .pc-actions,
   .project-card .pc-share { opacity: 1; }
+  /* ...and in the card's flow, at its foot (28 Oct 2026): floated top-
+     right it covered the format line ("Pre-Productic"). */
+  .project-card .pc-actions { position: static; order: 99; align-self: flex-end; margin-top: var(--s2); background: transparent; box-shadow: none; }
 }
 .project-card .pc-actions .k-btn { color: var(--ink-muted); }
 .project-card .pc-actions .k-btn:hover { color: var(--ink); }
@@ -1612,9 +1615,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 }
 .project-card.new-card .pc-cta {
   margin-top: var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   color: var(--accent-deep);
 }
@@ -1665,8 +1668,8 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   text-align: center;
   color: var(--accent-deep);
 }
@@ -1752,71 +1755,27 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
 .gloss:hover::after,
 .gloss:focus-visible::after { opacity: 1; }
 
-.glossary-popover {
-  position: fixed;
-  z-index: var(--z-overlay);
-  max-width: var(--popover-w);
-  padding: var(--s3) var(--s4);
-  background: var(--panel);
-  color: var(--panel-ink);
-  border-left: 3px solid var(--panel-gilt);
-  border-radius: var(--sk-radius, var(--radius));
-  box-shadow: var(--shadow-modal);
-  font-family: var(--f-body);
-  font-size: var(--t-small);
-  line-height: var(--lh-snug);
-  opacity: 0;
-  transform: translateY(calc(var(--s1) * var(--motion)));
-  pointer-events: none;
-  transition: opacity var(--speed) var(--ease-out), transform var(--speed) var(--ease-out);
-}
-.glossary-popover.show { opacity: 1; transform: translateY(0); }
-.glossary-popover .gp-term {
-  margin-bottom: var(--s2);
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--panel-gilt);
-}
-.glossary-popover .gp-tn {
-  margin-top: var(--s2);
-  padding-top: var(--s2);
-  border-top: 1px solid var(--panel-hair);
-  font-size: var(--t-tiny);
-  color: var(--panel-muted);
-}
-
-/* Worked examples from the four anchor films. The popover is a dark
-   panel in every theme, so these read against --panel-ink like the
-   definition above them. */
-.glossary-popover .gp-examples {
-  margin-top: var(--s3);
-  padding-top: var(--s2);
-  border-top: 1px solid var(--panel-hair);
+/* The body of a term's explainer (ui/learn.js termBody): drawn inside
+   the pop-up and on the library's term cards, so it lives here. */
+.learn-term { display: grid; gap: var(--s3); font-size: var(--t-small); color: var(--ink-body); }
+.learn-term .learn-tn { color: var(--ink-muted); font-style: italic; }
+.learn-term .learn-ex-film { color: var(--ink); }
+.learn-ex-more {
   display: grid;
   gap: var(--s2);
+  margin: var(--s2) 0 0;
+  padding: 0;
+  list-style: none;
 }
-.glossary-popover .gp-example {
-  font-size: var(--t-tiny);
-  line-height: var(--lh-snug);
-  color: var(--panel-ink);
-}
-.glossary-popover .gp-film {
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-  color: var(--panel-gilt);
-}
+.learn-ex-more li { padding-left: var(--s3); border-left: var(--sk-hue-rule-w, 2px) solid var(--rule-hair, var(--rule)); }
+.learn-term .vid-block { margin: 0; }
 
 /* The in-prose affordance. Dotted underline rather than a link colour —
    these sit inside body copy and should invite a hover, not compete
    with the real links around them. */
 .glossary-term {
   border-bottom: 1px dotted var(--accent);
-  cursor: help;
+  cursor: pointer;
 }
 .glossary-term:hover,
 .glossary-term:focus-visible {
@@ -1967,9 +1926,9 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
     border: 0;
     border-radius: var(--sk-radius, var(--radius));
     color: var(--chrome-ink);
-    font-family: var(--f-mono);
+    font-family: var(--f-body); font-variant-numeric: tabular-nums;
     font-size: var(--t-micro);
-    letter-spacing: var(--track-label);
+    letter-spacing: 0;
     font-weight: 700;
     text-align: center;
     text-decoration: none;
@@ -2021,8 +1980,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   .shortcut-sheet,
   .cm-card,
   .toast,
-  .save-indicator,
-  .glossary-popover { transform: none !important; }
+  .save-indicator { transform: none !important; }
 }
 
 /* ============================================================
@@ -2156,7 +2114,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   border-left: var(--sk-hue-rule-w) solid transparent;
   color: var(--chrome-muted);
   text-decoration: none;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   /* Not --track-label. Nine tracked characters do not fit a rail —
      and nine UPPERCASE characters do not either: "DASHBOARD" measured
@@ -2164,7 +2122,7 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
      as "DASHBOA / RD", and "BLUEPRINTS" the same way (UX audit L21).
      Sentence case is ~20% narrower and fits every label with room to
      spare; overflow-wrap stays as the last resort for a longer one. */
-  letter-spacing: .02em;
+  letter-spacing: 0;
   text-align: center;
 }
 .sh-rail-label {
@@ -2250,10 +2208,10 @@ body:not(.rail-shown) .save-indicator:not(.error) .si-msg {
   flex: 1 1 auto;
   gap: 2px;
   min-width: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .sh-where-step {
   display: inline-flex;
@@ -2445,10 +2403,10 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
 }
 .sh-phase-menu-head {
   padding: var(--s2) var(--s3) var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--panel-muted);
 }
 .sh-mod {
@@ -2486,7 +2444,7 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   align-self: center;
   width: 1.4em;
   overflow: hidden;   /* same reason as .sh-where-icon */
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-base);
   line-height: 1;
   text-align: center;
@@ -2524,9 +2482,9 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
 .sh-mod-flag {
   grid-area: 1 / 3 / 2 / 4;
   align-self: start;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   /* On the dark chrome panel a hue must LIFT, not sit at its fill value. */
   color: var(--hue-lift, var(--panel-gilt));
   border: 1px solid currentColor;
@@ -2542,10 +2500,10 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   margin-top: var(--s2);
   padding: var(--s2) var(--s3) var(--s1);
   border-top: 1px solid var(--panel-hair);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--panel-muted);
 }
 .sh-phase-menu-head + .sh-phase-menu-group { margin-top: 0; border-top: 0; }
@@ -2561,10 +2519,10 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
   font-size: var(--t-tiny);
 }
 .sh-guide-head {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--panel-muted);
 }
 .sh-guide-links { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s1) var(--s2); }
@@ -2579,7 +2537,30 @@ button.sh-where-step:focus-visible { background: var(--chrome-fill); color: var(
 
 /* ---- wide: the rail is furniture and the page is inset by it ---- */
 @media (min-width: 1100px) {
-  body.has-sh-shell.rail-shown { padding-left: var(--sh-rail-w); }
+  body.has-sh-shell.rail-shown { position: relative; padding-left: var(--sh-rail-w); }
+  /* THE RAIL'S COLUMN RUNS THE PAGE'S WHOLE HEIGHT. The rail is fixed,
+     so anything that draws the document rather than the viewport (a
+     full-page capture, print preview of the screen, an overscroll
+     bounce) showed it stopping at one viewport with the light canvas
+     under it for the rest of a long page. This paints the same dark
+     column into body's own left padding, behind the fixed rail. It is
+     a pseudo-element in normal stacking, not fixed or sticky, so no
+     chrome measurer counts it. The colour is the dark scope's
+     --surface-rail, which bare :root cannot name: --chrome lifted 4%
+     toward its ink lands on it. */
+  body.has-sh-shell.rail-shown::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--sh-rail-w);
+    background: color-mix(in srgb, var(--chrome), var(--chrome-ink) 4%);
+    pointer-events: none;
+  }
+}
+@media print {
+  body.has-sh-shell.rail-shown::before { content: none; }
+}
+@media (min-width: 1100px) {
   /* The step rail is also fixed to the left edge. Two fixed columns at
      left:0 is one on top of the other, so it starts where the app rail
      ends. */
@@ -2809,10 +2790,10 @@ body.rail-open .step-rail-toggle { left: var(--rail-w); }
   border-radius: var(--sk-btn-radius, var(--radius));
   color: var(--chrome-muted);
   cursor: pointer;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
 }
 .sh-pagenav-btn:hover,
@@ -2892,7 +2873,7 @@ body.rail-open .step-rail-toggle { left: var(--rail-w); }
 }
 .tb-item:hover, .tb-item:focus-visible { background: var(--panel-raised); }
 .tb-item-hint {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--panel-muted);
   white-space: nowrap;
@@ -2940,10 +2921,10 @@ body.rail-open .step-rail-toggle { left: var(--rail-w); }
 .tb-group { padding: var(--s2) var(--s3) var(--s3); }
 .tb-group-label {
   margin-bottom: var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--panel-muted);
 }
 .tb-choices { display: flex; flex-wrap: wrap; gap: var(--s1); }
@@ -2956,10 +2937,10 @@ body.rail-open .step-rail-toggle { left: var(--rail-w); }
   border-radius: var(--sk-radius, var(--radius));
   color: var(--panel-muted);
   cursor: pointer;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
 }
 .tb-choice:hover { background: var(--panel-raised); color: var(--panel-ink); }
@@ -2997,10 +2978,10 @@ body.rail-open .step-rail-toggle { left: var(--rail-w); }
   border-radius: var(--sk-btn-radius);
   background: var(--chrome-fill);
   color: var(--chrome-muted);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
   transition: background-color var(--speed-tap), color var(--speed-tap),
               border-color var(--speed-tap);
@@ -3014,7 +2995,7 @@ body.rail-open .step-rail-toggle { left: var(--rail-w); }
 .sh-find:active { transform: scale(calc(1 - (1 - var(--sk-press, 0.985)) * var(--motion))); }
 .sh-find-icon { font-size: var(--t-base); line-height: 1; }
 .sh-find-key {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--chrome-muted);
   border: 1px solid var(--chrome-hair-strong);
@@ -3138,12 +3119,12 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
   padding: var(--s2) var(--s1) var(--s3);
   border-top: 1px solid var(--chrome-hair);
   text-align: center;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
 }
 .sh-rail-trial[hidden] { display: none; }
 .sh-rail-trial-label {
   font-size: var(--t-micro);
-  letter-spacing: .02em;
+  letter-spacing: 0;
   line-height: var(--lh-snug);
   color: var(--chrome-muted);
 }
@@ -3185,7 +3166,7 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
   border: 1px solid var(--chrome-hair-strong);
   border-radius: var(--radius-pill);
   color: var(--chrome-ink);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
   cursor: pointer;
 }
@@ -3957,9 +3938,10 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
   height: 40px;
   margin: 0 auto var(--s3);
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--brand-bar-2), var(--brand) 55%, var(--brand-lift));
+  /* one flat violet: the 8B mark, no gradient, no glow */
+  background: var(--brand);
   color: var(--brand-bar-ink);
-  box-shadow: 0 6px 16px -4px var(--cta-glow);
+  box-shadow: none;
   text-decoration: none;
 }
 .sh-rail-logo svg { width: 20px; height: 20px; }
@@ -4028,7 +4010,7 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
   color: var(--chrome-muted);
 }
 .sh-bar .sh-find-key {
-  font-family: var(--f-code);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: 0.625rem;
   font-weight: 500;
   letter-spacing: 0;
@@ -4064,7 +4046,7 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
   border-color: var(--chrome-hair);
   font-size: 0.625rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0;
 }
 .sh-bar .ps-btn .ps-title { font-family: var(--f-body); font-size: var(--t-tiny); font-weight: 600; letter-spacing: 0; text-transform: none; }
 
@@ -4237,7 +4219,7 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
   background: var(--surface-rail);
   font-size: var(--t-nano);
   line-height: 1.3;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
   pointer-events: none;
 }
 
@@ -4309,21 +4291,35 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
 
 /* ---- the foot: trial clock, help, account ------------------------- */
 :root .sh-rail-trial {
+  /* a left-aligned row in the rail's own style: the label over the value
+     on the left, the link at the end, like a rail item's word and mark */
   margin: 0 0 var(--s2);
-  width: 56px;
-  padding: var(--s2) 0;
+  width: auto;
+  padding: var(--s2) var(--s3);
   border-top: 1px solid var(--border-hair);
-  gap: 2px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "label cta" "time cta";
+  align-items: center;
+  justify-items: start;
+  column-gap: var(--s3);
+  row-gap: 0;
+  text-align: left;
 }
-:root .sh-rail-trial-label { font-size: var(--t-nano); letter-spacing: 0.02em; color: var(--ink-muted); }
-:root .sh-rail-trial-time { font-family: var(--f-mono); font-size: var(--t-micro); color: var(--ink); }
+:root .sh-rail-trial-label { grid-area: label; font-size: var(--t-micro); letter-spacing: 0; color: var(--ink-muted); }
+:root .sh-rail-trial-time { grid-area: time; font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-ui); font-weight: 600; color: var(--ink); }
 :root .sh-rail-trial-cta {
-  padding: 2px var(--s1);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  font-size: var(--t-nano);
+  grid-area: cta;
+  padding: var(--s1) 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-size: var(--t-micro);
+  font-weight: 600;
   color: var(--brand-deep);
+  text-decoration: none;
 }
+:root .sh-rail-trial-cta:hover { background: none; text-decoration: underline; }
 :root .sh-rail-trial.is-urgent { border-top-color: var(--danger); }
 :root .sh-rail-trial.is-urgent .sh-rail-trial-time { color: var(--danger); }
 .sh-rail-avatar {
@@ -4410,6 +4406,7 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
 .sh-acct-id { display: flex; flex-direction: column; min-width: 0; }
 .sh-acct-name { font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sh-acct-email { font-size: var(--t-micro); color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-acct-signin { padding: 0 var(--s2) var(--s2); }
 .sh-acct-list { display: flex; flex-direction: column; gap: 2px; }
 .sh-acct-item {
   display: flex;
@@ -4486,10 +4483,10 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
   margin: var(--s2) 0 2px;
   padding: var(--s2) var(--s2) 0;
   border-top: 1px solid var(--border-hair);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-nano);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .sh-fly-list > .sh-fly-sub:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
@@ -4540,9 +4537,9 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-pill);
   color: var(--ink-muted);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-nano);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   line-height: 1.5;
 }
 .sh-fly-mod.is-planned { opacity: .72; }
@@ -4576,7 +4573,7 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
 .sh-fly-grp.has-here { box-shadow: inset 2px 0 0 var(--hue, var(--accent-primary)); color: var(--ink); font-weight: 600; }
 .sh-fly-count {
   min-width: 1.5em;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -4769,7 +4766,7 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   color: var(--ink-muted);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-nano);
   font-weight: 500;
   letter-spacing: 0;
@@ -4826,23 +4823,24 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
 :root .sh-bar .icon-btn,
 :root .sh-bar .tb-menu-btn.is-compact { width: var(--sh-ctl-h); min-width: var(--sh-ctl-h); padding: 0; }
 
-/* [FEATURE] Dragon ▾ — the format in violet mono, then the project. */
+/* Feature · Dragon ▾ — the format as a small badge, then the project
+   (28 Oct 2026: the bracketed mono "[FEATURE]" form is gone). */
 :root .sh-bar .ps-btn { gap: var(--s2); max-width: 260px; padding: 0 var(--s2) 0 var(--s3); }
 :root .sh-bar .ps-btn .ps-fmt:not([hidden]) {
-  display: inline;
-  padding: 0;
-  background: none;
-  border: 0;
-  border-radius: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 var(--s2);
+  background: var(--brand-wash);
+  border: 1px solid var(--info-line);
+  border-radius: var(--radius-pill);
   color: var(--brand-deep);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-nano);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
-:root .sh-bar .ps-btn .ps-fmt:not([hidden])::before { content: "["; }
-:root .sh-bar .ps-btn .ps-fmt:not([hidden])::after { content: "]"; }
 :root .sh-bar .ps-btn .ps-title { max-width: 16ch; font-family: var(--f-body); font-size: var(--t-tiny); font-weight: 600; color: var(--ink); }
 :root .sh-bar .ps-btn .ps-caret { color: var(--ink-muted); font-size: var(--t-nano); }
 
@@ -4874,6 +4872,19 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
 }
 :root .sh-bar .sign-in-pill.signed-in:hover { background: var(--surface-hover); }
 :root .sh-bar .sign-in-pill.signed-in .sip-avatar:not([hidden]) { width: 28px; height: 28px; }
+/* ONE WAY IN (31 Oct 2026): signed out, the pill is the Google button. The
+   band is dark, so it is the WHITE-filled variant (the G is public/google-g.svg,
+   never recoloured) with the dark canvas as its ink. */
+.sign-in-pill .gbtn-g { display: none; width: 18px; height: 18px; flex: none; }
+:root .sh-bar .sign-in-pill:not(.signed-in) {
+  gap: var(--s2);
+  background: var(--brand-on);
+  border-color: var(--brand-on);
+  color: var(--surface-canvas);
+}
+:root .sh-bar .sign-in-pill:not(.signed-in):hover { background: var(--brand-on); border-color: var(--accent-primary); color: var(--surface-canvas); }
+:root .sh-bar .sign-in-pill:not(.signed-in) .gbtn-g { display: block; }
+:root .sh-bar .sign-in-pill:not(.signed-in) .sip-label { max-width: none; }
 
 /* ---- below the desk ---------------------------------------------------- */
 @media (max-width: 1099px) {
@@ -4970,3 +4981,311 @@ html.mn-on { scroll-padding-bottom: calc(var(--mab-h, 0px) + var(--s3)); }
 }
 /* the word's tooltip gives way to the open menu it names */
 :root .sh-rail-item.tb-menu-btn[aria-expanded="true"] .sh-rail-label { opacity: 0; visibility: hidden; }
+
+/* ============================================================
+   THE LABELLED RAIL AND THE SLIM BAND (owner, 28 Oct 2026)
+   ------------------------------------------------------------
+   An app-kit frame: a dark sidebar whose items say what they are
+   (icon + word in one row, not an icon with a tooltip), a slim dark
+   band that carries the crumb (stage › page), search and the
+   project, and the light work canvas beside them.
+
+   WHERE IT APPLIES. From 1100px up, where the rail is furniture, and
+   below 1100px, where it is the burger's drawer (an overlay, so its
+   width costs the page nothing). The 64px icon column above is still
+   the rule nowhere else: its tooltips and placement stay in the sheet
+   because the drawer and the desk share every element.
+
+   Declared LAST, for the reason every block above gives: equal
+   specificity, and order decides. Tokens and --sk-* only; no class,
+   id or data-action a proof reads is changed. Every rail label is
+   still the element it was (.sh-rail-label): it is now simply shown
+   in place instead of floated beside the column.
+   ============================================================ */
+:root { --sh-rail-pad: var(--s3); }
+@media all {
+  :root { --sh-rail-w: 224px; }
+  :root .sh-rail {
+    align-items: stretch;
+    padding: var(--s3) var(--sh-rail-pad) var(--s3);
+    border-right: 1px solid var(--border-hair);
+  }
+
+  /* the product: tile and name in one row */
+  :root .sh-rail-logo {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    width: auto;
+    height: auto;
+    margin: 0 0 var(--s4);
+    padding: var(--s1) var(--s2);
+    background: none;
+    border: 0;
+    color: var(--ink);
+  }
+  .sh-rail-mono {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md, var(--radius));
+    background: var(--brand);
+    color: var(--brand-on);
+    font-family: var(--f-display);
+    font-size: var(--t-tiny);
+    font-weight: 700;
+  }
+  .sh-rail-brand {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--f-display);
+    font-size: var(--t-ui);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  :root .sh-rail-logo:hover .sh-rail-mono { background: var(--brand-hover); }
+
+  .sh-rail-main,
+  .sh-rail-foot { align-items: stretch; gap: 2px; }
+  .sh-rail .sh-rail-stages,
+  .sh-rail .sh-rail-group,
+  .sh-rail .sh-rail-tools {
+    align-items: stretch;
+    gap: 2px;
+    width: auto;
+    margin: var(--s3) 0 0;
+    padding: var(--s3) 0 0;
+  }
+  /* a group says what it holds, in the rail's quietest type; the words
+     are the group's own aria-label, so nothing new is written */
+  .sh-rail .sh-rail-stages::before,
+  .sh-rail .sh-rail-group::before {
+    content: attr(aria-label);
+    display: block;
+    padding: 0 var(--s3) var(--s1);
+    font-family: var(--f-body);
+    font-size: var(--t-micro);
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ink-muted);
+  }
+  .sh-rail .sh-rail-tools {
+    margin: 0 0 var(--s2);
+    padding: 0 0 var(--s2);
+    border-top: 0;
+    border-bottom: 1px solid var(--border-hair);
+  }
+
+  /* an item: icon, word, then a status mark at the end */
+  .sh-rail .sh-rail-item {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    align-items: center;
+    justify-items: start;
+    column-gap: var(--s3);
+    width: 100%;
+    height: auto;
+    min-height: 36px;
+    padding: 0 var(--s3);
+    border-radius: var(--radius-md, var(--radius));
+    color: var(--ink-body);
+    text-align: left;
+  }
+  .sh-rail .sh-rail-item > .sh-rail-icon { grid-column: 1; grid-row: 1; justify-self: center; font-size: 18px; }
+  .sh-rail .sh-rail-item:hover,
+  .sh-rail .sh-rail-stagecell.is-fly > .sh-rail-item { background: var(--surface-hover); color: var(--ink); }
+  .sh-rail .sh-rail-item.is-active {
+    background: var(--surface-active);
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .sh-rail .sh-rail-item.is-active .sh-rail-icon { color: var(--brand-deep); }
+  .sh-rail .sh-rail-item.is-active::before {
+    inset: 50% auto auto calc(-1 * var(--sh-rail-pad));
+    height: 18px;
+  }
+
+  /* the word, in place: every tooltip property of the icon rail undone */
+  .sh-rail .sh-rail-item .sh-rail-label,
+  .sh-rail .sh-rail-item:hover .sh-rail-label,
+  .sh-rail .sh-rail-item:focus-visible .sh-rail-label,
+  .sh-rail .sh-rail-stage .sh-rail-label,
+  .sh-rail .sh-rail-stage:hover .sh-rail-label,
+  .sh-rail .sh-rail-stage:focus-visible .sh-rail-label,
+  .sh-rail .sh-rail-item.tb-menu-btn[aria-expanded="true"] .sh-rail-label {
+    position: static;
+    grid-column: 2;
+    grid-row: 1;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    padding: 0;
+    overflow: hidden;
+    clip: auto;
+    clip-path: none;
+    background: none;
+    border: 0;
+    box-shadow: none;
+    color: inherit;
+    font-family: var(--f-body);
+    font-size: var(--t-ui);
+    font-weight: inherit;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transform: none;
+    opacity: 1;
+    visibility: visible;
+    transition: none;
+    pointer-events: none;
+  }
+  /* a stage's hue, and the dots that mark sync and a stale backup, sit
+     at the row's end instead of on the icon's corner */
+  .sh-rail-dot,
+  .sh-rail .sh-rail-tools .sh-sync .sh-sync-led,
+  .sh-rail .sh-rail-tools .is-backup-stale > .tb-menu-btn > .tb-backup-dot {
+    position: static;
+    grid-column: 3;
+    grid-row: 1;
+    width: 7px;
+    height: 7px;
+    box-shadow: none;
+  }
+  .sh-rail .sh-rail-item > .pg-flag {
+    position: static;
+    grid-column: 3;
+    grid-row: 1;
+    transform: none;
+    background: none;
+  }
+  .sh-rail .sh-rail-tools .sh-sync { height: auto; gap: 0 var(--s3); }
+  .sh-rail .sh-rail-tools .sh-sync .sh-sync-icon { font-size: 18px; }
+
+  /* the account: the photo or initials, then the name */
+  .sh-rail .sh-rail-account { min-height: 44px; }
+  .sh-rail .sh-rail-account .sh-rail-avatar {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: center;
+    width: 28px;
+    height: 28px;
+    font-size: var(--t-micro);
+  }
+  .sh-rail .sh-rail-account { grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: var(--s2); padding-left: var(--s2); }
+
+  /* the flyout opens beside the wider column */
+  .sh-fly { left: calc(var(--sh-rail-w) + var(--s1)); width: 272px; }
+}
+
+/* THE BAND: slim, dark, and short of words. The purpose lines left it
+   (shell.js renderCrumb); the crumb is two segments, stage › page. */
+:root .sh-bar { column-gap: var(--s3); }
+:root .sh-bar > .sh-where { font-size: var(--t-ui); }
+:root .sh-where-here { font-weight: 600; }
+:root .sh-where-phase { color: var(--ink-body); }
+/* With no stage strip and no purpose line beside it, the crumb is short
+   at every desk width, so the stage segment no longer gives way between
+   720 and 1279px (the phone keeps mobile-nav.css's own rule). */
+@media (min-width: 720px) {
+  :root .sh-bar .sh-where-phase { display: inline-flex; }
+  :root .sh-bar .sh-where-phase + .sh-where-sep { display: inline; }
+}
+/* the band's search keeps its whole placeholder below 1280px: the key
+   cap gives way, the palette still answers the shortcut */
+@media (max-width: 1279px) {
+  :root .sh-bar .sh-find .sh-find-key { display: none; }
+}
+
+/* THE SAVE STATE IN THE BAND (28 Oct 2026): beside the crumb, quiet
+   body text, never over the content. The fixed pill above stays for a
+   page with no shell. */
+.sh-bar > .save-indicator.in-band {
+  position: static;
+  flex: none;
+  z-index: auto;
+  padding: 0 var(--s2);
+  background: transparent;
+  color: var(--ink-muted);
+  box-shadow: none;
+  border-radius: 0;
+  font-family: var(--f-body);
+  font-size: var(--t-tiny);
+  font-weight: 500;
+  letter-spacing: 0;
+  transform: none;
+  max-width: none;
+}
+.sh-bar > .save-indicator.in-band.error { color: var(--danger); }
+@media (max-width: 719px) {
+  .sh-bar > .save-indicator.in-band:not(.error) .si-msg {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+}
+
+/* ============================================================
+   ONE BUTTON LANGUAGE, EVERY PAGE (28 Oct 2026 sweep)
+   The legacy objects (.btn, .mini-btn, .tb-link, .mbtn) still drawn by
+   the module pages wore the 8 Oct revamp's paint: transparent, a
+   hairline, a teal hover and the CTA glow — a second button language
+   beside the kit's. Inside a page (main) and a modal's action row
+   they now take the kit's values, as `.k-scope` already gave Settings
+   and the console: the white card, the default border, the grey
+   hover; the brand for a primary; the danger wash for a destructive
+   one. Colours, border and radius only — every size, padding and
+   class a proof reads stays where the page put it. A kit button
+   (.k-btn) that carries .btn as a hook keeps the kit's own rule.
+   Declared LAST and led by :root for the ordering trap in CLAUDE.md.
+   ============================================================ */
+:root main :is(.btn, .mini-btn, .tb-link):not(.k-btn),
+:root .modal-actions .mbtn:not(.k-btn) {
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--sk-btn-radius, var(--radius));
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: none;
+}
+:root main :is(.btn, .mini-btn, .tb-link):not(.k-btn):hover,
+:root .modal-actions .mbtn:not(.k-btn):hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+:root main .btn.primary:not(.k-btn),
+:root main .btn:not(.k-btn)[aria-pressed="true"],
+:root main .btn.is-on:not(.k-btn),
+:root .modal-actions .mbtn.primary:not(.k-btn) {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-on);
+  box-shadow: none;
+}
+:root main .btn.primary:not(.k-btn):hover,
+:root main .btn:not(.k-btn)[aria-pressed="true"]:hover,
+:root main .btn.is-on:not(.k-btn):hover,
+:root .modal-actions .mbtn.primary:not(.k-btn):hover {
+  background: var(--brand-hover);
+  border-color: var(--brand-hover);
+  color: var(--brand-on);
+}
+:root main .btn.danger:not(.k-btn),
+:root .modal-actions .mbtn.danger:not(.k-btn) {
+  background: var(--danger-wash);
+  border-color: var(--danger-line);
+  color: var(--danger);
+}
+:root main .btn.danger:not(.k-btn):hover,
+:root .modal-actions .mbtn.danger:not(.k-btn):hover {
+  background: var(--danger-wash);
+  border-color: var(--danger);
+  color: var(--danger-deep);
+}

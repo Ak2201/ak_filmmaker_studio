@@ -39,10 +39,9 @@
 }
 .dv-bp-lab {
   margin: var(--s3) 0 var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .dv-bp-q {
@@ -77,10 +76,10 @@
 }
 .dv-fest-row strong { color: var(--ink); overflow-wrap: anywhere; }
 .dv-fest-status {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .dv-fest-fmt { flex: 1 1 100%; color: var(--ink-body); }
@@ -93,9 +92,9 @@
    was the keyboard focus ring exactly, so the selected filter read as
    "focused" and a focused one as "selected". Doubled class: `:root .btn`
    in chrome.css is 0,2,0 and declared later. */
-.dv-filter.dv-filter.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+.dv-filter.dv-filter.is-on { background: var(--brand); border-color: var(--brand); color: var(--brand-on); }
 .dv-filter.dv-filter.is-on:hover,
-.dv-filter.dv-filter.is-on:focus-visible { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--accent-on); }
+.dv-filter.dv-filter.is-on:focus-visible { background: var(--brand-hover); border-color: var(--brand-hover); color: var(--brand-on); }
 
 /* ---- a group ------------------------------------------------ */
 .dv-group { margin: 0 0 var(--s6); }
@@ -106,7 +105,7 @@
   gap: var(--s3);
 }
 .dv-group-count {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-small);
   font-variant-numeric: tabular-nums;
   color: var(--ink-muted);
@@ -145,10 +144,10 @@
   overflow-wrap: anywhere;
 }
 .dv-when {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .dv-why {
@@ -170,7 +169,7 @@
   gap: var(--s2);
   align-items: stretch;
 }
-.dv-state { flex: 0 0 auto; }
+.dv-state { flex: 0 0 auto; font-family: var(--f-body); font-size: var(--t-small); letter-spacing: 0; }
 .dv-note { flex: 1 1 12rem; min-width: 0; font-size: var(--t-small); }
 
 /* ---- add your own ------------------------------------------- */

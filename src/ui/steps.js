@@ -19,6 +19,7 @@
 import { videoSlot } from './video-slots.js';
 import { stepKey } from '../lib/video-keys.js';
 import { h, fromHTML, delegate } from '../lib/dom.js';
+import { pillEl } from './learn-pill.js';
 import { paperTextarea, paperField, paperScope } from './paper-field.js';
 import SIDECAR from '../data/steps.tanglish.json';
 import PRIORITY from '../data/steps.priority.json';
@@ -238,7 +239,7 @@ export function mountStepsPath(before, groups) {
 
   const wrap = h('section.st-path', { id: 'start-here', 'aria-label': 'Where to start' });
   wrap.append(
-    h('p.st-path-eyebrow', { text: 'START HERE' }),
+    h('p.st-path-eyebrow', { text: 'Start here' }),
     h('h2.st-path-title', { text: 'The spine.' }),
     h('p.st-path-deck', {
       text: 'There are ' + all + ' steps below and they are in the order you do them, '
@@ -318,7 +319,7 @@ function normaliseInlineHue(html) {
 
 const BLOCKS = {
   formula: (b) => h('div.formula-box', {}, [
-    h('div.label', { text: b.label || 'FORMULA' }),
+    h('div.label', { text: b.label || 'Formula' }),
     prose('div.eq', b.eq, b.tanglish)
   ]),
 
@@ -328,10 +329,20 @@ const BLOCKS = {
     prose('p', b.body, b.tanglish)
   ]),
 
-  why: (b) => h('div.why-this', {}, [
-    h('div.label', { text: b.label || 'WHY THIS MATTERS' }),
-    prose('p', b.body, b.tanglish)
-  ]),
+  /* "Why this matters" opens as a pop-up (owner, 29 Oct 2026): a quiet
+     trigger on screen, the words kept in .why-body (hidden on screen,
+     printed, searched and read by the pop-up when it opens). An EMPTY
+     body is not an explainer - step 13's "From Part I" panel, which
+     feature.js fills in place - so it keeps the old box. */
+  why: (b) => {
+    const label = b.label || 'Why this matters';
+    const words = [h('div.label', { text: label }), prose('p', b.body, b.tanglish)];
+    if (!b.body) return h('div.why-this', {}, words);
+    return h('div.why-this.why-pop', {}, [
+      pillEl({ label, size: 'sm', exempt: true, extraClass: 'why-open', attrs: { 'data-why-open': '' } }),
+      h('div.why-body', {}, words)
+    ]);
+  },
 
   hint: (b) => prose('div.hint', b.body, b.tanglish),
 
@@ -352,7 +363,7 @@ const BLOCKS = {
   },
 
   check: (b) => h('div.step-check', {}, [
-    h('h4', { text: b.heading || 'BEFORE MOVING ON' }),
+    h('h4', { text: b.heading || 'Before moving on' }),
     h('ul', {}, (b.items || []).map((it) =>
       h('li', { 'data-key': it.key, html: it.text, role: 'checkbox', tabindex: '0', 'aria-checked': 'false' })
     ))
@@ -477,7 +488,7 @@ export function renderStep(step, extra, ns) {
     rank
       ? h('span.st-spine-chip', {
         title: rank.note || 'One of the steps that produce a usable blueprint',
-        text: 'ESSENTIAL · ' + rank.n + ' of ' + rank.total
+        text: 'Essential · ' + rank.n + ' of ' + rank.total
       })
       : null,
     step.time ? h('div.step-time', { text: step.time }) : null
@@ -503,7 +514,7 @@ export function renderStep(step, extra, ns) {
       rank ? h('strong.st-why-lead', { text: rank.note }) : null,
       feeds
         ? h('span.st-why-feeds', {}, [
-          h('span.st-why-label', { text: 'FEEDS' }),
+          h('span.st-why-label', { text: 'Feeds' }),
           h('span', { text: feeds })
         ])
         : null
@@ -519,7 +530,7 @@ export function renderStep(step, extra, ns) {
     section.firstChild.append(
       typeof b === 'string'
         ? fromHTML(b)
-        : h('span.step-badge', { 'data-step': b.step ?? step.num, text: b.initial ?? 'EMPTY' })
+        : h('span.step-badge', { 'data-step': b.step ?? step.num, text: b.initial ?? 'Empty' })
     );
   }
 
@@ -548,6 +559,7 @@ export function renderStep(step, extra, ns) {
     }
     const el = fn(block);
     if (block.type === 'why') {
+      if (ns && step.id) el.setAttribute('data-why-step', stepKey(ns, step.id));
       const key = deckKey(ns, step);
       const idx = whyN++;
       const alt = key && (SIDECAR.why[key] || [])[idx];
@@ -613,6 +625,30 @@ export function stepIndex(steps) {
    because this is where every page already imports it from, and a
    gratuitous import change is a diff nobody can read. One
    implementation, two importable homes — not two implementations. */
+/* One listener for every "Why this matters" trigger, wherever the step is
+   drawn (blueprint page, stage guide, drawer). The explainer and the
+   video code load on the first press, not with the page. */
+delegate(document, 'click', '[data-why-open]', (e, btn) => {
+  const box = btn.closest('.why-pop');
+  if (!box) return;
+  const sec = box.closest('section');
+  const head = sec && sec.querySelector('h2, h3');
+  const stepKeyOf = box.getAttribute('data-why-step') || '';
+  import('./explainer.js').then(({ openExplainer }) => openExplainer({
+    title: (btn.querySelector('.learn-pill-label') || btn).textContent,
+    eyebrow: head ? head.textContent.trim().replace(/\s+/g, ' ').slice(0, 80) : 'Why it matters',
+    returnTo: btn,
+    build: async (body) => {
+      const src = box.querySelector('.why-body p');
+      body.replaceChildren(...(src ? [src.cloneNode(true)] : []));
+      if (!stepKeyOf) return;
+      const [{ approvedFor }, vid] = await Promise.all([import('../lib/videos.js'), import('./video.js')]);
+      const vids = vid.watchBlock(approvedFor(stepKeyOf).slice(0, 2), 'Watch');
+      if (vids) body.append(vids);
+    }
+  })).catch((err) => console.warn('[steps] why pop-up', err));
+});
+
 export { stepKeys, stepFieldKeys } from '../lib/step-keys.js';
 
 /* The stage helpers, re-exported for the two pages so they import the

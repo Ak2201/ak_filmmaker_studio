@@ -37,6 +37,7 @@ import COPY from '../data/format-rules.json';
 import { checkScript, checkAround } from '../lib/format-rules.js';
 import { h, delegate } from '../lib/dom.js';
 import { learn } from './learn.js';
+import { learnInline } from './learn-pill.js';
 import { WRITE_PREFS_KEY, readWritePrefs, writeWritePrefs, readGuideDismissed, saveGuideDismissed } from '../lib/write-prefs.js';
 import '../styles/format-guide.css';
 import { indiaContentShown } from './india-content.js';
@@ -131,6 +132,12 @@ function clearNote(row) {
   old.remove();
 }
 
+/* "Why?" opens the explainer over the page (owner, 29 Oct 2026), so the
+   script lines below the note never move. Nothing is written. */
+function whyButton(f) {
+  return learnInline({ label: COPY.panel.whyLabel, size: 'sm', exempt: true, title: f.message, heading: f.message, eyebrow: 'Format note', text: f.why });
+}
+
 function showNote(row, f) {
   const old = row.querySelector(':scope > .fg-note');
   if (old && old.dataset.rule === f.ruleId) return;     // already saying it
@@ -138,11 +145,7 @@ function showNote(row, f) {
   const id = 'fg-note-' + (++noteSeq);
   const note = h('div.fg-note.is-' + f.severity, { id, role: 'note', 'data-rule': f.ruleId }, [
     h('p.fg-note-msg', { text: f.message }),
-    h('details.fg-why', {}, [
-      h('summary', { text: COPY.panel.whyLabel }),
-      h('p', { text: f.why }),
-      learn(LEARN_FOR[typeOf(row)])
-    ].filter(Boolean)),
+    h('div.fg-why', {}, [whyButton(f), learn(LEARN_FOR[typeOf(row)])].filter(Boolean)),
     h('button.fg-got', { type: 'button', 'data-action': 'fg-dismiss', 'data-rule': f.ruleId, text: COPY.panel.gotIt })
   ]);
   row.append(note);

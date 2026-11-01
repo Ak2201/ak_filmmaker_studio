@@ -28,6 +28,8 @@
 import Store from '../lib/store.js';
 import { delegate, h } from '../lib/dom.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
+import { kGoogleBtn } from './kit/google-btn.js';
+import { GOOGLE_LABEL, googleMarkAttrs } from '../lib/google-button.js';
 /* account.js imports nothing and reaches cloud.js through its global,
    so this cannot cycle back into chrome.js the way an import of
    cloud.js would. It is in the same `studio` chunk already. */
@@ -86,7 +88,8 @@ export function attachSignInPill(host) {
   }, [
     h('span.sip-avatar', { 'aria-hidden': 'true', hidden: true }),
     h('span.sip-dot', { 'aria-hidden': 'true' }),
-    h('span.sip-label', { text: 'Sign in' })
+    h('img', { ...googleMarkAttrs }),
+    h('span.sip-label', { text: GOOGLE_LABEL })
   ]);
   host.appendChild(pill);
   refreshSignInPill();
@@ -131,11 +134,11 @@ export function refreshSignInPill() {
   if (!sess || !sess.user) {
     pill.classList.remove('signed-in');
     pill.dataset.sync = 'off';
-    lab.textContent = 'Sign in';
+    lab.textContent = GOOGLE_LABEL;
     setAvatar(pill, '');
     setIdentity(pill, null);
-    pill.title = 'Sign in to back up your projects to your account and pick them up on another device. Local-only keeps working either way.';
-    pill.setAttribute('aria-label', 'Sign in to your account');
+    pill.title = 'New or returning, continue with Google to back up your projects and open them on another device. Local-only keeps working either way.';
+    pill.setAttribute('aria-label', GOOGLE_LABEL);
     return;
   }
 
@@ -415,7 +418,7 @@ export function renderAccountBlock() {
   if (!c || !sess || !sess.user) {
     return h('div#amBlock.account-menu.am-inline.show', {}, [
       h('p.am-acct-note', { text: 'You are not signed in. Your projects are saved on this device either way.' }),
-      h('button.am-item', { type: 'button', 'data-auth-action': 'pill', text: 'SIGN IN' })
+      kGoogleBtn({ block: true, action: 'pill' })
     ]);
   }
   const st    = (c.getSyncStatus && c.getSyncStatus()) || { state: 'idle', detail: '' };
@@ -425,7 +428,7 @@ export function renderAccountBlock() {
   const waiting = (g.status && g.status.pendingRequests) || 0;
   const gateRows = [];
   if (g.state === 'closed') {
-    /* "GET AN INVITE" was right while asking was the only road in. The
+    /* "Get an invite" was right while asking was the only road in. The
        door offers a free trial, a plan and a code now, so it says what
        the page actually does; a request already in flight still gets
        its own row and its own address. */
@@ -436,8 +439,8 @@ export function renderAccountBlock() {
        menu row has no room for them: the row names the offer, not the
        price, and the offer page says both. */
     const passRow = () => (passPhase(cachedPassOffer()) === 'open'
-      ? '→ ' + passCta(passMode(cachedPassOffer()) === 'renew' ? null : passFacts(cachedPassOffer())) : '→ SEE PLANS');
-    if (g.reason === 'pending') gateRows.push(h('a.am-item', { href: 'invite.html#request', text: '→ YOUR INVITE REQUEST' }));
+      ? '→ ' + passCta(passMode(cachedPassOffer()) === 'renew' ? null : passFacts(cachedPassOffer())) : '→ See plans');
+    if (g.reason === 'pending') gateRows.push(h('a.am-item', { href: 'invite.html#request', text: '→ Your invite request' }));
     else {
       const row = h('a.am-item', { href: 'invite.html', text: passRow() });
       gateRows.push(row);
@@ -465,7 +468,7 @@ export function renderAccountBlock() {
     /* The three actions are one row on the card at every width (a phone
        wraps them to full-width buttons); the same buttons, one handler.
        Kit buttons, sentence case: one button language on the page
-       (CLAUDE.md item 48), as the signed-out "Sign in" already was. */
+       (CLAUDE.md item 48), as the signed-out button already was. */
     h('div.am-actions', {}, [
       h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'sync', text: 'Sync now' }),
       h('button.k-btn.k-btn--secondary', { type: 'button', 'data-auth-action': 'settings', text: 'Cloud settings' }),
@@ -481,19 +484,14 @@ export function renderAccountBlock() {
 // ============================================================
 // AUTH MODAL
 // ============================================================
-const GOOGLE_MARK =
-  '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true" focusable="false">' +
-  '<path d="M21.35 11.1h-9.18v2.92h5.27c-.23 1.4-1.6 4.11-5.27 4.11-3.17 0-5.76-2.62-5.76-5.85s2.59-5.85 5.76-5.85c1.81 0 3.02.77 3.71 1.43l2.53-2.43C16.79 4.06 14.62 3 12.17 3 6.92 3 2.7 7.22 2.7 12.27s4.22 9.27 9.47 9.27c5.47 0 9.1-3.84 9.1-9.25 0-.62-.07-1.09-.16-1.59z"/>' +
-  '</svg>';
-
 function ensureCloudAuthModal() {
   let m = document.getElementById('cloudAuthModal');
   if (m) return m;
 
   const card = h('form.cm-card', { novalidate: true }, [
     h('button.cm-close', { type: 'button', 'aria-label': 'Close', 'data-auth-action': 'close', text: '×' }),
-    h('div.cm-eyebrow', { text: 'ACCOUNT · OPTIONAL' }),
-    h('h2#cmHeading', { html: 'Sign <em>in.</em>' }),
+    h('div.cm-eyebrow', { text: 'Account · optional' }),
+    h('h2#cmHeading', { html: 'Continue with <em>Google.</em>' }),
     h('p.cm-deck', {
       text: 'Your writing is saved on this device either way. An account adds a durable backup and lets you pick the same project up on another machine.'
     }),
@@ -505,7 +503,7 @@ function ensureCloudAuthModal() {
       h('input#cmCfgUrl', { type: 'url', placeholder: 'https://xxxx.supabase.co', autocomplete: 'off', spellcheck: 'false' }),
       h('label', { for: 'cmCfgKey', text: 'Anon (public) key' }),
       h('input#cmCfgKey', { type: 'text', placeholder: 'eyJhbGciOi…', autocomplete: 'off', spellcheck: 'false' }),
-      h('button.cm-btn.primary', { type: 'button', 'data-auth-action': 'save-cfg', text: 'SAVE & CONTINUE' }),
+      h('button.cm-btn.primary', { type: 'button', 'data-auth-action': 'save-cfg', text: 'Save & continue' }),
       h('p.cm-hint', {
         text: 'The anon key is public by design — access is decided by row-level policies on the database, not by hiding this string. Never paste a service-role key here.'
       })
@@ -518,11 +516,8 @@ function ensureCloudAuthModal() {
     // Supabase side — see the header of supabase-schema.sql; a button
     // removed here is not a provider disabled there.
     h('div#cmAuthBlock', {}, [
-      h('button#cmGoogle.cm-btn.google', { type: 'button', 'data-auth-action': 'google' }, [
-        h('span.g-mark', { html: GOOGLE_MARK, 'aria-hidden': 'true' }),
-        h('span.cm-btn-label', { text: 'CONTINUE WITH GOOGLE' })
-      ]),
-      h('p.cm-hint', { text: 'Sign in with your Google account — there is no separate password to remember.' }),
+      kGoogleBtn({ block: true, class: 'cm-gbtn', attrs: { id: 'cmGoogle' } }),
+      h('p.cm-hint', { text: 'New and returning users use the same button. There is no password.' }),
       /* Hidden unless mayConfigure() says otherwise — see it for why
          an ordinary visitor should never meet this. Rendered rather
          than omitted so that showConfigBlock() has something to
@@ -564,7 +559,7 @@ function setModalError(msg) {
 function setBusy(id, busy, busyLabel, restLabel) {
   const btn = document.getElementById(id);
   if (!btn) return;
-  const lab = btn.querySelector('.cm-btn-label');
+  const lab = btn.querySelector('.cm-btn-label, .gbtn-l');
   btn.disabled = !!busy;
   btn.setAttribute('aria-busy', busy ? 'true' : 'false');
   if (lab) lab.textContent = busy ? busyLabel : restLabel;
@@ -594,7 +589,7 @@ export function openCloudAuthModal(opts) {
       heading.innerHTML = 'Account <em>settings.</em>';
       showConfigBlock();
     } else {
-      heading.innerHTML = 'Sign <em>in.</em>';
+      heading.innerHTML = 'Continue with <em>Google.</em>';
     }
   } else {
     // Nothing to sign in TO yet. Google cannot be offered before the
@@ -616,7 +611,7 @@ export function openCloudAuthModal(opts) {
       // which is to say from somebody else.
       h('span', { text: '"' + opts.shareMeta.title + '" · role: ' + opts.shareMeta.role + '.' }),
       h('br'),
-      h('span', { text: 'Sign in to claim it.' })
+      h('span', { text: 'Continue with Google to claim it.' })
     ]);
     m.querySelector('.cm-card').insertBefore(banner, m.querySelector('#cmError'));
   }
@@ -693,23 +688,23 @@ export async function saveConfig() {
     setModalError('Could not reach that project. Check the URL and the anon key.');
     return;
   }
-  toastOk('Connected. Sign in below.');
+  toastOk('Connected. Continue with Google below.');
   m.querySelector('#cmConfigBlock').hidden = true;
   m.querySelector('#cmAuthBlock').hidden = false;
-  m.querySelector('#cmHeading').innerHTML = 'Sign <em>in.</em>';
+  m.querySelector('#cmHeading').innerHTML = 'Continue with <em>Google.</em>';
 }
 
 export async function startGoogle() {
   const c = cloud();
   if (!c) return;
   setModalError('');
-  setBusy('cmGoogle', true, 'OPENING GOOGLE…', 'CONTINUE WITH GOOGLE');
+  setBusy('cmGoogle', true, 'Opening Google…', 'Continue with Google');
   refreshSignInPill();
   try {
     await c.signInWithGoogle();
     // If this resolves at all, the navigation is already under way.
   } catch (e) {
-    setBusy('cmGoogle', false, 'OPENING GOOGLE…', 'CONTINUE WITH GOOGLE');
+    setBusy('cmGoogle', false, 'Opening Google…', 'Continue with Google');
     refreshSignInPill();
     setModalError(errText(e));
     toastError(errText(e));
@@ -761,6 +756,11 @@ delegate(document, 'click', '[data-auth-action]', async (e, el) => {
       if (u && u.toastInfo) {
         u.toastInfo('Signed out. Every project is still on this device.');
       }
+      /* The purchase page is exempt from the site gate (it is where an
+         unpaid account is sent, 28 Oct 2026), so no gate walks a signed-out
+         visitor off it; and signed out it has nothing to say. Go to the
+         landing page, as every gated page does. */
+      try { if (/(^|\/)(purchase|purchases)(\.html)?$/.test(location.pathname)) location.assign('start.html'); } catch (err) { /* stay */ }
       break;
     }
     default: break;

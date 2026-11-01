@@ -62,7 +62,7 @@ import '../styles/launcher.css';
 /* TWO derived figures, and which one a sentence quotes is not a detail.
    the heading counts the modules the MAP draws; BUILT_MODULE_COUNT is
    how many a visitor can actually open. The launcher prints both, side
-   by side ("N OF M BUILT"), under a label that says it is a map and a
+   by side ("N of m built"), under a label that says it is a map and a
    deck that says the ones still to come say so — so the total is the
    right figure here, because the qualifier is right next to it.
 
@@ -102,7 +102,6 @@ export const BUILT_MODULE_COUNT = moduleGroups().reduce(
    blueprint-era blobs they read — is src/lib/launcher-model.js. Reads only:
    the launcher must never write during a render. */
 const ROWS = ROWS_JSON.rows;
-const NUMBER_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
 
 /* ------------------------------------------------------------
    WHERE AM I
@@ -178,9 +177,9 @@ function moduleTile(m, hiddenTile, snap, at) {
     el.append(h('span.lx-mod-state.is-work', { text: state.text }));
   }
   if (m.status !== 'built') {
-    el.append(h('span.lx-flag', { text: m.status === 'partial' ? 'PARTIAL' : 'SOON' }));
+    el.append(h('span.lx-flag', { text: m.status === 'partial' ? 'Partial' : 'Soon' }));
   }
-  if (isHere) el.append(h('span.lx-mod-here', { text: 'THIS PAGE' }));
+  if (isHere) el.append(h('span.lx-mod-here', { text: 'This page' }));
 
   const item = h('li.lx-mod-cell');
   if (hiddenTile) item.hidden = true;
@@ -229,27 +228,17 @@ export function renderLauncher() {
     return s && s.kind === 'work';
   }).length, 0);
 
-  const head = h('div.section-head');
+  /* A plain heading and one count (owner, 28 Oct 2026: fewer words per
+     screen). The count is of what the grid DRAWS, and what varies for
+     this project only is how many of them hold work. */
+  const head = h('div.section-head.lx-head');
   head.append(
     h('div.left', {}, [
-      h('div.label', { text: 'THE MAP · EVERY MODULE BY STAGE OF WORK' }),
-      h('h2#lxHeading', {}, [
-        document.createTextNode(`${NUMBER_WORDS[live.length] || live.length} rows, `),
-        // Emphasis by weight, not an italic accent.
-        h('strong.lx-count', { text: `${shown} ${shown === 1 ? 'module' : 'modules'}.` })
-      ]),
-      /* "Usually": the hero above says the stages go in any order and
-         nothing is mandatory; this line must not contradict it. */
-      h('p.deck', {
-        text: 'A film usually moves through these in this order. '
-            + 'Open any module directly.'
-      })
+      h('h2#lxHeading', { text: 'Your tools' }),
+      h('p.deck', { text: 'Grouped by the work they do. Open any of them, in any order.' })
     ]),
-    /* What varies for this project only: how many modules hold work.
-       "N of N built" never varied for anyone, and "you are here" on the
-       dashboard said the page you were already reading. */
     h('div.right', {}, [
-      h('div.lx-worked', { text: `${worked} with work` })
+      h('p.lx-worked', { text: `${shown} ${shown === 1 ? 'module' : 'modules'} · ${worked} with work` })
     ])
   );
 

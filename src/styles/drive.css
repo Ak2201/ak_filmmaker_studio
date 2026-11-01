@@ -1,0 +1,14 @@
+/* Drive-only storage: the migration sheet and the share sheet
+   (src/ui/drive-ui.js). Tokens only; shapes from the skin. */
+.dm-sheet { display: grid; gap: var(--s3); padding: var(--s3) var(--s4) var(--s4); }
+.dm-deck, .dm-line { margin: 0; color: var(--ink-muted); }
+.dm-line { color: var(--ink); min-height: 1.5em; }
+.dm-list { margin: 0; padding-left: var(--s4); color: var(--ink); }
+.dm-actions { display: flex; justify-content: flex-end; gap: var(--s2); }
+.dm-err { margin: 0; color: var(--danger-deep); }
+.dm-sheet .share-row { margin: 0; grid-template-columns: 1fr auto auto; }
+.dm-sheet .share-row input,
+.dm-sheet .share-row select { margin-bottom: 0; min-width: 0; }
+@media (max-width: 719px) {
+  .dm-sheet .share-row { grid-template-columns: 1fr; }
+}

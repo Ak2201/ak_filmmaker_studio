@@ -35,11 +35,11 @@
 .st-stage-chip {
   display: inline-block;
   padding: var(--s1) var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep, var(--accent-deep));
   border: var(--sk-card-line-w) solid var(--hue, var(--accent));
   border-left-width: var(--sk-hue-rule-w);
@@ -64,9 +64,9 @@
   min-width: 0;
 }
 .st-tools-label {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 .st-tool { white-space: normal; text-align: start; }
@@ -80,7 +80,7 @@
 }
 .st-readout:empty { display: none; }
 .st-readout-text {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
   font-weight: 700;
   color: var(--ink-body);
@@ -100,9 +100,9 @@
    colour is the one thing a stylesheet cannot correct later. */
 .draft-eyebrow {
   margin-bottom: var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--accent-deep);
 }
 .draft-title {

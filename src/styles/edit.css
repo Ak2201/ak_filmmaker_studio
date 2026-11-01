@@ -44,9 +44,9 @@
    was the keyboard focus ring exactly, so the selected filter read as
    "focused" and a focused one as "selected". Doubled class: `:root .btn`
    in chrome.css is 0,2,0 and declared later. */
-.el-filter.el-filter.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+.el-filter.el-filter.is-on { background: var(--brand); border-color: var(--brand); color: var(--brand-on); }
 .el-filter.el-filter.is-on:hover,
-.el-filter.el-filter.is-on:focus-visible { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--accent-on); }
+.el-filter.el-filter.is-on:focus-visible { background: var(--brand-hover); border-color: var(--brand-hover); color: var(--brand-on); }
 
 /* ---- a row ----------------------------------------------------- */
 .el-list { display: grid; gap: var(--s3); }
@@ -72,7 +72,7 @@
   gap: var(--s2) var(--s3);
 }
 .el-num, .el-pages {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
   color: var(--ink-muted);
   flex: 0 0 auto;
@@ -101,10 +101,10 @@
   padding: var(--s1) var(--s3);
   border: 1px solid var(--rule);
   border-radius: var(--radius-pill);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-body);
   text-decoration: none;
   background: var(--paper-sunk);
@@ -245,7 +245,7 @@
   border-radius: var(--sk-radius, var(--radius));
 }
 .el-run-fig { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; flex: 1 1 260px; }
-.el-run-label { font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.el-run-label { font-family: var(--f-body); font-size: var(--t-tiny); letter-spacing: 0; color: var(--ink-muted); }
 .el-run-val { align-self: flex-start; font-family: var(--f-display); font-size: var(--t-2xl); color: var(--ink); }
 .el-run-note { font-size: var(--t-small); color: var(--ink-body); }
 .el-run .k-field { flex: 0 1 180px; }
@@ -253,11 +253,11 @@
 
 /* ---- Swiss pass: figure bars, the day chip, pick-up cards, the side column ---- */
 .el-stat-bar { margin-top: var(--s2); }
-.el-order { margin: 0 0 var(--s3); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.el-order { margin: 0 0 var(--s3); font-size: var(--t-tiny); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 .el-day-chip, .el-pu-tag {
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .el-pending {
@@ -267,10 +267,10 @@
   border-radius: var(--radius-pill);
   background: var(--warn-wash);
   color: var(--warn-deep);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 /* Audio synced reads as a state: the ticked one takes the ok tone. */
 .el-sync.is-synced { color: var(--ok-deep); }
@@ -296,5 +296,5 @@
 .el-side-list { list-style: none; margin: var(--s2) 0 0; padding: 0; display: grid; gap: var(--s2); }
 .el-side-list li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s1) var(--s3); font-size: var(--t-small); color: var(--ink-body); }
 .el-side-list a { color: var(--accent-deep); overflow-wrap: anywhere; }
-.el-side-state { font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.el-side-state { font-size: var(--t-tiny); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 .el-side-link { display: inline-flex; align-items: center; min-height: 44px; margin-right: var(--s4); font-size: var(--t-small); color: var(--accent-deep); }

@@ -1,15 +1,21 @@
-# The design kit — Swiss Precision, dark only
+# The design kit — the 8B mix
 
-Last reviewed: 2026-10-19 (checked: file paths, `kit.html`, the single `studio` skin, `src/ui/kit/` builders).
+Last reviewed: 2026-10-28 (the 8B foundation, then the final QA pass: one fill, labels in Onest, tinted tabs, h1 tiers).
 
-Since 14 Oct 2026 the studio is one look: **Swiss Precision** on a layered
-obsidian ground, one **violet** accent, **dark only**. This file is the
-reference for the tokens and the component kit every page is built from.
+Since 28 Oct 2026 the studio and the public site share one look taken from the
+8B design-studio template (MIT — `docs/CREDITS.md`): **near-black and white
+bands, pale cards, ONE violet**, Gabarito headings over an Onest interface.
+This REVERSES the 14 Oct "Swiss Precision, dark only" decision: the work
+surface is light, the chrome (rail, top band, phone bar and sheets, project
+switcher) is near-black. This file is the reference for the tokens and the
+component kit every page is built from.
 
 - Tokens: `src/styles/tokens.css` (colour, type, space, radii, motion)
 - Shapes: `src/styles/skins/studio.css` (the `--sk-*` contract in `skins/_contract.css`)
 - Faces: `src/styles/fonts.css` (self-hosted, no Google Fonts host)
 - Components: `src/styles/kit.css` + `src/ui/kit/*.js`, one import path `src/ui/kit/index.js`
+- Public-site utilities: `src/styles/site.css` (Tailwind v4, public pages ONLY;
+  its `@theme inline` maps every utility colour to a token)
 - Showcase: `kit.html` — dev only (`npm run dev` → `/kit.html`, `/kit.html#modal`).
   Not a build input, so never built, precached or linked.
 
@@ -21,53 +27,81 @@ variables only; a raw colour outside `tokens.css` fails the grep in CLAUDE.md
 invariant 4, and a literal radius in a rule is a shape nothing can override.
 If a value you need is not a token, add the token.
 
+## Two surfaces, one palette
+
+There is still ONE palette and no toggle (`fms_studio_theme_v1` is read, never
+written; `chrome.js` stamps `data-theme="studio"`, which restates
+`color-scheme: light` only). It has two sides:
+
+- **bare `:root`** — the LIGHT work surface every page reads;
+- **the dark scope** — `.sh-rail, .sh-bar, .toolbar, .mobile-actionbar,
+  .mn-sheet, .ps-pop, .skip-to-content, .step-rail-toggle,
+  [data-surface="dark"]` — restates the SAME token names with dark values.
+
+So `color: var(--ink)` is right on either side without knowing which side it is
+on. Custom properties inherit COMPUTED values, so every token that is a `var()`
+of a scope-varying token sits in an ALIAS block whose selector is `:root,` plus
+the dark list — declared once, re-evaluated on each side. If you add a chrome
+surface (an element painting `var(--chrome)`), add it to both selector lists in
+`tokens.css`. A page's accent crosses the seam through `--accent-night` /
+`--accent-night-wash`, which every `[data-phase]` / `[data-volume]` block names.
+
+The public site uses `[data-surface="dark"]` for its near-black bands.
+
 ## Tokens
 
-### Surfaces (depth by luminance + hairline, never a soft shadow)
+### Surfaces (light side → dark scope)
 
-| token | value | use |
-| --- | --- | --- |
-| `--surface-canvas` (`--paper`) | `#0D0E13` | the page, dead gutters |
-| `--surface-rail` (`--paper-sunk`, `--chrome`) | `#121318` | rail, band, dock, inset fields, table heads |
-| `--surface-card` (`--paper-raised`) | `#1A1B21` | cards, panels, strips |
-| `--surface-elevated` (`--panel`) | `#22232B` | modals, menus, popovers, toasts |
-| `--surface-hover` / `--surface-active` | `#2A2B35` / `#343542` | interaction fills |
-| `--border-hair` (`--rule-hair`) | white 8% | every hairline at rest |
-| `--border-strong` (`--rule`) | white 16% | hover, focus, seams |
-| `--border-focus` | `#8B5CF6` | focus rings, active outlines |
+| token | light | dark scope | use |
+| --- | --- | --- | --- |
+| `--surface-canvas` (`--paper`) | `#F4F3F8` | `#0D0C11` | the page |
+| `--surface-rail` (`--paper-sunk`) | `#EFEEF4` | `#16151C` | inset strips, table heads, the pale card |
+| `--surface-card` (`--paper-raised`) | `#FFFFFF` | `#1A1922` | cards, panels, fields |
+| `--surface-elevated` | `#FFFFFF` | `#1F1D26` | modals, menus, popovers |
+| `--surface-hover` / `--surface-active` | `#E9E8F0` / `#DFDDE8` | `#27252F` / `#322F3C` | interaction fills |
+| `--border-hair` / `--border-strong` | near-black 8% / 18% | white 8% / 16% | hairlines |
+| `--chrome` | `#0D0C11` | (same) | the rail, the band, the dock — constant |
+| `--panel` | `#FFFFFF` | `#1F1D26` | the floating family |
 
 ### Ink
 
-`--ink` `#EDEDF2` (the thing itself) · `--ink-body` `#C7C4D7` (running text) ·
-`--ink-muted` `#94A3B8` (secondary; 4.7:1 on the active fill). `--ink-faint` is
-**not a text colour** (lines, swatches only — verify fails it as `color`).
+Light: `--ink` `#0D0C11` · `--ink-body` `#2B2932` · `--ink-muted` `#5D5A67`
+(6.7:1 on white, 5.0:1 on the active fill). Dark scope: `#FFFFFF` · `#D6D4DE` ·
+`#AAA7B4` (5.5:1 on its active fill). `--ink-faint` is **not a text colour**.
 
-### Accent
+### Accent: one violet
 
 | token | value | use |
 | --- | --- | --- |
-| `--accent-primary` | `#8B5CF6` | the violet as a MARK: focus, selection bar, outlines, glows, dots, meters |
-| `--brand` / `--cta-fill` | `#7C3AED` | a violet FILL that carries white text (5.7:1) |
-| `--brand-hover` | `#6D28D9` | its hover |
-| `--brand-deep` | `#B197FC` | violet as TEXT (eyebrows, links) |
-| `--brand-wash` | `#1D1832` | selected row / info ground |
-| `--accent-glow` | violet 25% | the CTA glow |
+| `--brand` / `--accent-primary` / `--feature` | `#6C3CFF` | THE violet: the fill under white text (5.6:1) and the mark (focus, selection, dots, meters) |
+| `--brand-hover` | `#5A2EE0` | its hover |
+| `--brand-deep` | `#5326D9` (dark scope `#B9A3FF`) | violet as TEXT |
+| `--brand-wash` | `#EFEAFF` (dark scope `#1F1838`) | selected row / info ground |
 
-White on `#8B5CF6` is 4.23:1 — under the 4.5 the gate holds — which is why a
-text-bearing fill is one step deeper. Page accents still follow
+The primary button is a flat violet pill — no glow, no gradient (`--shadow-cta`
+and every `*-sheen` resolve to nothing).
+
+**ONE FILL (final pass, 28 Oct 2026).** Every selected, active, pressed or
+progress FILL is `--brand` (text `--brand-on`): `.is-on` chips and filters,
+`[aria-pressed="true"]` segments, meters, primary buttons. A phase hue is a
+MARK only — the rail dot, a 3px rule, an icon tile's wash. A SELECTED TAB is a
+tint, not a fill (`--brand-wash` under `--brand-deep`, `tabs.css`,
+`.dv-tab.is-on`), so the one solid violet on a view is its primary action.
+Page accents still follow
 `<html data-phase|data-volume>`: `--accent`, `--accent-deep` (text),
-`--accent-on` (text on the fill), `--accent-hover` (the fill's hover).
+`--accent-on` (text on the fill), `--accent-hover` (the fill's hover),
+`--accent-night` (text on near-black).
 
 ### Data colour
 
 | family | tokens |
 | --- | --- |
-| Time of day | `--strip-day` `#D6A44A`, `--strip-night` `#60A5FA`, `--strip-dusk` `#F472B6`, `--strip-dawn` `#A78BFA`, each with `-bg` (12% wash) and `-ink` (badge text); classes `.hue-day/-night/-dusk/-dawn` |
+| Time of day | `--strip-day/-night/-dusk/-dawn`, each with `-bg` (alpha wash) and `-ink` (badge text, dark on light, light in the dark scope); classes `.hue-day/-night/-dusk/-dawn` |
 | Company move | `--strip-move`, `-bg`, `-ink` |
-| DOOD | `--dood-sw` (emerald), `--dood-w` (violet), `--dood-h` (amber), `--dood-wf` (crimson), each `-bg` / `-ink`; `--dood-d-ink`, `--dood-empty` |
-| Status | fills `--status-success` `#10B981` / `--status-warning` `#F59E0B` / `--status-danger` `#EF4444`; text `--ok-deep`, `--warn-deep`, `--danger`; washes `--ok-wash` …; hairlines `--ok-line`, `--warn-line`, `--danger-line`, `--info-line` |
-| Elements | `--el-*` via `.hue-el-cast` … `.hue-el-dressing` (`--hue`, `--hue-deep`, `--hue-wash`) |
-| Phases | `--feature/--library/--plan/--shoot/--visualize/--shorts` via `.sh-ph-*` / `.hue-*` |
+| DOOD | `--dood-sw/-w/-h/-wf`, each `-bg` / `-ink`; `--dood-d-ink`, `--dood-empty` |
+| Status | fills `--status-*`, `--ok`, `--warn` (near-black reads on both); text `--ok-deep`, `--warn-deep`, `--danger`; `--danger-on` (white) on a danger fill; washes and `-line` hairlines |
+| Elements | `--el-*` via `.hue-el-*` (`--hue`, `--hue-deep`, `--hue-wash`, `--hue-on`) |
+| Phases | `--feature/--library/--plan/--shoot/--visualize/--shorts` via `.sh-ph-*` / `.hue-*`; each has `-deep`, `-wash`, `-night`, `-night-wash` |
 
 A fill is never a text colour: text takes `-deep` / `-ink` / `-on`.
 
@@ -75,39 +109,69 @@ A fill is never a text colour: text takes `-deep` / `-ink` / `-on`.
 
 | token | face | use |
 | --- | --- | --- |
-| `--f-display` (`--face-display`) | Space Grotesk | page titles, headings, panel titles |
-| `--f-body` / `--f-sans` (`--face-sans`) | Inter | interface and running text |
-| `--f-mono` | JetBrains Mono | eyebrows, labels, table heads, eighths, timecodes, DOOD codes |
-| `--f-editorial` | Playfair Display *italic* | ONLY the project title / cover preview and the landing tagline |
+| `--f-display` (`--face-display`) | Gabarito 500–800 | page titles, headings, panel titles, stat figures |
+| `--f-body` / `--f-sans` (`--face-sans`) | Onest 400–700 | interface, labels, running text |
+| `--f-mono` (`--f-code`) | Onest + tabular-nums (no mono face) | data only: eighths, timecodes, DOOD codes, INT/EXT tags, slugs, money columns. NEVER a label, chip, button or crumb (final pass: ~300 mono-caps label rules moved to Onest, sentence case, normal tracking) |
+| `--f-editorial` | Gabarito (upright) | the project title / cover preview and the landing tagline |
 | `--f-script` | Courier Prime (Noto Sans Tamil LAST) | screenplay text |
 
-Catamaran (Tamil subset only) follows every UI face for Tamil glyphs. Page
-titles are upright (`--face-accent-style: normal`). Figures that must align
-use `.k-mono` / `.k-num` (tabular-nums). Scale: `--t-nano` 9 · `--t-micro` 11 ·
+Labels are sentence case in Onest (badges, field labels, table heads, stat
+labels — `statCard()` capitalises the first letter at the source); eyebrows
+stay small caps in Onest. Icons are Material Symbols through `.sym`, never a
+dingbat (✓ ✕) in UI chrome; a dingbat that is CONTENT (export text, a PDF,
+a category mark from data) stays.
+
+**Public h1 tiers.** DISPLAY (`.mk-h1`, 76px at 1440) on the home page and the
+product pages; PAGE TITLE (60px, `.pr-hero` / `.co-hero` / `.mk-hero--article`)
+on every other marketing page, pricing included; legal pages 48px. Headings track tight
+(`--track-tight` −0.025em, `--track-display` −0.04em). "Gabarito Fallback" /
+"Onest Fallback" are metric-matched local Arial faces from the template, so
+the webfont swap does not move the line. Catamaran (Tamil subset only) follows
+every UI face for Tamil glyphs. Scale: `--t-nano` 9 · `--t-micro` 11 ·
 `--t-tiny` 12 · `--t-ui` 13 · `--t-small` 14 · `--t-base` 16 · `--t-lg` 18 ·
 `--t-xl` 22 · `--t-2xl` 28 · `--t-3xl` 36.
 
-Fonts are self-hosted from `@fontsource` (latin + latin-ext). Inter, Space
-Grotesk and JetBrains Mono (latin) are preloaded by the `fms-font-preloads`
-plugin; the rest load on demand. The Material Symbols icon font is cut at
-build time from `navigation.json` + `section-icons.json`
+Fonts are self-hosted from `@fontsource` (latin + latin-ext). Onest 400 and
+Gabarito 700 (latin) are preloaded by the
+`fms-font-preloads` plugin; the rest load on demand. The Material Symbols icon
+font is cut at build time from `navigation.json` + `section-icons.json`
 (`scripts/lib/icon-font.mjs`, HarfBuzz): **a kit icon must be listed in
 `section-icons.json` `icons`**, and a misspelt name fails the build.
 
 ### Shape, space, height
 
-Radii: `--radius-sm` 4 (micro controls, tags, DOOD cells) · `--radius` 6
-(fields, buttons) · `--radius-lg` 8 (cards, panels) · `--radius-xl` 12 (modals)
-· `--radius-pill` (status badges and the one primary CTA only). Skin:
-`--sk-radius` 8, `--sk-btn-radius` 6, `--sk-field-radius` 6, `--sk-modal-radius`
-12, `--sk-card-pad` 12/16, `--sk-hue-rule-w` 3px. Heights: `--h-compact` 28,
-`--h-control` 32, `--h-field` 36, `--h-badge` 18. Space: 4px base (`--s1`…`--s10`,
-plus `--s-half` 2, `--s1h` 6).
+Radii: `--radius-sm` 8 (micro controls, tags, DOOD cells) · `--radius` 10
+(fields, buttons) · `--radius-lg` 16 (cards, panels) · `--radius-xl` 24
+(modals) · `--radius-2xl` 28 (the public site's big surfaces) ·
+`--radius-pill` (status badges, segmented controls and the one primary CTA).
+Skin: `--sk-radius` 16, `--sk-btn-radius` 10, `--sk-field-radius` 10,
+`--sk-modal-radius` 24, `--sk-card-pad` 16/24, `--sk-hue-rule-w` 3px. Heights:
+`--h-compact` 30, `--h-control` 36, `--h-field` 40, `--h-badge` 20. Space: 4px
+base (`--s1`…`--s10`, plus `--s-half` 2, `--s1h` 6).
 
-### Light surfaces (the only three)
+### Light documents
 
-`--print-*` (print / PDF), `[data-surface="paper"]` (the legal pages carry it on
-`<html>`; any element can), and `--paper-page*` (the screenplay's paper page).
+`--print-*` (print / PDF), `[data-surface="paper"]` and `--paper-page*` (the
+screenplay's paper page) keep their own families.
+
+### Motion
+
+Calm and purposeful: `--speed` 160ms, `--speed-slow` 260ms, `--ease-out`.
+Every translate and scale is `calc(<distance> * var(--motion))`; reduced
+motion sets `--motion: 0`. The `motion` npm package is bundled for the
+public site's rise-in and the studio's panel transitions; `motion-app.js` is
+inert under `navigator.webdriver`, so check motion by hand.
+
+### One page, one primary, one screen
+
+The studio dashboard is the model: the h1 is the FILM's title (the page name
+lives in the crumb), ONE primary action (Continue), the rest one click away in
+`details.db-more` disclosures (readiness, all tools, project details) — a
+fragment target inside one is opened by `revealTarget()` in `tabs.js`. Phones
+have ONE navigation entry: the bottom bar's Go to (the band's rail toggle is
+hidden under `html.mn-on`). The save state sits in the band beside the crumb
+(`.save-indicator.in-band`), never over content. An in-page jump moves FOCUS
+with the scroll (`fragments.js` `moveFocus`).
 
 ## Components
 

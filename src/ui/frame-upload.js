@@ -68,7 +68,7 @@ export async function shrinkImage(file, edge = UPLOAD_EDGE, quality = UPLOAD_QUA
 /* The gate's refusals, said for an upload rather than a drawing. */
 const GATE_WORDS = {
   nodrive: 'Pictures are saved only to Google Drive, and this build of the studio cannot reach Drive.',
-  signedout: 'Sign in with Google first (Settings → Account). Pictures are saved to your own Google Drive, never in this browser.',
+  signedout: 'Continue with Google first (Settings → Account). Pictures are saved to your own Google Drive, never in this browser.',
   noconnect: 'Connect Google Drive first (Settings → Google Drive). Pictures are saved there, never in this browser.'
 };
 

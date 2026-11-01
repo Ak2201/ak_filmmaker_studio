@@ -29,8 +29,7 @@ on `undefined`/`NaN` or an unknown module. If a figure is wrong, fix the data,
 not the poster. After a palette or brand change, regenerate.
 
 Related generators that are NOT part of this kit: `npm run og` (the link
-preview image, `public/og.png`), `npm run icons` (PWA icons) and `npm run shots`
-(`public/shots/`, the screenshots on `start.html`). The kit's posters contain
+preview image, `public/og.png`), `npm run icons` (PWA icons). The kit's posters contain
 no screenshots and no invented social proof.
 
 ## Editing the copy

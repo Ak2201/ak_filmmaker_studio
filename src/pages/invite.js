@@ -43,6 +43,7 @@ import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, commitMain } from '../lib/dom.js';
 import { pageHeader } from '../ui/kit/page-header.js';
+import { kGoogleBtn } from '../ui/kit/google-btn.js';
 import { listPriceBlock } from '../ui/list-prices.js';
 import { trialLength } from '../lib/trial-time.js';
 import { perDay, LIST_PRICE } from '../lib/plans.js';
@@ -124,7 +125,7 @@ function trialSection(section) {
   const t = section('trial', 'Free trial', 'Start your free trial.',
     'Open the Dragon and The Dark Knight samples — two whole films, each with its script, its breakdown, its schedule and its call sheets — and read them from the inside, for ' + len + '. No card, nothing to fill in.');
   t.append(h('div.iv-actions', {}, [
-    h('button.k-btn.k-btn--primary', { type: 'button', 'data-iv-action': 'start-trial', text: 'START MY ' + len.toUpperCase() })
+    h('button.k-btn.k-btn--primary', { type: 'button', 'data-iv-action': 'start-trial', text: 'Start my ' + len })
   ]));
   t.append(h('p.bd-sub', { id: 'trialMsg', role: 'status', 'aria-live': 'polite', text: '' }));
   return t;
@@ -241,7 +242,7 @@ function passSection(signedIn) {
   const terms = passTerms(passOfferNow);
   const t = section('pass', 'Launch offer', terms.mode === 'renew' ? 'Try the whole studio.' : 'Try the whole studio for ' + f.price + '.',
     'The whole studio, every stage, on your own films: ' + terms.line + '. Once per account, through Razorpay. ' + (terms.mode === 'renew'
-      ? 'Cancel in Settings, under Plan & purchases, and you keep the days already paid for.'
+      ? 'Cancel with Razorpay, the payment service, and you keep the days already paid for.'
       : 'Then choose a yearly plan, or don’t.'));
   t.dataset.offerMode = terms.mode || 'unknown';
   t.append(passClock());
@@ -251,7 +252,7 @@ function passSection(signedIn) {
       : h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', 'data-iv-action': 'pass-intent', text: passCta(terms.mode === 'renew' ? null : f) })
   ]));
   if (signedIn) t.append(h('p.bd-sub', { id: 'passMsg', role: 'status', 'aria-live': 'polite', text: '' }));
-  else t.append(legalLine('You sign in with Google first; the payment comes after. By continuing you agree to the '));
+  else t.append(legalLine('You continue with Google first; the payment comes after. By continuing you agree to the '));
   return t;
 }
 
@@ -288,7 +289,7 @@ function render() {
       'Code ' + formatCode(getCodePass().code) + ' opened this browser. Your work is saved here; an account would back it up and let you pick it up elsewhere.');
     sec.append(h('div.iv-actions', {}, [
       h('a.k-btn.k-btn--primary', { href: 'index.html', text: 'Go to the studio' }),
-      h('button.k-btn.k-btn--secondary', { type: 'button', 'data-auth-action': 'google', text: 'Sign in with Google' }),
+      kGoogleBtn(),
       h('button.k-btn.k-btn--secondary', { type: 'button', 'data-iv-action': 'forget-code', text: 'Forget this code' })
     ]));
     body.append(sec);
@@ -296,8 +297,8 @@ function render() {
     /* HELD, NOT SPENT. The code is in this browser and worth a seven-day
        trial; a trial is counted against a person, so it is waiting for
        an account. One button, and it says what pressing it does. */
-    const sec = section('through', 'Your code', 'Sign in to spend your code.',
-      'Code ' + formatCode(getCodePass().code) + ' is held in this browser. Sign in with Google and it is redeemed on your account, with the free trial it carries. Nothing on this device changes.');
+    const sec = section('through', 'Your code', 'Continue with Google to use your code.',
+      'Code ' + formatCode(getCodePass().code) + ' is held in this browser. Continue with Google and it is redeemed on your account, with the free trial it carries. Nothing on this device changes.');
     sec.append(h('div.iv-actions', {}, [
       h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', text: 'Continue with Google' }),
       h('button.k-btn.k-btn--secondary', { type: 'button', 'data-iv-action': 'forget-code', text: 'Forget this code' })
@@ -324,12 +325,13 @@ function render() {
        Plans and the code box stay either way. */
     const phase = passPhaseNow();
     if (phase === 'open') { const ps = passSection(false); if (ps) body.append(ps); }
-    if (!trialsOff() && phase === 'off') {
+    const trialShown = !trialsOff() && phase === 'off';
+    if (trialShown) {
       const len = anonTrial && anonTrial.enabled ? trialLength(anonTrial.minutes) : '';
       /* The LENGTH belongs in the deck, not in the heading: "Start your
          30 minutes free trial" is not a sentence anybody says. */
       const t = section('trial', 'Free trial', 'Start your free trial.',
-        'The whole studio, on the Dragon and The Dark Knight sample films' + (len ? ', for ' + len : '') + '. No card, nothing to install. Sign in and it begins.');
+        'The whole studio, on the Dragon and The Dark Knight sample films' + (len ? ', for ' + len : '') + '. No card, nothing to install. Continue with Google and it begins.');
       t.append(h('div.iv-actions', {}, [
         h('button.k-btn.k-btn--primary', { type: 'button', 'data-auth-action': 'google', text: 'Continue with Google' })
       ]));
@@ -347,7 +349,9 @@ function render() {
       /* The prices on this page (src/ui/list-prices.js), not a link away. */
       buy.append(prices());
       buy.append(h('div.iv-actions', {}, [
-        h('a.k-btn.k-btn--primary', { href: buyHref(), text: 'See plans and buy' }),
+        /* One primary per view: when the trial or the pass card above
+           already carries it, buying is the second choice (28 Oct 2026). */
+        h('a.k-btn' + (trialShown || phase === 'open' ? '.k-btn--secondary' : '.k-btn--primary'), { href: buyHref(), text: 'See plans and buy' }),
         h('a.k-btn.k-btn--secondary', { href: 'pricing.html#compare', text: 'Compare every feature' })
       ]));
       { const held = heldCodeLine(); if (held) buy.append(held); }
@@ -557,7 +561,10 @@ async function retryGate(btn) {
    named — plan-cards.js marks that card. The stash is spent when it is used. */
 function forwardPlan() {
   try {
-    if (takePassIntent()) { passWanted = true; return; }   // the pass is bought HERE
+    /* the pass is bought on purchase.html now: the press on the landing
+       page was the consent, so the buyer goes straight there (?buy=pass),
+       and purchase.js re-reads the offer before it opens the sheet */
+    if (takePassIntent()) { location.replace('purchase.html?buy=pass'); return; }
     const to = takeInvitePlan(!!(cloud() && cloud().getSession && cloud().getSession()));
     if (to) location.replace(to);
   } catch (e) { /* the page still offers SEE PLANS AND BUY */ }

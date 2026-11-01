@@ -10,6 +10,9 @@
    never disagree with the mode the server is actually selling.
 
    Rules the wording keeps (consumer law, and this repo's honesty rule):
+   - cancelling is done at the mandate (the Razorpay e-mail link, or the
+     bank / UPI app), never in the app: CANCEL_AT_MANDATE says so, so
+     "cancel anytime" stays truthful;
    - an auto-renew line ALWAYS says how often, at what amount, and
      "cancel anytime" — in the same sentence as the price;
    - a one-time line says it does not renew;
@@ -77,6 +80,9 @@ export function offerTerms(mode, price, period, days) {
   return { mode: null, renews: null, neutral, line: neutral, short: '' };
 }
 
+/** Where a cancel happens: at the mandate, never in the app (owner, 28 Oct 2026). */
+export const CANCEL_AT_MANDATE = 'To cancel, use the link in your Razorpay mandate e-mail or your bank / UPI app.';
+
 /** After a cancel: "Auto-pay off · access until 3 Nov 2026". */
 export function cancelledText(untilLabel) {
   return 'Auto-pay off · access until ' + String(untilLabel || '').trim();
@@ -87,4 +93,4 @@ export function renewsText(dateLabel, price) {
   return 'Renews ' + String(dateLabel || '').trim() + (price ? ' · ' + price : '');
 }
 
-export default { MODES, readMode, everyText, forText, offerTerms, cancelledText, renewsText };
+export default { CANCEL_AT_MANDATE, MODES, readMode, everyText, forText, offerTerms, cancelledText, renewsText };

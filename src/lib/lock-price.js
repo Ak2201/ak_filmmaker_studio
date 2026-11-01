@@ -53,7 +53,7 @@ export async function fillLock(p, ids, line, cta) {
     const q = await Billing.quote(p.id, null, usd ? usd.orderCur : 'INR');
     if (!q || !q.ok || !(q.amount_paise > 0)) return;
     const amount = usd ? fmtMinor(q.amount_minor != null ? q.amount_minor : q.amount_paise, q.currency === 'USD' ? 'USD' : 'INR') : Billing.fmtPaise(q.amount_paise);
-    cta.textContent = 'UPGRADE FOR ' + amount + (q.credit_paise > 0 ? ' MORE' : '');
+    cta.textContent = 'Upgrade for ' + amount + (q.credit_paise > 0 ? ' more' : '');
   } catch (e) { /* the plain button stands */ }
 }
 

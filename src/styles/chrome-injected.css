@@ -109,11 +109,20 @@
   background: var(--danger-wash);
   color: var(--ink);
   border-bottom: 1px solid var(--danger);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   line-height: var(--lh-snug);
   text-wrap: balance;
 }
 .studio-no-project-banner a { color: inherit; text-decoration: underline; }
+
+/* A placed slot (learn-places.js, CORE) holds the pill's room from its
+   first paint: the pill lands a dynamic import later, and an empty slot
+   that grew then pushed the section down by 40-odd px. Here rather than
+   in learn.css, which arrives WITH the pill. */
+.learn-slot[data-learn-place] { min-height: calc(32px + 2 * var(--s2)); }
+@media (pointer: coarse) {
+  .learn-slot[data-learn-place] { min-height: calc(44px + 2 * var(--s2)); }
+}

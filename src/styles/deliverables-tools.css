@@ -11,34 +11,41 @@
    ============================================================ */
 
 /* ---- the tab strip ------------------------------------------ */
+/* The same shape as the strip tabs.js draws on every other page
+   (tabs.css): a quiet group of pill rows, the open one filled. */
 .dv-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s1);
+  width: fit-content;
+  max-width: 100%;
   margin: 0 0 var(--s5);
-  border-bottom: var(--sk-card-line-w, 1px) solid var(--rule);
+  padding: var(--s1);
+  background: var(--paper-raised);
+  border: var(--sk-card-line-w, 1px) solid var(--border-hair);
+  border-radius: var(--sk-radius, var(--radius));
 }
 .dv-tab {
   appearance: none;
-  margin: 0 0 -1px;
-  padding: var(--s2) var(--s4);
-  min-height: 44px;
-  border: var(--sk-card-line-w, 1px) solid transparent;
-  border-bottom: 0;
-  border-radius: var(--sk-radius, var(--radius)) var(--sk-radius, var(--radius)) 0 0;
+  margin: 0;
+  padding: var(--s1) var(--s4);
+  min-height: 2.25rem;
+  border: 0;
+  border-radius: var(--sk-field-radius, var(--radius));
   background: none;
   font: inherit;
+  font-family: var(--f-body);
   font-size: var(--t-small);
-  font-weight: 600;
-  color: var(--ink-muted);
+  font-weight: 500;
+  color: var(--ink-body);
   cursor: pointer;
+  transition: color var(--speed) var(--ease), background-color var(--speed) var(--ease);
 }
-.dv-tab:hover { color: var(--ink); }
-.dv-tab.is-on {
-  color: var(--ink);
-  background: var(--paper-raised);
-  border-color: var(--rule);
-  box-shadow: inset 0 3px 0 var(--accent);
+@media (hover: hover) { .dv-tab:not(.is-on):hover { color: var(--ink); background: var(--surface-hover); } }
+.dv-tab.is-on {   /* a tint, like every tab strip (tabs.css, 28 Oct 2026) */
+  color: var(--brand-deep);
+  background: var(--brand-wash);
+  font-weight: 600;
 }
 .dv-tab:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent); outline-offset: var(--focus-offset); }
 /* Three tabs are 378px at the desk padding, so at 390 "Dialogue list"
@@ -99,10 +106,10 @@
 .dv-ott-row label { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s1) var(--s3); min-width: 0; cursor: pointer; }
 .dv-ott-name { font-weight: 600; color: var(--ink); }
 .dv-ott-kind {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .dv-ott-kind.is-template { color: var(--warn-deep); }
@@ -133,10 +140,10 @@
 }
 .dv-hint p { margin: 0; }
 .dv-hint-eyebrow {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 .dv-hint-rating {
@@ -197,14 +204,14 @@
 .dv-flag.is-review      { border-left-color: var(--warn); }
 .dv-flag.is-caution     { border-left-color: var(--accent); }
 .dv-flag-kind {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .dv-flag-label { font-weight: 600; color: var(--ink); }
-.dv-flag-terms { font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--ink-body); overflow-wrap: anywhere; }
+.dv-flag-terms { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-tiny); color: var(--ink-body); overflow-wrap: anywhere; }
 .dv-flag-ev { flex: 1 1 100%; display: grid; gap: var(--s1); }
 .dv-flag-from { font-size: var(--t-tiny); line-height: var(--lh-body); color: var(--ink-muted); overflow-wrap: anywhere; }
 
@@ -227,8 +234,8 @@
   min-width: 0;
   border-bottom: var(--sk-card-line-w, 1px) solid var(--rule-hair);
 }
-.dv-dl-meta { font-family: var(--f-mono); font-size: var(--t-tiny); font-variant-numeric: tabular-nums; color: var(--ink-muted); }
-.dv-dl-who { font-family: var(--f-mono); font-size: var(--t-tiny); font-weight: 700; letter-spacing: var(--track-label); color: var(--ink); overflow-wrap: anywhere; }
+.dv-dl-meta { font-family: var(--f-body); font-size: var(--t-tiny); font-variant-numeric: tabular-nums; color: var(--ink-muted); }
+.dv-dl-who { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-tiny); font-weight: 700; letter-spacing: 0; color: var(--ink); overflow-wrap: anywhere; }
 .dv-dl-line { font-family: var(--f-script); font-size: var(--t-small); color: var(--ink); overflow-wrap: anywhere; }
 
 /* The printed list is built only for the print job. */

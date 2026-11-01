@@ -360,10 +360,25 @@ await page.evaluate(() => {
 });
 await page.goto(url('plan.html#calendar'), { waitUntil: 'networkidle' });
 await settle(page);
+/* CI run 368 found no stat here while local runs always do: wait for it,
+   and on a miss print what the page drew (the CI-only "page opened without
+   its project" pattern prove-script also reports). */
+if (!(await page.waitForSelector('.bd-head [data-pl-dated] .k-stat-value', { state: 'attached', timeout: 15000 }).catch(() => null))) {
+  const seen = await page.evaluate(() => {
+    const S = window.StudioStore || {};
+    let pointer = null; try { pointer = Object.keys(localStorage).filter((k) => /current_project/.test(k)).map((k) => k + '=' + localStorage.getItem(k)); } catch (e) { /* */ }
+    return { url: location.href, current: S.currentProjectId && S.currentProjectId(), pointer,
+      projects: S.listProjects && S.listProjects().map((p) => p.id + ':' + p.title),
+      head: (document.querySelector('.bd-head') || {}).outerHTML ? document.querySelector('.bd-head').outerHTML.slice(0, 600) : null,
+      main: (document.querySelector('main') || document.body).innerText.slice(0, 400) };
+  });
+  console.log('13 plan.html drew no "dates set" stat:', JSON.stringify(seen));
+}
 const planDated = await page.$eval('.bd-head [data-pl-dated] .k-stat-value', (v) => v.textContent.trim());
 await page.goto(url('dashboard.html'), { waitUntil: 'networkidle' });
 await settle(page, 800);
-const dashDated = await page.evaluate(() => { const m = document.body.innerText.match(/(\d+) days? dated/); return m ? m[1] : ''; });
+/* textContent: the launcher's state lines sit in the dashboard's closed "All tools" disclosure since 28 Oct 2026 */
+const dashDated = await page.evaluate(() => { const m = document.body.textContent.match(/(\d+) days? dated/); return m ? m[1] : ''; });
 ok(planDated !== '' && dashDated === planDated, '13 the dashboard\'s "days dated" is the Plan\'s count (an orphan date is not counted)', [planDated, dashDated]);
 await page.goto(url('plan.html#calendar'), { waitUntil: 'networkidle' });
 await settle(page);
@@ -379,6 +394,9 @@ ok(await page.$('.pl-orphan[data-day="40"]') !== null, '13 …and Undo puts the 
 /* print: the recce, the DOOD, the cast matrix */
 await page.goto(url('plan.html#locations'), { waitUntil: 'networkidle' });
 await settle(page);
+/* Power sits behind the card's "More details" since 28 Oct 2026 (the
+   essentials-first recce card); open it as a person would. */
+await page.click('.pl-loc [data-action="recce-more"]');
 await page.fill('.pl-input[data-recce-field="power"]', 'Mains on site, thirty metres from the van, and a generator on standby for the dusk window');
 await settle(page, 200);
 await page.emulateMedia({ media: 'print' });

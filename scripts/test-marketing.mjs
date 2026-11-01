@@ -34,6 +34,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadMatrixModule } from './make-plan-features-sql.mjs';
 import { buildAll, validate, validatePricing, validateCompany, validateGuides, readRows, comparableRows, esc, PAGES_FILE, FIXTURE_FILE, PRICING_FILE, HOME_FILE, CONTACT_FILE, ABOUT_FILE, GUIDES_INDEX, TRUST_FILE } from './make-marketing-pages.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -108,10 +109,14 @@ for (const id of IDS) {
   ok(!relLinks.includes(file), tag + 'related does not list itself');
   ok(relLinks.every((l) => IDS.some((x) => pages[x].file === l)), tag + 'every related link is a product page');
 
-  /* the header and the footer list every page, the tools block too */
+  /* the header's Product menu and the footer list every page. (28 Oct
+     2026: the "tools for every stage" block that repeated the same list a
+     third time left the product pages, so two links, not three.) */
   for (const other of IDS) {
     const count = (html.match(new RegExp(`href="${pages[other].file.replace(/[.]/g, '\\.')}"`, 'g')) || []).length;
-    ok(count >= 3, `${tag}${pages[other].file} is linked from the header, the stage block and the footer (${count})`);
+    const inHead = new RegExp(`<header class="mk-top"[\\s\\S]*href="${pages[other].file.replace(/[.]/g, '\\.')}"[\\s\\S]*</header>`).test(html);
+    const inFoot = new RegExp(`<footer class="mk-foot"[\\s\\S]*href="${pages[other].file.replace(/[.]/g, '\\.')}"[\\s\\S]*</footer>`).test(html);
+    ok(count >= 2 && inHead && inFoot, `${tag}${pages[other].file} is linked from the header and the footer (${count})`);
   }
   ok(/<footer class="mk-foot"[\s\S]*privacy\.html[\s\S]*terms\.html[\s\S]*refund\.html/.test(html), tag + 'footer links the three legal pages');
 
@@ -176,6 +181,13 @@ for (const id of IDS) {
       ok(html.includes('{{fms:plan.' + id + '}}') && html.includes('{{fms:price.' + id + '}}') && html.includes('{{fms:tier.list.' + id + '}}'), `${tag}${id}: name, price and bullets are build-time stamps`);
       ok(new RegExp(`data-start-buy="${id}" data-plan="${id}"`).test(html) && html.includes(`href="purchase.html?plan=${id}"`), `${tag}${id}: the buy link carries the plan`);
     }
+    /* ONE "N more in the comparison" rule for pricing.html and purchase.html's cards: a limit row is a cap, never counted */
+    { const M = await loadMatrixModule();
+      for (const id of PAID) {
+        const n = M.addedBy(id).filter((r) => r.kind !== 'limit').length;
+        ok(M.cardMore(id) === (n <= 5 ? 0 : n - Math.min(((matrix.card && matrix.card[id]) || []).length || 4, 4)), `${tag}${id}: cardMore() counts the non-limit additions the card does not list`);
+      }
+      ok(/M\.cardMore\(id\)/.test(read('vite.config.js')), tag + 'the public cards take their "N more" from cardMore(), the same function the studio cards share'); }
     ok(/id="offer"[^>]*\shidden/.test(html), tag + 'the price-rise band is in the markup and hidden until the server announces a rise');
     /* a year, never a month; whether it renews is a runtime slot (OFFER TERMS below) */
     ok(/a year/.test(html) && !/per month|\/mo\b|monthly|billed yearly|annually|auto-?renew(s|al)? on/i.test(html), tag + 'worded as sold: a plan is a year, nothing that reads as a monthly charge');
@@ -273,20 +285,54 @@ for (const id of IDS) {
     const bad = urls.filter(({ v }) => EXTERNAL.test(v) && !/^https:\/\/{{brand:host}}\//.test(v));
     ok(bad.length === 0, tag + 'no external host in href/src/poster' + (bad.length ? ': ' + bad.map((b) => b.v).join(', ') : ''));
     ok(!/testimonial|\brated\b|★|trusted by|\bcustomers?\b|st-voice|id="voices"|inviteBand|leadForm/i.test(html), tag + 'no social proof, voices block, invite banner or e-mail offers form');
-    /* five stages, media alternating; the fifth has no CTA and no video */
-    const arts = [...html.matchAll(/<article class="st-stage[^"]*"[\s\S]*?<\/article>/g)].map((m) => m[0]);
-    ok(arts.length === 5, tag + 'five stage rows');
+    /* THE HOME PAGE'S SHAPE (28 Oct 2026, the owner's template): a hero
+       with ONE visible action and the product video, four stage cards,
+       three points on keeping your work, a plans teaser that names the
+       from-per-day figure as a stamp, and one closing action. (It was a
+       hero, four facts, five alternating stage rows, an exports block and
+       four answers; the layout assertions follow the new shape.) */
+    const heroSec = (html.match(/<section class="mk-hero st-hero"[\s\S]*?<\/section>/) || [''])[0];
+    const toolsSec = (html.match(/<section class="mk-sec[^"]*st-tools"[\s\S]*?<\/section>/) || [''])[0];
+    ok(/<video controls muted loop playsinline preload="none"/.test(toolsSec) && !/<video/.test(heroSec), tag + 'the product video opens the scroll story (#tools), not the hero');
+    /* THE OFFER (30 Oct 2026): the hero's one primary action is the offer
+       card's button while there is an offer, and the plain door when not;
+       so the hero carries exactly two primary buttons in the markup, one
+       inside the hidden card and the [data-o-fallback] door outside it. */
+    const cardEl = (heroSec.match(/<article class="st-offer" id="offerCard"[\s\S]*?<\/article>/) || [''])[0];
+    const heroOutside = heroSec.replace(cardEl, '');
+    ok((heroOutside.match(/<a class="(?:gbtn )?mk-btn mk-btn--primary[^"]*"[^>]*>/g) || []).length === 1 && /<a class="gbtn mk-btn mk-btn--primary[^"]*"[^>]*data-o-fallback/.test(heroOutside), tag + 'outside the offer card the hero has one primary action, the plain door, marked [data-o-fallback]');
+    ok((cardEl.match(/<a class="mk-btn mk-btn--primary[^"]*"[^>]*>/g) || []).length === 1, tag + 'the offer card has exactly one primary action');
+    const surfaces = { offerCard: cardEl, offerDock: (html.match(/<aside class="st-dock" id="offerDock"[\s\S]*?<\/aside>/) || [''])[0], offerClose: (html.match(/<div class="st-offer st-offer--close" id="offerClose"[\s\S]*?<\/div>\s*<\/div>\s*<\/section>/) || [''])[0] };
+    for (const [id, el] of Object.entries(surfaces)) {
+      const open = (el.match(/^<[a-z]+\b[^>]*>/) || [''])[0];
+      ok(!!el && /\shidden>$/.test(open), `${tag}#${id} is in the markup and hidden`);
+      ok(!!el && !/\d/.test(el.replace(/<[^>]+>/g, ' ')) && !/\d/.test(open.replace(/\sdata-[a-z-]+="[^"]*"/g, '')), `${tag}#${id} types no figure (every one is a runtime slot)`);
+      ok(!/₹|\$|\{\{fms:/.test(el), `${tag}#${id} carries no price stamp or currency sign`);
+    }
+    ok(/<aside class="st-dock" id="offerDock" role="region" aria-label="[^"]+"/.test(surfaces.offerDock) && /<button class="st-dock-close" type="button" data-offer-close aria-label="[^"]+">/.test(surfaces.offerDock), tag + 'the slide-in is a labelled region with a labelled close button');
+    const ctas = [...html.matchAll(/<a\b[^>]*\sdata-offer-cta\b[^>]*>/g)].map((m) => m[0]);
+    ok(ctas.length === 3 && ctas.every((a) => /\shref="purchase\.html\?buy=[\w-]+"/.test(a) && /\sdata-start-buy="[\w-]+"/.test(a)), tag + 'every offer button (' + ctas.length + ') goes straight to purchase.html?buy=<id> and carries data-start-buy');
+    ok(/data-o-timer hidden/.test(cardEl) && /aria-hidden="true"/.test((cardEl.match(/<span class="st-clock"[^>]*>/) || [''])[0]) && /role="timer" aria-live="off"/.test(cardEl), tag + 'the countdown digits are aria-hidden and a timer label (aria-live off) speaks them');
+    const faqItems = (html.match(/<details class="st-faq-item"/g) || []).length;
+    ok(faqItems >= 1 && faqItems <= 6, tag + 'the FAQ has at most six questions (' + faqItems + ')');
+    const yearQ = (html.match(/<details class="st-faq-item" id="faq-year">[\s\S]*?<\/details>/) || [''])[0];
+    ok(/<span data-offer-terms data-offer-product="year"><\/span>/.test(yearQ), tag + 'the year-end answer is an empty [data-offer-terms] slot beside a neutral line');
+    ok(/id="value"/.test(html) && /data-value-for="indie"(?! hidden)/.test(html) && /data-value-for="pro" hidden/.test(html), tag + 'the value stack is drawn for the founding plan, the pass plan\'s hidden');
+    ok(!/data-pass-band/.test(html), tag + 'carries no launch band: the offer card replaced it');
+    const arts = [...html.matchAll(/<article class="mk-card st-stage[^"]*"[\s\S]*?<\/article>/g)].map((m) => m[0]);
+    ok(arts.length === 4, tag + 'four stage cards');
     arts.forEach((a, i) => {
-      ok(/st-stage--flip/.test(a) === (i % 2 === 1), `${tag}stage ${i + 1} puts its media ${i % 2 ? 'right' : 'left'}`);
-      ok((i < 4) === /<video controls muted loop playsinline preload="none"/.test(a), `${tag}stage ${i + 1} ${i < 4 ? 'has' : 'has no'} demo video`);
-      ok((i < 4) === /class="mk-link" href="product-/.test(a), `${tag}stage ${i + 1} ${i < 4 ? 'links to its product page' : 'has no CTA'}`);
+      const href = (a.match(/class="mk-link" href="(product-[a-z-]+)\.html"/) || [])[1];
+      ok(!!href && a.includes(`src="/marketing/${href.replace(/^product-/, '')}.webp"`), `${tag}stage card ${i + 1} links its product page and shows that page's own poster (${href})`);
     });
+    ok((html.match(/<li class="mk-point">/g) || []).length === 3, tag + 'three points on keeping your work');
+    const plansSec = (html.match(/<section class="mk-sec[^"]*" id="plans"[\s\S]*?<\/section>/) || [''])[0];
+    ok(/\{\{fms:price\.from\.day\}\}/.test(plansSec) && /href="pricing\.html"/.test(plansSec), tag + 'the plans teaser names the from-per-day stamp and links pricing.html');
     const refs = [...html.matchAll(/(?:src|poster)="(\/marketing\/[^"]+)"/g)].map((m) => m[1]);
     if (!FIXTURE) for (const r of new Set(refs)) ok(fs.existsSync(path.join(ROOT, 'public', r)), `${tag}${r} exists under public/`);
     ok(/id="tools"/.test(html) && /id="start"/.test(html), tag + 'the #tools and #start anchors resolve');
     ok(/data-open-signup/.test(html) && /id="mkSignup"/.test(html), tag + 'Get started opens the sign-up modal');
     ok(/href="pricing\.html"/.test(html) && /<footer class="mk-foot"[\s\S]*privacy\.html[\s\S]*terms\.html[\s\S]*refund\.html/.test(html), tag + 'links pricing and the three legal pages');
-    ok(home.facts.length === 4 && (html.match(/class="st-fact-n"/g) || []).length === 4, tag + 'four facts');
     leadContract(html, tag);
     ok(/href="trust\.html"/.test(html), tag + 'links the trust page');
     const icons = JSON.parse(read('src/data/section-icons.json')).icons;
@@ -298,13 +344,26 @@ for (const id of IDS) {
   const scss = read('src/styles/start.css').replace(/\/\*[\s\S]*?\*\//g, '');
   ok(!/#[0-9a-fA-F]{3,8}\b/.test(scss) && !/\b(rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch)\(/.test(scss), 'start.css has no raw colour');
   ok(!/border-radius:\s*\d/.test(scss), 'start.css types no literal radius');
-  ok([...scss.matchAll(/transform:\s*([^;]+);/g)].map((m) => m[1]).filter((v) => /translate/.test(v)).every((v) => /var\(--motion\)/.test(v)), 'every translate in start.css is multiplied by --motion');
+  ok([...scss.matchAll(/transform:\s*([^;]+);/g)].map((m) => m[1]).filter((v) => /translate|scale/.test(v) && !/^scaleY\(0\)$/.test(v.trim())).every((v) => /var\(--motion\)/.test(v)), 'every translate and scale in start.css is multiplied by --motion');
+  ok(/html\.st-still/.test(scss) && /html:not\(\.st-still\)/.test(scss), 'start.css keys the offer motion off html.st-still');
   const sjs = read('src/pages/start.js');
   const simports = [...sjs.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
-  const sallowed = [/^\.\/marketing\.js$/, /^\.\.\/styles\/start\.css$/, /^\.\.\/lib\/(funnel|auth-scope|start-model|region-core|price-model)\.js$/];
+  const sallowed = [/^\.\/(marketing|start-motion)\.js$/, /^\.\.\/styles\/start\.css$/, /^\.\.\/lib\/(funnel|auth-scope|start-model|region-core|price-model)\.js$/];
   const sstray = simports.filter((i) => !sallowed.some((a) => a.test(i)));
   ok(sstray.length === 0, 'start.js imports only the light allowlist (the startlib rule)' + (sstray.length ? ': ' + sstray.join(', ') : ''));
   ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(sjs), 'start.js builds no markup from strings');
+  /* start-motion.js (29 Oct 2026, the landing scroll story): the motion
+     package (motion/mini's animate, motion's scroll) and the import-free
+     device-motion.js, nothing else; it stands down under webdriver and
+     both reduced-motion switches, and restores its veils for print and
+     on an 8s backstop. */
+  const mjs = read('src/pages/start-motion.js');
+  const mimports = [...mjs.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
+  const mstray = mimports.filter((i) => !/^(motion|motion\/mini|\.\.\/lib\/device-motion\.js)$/.test(i));
+  ok(mstray.length === 0, 'start-motion.js imports only motion, motion/mini and device-motion.js' + (mstray.length ? ': ' + mstray.join(', ') : ''));
+  ok(/navigator\.webdriver/.test(mjs) && /deviceReducedMotion\(\)/.test(mjs) && /prefers-reduced-motion: reduce/.test(mjs), 'start-motion.js stands down under webdriver, the device switch and prefers-reduced-motion');
+  ok(/beforeprint/.test(mjs) && /setTimeout\(check, 8000\)/.test(mjs), 'start-motion.js restores its veils for print and on the 8s backstop');
+  ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(mjs), 'start-motion.js builds no markup from strings');
 }
 
 /* ---- contact.html and about.html (the company pages) ---------------- */
@@ -333,7 +392,7 @@ for (const id of IDS) {
     ok(!/testimonial|\brated\b|★|trusted by|\bcustomers?\b/i.test(html), tag + 'no rating, testimonial or customer claim');
     for (const p of personal) ok(!html.includes(p), tag + 'no personal name');
     /* the call to action: the landing page's door, and the plans */
-    const trial = [...html.matchAll(/<a class="mk-btn mk-btn--primary mk-btn--lg" href="invite\.html" data-open-signup[^>]*>([^<]*)<\/a>/g)].map((m) => m[1]);
+    const trial = [...html.matchAll(/<a class="gbtn mk-btn mk-btn--primary mk-btn--lg" href="invite\.html" data-open-signup[^>]*><img[^>]*><span class="gbtn-l">([^<]*)<\/span><\/a>/g)].map((m) => m[1]);
     ok(trial.length >= 1 && trial.every((t) => t === inputs.company.cta.start), tag + 'the primary CTA is "' + inputs.company.cta.start + '" through the sign-up door (invite.html, data-open-signup), as on start.html');
     ok(!/free trial/i.test(inputs.company.cta.start), tag + 'the primary CTA promises no trial (purchases off drops that promise, and a trial can be switched off)');
     ok(new RegExp(`<a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing\\.html">${inputs.company.cta.plans}</a>`).test(html), tag + 'the secondary CTA "' + inputs.company.cta.plans + '" goes to pricing.html');
@@ -398,15 +457,15 @@ for (const id of IDS) {
     const toc = (h.match(/<nav class="legal-toc"[\s\S]*?<\/nav>/) || [''])[0];
     const linked = [...toc.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
     ok(h2s > 0 && ids.length === h2s && JSON.stringify(ids) === JSON.stringify(linked), f + ': every heading has an id and the contents list links each, in order (' + ids.length + '/' + h2s + ')');
-    /* Finalised 28 Oct 2026: a legal page never ships a passage awaiting
-       approval (CLAUDE.md item 64: "never release to main with a DRAFT
-       comment in a legal page"), and the date at the top is the date of
-       the latest "What changed" note, so the two cannot disagree. */
+    /* A legal page never ships a passage awaiting approval (CLAUDE.md item
+       64: "never release to main with a DRAFT comment in a legal page"), and
+       it carries NO date and NO change note anywhere in the file, comments
+       included (owner, 1 Nov 2026: the site is launching, so the current
+       policy reads as the policy, in the present tense, never as "new"). */
     const draft = h.match(/.{0,40}(\bDRAFT\b|AWAITING THE OWNER|<li>\s*Draft,).{0,40}/);
     ok(!draft, f + ': no DRAFT passage or marker' + (draft ? ': "' + draft[0].trim() + '"' : ''));
-    const upd = (main.match(/<p class="legal-date">Last updated (\d{1,2} [A-Z][a-z]+ \d{4})<\/p>/) || [])[1];
-    const chg = (main.match(/<h2 id="changes-h">What changed on (\d{1,2} [A-Z][a-z]+ \d{4})<\/h2>/) || [])[1];
-    ok(upd && upd === chg, f + ': "Last updated" (' + upd + ') is the date of the "What changed" note (' + chg + ')');
+    const note = h.match(/.{0,30}(legal-date|legal-changes|Last updated|What changed|Changes since|\bEffective (on|from|date)|\bnew polic|\b\d{1,2} (January|February|March|April|May|June|July|August|September|October|November|December),? \d{4}\b).{0,30}/i);
+    ok(!note, f + ': no date and no change note' + (note ? ': "' + note[0].trim() + '"' : ''));
   }
   const ljs = read('src/pages/legal.js');
   const limports = [...ljs.matchAll(/^import\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]);
@@ -427,9 +486,11 @@ ok(!/border-radius:\s*\d/.test(cssNoComments), 'marketing.css types no literal r
 {
   const js = read('src/pages/marketing.js');
   const imports = [...js.matchAll(/^import\s+(?:[^'"]+from\s+)?'([^']+)';/gm)].map((m) => m[1]);
-  const allowed = [/^\.\.\/styles\/(base|marketing)\.css$/, /^\.\.\/lib\/(funnel|trial-time|invite-code|start-auth|visitor-region|attribution|start-model|pass-offer|offer-terms)\.js$/];   // visitor-region, attribution, start-model: each import-free (startlib rule), public pages only
+  const allowed = [/^\.\.\/styles\/(base|marketing)\.css$/, /^\.\.\/lib\/(funnel|trial-time|invite-code|start-auth|visitor-region|attribution|start-model|pass-offer|offer-terms|device-motion)\.js$/, /^motion\/mini$/];   // device-motion (28 Oct 2026): a read-only, import-free leaf, asserted below   // motion/mini (28 Oct 2026): the motion package's WAAPI animate() only, a leaf with no app code; prove:growth still asserts no studio-* chunk   // visitor-region, attribution, start-model: each import-free (startlib rule), public pages only
   const stray = imports.filter((i) => !allowed.some((a) => a.test(i)));
   ok(stray.length === 0, 'marketing.js imports only the light allowlist (the startlib rule)' + (stray.length ? ': ' + stray.join(', ') : ''));
+  const dm = read('src/lib/device-motion.js');
+  ok(!/^import\s/m.test(dm) && !/setItem|removeItem/.test(dm), 'device-motion.js imports nothing and never writes storage');
   ok(!/\bdocument\.write\b|\.innerHTML\s*=/.test(js), 'marketing.js builds no markup from strings');
 }
 
@@ -603,7 +664,10 @@ ok(/<h3 id="leads">/.test(read('privacy.html')), 'privacy.html: the leads paragr
   /* every public page's header and footer reach the new pages */
   for (const f of [HOME_FILE, PRICING_FILE, ABOUT_FILE, CONTACT_FILE, 'privacy.html', ...IDS.map((i) => pages[i].file)]) {
     const h = read(f);
-    ok(/<a class="mk-nav-link" href="guides\.html"/.test(h) && new RegExp('<a class="mk-nav-link" href="guides\\.html#compare"[^>]*>' + esc(site.ui.compare) + '</a>').test(h) && site.ui.compare === 'Switching', f + ': the header has Guides and Switching');
+    /* 28 Oct 2026: the bar holds Product, Pricing, Sign in and Get
+       started; Guides and Switching are the Product menu's Learn column. */
+    const head = (h.match(/<header class="mk-top"[\s\S]*?<\/header>/) || [''])[0];
+    ok(/<a href="guides\.html"[^>]*>/.test(head) && new RegExp('<a href="guides\\.html#compare"[^>]*>[^]*?<span>' + esc(site.ui.compare) + '</span></a>').test(head) && site.ui.compare === 'Switching', f + ': the header\'s Product menu has Guides and Switching');
     ok(/<footer class="mk-foot"[\s\S]*href="trust\.html"/.test(h), f + ': the footer links the trust page');
     if (f !== 'privacy.html') ok(/<meta property="og:image:alt" content="[^"]+">/.test(h), f + ': og:image:alt');
   }
@@ -634,8 +698,10 @@ ok(/<h3 id="leads">/.test(read('privacy.html')), 'privacy.html: the leads paragr
 {
   const g = inputs.guides, v = inputs.versus;
   const extra = [...g.guides.map((x) => x.file), GUIDES_INDEX, ...v.pages.map((p) => p.file), TRUST_FILE];
-  const BAND_PAGES = [HOME_FILE, PRICING_FILE, ...IDS.map((i) => pages[i].file), ...extra];
-  const PUBLIC = [...BAND_PAGES, ABOUT_FILE, CONTACT_FILE];
+  /* start.html left this list on 30 Oct 2026: its offer card is the pass
+     there, so the band would say it twice. */
+  const BAND_PAGES = [PRICING_FILE, ...IDS.map((i) => pages[i].file), ...extra];
+  const PUBLIC = [...BAND_PAGES, HOME_FILE, ABOUT_FILE, CONTACT_FILE];
   const JSONS = ['src/data/marketing-site.json', 'src/data/marketing-home.json', 'src/data/marketing-faq.json', 'src/data/marketing-guides.json',
     'src/data/pricing-compare.json', 'src/data/marketing-compare.json', 'src/data/marketing-pages.json', 'src/data/marketing-company.json'];
   const noComments = (h) => h.replace(/<!--[\s\S]*?-->/g, '');
@@ -862,20 +928,70 @@ ok(/<h3 id="leads">/.test(read('privacy.html')), 'privacy.html: the leads paragr
     ok(/querySelectorAll\('\[data-price\]'\)/.test(pjs2) && /querySelectorAll\('\[data-price-day\]'\)/.test(pjs2), 'pricing.js corrects the table head and the per-day figure too (by span)');
   }
   ok(/priceNotice\(\)\.then[\s\S]*fromDayNow\(notice\)/.test(read('src/pages/start.js')), 'start.js corrects the hero\'s from-figure');
+
+  /* THE OFFER (30 Oct 2026): offerFrom() picks the pass, then the founding
+     price, then nothing, and fails CLOSED on a missing field. */
+  {
+    const NOW = Date.parse('2026-10-30T10:00:00Z');
+    const openSt = { state: 'open', pass: { plan: 'pro' }, msLeft: 3600e3 };
+    const openCopy = { open: true, price: '₹49', length: '7 days', left: '' };
+    const p = SM.offerFrom(openSt, openCopy, notice, NOW);
+    ok(p && p.kind === 'pass' && p.id === 'pass' && p.price === '₹49' && p.unit === 'for 7 days' && p.msLeft === 3600e3, 'offerFrom: an open pass is the offer');
+    ok(SM.offerHref(p) === 'purchase.html?buy=pass', 'the pass CTA is purchase.html?buy=pass');
+    const f = SM.offerFrom({ state: 'closed' }, { open: false }, notice, NOW);
+    ok(f && f.kind === 'founding' && f.id === 'indie' && f.price === '₹799' && f.was === '₹1,499' && f.day === P.perDay(799) && f.msLeft === null && f.until === '31 October (IST)', 'offerFrom: no pass, a rise ahead: the founding offer, with no clock when the server gave no now');
+    ok(f && f.seats === '99 of 100 founding places left', 'the founding places left are the server\'s count: ' + (f && f.seats));
+    ok(SM.offerHref(f) === 'purchase.html?buy=indie', 'the founding CTA is purchase.html?buy=indie');
+    const SKEW = 3 * 3600e3;
+    const fs2 = SM.offerFrom(null, null, notice, NOW, { serverNowMs: NOW + SKEW });
+    ok(fs2 && fs2.msLeft === Date.parse(RISE_AT) - NOW - SKEW, 'the founding clock runs on the server\'s now, not the visitor\'s');
+    ok(SM.offerFrom(null, null, notice, Date.parse(RISE_AT) + 1) === null, 'a rise already fired: no offer');
+    ok(SM.offerFrom(null, null, notice, NOW, { serverNowMs: Date.parse(RISE_AT) + 1 }) === null, 'fired by the server\'s clock: no offer');
+    ok(SM.offerFrom(null, null, fired, NOW) === null, 'nothing rising: no offer');
+    ok(SM.offerFrom(openSt, openCopy, notice, NOW, { off: true }) === null, 'purchases not required: no offer');
+    ok(SM.offerFrom(null, null, { plans: [{ id: 'indie', price_paise: 79900, next_price_paise: null, next_price_at: RISE_AT }] }, NOW) === null
+      && SM.offerFrom(null, null, { plans: [{ id: 'indie', price_paise: 79900, next_price_paise: 149900, next_price_at: 'soon' }] }, NOW) === null
+      && SM.offerFrom(null, null, { plans: [{ id: 'indie', price_paise: 149900, next_price_paise: 79900, next_price_at: RISE_AT }] }, NOW) === null
+      && SM.offerFrom(null, null, null, NOW) === null, 'a missing, malformed or falling price: no offer');
+    ok(SM.offerFrom({ state: 'open', pass: {}, msLeft: null }, { open: true, price: '', length: '7 days' }, null, NOW) === null, 'a pass with no price: no offer');
+    ok(SM.clockText(2 * 86400e3 + 4 * 3600e3 + 10 * 60e3 + 5e3) === '2d 04:10:05' && SM.clockText(0) === '' && SM.clockText(null) === '', 'clockText: "2d 04:10:05", nothing at zero');
+    const T = { pass: 'A — continue with Google', passIn: 'A', founding: 'B — continue with Google', foundingIn: 'B' };
+    ok(SM.ctaText(p, false, T) === T.pass && SM.ctaText(p, true, T) === 'A' && SM.ctaText(f, false, T) === T.founding && SM.ctaText(f, true, T) === 'B', 'ctaText: the signed-out words say Google comes first');
+    const sjs = read('src/pages/start.js');
+    ok(!/\.trial\b|purchase_required|trial_enabled|\.pass\.now/.test(sjs), 'start.js parses no trial_offer() field itself: pass-offer.js (through marketing.js) is the one reader');
+    ok(/stashPlan\(a\.dataset\.startBuy\)/.test(sjs) && /bumpEvent\('signup', funnelSource\(\)\)/.test(sjs) && /startSignIn\(\)/.test(sjs), 'start.js: a signed-out press stashes the intent, counts signup and goes to Google');
+    ok(/rememberDockClosed\(\)/.test(sjs) && /sessionStorage\.setItem\(DOCK_KEY/.test(read('src/lib/start-model.js')) && !/localStorage\.setItem/.test(sjs), 'start.js: the closed slide-in is a session flag; nothing is written to localStorage');
+    ok(!/Hurry|risk-free|money-back|someone just bought/i.test(sjs + read('src/data/marketing-home.json')), 'no urgency words, guarantees or fake activity in the offer');
+  }
 }
 
-/* ---- one verb per action ------------------------------------------
-   The studio says "Sign in" everywhere, so the public header and modal do
-   too ("Sign up" stays: it is a different act). No control labelled "Log in",
-   and the phone menu puts Pricing straight after it (order, not DOM). */
+/* ---- one way in (31 Oct 2026) -------------------------------------
+   Every "sign in / log in / sign up / get started" that leads to auth is
+   ONE button, "Continue with Google" (googleBtnHTML, the G is
+   public/google-g.svg and no CSS or JS names its colours). The header
+   holds exactly one auth button and the modal no "Already have an
+   account" line. */
+const RETIRED = /^(sign in|sign up|log in|get started)$/i;
 for (const [file, html] of Object.entries(files)) {
   if (!/\.html$/.test(file)) continue;
-  const labels = [...html.matchAll(/>\s*(Log in[^<]*)</g)].map((m) => m[1].trim())
-    .concat([...html.matchAll(/data-off-text="(Log in[^"]*)"/g)].map((m) => m[1]));
-  ok(labels.length === 0, file + ': no control or heading labelled "Log in" [' + labels.join(' | ') + ']');
+  const labels = [...html.matchAll(/<(?:a|button)\b[^>]*>\s*(?:<img[^>]*>)?\s*(?:<span[^>]*>)?([^<]*)</g)].map((m) => m[1].trim()).filter((t) => RETIRED.test(t))
+    .concat([...html.matchAll(/data-(?:off|open)-text="([^"]*)"/g)].map((m) => m[1]).filter((t) => RETIRED.test(t)));
+  ok(labels.length === 0, file + ': no button, link or modal labelled sign in / sign up / log in / get started [' + labels.join(' | ') + ']');
+  ok(!/Already have an account/.test(html), file + ': no "Already have an account" line');
+  const head = (html.match(/<header class="mk-top"[\s\S]*?<\/header>/) || [''])[0];
+  if (head) {
+    ok((head.match(/<a class="gbtn /g) || []).length === 1 && !/mk-nav-login|mk-end-login/.test(head), file + ': the header holds exactly one auth button');
+    ok(/<img class="gbtn-g" src="\/google-g\.svg" width="18" height="18" alt="" aria-hidden="true">/.test(head), file + ': the header G is the 18px decorative image');
+  }
   ok(!/See the plans/.test(html), file + ': the plans CTA reads "See plans"');
 }
-ok(/\.mk-nav-login \{[^}]*order: -2/.test(read('src/styles/marketing.css')) && /\.mk-nav-pricing \{ order: -1/.test(read('src/styles/marketing.css')), 'marketing.css: the phone menu orders Sign in, then Pricing, above the product groups');
+ok(fs.existsSync(path.join(ROOT, 'public/google-g.svg')), 'public/google-g.svg exists');
+{
+  const bad = [];
+  (function walk(p) { for (const n of fs.readdirSync(p)) { const q = path.join(p, n); if (fs.statSync(q).isDirectory()) walk(q); else if (/\.(css|js)$/.test(n) && /#4285F4/i.test(fs.readFileSync(q, 'utf8'))) bad.push(q); } })(path.join(ROOT, 'src'));
+  ok(bad.length === 0, 'no .css or .js names the Google blue (the mark lives in public/google-g.svg) [' + bad.join(', ') + ']');
+}
+ok(/\.mk-nav-pricing \{ order: -1/.test(read('src/styles/marketing.css')), 'marketing.css: the phone menu puts Pricing above the product groups');
 ok(/class="mk-nav-link mk-nav-pricing" href="pricing\.html"/.test(files[PRICING_FILE]), 'the header marks the Pricing link for the phone order');
 
 console.log(`\ntest:marketing: ${pass} passed, ${fail} failed${FIXTURE ? ' (fixture copy; media existence NOT checked)' : ''}`);

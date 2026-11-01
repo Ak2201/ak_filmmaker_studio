@@ -553,6 +553,29 @@ for (const f of ['supabase/schema/schema-64-pro-blurb.sql', 'supabase/schema/sch
 console.log('✓ §64 loads (and re-runs cleanly)');
 runChecks('pro-blurb.sql');
 /* --- end §64 --- */
+/* --- §65 (auto-pay wording) --- restates quote_subscription (§62) with one
+   message reworded; loaded twice. ABOVE the purge. --- */
+for (const f of ['supabase/schema/schema-65-autopay-wording.sql', 'supabase/schema/schema-65-autopay-wording.sql']) {
+  r = psql(['-f', f]);
+  if (r.status !== 0) fail(`${f} did not load cleanly`, r);
+}
+console.log('✓ §65 loads (and re-runs cleanly)');
+runChecks('autopay-wording.sql');
+/* --- end §65 --- */
+/* --- §66 (drive-only storage, server half; the first-ever tour flag) ---
+   Loaded twice, with an account made BETWEEN the two loads: the tour
+   backfill must run on the first load only, or a re-run would mark
+   everybody who signed up in between as already toured. ABOVE the purge,
+   which has to know §66's two tables. --- */
+r = psql(['-f', 'supabase/schema/schema-66-drive-storage.sql']);
+if (r.status !== 0) fail('schema-66-drive-storage.sql did not load cleanly', r);
+r = psql(['-c', `insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) values ('00000000-0000-4000-8000-0000000066ff', 'd66-between@example.com', now(), '{}')`]);
+if (r.status !== 0) fail('§66: could not make the between-loads account', r);
+r = psql(['-f', 'supabase/schema/schema-66-drive-storage.sql']);
+if (r.status !== 0) fail('schema-66-drive-storage.sql is not re-runnable', r);
+console.log('✓ §66 loads (and re-runs cleanly)');
+runChecks('drive-storage.sql');
+/* --- end §66 --- */
 /* --- the clean-slate purge (supabase/schema/patches/purge-test-data-2026-10-27.sql)
    --- LAST, after every section (and §62's when it lands above this block):
    it COMMITS and leaves one sign-in, so nothing may run after it. It runs

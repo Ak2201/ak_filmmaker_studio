@@ -17,10 +17,10 @@
 .sb-bar.sb-warn { background: var(--warn-wash); }
 .sb-kind {
   flex: none;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .sb-info .sb-kind { color: var(--brand-deep); }
 .sb-warn .sb-kind { color: var(--warn-deep); }

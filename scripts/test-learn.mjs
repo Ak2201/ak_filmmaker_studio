@@ -42,6 +42,20 @@ for (const t of topics) {
   ids.add(t.id);
   if (!t.term) bad(at + 'no term');
 
+  /* A topic may carry its OWN text instead of a glossary entry (31 Oct
+     2026: sides, one-liner, budget-visibility; learn.js draws `t.text`).
+     Then the text is the whole definition and must be one. A topic that
+     names a glossary term still gets every glossary check below. */
+  if (!t.glossary) {
+    if (!t.text || String(t.text).trim().length < 60) bad(at + 'no glossary term and no text of its own');
+    for (const ptr of t.steps || []) {
+      const [ns, sid] = String(ptr).split('/');
+      if (!STEPS[ns] || !STEPS[ns].has(sid)) bad(at + 'step pointer ' + ptr + ' does not exist');
+    }
+    for (const k of t.videos || []) if (!approved(k).length) bad(at + 'video target ' + k + ' has no approved video');
+    if (MUST_HAVE_VIDEO.has(t.id)) bad(at + 'must resolve to a video, so it needs a glossary term');
+    continue;
+  }
   const key = String(t.glossary || '').toLowerCase();
   const term = glossary.terms.find((x) => String(x.term).toLowerCase() === key
     || (x.aliases || []).some((a) => String(a).toLowerCase() === key));

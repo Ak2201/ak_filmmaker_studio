@@ -8,7 +8,7 @@
         "_modes": "Whether a plan renews is the owner's choice in the console (plan_mode, schema §62). `a` is shown in the markup and says neither; marketing.js shows `aOnce` or `aRenew` when trial_offer() names the mode. `aRenew` must say \"cancel anytime\" (test:marketing).",
         "a": "Each plan card says what a plan costs, how long it lasts and what happens when it ends, before you pay, and checkout says it again. A plan is a year of the studio, from about {{fms:price.from.day}} a day, and your work stays in your browser either way.",
         "aOnce": "No. A plan is one payment for one year, from about {{fms:price.from.day}} a day. When the year ends nothing is charged: buy the next year when you want it, and your work stays in your browser either way, so there is nothing to cancel.",
-        "aRenew": "Yes: a plan renews every year until you cancel, from about {{fms:price.from.day}} a day. Cancel anytime, in two taps, under Settings, Plan & purchases, Cancel auto-pay: nothing more is charged, and the plan runs to the end of the year you paid for. Your price is locked while you stay, and your bank or UPI app tells you before each charge.",
+        "aRenew": "Yes: a plan renews every year until you cancel, from about {{fms:price.from.day}} a day. Cancel anytime from the mandate itself, using the link in your Razorpay e-mail or your bank or UPI app: nothing more is charged, and the plan runs to the end of the year you paid for. Your price is locked while you stay, and your bank or UPI app tells you before each charge.",
         "aPay": "Payment is through Razorpay, and checkout confirms the currency and the exact amount before you pay.",
         "aPayUsd": "Prices are in US dollars, paid through Razorpay, and the amount is confirmed at checkout before you pay."
       },
@@ -16,14 +16,6 @@
         "q": "Can I get a refund?",
         "a": "Purchases are final, with three exceptions that are not discretionary: a duplicate or erroneous charge, a payment for a plan that was never activated on your account, and any refund the law of India requires. The Refund and Cancellation Policy has the detail.",
         "aRenewNote": "On auto-pay the same three cases apply to each charge, and cancelling stops the charges still to come without refunding the year already paid."
-      },
-      {
-        "q": "How do I ask for a refund in one of those cases?",
-        "a": "Email us from the address on your account with the Razorpay payment or order ID and a line about what went wrong. We reply within two working days. An issued refund goes to your original payment method and reaches it in 5 to 7 working days."
-      },
-      {
-        "q": "Where do I find my invoices?",
-        "a": "On the Purchase page once you are signed in. It lists your plan, your invoices and a way to request a refund in the cases above."
       },
       {
         "q": "Is there a free trial?",
@@ -41,10 +33,6 @@
         "a": "Basic is for writing: story, screenplay, drafts and import. Intermediate is for preparing the shoot: breakdown, storyboard, shot list, stripboard, budget, cast and crew, and sides. Pro adds call sheets, the AI tools and removal of branding. Each plan includes everything below it."
       },
       {
-        "q": "Why are the AI tools and call sheets on Pro?",
-        "a": "Pro is the plan for the shoot itself. Call sheets are the tool a unit runs on during production, so they sit with the plan for running it. The AI tools use your own key: your provider bills you directly for what you run, and the studio adds no charge per use and sells no credits. What Pro pays for is the tools built into every page, not the model's tokens."
-      },
-      {
         "q": "Can I move up a plan later?",
         "a": "Yes. Moving up mid-year credits the unused part of your current year against the new plan; moving down waits until your year ends. The work you have already done stays where it is either way."
       },
@@ -53,16 +41,8 @@
         "a": "No. There is no free plan. Whether purchases are required is a setting that can change, so the pricing page always shows what applies today."
       },
       {
-        "q": "Where can I see exactly what each plan includes?",
-        "a": "In the comparison table on the pricing page. It is generated from the same list the studio uses to decide what to open, so it cannot disagree with the product."
-      },
-      {
         "q": "Do I need a plan to try the sample films?",
         "a": "The Dragon sample project is there so you can see the studio filled in before you commit."
-      },
-      {
-        "q": "Can I talk to a person before I buy?",
-        "a": "Yes. Write to the team at {{brand:email}} with any question about the studio, a plan or your work, and a person reads it. Payment and refund questions are answered within two working days."
       }
     ]
   },
@@ -74,20 +54,8 @@
         "a": "In your own browser, on your device, first. Once you are signed in, your films also sync to the studio's cloud so they reach your other devices, and row-level security limits each project to you and the people you share it with (a view link can read it, an edit link can change it). Anyone you share a project with can see its budget, unless you keep the budget private; then only you and people with an edit link can see the estimate, petty cash, crew payments and cost report. Figures typed into a blueprint's budget questions are not covered by that switch. You can switch sync off in Settings; the browser copy stays either way."
       },
       {
-        "q": "Why do I sign in with Google if my work is local?",
-        "a": "Sign-in is the door: it tells the studio who you are, so it can check your plan before it opens. It is also what lets your projects sync between your devices and lets you connect your own Google Drive. Your work is written to your browser first either way."
-      },
-      {
-        "q": "What leaves my browser, and when?",
-        "a": "Your projects, when you are signed in and sync is on. A backup, when you connect your own Google Drive. The text you give an AI tool, when you run one with your own key, to the provider you chose. The studio also talks to its server to sign you in, check your plan and take a payment through Razorpay. While it is open and you are signed in, the device checks in about every 30 seconds so your account stays on one device at a time, and the server sees that device's IP address and browser type. Signed in, it also sends daily counts of which tools are opened and the reason code when a save is refused, never anything you wrote; you can switch both off in Settings, under Privacy. Visit counts on the public pages are daily totals with no name on them. The privacy policy lists every record in full."
-      },
-      {
         "q": "Does it work offline on a film set?",
         "a": "Yes. The studio installs like an app and caches itself, so you can keep writing, reordering the stripboard and printing call sheets when the signal drops, and what you changed is still there when you reconnect. It works on set without a signal for up to 14 days after you last signed in on that device, even opened from scratch. After that it needs a connection once, to check your sign-in and your plan again."
-      },
-      {
-        "q": "Can I back my work up?",
-        "a": "Yes. You can download a backup file of your studio, and on the plans that include it you can back up to your own Google Drive. The Drive file belongs to you and the studio only writes to it when you have connected it."
       },
       {
         "q": "Can I get my work out?",
@@ -96,10 +64,6 @@
       {
         "q": "Can I bring in a script from Final Draft or Fountain?",
         "a": "Yes. Import a Fountain, Final Draft, Word, text or PDF screenplay and the studio reads the scene headings, action, characters and dialogue into its own format. Scanned or encrypted PDFs are refused with a reason rather than guessed at."
-      },
-      {
-        "q": "What does a Final Draft (.fdx) file keep on the way in and out?",
-        "a": "Both ways: scene headings, action, characters, parentheticals, dialogue, transitions and shots stay the same element types; dual dialogue stays a pair; a locked scene number stays exactly as written, 12A and A12 included; the title page comes across as title, credit, writer, source, draft, date and contact; and Tamil and Tanglish text arrives as written. A paragraph of a kind the studio has no element for is kept as action and counted, never dropped. What does not travel either way: bold, italic and underline, revision marks and colours, script notes, and locked pages. Final Draft lays out its own pages when it opens the file."
       },
       {
         "q": "Does the AI see my script?",

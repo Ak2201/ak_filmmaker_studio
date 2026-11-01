@@ -146,6 +146,12 @@ const storyOn = (P) => P.page.evaluate(() => JSON.parse(localStorage.getItem('fm
 const serverStory = () => (ROWS.get('story') || {}).data || {};
 const pull = (P) => P.page.evaluate((pid) => window.StudioCloud.pullProjectData(pid), PID);
 const settle = (P, ms = 1800) => P.page.waitForTimeout(ms);   // the 600ms field save + the 800ms push
+/* A step's Remove is on its OPEN card (the Beat Sheet's views, 31 Oct
+   2026): the caret in its text opens it, as a writer's click would. */
+const removeStep = async (P, id) => {
+  await P.page.focus(`#stStep_${id}`);
+  await P.page.click(`[data-st="step-del"][data-step="${id}"]`);
+};
 const stepTexts = (s) => (s.outline || []).map((x) => x.text);
 const domSteps = (P) => P.page.$$eval('textarea[data-st-field="step-text"]', (t) => t.map((x) => x.value));
 
@@ -350,7 +356,7 @@ try {
   console.log('8  "Step removed" Undo after an arrival kept the step');
   {
     const { A, B } = await twoWriters(true);
-    await A.page.click('[data-st="step-del"][data-step="sb"]'); await settle(A);
+    await removeStep(A, 'sb'); await settle(A);
     await B.page.focus('textarea[data-step="sb"]'); await B.page.keyboard.press('End'); await B.page.keyboard.type(' (B edits)');
     await B.page.locator('h1').first().click(); await settle(B);
     await pull(A); await settle(A);
@@ -373,7 +379,7 @@ try {
     const sId = ((await storyOn(A)).outline.find((x) => x.text === 'A adds S') || {}).id;
     await pull(B); await settle(B);
     ok(stepTexts(await storyOn(B)).includes('A adds S'), '9  B received the step', stepTexts(await storyOn(B)));
-    await B.page.click(`[data-st="step-del"][data-step="${sId}"]`); await settle(B);
+    await removeStep(B, sId); await settle(B);
     PUSHES.length = 0;
     const rounds = [];
     for (let i = 0; i < 3; i++) {
@@ -392,7 +398,7 @@ try {
   console.log('10 B is typing in a step A deleted, inside the 600ms debounce');
   {
     const { A, B } = await twoWriters(true);
-    await A.page.click('[data-st="step-del"][data-step="sb"]'); await settle(A);
+    await removeStep(A, 'sb'); await settle(A);
     await B.page.focus('textarea[data-step="sb"]'); await B.page.keyboard.press('Control+End'); await B.page.keyboard.type(' typing');
     await pull(B);                               // inside the debounce
     await B.page.waitForTimeout(200);

@@ -14,7 +14,7 @@ import PlanGate from '../../lib/plan-gate.js';
 import { STAGES, journey, guideJourney } from '../../lib/journey.js';
 import { h } from '../../lib/dom.js';
 import { button, buttonGroup } from '../../ui/kit/index.js';
-import { isSampleTitle } from '../../lib/samples.js';
+import { isSampleProject } from '../../lib/sample-project.js';
 import { PROJECT_HOME_URL, FORMAT_LABELS, fmtRelDate, $ } from './util.js';
 import { applyProjectFilters as applyProjectFiltersTo, projectBlob } from '../../lib/hub-model.js';
 import { renderFirstRun, renderSampleOnly } from './first-run.js';
@@ -37,7 +37,7 @@ function applyProjectFilters(projects) {
 /* Progress and stage for a card, from journey.js. The percentage used
    to be filled keys over SAVED keys — the trap blueprint-fields.js is
    named for, where eleven saved fields read 100% — and the label a
-   band of that percentage ("PRE-PROD" at 50–79%) that knew nothing
+   band of that percentage ("Pre-prod" at 50–79%) that knew nothing
    about the film. Now: the declared-field percentage, and the stage.
    The OPEN project gets the full journey (guide and tools, read through
    the proxy); any other project gets the guide's reading of its blob,
@@ -47,11 +47,11 @@ function projectStatus(p, active, openJourney) {
   if (active && openJourney) {
     return {
       pct: g.pct,
-      label: openJourney.complete ? 'ALL ' + STAGES.length + ' STAGES'
-                                  : openJourney.currentLabel.toUpperCase()
+      label: openJourney.complete ? 'All ' + STAGES.length + ' stages'
+                                  : openJourney.currentLabel
     };
   }
-  return { pct: g.pct, label: g.started ? g.currentLabel.toUpperCase() : 'EMPTY' };
+  return { pct: g.pct, label: g.started ? g.currentLabel : 'Not started' };
 }
 
 function projectCard(p, currentId, openJourney) {
@@ -62,7 +62,7 @@ function projectCard(p, currentId, openJourney) {
     class: 'project-card' + (active ? ' active' : '') + ' format-' + p.format,
     tabindex: '0', role: 'button',
     'data-action': 'switch-project', 'data-id': p.id,
-    'aria-label': 'Switch to project ' + p.title
+    'aria-label': active ? p.title + ', the open project' : 'Switch to project ' + p.title
   }, [
     /* The kit's icon tray (CLAUDE.md row 48: one button language). The
        glyphs it replaced (✎ ⎘ ×) printed in the mono face at micro size. */
@@ -77,8 +77,7 @@ function projectCard(p, currentId, openJourney) {
     })(),
     active && h('span.pc-pulse', { 'aria-hidden': 'true' }),
     h('div.pc-format', {
-      text: (FORMAT_LABELS[p.format] || String(p.format).toUpperCase()) +
-            (active ? ' · ACTIVE' : '') + ' · ' + status.label
+      text: (FORMAT_LABELS[p.format] || String(p.format)) + ' · ' + status.label   // the open film says so by its ring and dot
     }),
     h('div.pc-title', { title: 'Double-click to rename', 'data-dblaction': 'rename-project', 'data-id': p.id, text: p.title }),
     /* SHARE and OPEN sit IN the meta row, not over it. Share was
@@ -157,7 +156,7 @@ function renderAdoptNotice() {
   const panel = h('div.adopt-panel', {
     role: 'region', 'aria-label': 'Projects on this device only'
   }, [
-    h('div.adopt-eyebrow', { text: 'ON THIS DEVICE ONLY' }),
+    h('div.adopt-eyebrow', { text: 'On this device only' }),
     h('div.adopt-title', {
       text: one
         ? 'One project is on this device and not in this account.'
@@ -181,14 +180,14 @@ function renderAdoptNotice() {
   const list = h('ul.adopt-list');
   adoptable.forEach((p) => list.append(h('li.adopt-item', {}, [
     h('span.adopt-name', { text: p.title }),
-    h('span.adopt-fmt',  { text: FORMAT_LABELS[p.format] || String(p.format).toUpperCase() })
+    h('span.adopt-fmt',  { text: FORMAT_LABELS[p.format] || String(p.format) })
   ])));
   panel.append(list);
 
   panel.append(h('div.adopt-actions', {}, [
     h('button.btn.primary', {
       'data-action': 'adopt-device-projects',
-      text: one ? 'ADD IT TO THIS ACCOUNT' : 'ADD ALL ' + n + ' TO THIS ACCOUNT'
+      text: one ? 'Add it to this account' : 'Add all ' + n + ' to this account'
     })
   ]));
   panel.append(h('div.adopt-fine', {
@@ -229,7 +228,7 @@ function renderProjects() {
   renderAdoptNotice();
   if (!grid) return;
   const sampleOnly = PlanGate.sampleOnly();
-  const projects  = sampleOnly ? Store.listProjects().filter((p) => isSampleTitle(p.title)) : Store.listProjects();
+  const projects  = sampleOnly ? Store.listProjects().filter(isSampleProject) : Store.listProjects();
   const currentId = Store.currentProjectId();
 
   if (toolbar) toolbar.hidden = projects.length < 2;
@@ -260,7 +259,7 @@ function renderProjects() {
     out.append(h('div.empty-projects-state', {}, [
       h('div.eps-title', { text: 'No projects match.' }),
       h('div.eps-deck', { text: 'Try a different filter or clear your search.' }),
-      h('button.btn', { 'data-action': 'reset-project-filters', text: 'RESET FILTERS' })
+      h('button.btn', { 'data-action': 'reset-project-filters', text: 'Reset filters' })
     ]));
     commit();
     return;
@@ -275,7 +274,7 @@ function renderProjects() {
       tabindex: '0', role: 'button', 'data-action': 'new-project', 'aria-label': 'Create new project'
     }, [
       h('div.pc-plus', { 'aria-hidden': 'true', text: '+' }),
-      h('div.pc-cta', { text: 'NEW PROJECT' })
+      h('div.pc-cta', { text: 'New project' })
     ]));
   } else if (sampleOnly) {
     /* "Your plan" was wrong for the commonest reader of this line — a

@@ -64,7 +64,8 @@ import { registerSW, onInstallAvailable, promptInstall } from '../lib/pwa.js';
 import { h, delegate, coalesce } from '../lib/dom.js';
 import { reveal, spotlight } from '../lib/motion.js';
 
-import { DEFAULT_SAMPLE, sampleById, isSampleTitle } from '../lib/samples.js';
+import { DEFAULT_SAMPLE, sampleById } from '../lib/samples.js';
+import { isSampleProject, findSampleProject } from '../lib/sample-project.js';
 /* The plan's say over the hub (schema section 18 `features`, read by
    src/lib/plan-gate.js): `sample_only` shows the Dragon sample and no
    other project; `new_projects` off hides every way of making one.
@@ -201,9 +202,9 @@ function projectsMarkup() {
                  placeholder="Search projects by name…" data-action="filter-projects"
                  aria-label="Search projects by name">
           <div class="projects-filter" id="projectsFilter" role="group" aria-label="Filter projects by format">
-            <button data-fmt="all" class="active" data-action="set-filter">ALL</button>
-            <button data-fmt="feature" data-action="set-filter">FEATURE</button>
-            <button data-fmt="short" data-action="set-filter">SHORT</button>
+            <button data-fmt="all" class="active" data-action="set-filter">All</button>
+            <button data-fmt="feature" data-action="set-filter">Feature</button>
+            <button data-fmt="short" data-action="set-filter">Short</button>
             <!-- DOC / MV / AD buttons are added by renderProjects() only when such projects exist. -->
           </div>
           <div class="projects-sort-wrap">
@@ -228,7 +229,11 @@ function projectsMarkup() {
     eyebrow: 'Projects · one per film',
     title: 'Home',
     sub: 'A working desk for the working filmmaker.',
-    actions: [button({ label: 'New project', variant: 'primary', pill: true, icon: 'add', attrs: { 'data-action': 'new-project' } })]
+    /* Secondary: with films on the desk, Open project is the main action. */
+    actions: [
+      button({ label: 'Open the sample project', variant: 'ghost', icon: 'movie', attrs: { 'data-action': 'sample-project', 'data-sample': DEFAULT_SAMPLE, 'data-go': '1' } }),
+      button({ label: 'New project', variant: 'secondary', pill: true, icon: 'add', attrs: { 'data-action': 'new-project' } })
+    ]
   });
   const hh = head.querySelector('.k-page-title');
   hh.id = 'projectsHeading';
@@ -262,18 +267,18 @@ function modalMarkup() {
         <h3 id="pmHeading">New <em>project.</em></h3>
         <p class="deck">A project is the home for one film. Title and format. You can change the title later — format stays.</p>
 
-        <label for="pmTitle">PROJECT TITLE</label>
+        <label for="pmTitle">Project title</label>
         <input type="text" id="pmTitle" placeholder="e.g. Por Thozhil, Untitled Thriller…" maxlength="120" required>
 
-        <label for="pmFormat">FORMAT</label>
+        <label for="pmFormat">Format</label>
         <select id="pmFormat">
           <option value="feature">Feature film</option>
           <option value="short">Short film</option>
         </select>
 
         <div class="modal-actions">
-          <button type="button" class="mbtn" data-action="close-project-modal">CANCEL</button>
-          <button type="submit" class="mbtn primary" id="pmSubmit">CREATE</button>
+          <button type="button" class="mbtn" data-action="close-project-modal">Cancel</button>
+          <button type="submit" class="mbtn primary" id="pmSubmit">Create</button>
         </div>
       </form>`
   });
@@ -389,16 +394,56 @@ function openSampleFromURL() {
   /* ?sample=1 is Dragon (start.html's link); ?sample=<id> is that one. */
   const want = params.get('sample');
   const sample = want === '1' ? sampleById(DEFAULT_SAMPLE) : sampleById(want);
-  if (!sample) return;
+  if (!sample) {
+    /* `?tour=1` with no sample (a stale bookmark): nothing here will move
+       the tour on, so drop the parameter and let tour.js draw step 1. */
+    if (params.get('tour') === '1') {
+      params.delete('tour');
+      const q0 = params.toString();
+      try { history.replaceState(null, '', location.pathname + (q0 ? '?' + q0 : '') + location.hash); } catch (e) { /* ignore */ }
+    }
+    return;
+  }
   params.delete('sample');
   const q = params.toString();
   try { history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash); } catch (e) { /* ignore */ }
-  const existing = Store.listProjects().find((p) => p.title === sample.title);
+  /* `open=dashboard` is the account menu's and Home's "Open the sample
+     project": land on the sample's dashboard. The bare demo link keeps
+     its landing on Home. */
+  const toDashboard = params.get('open') === 'dashboard';
+  if (toDashboard) { params.delete('open'); }
+  /* `tour=1` is the tour's own start (src/ui/tour.js TOUR_START_URL, and
+     cloud.js on an account's first ever sign-in): once the sample is the
+     open film, the tour moves on to its next page by itself. A sample
+     that did not open leaves the tour on its first step, and
+     stayOnFirstStep() draws that step's card, which offers the button
+     again. The parameter stays in the address until then, so tour.js's
+     boot knows not to draw step 1 meanwhile. */
+  const touring = params.get('tour') === '1';
+  reopenOrOpenSample(sample.id, toDashboard && !touring).then(() => {
+    if (!touring) return;
+    const opened = !!findSampleProject(sample.id);
+    import('../ui/tour.js').then((m) => (opened ? m.continueFromSample() : m.stayOnFirstStep())).catch(() => { /* offline: the card on Home still offers it */ });
+  });
+}
+
+/* ONE entry for every "open the sample": a sample already in this
+   namespace is RE-OPENED (never duplicated, never touching the user's
+   films), otherwise it is created. Sample projects are matched by
+   the stamp on its entry (or, for one opened before the stamp, the
+   provable seed ids) — see src/lib/sample-project.js. Never by title. */
+function reopenOrOpenSample(id, toDashboard) {
+  const sample = sampleById(id) || sampleById(DEFAULT_SAMPLE);
+  const existing = findSampleProject(sample.id);
+  const done = () => { if (toDashboard) location.href = 'dashboard.html'; };
   if (existing) {
+    // A legacy sample gets its stamp now, so it never depends on the marker again.
+    if (!existing.sample) Store.updateProject(existing.id, { sample: sample.id });
     if (Store.currentProjectId() !== existing.id) Store.setCurrentProject(existing.id);
-    return;
+    done();
+    return Promise.resolve();
   }
-  openSampleProject(sample.id).catch(sampleFailed);
+  return openSampleProject(sample.id).then(done).catch(sampleFailed);
 }
 
 /* §30. A TRIAL IS THIRTY MINUTES; NONE OF THEM SHOULD GO ON FINDING
@@ -459,7 +504,7 @@ async function openSampleProject(id = DEFAULT_SAMPLE) {
   let story = null;
   try { story = (await sample.loadStory()).default.story; } catch (e) { /* no story */ }
 
-  const project = Store.createProject({ title: sample.title, format: sample.format, region: sample.region });
+  const project = Store.createProject({ title: sample.title, format: sample.format, region: sample.region, sample: sample.id });
   // createProject() has already made this the current project, so the
   // storage proxy scopes every write below to it.
   const scenes   = sampleScenes(sample);
@@ -540,7 +585,7 @@ function duplicateProject(id) {
 }
 
 function renderProjectSwitcher() {
-  const projects = PlanGate.sampleOnly() ? Store.listProjects().filter((p) => isSampleTitle(p.title)) : Store.listProjects();
+  const projects = PlanGate.sampleOnly() ? Store.listProjects().filter(isSampleProject) : Store.listProjects();
   const current  = Store.currentProject();
   const btn   = $('#projectSwitcherBtn');
   const label = $('#projectSwitcherLabel');
@@ -552,7 +597,7 @@ function renderProjectSwitcher() {
     label.textContent = current.title;
   } else {
     btn.classList.add('empty');
-    label.textContent = projects.length ? 'PICK A PROJECT' : '— NO PROJECT —';
+    label.textContent = projects.length ? 'Pick a project' : '— No project —';
   }
 
   dd.textContent = '';
@@ -566,7 +611,7 @@ function renderProjectSwitcher() {
         h('div.sd-meta', { text: (FORMAT_LABELS[p.format] || p.format) + ' · edited ' + fmtRelDate(p.updatedAt) })
       ]));
     });
-  if (PlanGate.allowed('new_projects')) dd.append(h('div.sd-new', { 'data-action': 'new-project', role: 'button', tabindex: '0', text: '+ NEW PROJECT' }));
+  if (PlanGate.allowed('new_projects')) dd.append(h('div.sd-new', { 'data-action': 'new-project', role: 'button', tabindex: '0', text: '+ New project' }));
 }
 
 function toggleProjectSwitcher() {
@@ -614,14 +659,14 @@ function openProjectModal(editId, format) {
     titleInput.value = p.title;
     formatInput.value = p.format;
     formatInput.disabled = true;
-    submit.textContent = 'SAVE';
+    submit.textContent = 'Save';
     submit.dataset.editId = editId;
   } else {
     heading.innerHTML = 'New <em>project.</em>';
     titleInput.value = '';
     formatInput.value = 'feature';
     formatInput.disabled = false;
-    submit.textContent = 'CREATE';
+    submit.textContent = 'Create';
     delete submit.dataset.editId;
   }
   overlay.classList.add('show');
@@ -706,7 +751,7 @@ const CLICK_ACTIONS = {
      unhandled rejection rather than an error the click surfaces —
      and `verify` asserts zero console errors, which is the wrong
      place to find out. */
-  'sample-project':        (el) => { openSampleProject(el && el.dataset && el.dataset.sample).catch(sampleFailed); },
+  'sample-project':        (el) => { reopenOrOpenSample(el && el.dataset && el.dataset.sample, !!(el && el.dataset && el.dataset.go)); },
   'adopt-device-projects': () => adoptDeviceProjectsNow(),
   'close-project-modal':   () => closeProjectModal(),
   'switch-project':        (el) => switchToProject(el.dataset.id),

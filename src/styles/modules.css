@@ -80,11 +80,11 @@
      a design decision hard-coded in the only place that could not be
      overridden — exactly what rule 4 of the skin contract is about.
      See _contract.css for the group. */
-  font-family: var(--sk-eyebrow-face, var(--f-mono));
+  font-family: var(--sk-eyebrow-face, var(--f-body));
   font-size: var(--sk-eyebrow-size, var(--t-micro));
   font-weight: 600;
-  letter-spacing: var(--sk-eyebrow-track);
-  text-transform: var(--sk-eyebrow-transform, uppercase);
+  letter-spacing: 0;
+  text-transform: var(--sk-eyebrow-transform, none);
   /* An eyebrow is TEXT on a page ground, so it takes the deep accent,
      not the fill. At --accent it measured 3.35-3.69:1 in desk, where
      the accents are bright — every eyebrow in the app, on every page. */
@@ -236,10 +236,10 @@
 .bd-stat span,
 .hero-stat .lab,
 .hub-stat-strip .hss-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 
@@ -380,10 +380,10 @@
   color: var(--ink-body);
 }
 .bd-example-film {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 
@@ -452,10 +452,10 @@
   font-size: var(--t-tiny);
 }
 .bd-chip-cat {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep);
 }
 .bd-chip-name { color: var(--ink); }
@@ -500,7 +500,7 @@
   border-radius: 50%;
   background: var(--accent-wash);
   color: var(--accent-deep);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
 }
@@ -552,10 +552,10 @@
   transition-duration: var(--speed-tap);
 }
 .job-eyebrow {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep, var(--accent-deep));
 }
 .job-label {
@@ -572,10 +572,10 @@
 }
 .job-go {
   margin-top: var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep, var(--accent-deep));
 }
 
@@ -619,10 +619,10 @@
 .lx-phase-blurb { font-size: var(--t-tiny); line-height: var(--lh-snug); opacity: .85; }
 .lx-phase-count {
   margin-top: auto;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   opacity: .8;
 }
 
@@ -648,11 +648,11 @@
 .lx-groups .lx-mods { padding: 0; background: none; }
 .lx-group-head {
   margin: 0 0 var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .lx-mod {
@@ -685,9 +685,9 @@
   border: 1px solid currentColor;
   border-radius: var(--sk-radius, var(--radius));
   color: var(--hue-deep);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
 }
 .lx-mod.is-planned { opacity: .66; }
 /* --ink-faint is for text you are not meant to read yet; SOON is a
@@ -737,7 +737,7 @@
 .bd-sug-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s4); }
 .bd-sug-scene { display: grid; gap: var(--s2); }
 .bd-sug-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2) var(--s3); }
-.bd-sug-slug { font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--ink-muted); min-width: 0; overflow-wrap: anywhere; }
+.bd-sug-slug { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-tiny); color: var(--ink-muted); min-width: 0; overflow-wrap: anywhere; }
 .bd-sug-scene-all { margin-inline-start: auto; font-size: var(--t-tiny); }
 button.bd-chip.bd-sug { font: inherit; font-size: var(--t-tiny); cursor: pointer; border-style: dashed; border-left-style: solid; }
 button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: solid; }
@@ -768,9 +768,9 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   min-width: 30px; height: 30px;
   padding-inline: var(--s2);
   border-radius: var(--sk-radius);
-  background: var(--accent);
-  color: var(--accent-on);
-  font-family: var(--f-mono);
+  background: var(--brand);
+  color: var(--brand-on);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
 }
 .bd-song-title { flex: 1 1 14rem; min-width: 0; }
@@ -789,8 +789,8 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
 .bd-song-f > span {
   color: var(--ink-muted);
   font-size: var(--t-micro);
-  text-transform: uppercase;
-  letter-spacing: var(--track-label);
+  text-transform: none;
+  letter-spacing: 0;
 }
 .bd-song-f input { width: 100%; min-width: 0; }
 .bd-song-facts {
@@ -819,11 +819,11 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   gap: var(--s2);
   color: var(--ink-muted);
   font-size: var(--t-micro);
-  text-transform: uppercase;
-  letter-spacing: var(--track-label);
+  text-transform: none;
+  letter-spacing: 0;
 }
 .bd-reader-note { margin: var(--s2) 0 0; font-size: var(--fs-sm, 0.9rem); color: var(--ink); }
-.bd-reader-lab { font-family: var(--f-mono); font-size: 0.75em; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-deep); }
+.bd-reader-lab { font-family: var(--f-body); font-size: 0.75em; letter-spacing: 0; text-transform: none; color: var(--accent-deep); }
 .bd-scene-songlink select { text-transform: none; letter-spacing: normal; }
 /* min-width: 0 because the card is a grid item of .bd-list, and a grid
    item's floor is its min-content: once the bar's controls stopped
@@ -845,9 +845,9 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   min-width: 30px; height: 30px;
   padding-inline: var(--s2);
   border-radius: var(--sk-radius, var(--radius));
-  background: var(--accent);
-  color: var(--accent-on);
-  font-family: var(--f-mono);
+  background: var(--brand);
+  color: var(--brand-on);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
 }
@@ -860,11 +860,11 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   width: 3.5rem;
   height: 30px;
   padding: 0 var(--s2);
-  background: var(--accent);
-  color: var(--accent-on);
+  background: var(--brand);
+  color: var(--brand-on);
   border-color: transparent;
   text-align: center;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
 }
@@ -900,20 +900,20 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
 .bd-scene input:focus-visible,
 .bd-scene select:focus-visible,
 .bd-scene textarea:focus-visible { border-color: var(--accent); outline: none; }
-.bd-sel { font-family: var(--f-mono); font-size: var(--t-micro); }
+.bd-sel { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-micro); }
 .bd-eighths { display: inline-flex; align-items: center; gap: var(--s2); }
 /* Same call as the stat strip above: this names the unit the input
    beside it is measured in, so it has to be read. 2.34:1 on Desk. */
 .bd-eighths span {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .bd-eighths input { width: 4.5rem; }
 .bd-pages {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
@@ -970,10 +970,10 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   line-height: var(--lh-snug);
 }
 .bd-sug-guess {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .bd-add { justify-self: start; }
@@ -993,10 +993,10 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
    grounds. .bd-chip-cat — the same category label in chip form, eight
    rules up — already does this; the two had simply drifted apart. */
 .bd-el-cat {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--hue-deep);
 }
 .bd-el-name { font-family: var(--f-display); font-size: var(--t-small); }

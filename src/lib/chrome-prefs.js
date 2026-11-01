@@ -64,6 +64,12 @@ export function tourActive() {
   const t = readJSON(TOUR_KEY, null);
   return !!(t && t.active);
 }
+/** A paused tour (stopped part-way, neither finished nor skipped): the
+ *  account menu says "Resume the tour" for it. Reads only. */
+export function tourResumable() {
+  const t = readJSON(TOUR_KEY, null);
+  return !!(t && !t.active && !t.finished && !t.dismissed && parseInt(t.step, 10) > 0);
+}
 
 /* ---- how the shot list is looked at (visualize.html) ---------------
    `shotView` inside the EXISTING device blob: list or board, the
@@ -77,7 +83,19 @@ export function readShotView() {
 }
 export const saveShotView = (view) => updateDevicePrefs({ shotView: view && typeof view === 'object' ? view : undefined });
 
+/* ---- how the Beat Sheet is looked at (story.html) ------------------
+   `beatView` inside the same device blob: 'lanes' (design B, the
+   default) or 'spine' (design C). A way of looking at the outline, not
+   the outline — so it never goes into fms_story_v1, and it is written
+   on a click only. Anything else reads back as 'lanes'. */
+export const BEAT_VIEWS = ['lanes', 'spine'];
+export function readBeatView() {
+  const v = readDevicePrefs().beatView;
+  return BEAT_VIEWS.includes(v) ? v : 'lanes';
+}
+export const saveBeatView = (view) => updateDevicePrefs({ beatView: BEAT_VIEWS.includes(view) ? view : undefined });
+
 export default {
-  readDevicePrefs, updateDevicePrefs, motionReduced, saveMotionPref, brandingPrefOff, saveBrandingOff, touchThemePref, tourActive,
-  readShotView, saveShotView
+  readDevicePrefs, updateDevicePrefs, motionReduced, saveMotionPref, brandingPrefOff, saveBrandingOff, touchThemePref, tourActive, tourResumable,
+  readShotView, saveShotView, readBeatView, saveBeatView
 };

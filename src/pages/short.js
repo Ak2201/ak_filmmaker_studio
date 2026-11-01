@@ -153,7 +153,7 @@ function jumpOptions() {
   // that drifted from it. It derives now, so it cannot.
   return STEPS.map((s) => ({
     value: s.id,
-    group: partLabel(stageInfo('short', s.id)) || 'STEPS',
+    group: partLabel(stageInfo('short', s.id)) || 'Steps',
     label: `${s.num} · ${(s.titlePlain || s.title.replace(/<[^>]+>/g, '')).replace(/\.$/, '')}`
   }));
 }
@@ -194,7 +194,7 @@ function renderToolbar() {
       title: 'Back to Studio · current project'
     }, [
       h('span.spl-arrow', { text: '←' }),
-      h('span.spl-label', { id: 'studioProjLabel', text: 'STUDIO' })
+      h('span.spl-label', { id: 'studioProjLabel', text: 'Studio' })
     ]),
     h('div.progress-meter', { title: 'Overall completion' }, [
       h('div.progress-bar', {}, [h('div.progress-fill', { id: 'progressFill', style: 'width:0%;' })]),
@@ -246,12 +246,12 @@ function renderCover() {
             + 'For films under 30 minutes.'
       }),
       h('div.vol-stamps', {}, [
-        h('span.vol-stamp.blue', { text: 'SHORT FILM · 11 STEPS' }),
+        h('span.vol-stamp.blue', { text: 'Short film · 11 steps' }),
         /* The feature's parts, faded: this blueprint walks the same five
            stages in eleven steps. Was "VOL I FEATURE · STORY" — the
            feature has had parts, not volumes, since the realignment. */
-        h('span.vol-stamp.faded', { text: 'FEATURE · PART I · STORY' }),
-        h('span.vol-stamp.faded', { text: 'FEATURE · PART III · PRE-PROD' })
+        h('span.vol-stamp.faded', { text: 'Feature · part I · story' }),
+        h('span.vol-stamp.faded', { text: 'Feature · part III · pre-prod' })
       ]),
       h('div.meta-grid', {}, COVER_FIELDS.map((f) => h('div.meta-field', {}, [
         // The legacy <label> was not associated with its input, so every
@@ -276,7 +276,7 @@ const HOW_TO_PROSE = [
 
 const VS_CARDS = [
   {
-    cls: 'vs-card', title: 'SHORT FILM', items: [
+    cls: 'vs-card', title: 'Short film', items: [
       'One central moment — a turn, a reveal, a small but decisive change',
       'One protagonist with one want',
       'One or two locations',
@@ -286,7 +286,7 @@ const VS_CARDS = [
     ]
   },
   {
-    cls: 'vs-card feature', title: 'FEATURE FILM', items: [
+    cls: 'vs-card feature', title: 'Feature film', items: [
       'Multiple moments / acts — a full character arc',
       'Protagonist + antagonist + supporting cast',
       'Multiple locations',
@@ -299,7 +299,7 @@ const VS_CARDS = [
 
 function renderHowTo() {
   return h('section.how-to', {}, [
-    h('div.label', { text: 'HOW TO USE THIS BLUEPRINT' }),
+    h('div.label', { text: 'How to use this blueprint' }),
     h('h2', { html: 'One <em>idea</em>, told <em>cleanly.</em>' }),
     ...HOW_TO_PROSE.map((p) => h('p', { html: p })),
     h('div.sf-vs-feature', {}, VS_CARDS.map((c) => h(`div.${c.cls.split(' ').join('.')}`, {}, [
@@ -408,7 +408,7 @@ function renderTrackerAlerts(list, premiere) {
     // "No warning" and "not checked" look identical on a screen, so
     // the clear case says so out loud.
     box.append(h('div.ft-alert.ok', {}, [
-      h('span.ft-alert-tag', { text: 'PREMIERE' }),
+      h('span.ft-alert-tag', { text: 'Premiere' }),
       h('p', {
         text: Fest.premiereHolders(list).length === 0 && list.length
           ? 'No festival is holding your premiere right now. Nothing here blocks an online release.'
@@ -421,13 +421,13 @@ function renderTrackerAlerts(list, premiere) {
   // both shouting "PREMIERE HELD" is how a reader learns to stop
   // reading the second one.
   const TAGS = {
-    'online-premiere-scheduled': 'DO NOT POST',
-    'premiere-held':             'PREMIERE HELD',
-    'targets-not-sent':          'UNSENT'
+    'online-premiere-scheduled': 'Do not post',
+    'premiere-held':             'Premiere held',
+    'targets-not-sent':          'Unsent'
   };
   for (const c of conflicts) {
     box.append(h(`div.ft-alert.${c.level}`, {}, [
-      h('span.ft-alert-tag', { text: TAGS[c.code] || 'CHECK' }),
+      h('span.ft-alert-tag', { text: TAGS[c.code] || 'Check' }),
       h('p', { text: c.text })
     ]));
   }
@@ -455,7 +455,7 @@ function renderTrackerRow(s) {
           'data-fest-field': 'festival'
         }),
         s.premiereRequired
-          ? h('span.ft-flag', { title: 'This festival requires a premiere — it holds your film off the internet until it answers.', text: 'HOLDS PREMIERE' })
+          ? h('span.ft-flag', { title: 'This festival requires a premiere — it holds your film off the internet until it answers.', text: 'Holds premiere' })
           : null
       ]),
       h('button.ft-del', {
@@ -463,8 +463,7 @@ function renderTrackerRow(s) {
         'data-action': 'fest-remove',
         title: 'Stop tracking this festival',
         'aria-label': `Stop tracking ${s.festival || 'this festival'}`,
-        text: '✕'
-      })
+        }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })])
     ]),
     h('div.ft-row-fields', {}, [
       field('Status', h('select', {
@@ -540,12 +539,12 @@ function renderTracker() {
       // first — and the label has to say so. "NEXT DEADLINE: 14 days
       // ago" is a sentence that makes a reader distrust the whole box.
       festStat(next ? Fest.relativeDays(next.days) : '—',
-        next && next.days < 0 ? 'MISSED DEADLINE' : 'NEXT DEADLINE',
+        next && next.days < 0 ? 'Missed deadline' : 'Next deadline',
         next && next.days <= 14 ? 'urgent' : ''),
-      festStat(String(list.length), 'TRACKED'),
-      festStat(String(counts.submitted + counts.competition), 'OUT THERE'),
-      festStat(String(decided), 'ANSWERED'),
-      festStat(formatSpend(feeTotals(list)), 'FEES PAID')
+      festStat(String(list.length), 'Tracked'),
+      festStat(String(counts.submitted + counts.competition), 'Out there'),
+      festStat(String(decided), 'Answered'),
+      festStat(formatSpend(feeTotals(list)), 'Fees paid')
     ]),
     next ? h('p.ft-next', {
       text: `Next up: ${next.submission.festival || 'an untitled entry'} — `
@@ -573,8 +572,8 @@ function renderTracker() {
         }))
       ])
     ]),
-    h('button.mini-btn', { type: 'button', 'data-action': 'fest-add', text: '+ TRACK IT' }),
-    h('button.mini-btn', { type: 'button', 'data-action': 'fest-add-custom', text: '+ ONE NOT ON THE LIST' })
+    h('button.mini-btn', { type: 'button', 'data-action': 'fest-add', text: '+ Track it' }),
+    h('button.mini-btn', { type: 'button', 'data-action': 'fest-add-custom', text: '+ One not on the list' })
   ]));
 
   section.append(h('div.ft-premiere', {}, [
@@ -626,7 +625,7 @@ function renderFestCheck(f) {
        overlay's single lastChecked. CHECKED_ON stays as the fallback
        for an entry that predates per-festival dates. */
     box.append(h('div.fest-check-tag.ok', {
-      text: `CHECKED ${chk.checked || Fest.CHECKED_ON}`
+      text: `Checked ${chk.checked || Fest.CHECKED_ON}`
     }));
     if (chk.fee) box.append(h('p', { text: chk.fee }));
     if ((chk.deadlines || []).length) {
@@ -649,13 +648,13 @@ function renderFestCheck(f) {
 
   if (chk.status === 'warning' || chk.status === 'blocked') {
     box.append(h('div.fest-check-tag.warn', {
-      text: chk.status === 'warning' ? 'UNCONFIRMED' : 'COULD NOT CHECK'
+      text: chk.status === 'warning' ? 'Unconfirmed' : 'Could not check'
     }));
     (chk.notes || []).forEach((n) => box.append(h('p.fest-check-note', { text: n })));
     return box;
   }
 
-  box.append(h('div.fest-check-tag', { text: 'NOT RE-CHECKED' }));
+  box.append(h('div.fest-check-tag', { text: 'Not re-checked' }));
   box.append(h('p.fest-check-note', {
     text: `The line above is the blueprint’s own approximation from 2023 and nobody has verified it since. Look the date and the fee up yourself before you plan around them.`
   }));
@@ -683,7 +682,7 @@ function renderFestivals() {
       'data-action': 'fest-track',
       'data-fest-name': f.name,
       disabled: tracked.has(f.name),
-      text: tracked.has(f.name) ? 'TRACKED' : '+ TRACK'
+      text: tracked.has(f.name) ? 'Tracked' : '+ Track'
     })
   ])));
   return h('div.fest-block', {}, [renderTracker(), grid]);
@@ -796,24 +795,24 @@ function wireTracker() {
 // ============================================================
 const GLOSSARY = [
   {
-    cat: 'SCREENPLAY FORMAT', items: [
-      ['SLUG LINE', 'The header above each scene. Format: INT. or EXT. — LOCATION — TIME OF DAY. INT. = interior, EXT. = exterior. Always ALL CAPS.'],
-      ['ACTION', 'Description of what happens, in present tense, third person. No camera directions in the script unless absolutely necessary.'],
-      ['PARENTHETICAL', 'A short instruction below a character name in italics, e.g. <em>(whispering)</em>. Use sparingly — actors hate them.'],
-      ['FADE IN / FADE OUT', 'The opening and closing of the script. FADE IN: at the start, FADE OUT. at the end. Optional but traditional.'],
+    cat: 'Screenplay format', items: [
+      ['Slug line', 'The header above each scene. Format: INT. or EXT. — LOCATION — TIME OF DAY. INT. = interior, EXT. = exterior. Always ALL CAPS.'],
+      ['Action', 'Description of what happens, in present tense, third person. No camera directions in the script unless absolutely necessary.'],
+      ['Parenthetical', 'A short instruction below a character name in italics, e.g. <em>(whispering)</em>. Use sparingly — actors hate them.'],
+      ['Fade in / fade out', 'The opening and closing of the script. FADE IN: at the start, FADE OUT. at the end. Optional but traditional.'],
       ['O.S. / O.C. / V.O.', 'Off Screen, Off Camera, Voice Over. Different effects: O.S. = in the scene but unseen; V.O. = narrating from outside.'],
-      ['FOUNTAIN', 'A plain-text screenplay format using markdown-like rules. Universal — opens in every pro screenwriting app. The export format used by this blueprint.'],
-      ['FINAL DRAFT', 'The most common professional screenwriting software. Imports Fountain. Often required by festivals and producers.'],
-      ['HIGHLAND / WRITERDUET / FADE IN', 'Final Draft alternatives. All open Fountain files. Highland is Mac-only; WriterDuet is web-based; Fade In is cross-platform.']
+      ['Fountain', 'A plain-text screenplay format using markdown-like rules. Universal — opens in every pro screenwriting app. The export format used by this blueprint.'],
+      ['Final Draft', 'The most common professional screenwriting software. Imports Fountain. Often required by festivals and producers.'],
+      ['Highland / WriterDuet / Fade In', 'Final Draft alternatives. All open Fountain files. Highland is Mac-only; WriterDuet is web-based; Fade In is cross-platform.']
     ]
   },
   {
-    cat: 'PRODUCTION', items: [
-      ['CALL SHEET', 'The day\'s plan distributed to cast and crew. Times, locations, scenes to shoot, contact info. The 1st AD\'s main artifact.'],
-      ['RECCE', 'Location scouting. A "tech recce" is when DOP, sound, art and director walk the location pre-shoot to plan everything practically.'],
-      ['ROLL CAMERA', 'The director\'s call to start a take. Followed by ACTION, then CUT.'],
+    cat: 'Production', items: [
+      ['Call sheet', 'The day\'s plan distributed to cast and crew. Times, locations, scenes to shoot, contact info. The 1st AD\'s main artifact.'],
+      ['Recce', 'Location scouting. A "tech recce" is when DOP, sound, art and director walk the location pre-shoot to plan everything practically.'],
+      ['Roll camera', 'The director\'s call to start a take. Followed by ACTION, then CUT.'],
       ['DCP', 'Digital Cinema Package — the professional theatrical screening format. Most major festivals require a DCP for projection. Costs ₹3K–₹15K to produce.'],
-      ['PRORES', 'Apple\'s professional video codec. ProRes 422 HQ or 4444 are the festival-standard delivery formats alongside DCP.'],
+      ['ProRes', 'Apple\'s professional video codec. ProRes 422 HQ or 4444 are the festival-standard delivery formats alongside DCP.'],
       ['H.264 / H.265', 'Common compressed video codecs. H.264 in MP4 is the standard online preview format for festival submissions via FilmFreeway.'],
       ['1st AD', 'First Assistant Director. Runs the floor. Calls "rolling," manages the schedule, protects the director\'s time. Critical role even on a 2-day short.'],
       ['DOP / DP', 'Director of Photography / Cinematographer. Designs the look with the director. On a short, often also operates the camera.']
@@ -821,21 +820,21 @@ const GLOSSARY = [
   },
   {
     cat: 'FESTIVAL &amp; SUBMISSION', items: [
-      ['FILMFREEWAY', 'The dominant submission platform. Most festivals (~80%) accept submissions through it. One profile, one upload, many submissions.'],
-      ['OSCAR-QUALIFYING', 'Festivals whose top awards make a short eligible for Academy Award consideration. Cannes, Sundance, Tribeca, SXSW, etc.'],
-      ['WORLD PREMIERE / INTL PREMIERE / NORTH AMERICAN PREMIERE', 'Festival hierarchy. Tier-1 festivals usually require world or country-tier premiere status. Posting on YouTube counts as a world premiere — and disqualifies you.'],
-      ['SCREENING FEE', 'Some festivals pay filmmakers a small honorarium for screening. ₹0 to ~$500 typical.'],
-      ['PRESS KIT / EPK', 'Electronic Press Kit. Includes synopsis, director\'s bio, film stills, poster, technical specs. Festivals require this with submission.'],
-      ['SAG / GUILD', 'U.S. actor unions. Most Indian shorts are non-union; relevant only if hiring U.S. talent.']
+      ['FilmFreeway', 'The dominant submission platform. Most festivals (~80%) accept submissions through it. One profile, one upload, many submissions.'],
+      ['Oscar-qualifying', 'Festivals whose top awards make a short eligible for Academy Award consideration. Cannes, Sundance, Tribeca, SXSW, etc.'],
+      ['World premiere / Intl premiere / North American premiere', 'Festival hierarchy. Tier-1 festivals usually require world or country-tier premiere status. Posting on YouTube counts as a world premiere — and disqualifies you.'],
+      ['Screening fee', 'Some festivals pay filmmakers a small honorarium for screening. ₹0 to ~$500 typical.'],
+      ['Press kit / EPK', 'Electronic Press Kit. Includes synopsis, director\'s bio, film stills, poster, technical specs. Festivals require this with submission.'],
+      ['SAG / Guild', 'U.S. actor unions. Most Indian shorts are non-union; relevant only if hiring U.S. talent.']
     ]
   },
   {
-    cat: 'CRAFT TERMS', items: [
-      ['SHOWING vs. TELLING', '"Show, don\'t tell." A short film should reveal character through action and image, not exposition. Cut "as you know" dialogue ruthlessly.'],
-      ['SETUP / PAYOFF', 'An object, line, or detail introduced early ("setup") that returns later with new meaning ("payoff"). Compressed in shorts; often only one or two pairs.'],
-      ['SUBTEXT', 'What the scene is REALLY about, beneath what\'s being said. The best short film dialogue has subtext that lands harder than the surface meaning.'],
-      ['TURN', 'The single moment in a short where everything pivots. The midpoint of a feature in spirit; in a short, it\'s almost the whole film.'],
-      ['FINAL IMAGE', 'The last frame the audience sees. In a short film, this image must contain the meaning. If your film could lose its final image, you don\'t have a final image yet.']
+    cat: 'Craft terms', items: [
+      ['Showing vs. telling', '"Show, don\'t tell." A short film should reveal character through action and image, not exposition. Cut "as you know" dialogue ruthlessly.'],
+      ['Setup / payoff', 'An object, line, or detail introduced early ("setup") that returns later with new meaning ("payoff"). Compressed in shorts; often only one or two pairs.'],
+      ['Subtext', 'What the scene is REALLY about, beneath what\'s being said. The best short film dialogue has subtext that lands harder than the surface meaning.'],
+      ['Turn', 'The single moment in a short where everything pivots. The midpoint of a feature in spirit; in a short, it\'s almost the whole film.'],
+      ['Final image', 'The last frame the audience sees. In a short film, this image must contain the meaning. If your film could lose its final image, you don\'t have a final image yet.']
     ]
   }
 ];
@@ -863,7 +862,7 @@ function renderFinalPage() {
       html: '"The best short films are not short stories.<br>They are single, indivisible moments'
           + '<br>caught at their exact temperature."'
     }),
-    h('div.signature', { html: 'THE SHORT FILM BLUEPRINT' })
+    h('div.signature', { html: 'The short film blueprint' })
   ]);
 }
 
@@ -923,7 +922,7 @@ function render() {
     if (!header) continue;
     header.append(h('div.step-badge', {
       'data-step': step.badge.step ?? step.num,
-      text: step.badge.initial ?? 'EMPTY'
+      text: step.badge.initial ?? 'Empty'
     }));
   }
 
@@ -1246,7 +1245,7 @@ function addScriptScene(prefill) {
       <input type="text" class="slug paper-field" aria-label="Slug line" placeholder="INT. APARTMENT - DAY" value="${escAttr(data.slug)}">
       <button class="row-ctrl-btn del" data-action="script-remove-scene" data-index="${idx}" title="Delete this scene" aria-label="Delete this scene">✕</button>
     </div>
-    <span class="action-label">ACTION</span>
+    <span class="action-label">Action</span>
     <textarea class="action paper-field" aria-label="Action" placeholder="Describe what happens. Present tense. Third person. No camera directions unless essential.">${escHTML(data.action)}</textarea>
     <div class="dialogues" id="dialogues_${idx}"></div>
     <button class="add-dialogue-btn" data-action="add-dialogue" data-index="${idx}">+ ADD DIALOGUE</button>
@@ -1259,7 +1258,7 @@ function addScriptScene(prefill) {
 function renumberScriptScenes() {
   document.querySelectorAll('#scriptScenes .scene-block').forEach((block, i) => {
     const tag = block.querySelector('.scene-tag');
-    if (tag) tag.textContent = 'SCENE ' + String(i + 1).padStart(2, '0');
+    if (tag) tag.textContent = 'Scene ' + String(i + 1).padStart(2, '0');
   });
 }
 
@@ -1271,7 +1270,7 @@ function addDialogue(sceneIdx, prefill) {
   div.className = 'dialogue-block';
   div.innerHTML = `
     <div class="dlg-row">
-      <input type="text" class="character paper-field" aria-label="Character name" placeholder="CHARACTER NAME" value="${escAttr(data.character)}">
+      <input type="text" class="character paper-field" aria-label="Character name" placeholder="Character name" value="${escAttr(data.character)}">
       <textarea class="line paper-field" aria-label="Dialogue line" placeholder="The dialogue line.">${escHTML(data.line)}</textarea>
       <button class="row-ctrl-btn del" data-action="remove-dialogue" title="Delete" aria-label="Delete this dialogue">✕</button>
     </div>
@@ -1636,7 +1635,7 @@ function wireEvents() {
     const written = ((field && field.value) || '').trim();
     tip.replaceChildren(
       h('div.beat-tip-head', {
-        text: `BEAT ${beat.num} · ${beat.name.toUpperCase()} · ${beat.percentage}`
+        text: `Beat ${beat.num} · ${beat.name} · ${beat.percentage}`
       }),
       h('div', { text: written.length > 140 ? written.slice(0, 140) + '…' : (written || 'Not yet written.') })
     );

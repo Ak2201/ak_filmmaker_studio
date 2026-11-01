@@ -46,7 +46,8 @@ function palette() {
   for (let pass = 0; pass < 5; pass++) {
     for (const [name, ref] of Object.entries(refs)) if (!out[name] && out[ref]) out[name] = out[ref];
   }
-  const need = ['paper', 'paper-raised', 'ink', 'feature', 'shorts', 'library'];
+  const need = ['ink', 'brand', 'brand-bar-ink'];
+  out.paper = out['brand-bar-ink']; out['paper-raised'] = out['brand-bar-ink'];   // white marks on the near-black ground (the old paper tokens no longer exist)
   const missing = need.filter(n => !out[n]);
   if (missing.length) throw new Error('tokens.css is missing: ' + missing.join(', '));
   return out;
@@ -91,11 +92,9 @@ function mark({ inset = 0 } = {}) {
       <rect x="112" y="318" width="196" height="12" rx="6"/>
     </g>
 
-    <!-- the three volumes, the same stripe the toolbar wears -->
+    <!-- the one violet (8B mix): a single brand stripe along the slate's foot -->
     <g clip-path="url(#board)">
-      <rect x="76"  y="376" width="120" height="32" fill="${C.feature}"/>
-      <rect x="196" y="376" width="120" height="32" fill="${C.shorts}"/>
-      <rect x="316" y="376" width="120" height="32" fill="${C.library}"/>
+      <rect x="76" y="376" width="360" height="32" fill="${C.brand}"/>
     </g>
   </g>
 </svg>
@@ -143,7 +142,7 @@ await Promise.all([
   png(maskable, 512, 'icon-maskable-512.png'),
   png(any, 120, 'icon-consent-120.png')
 ]);
-console.log(`  icon.svg / icon-maskable.svg  (palette from tokens.css: ink ${C.ink}, paper ${C.paper})`);
+console.log(`  icon.svg / icon-maskable.svg  (palette from tokens.css: ink ${C.ink}, paper ${C.paper}, brand ${C.brand})`);
 
 /* favicon.ico at the site root (27 Oct 2026). Every page links icon.svg,
    but browsers, link unfurlers and crawlers still ask for /favicon.ico

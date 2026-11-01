@@ -1,4 +1,4 @@
-/* KIT · PAGE HEADER — mono eyebrow, Space Grotesk title, actions
+/* KIT · PAGE HEADER — eyebrow, Gabarito title, actions
    pageHeader({ eyebrow, title, sub, actions, meta, level, id })
      eyebrow  a string, or an array of crumbs joined with " / "
      actions  nodes (usually kit buttons) on the right

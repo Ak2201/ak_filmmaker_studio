@@ -46,6 +46,14 @@ or silently broken a page.
 > not bump a VERSION or CHANGELOG this repo does not keep. Where gstack and
 > this file disagree, this file wins.
 
+> **Revamp (owner, 28 Oct 2026) reverses "dark only".** The 8b template mix: light work
+> surfaces and cards, a dark rail (224px, labelled) and dark top band, near-black and white
+> bands on the public site, ONE violet. Gabarito + Onest (self-hosted); Courier Prime stays for
+> screenplay text, Tamil last in `--f-script`. The scripts-off probe now expects the light
+> canvas (`#f4f3f8`) under both OS preferences. Rail flyouts list modules only; sections live
+> in the page's tab strip (`prove:nav` compares exactly that). The dashboard is one screen.
+> Tailwind v4 is the public site only (`site.css`). Template credit: `docs/CREDITS.md`.
+
 ## What this is
 
 Browser-based tools for filmmakers — a hub, two step-by-step blueprints, a
@@ -128,6 +136,14 @@ npm run prove:scroll      # every root page scrolls right at 1440/1100/390: nest
 #   the end reachable above fixed chrome, locks at rest, sticky, fragments, wheel (item 45;
 #   reads dist by default, CI runs it with PROVE_DIST=dist-verify after build:verify)
 npm run test:contact      # contact.html's pure form model: validation and the mailto (item 48)
+npm run prove:explainer   # learn() opens a pop-up over story.html at 1440/390: focus trap, Escape, nothing moves, no writes
+npm run prove:tour        # first-sign-in tour (faked tour_status/mark_tour_started), the full walk, pause/resume/skip (CI)
+npm run test:account-tour # the tour's server answers fail closed (no browser)
+npm run prove:beat-views  # the Beat Sheet's Lanes and Spine on the Dragon sample at 1440/1100/390 (verify job, open dist)
+npm run prove:pills       # every "What is …?" pill on 11 pages at 1440 mouse / 390 touch (CI, PROVE_DIST=dist-verify)
+npm run test:drive-store  # drive-only storage's adapter + migration against scripts/fake-drive.mjs (no browser)
+npm run test:google-token # the google-token function's pure half: request checks, mint/revoke outcomes
+npm run prove:drive-only  # the built app in storage_mode 'drive' against a faked Drive + Supabase (CI, dist-verify)
 npm run prove:legal       # privacy/terms/refund inside the window under the fixed header, at 5 widths
 #   (PROVE_DIST=dist-verify after build:verify; in CI)
 # Playwright in a sandbox: the bundled browser build may be missing and `playwright install`
@@ -209,6 +225,18 @@ src/
                            breakdown shared with Write's import
              blueprint-route.js ← old blueprint anchors → their stage guides
              library-search.js ← the library's own search; not the studio index
+             google-button.js ← the one "Continue with Google" label/markup
+                           (startlib: import-free); the G is public/google-g.svg
+             account-tour.js ← tour_status / mark_tour_started answers,
+                           failing closed (item 77)
+             drive-store.js ← drive-only storage's adapter, PURE (injected
+                           transport); drive-migrate.js moves server rows in,
+                           verified; drive-project-sync.js is cloud.js's LAZY
+                           drive branch; drive-picker.js the Picker (item 77)
+             google-token.js ← the google-token function's client (store /
+                           mint / revoke); storage-mode-api.js the console's
+                           storage_mode reads and writes
+             write-goals-merge.js ← mergeWriteGoals, shared by both sync paths
              ← one model per thing. Everything else is a VIEW of these.
   ui/        chrome.js (toolbar/theme/toasts) steps.js shell.js
              actionbar.js launcher.js palette.js
@@ -222,7 +250,14 @@ src/
              section-menu.js ← the ONE navigation control (side menu,
                        strip, phone Sections sheet); tabs.js builds on it
              mobile-nav.js ← the phone's bottom bar + Go-to / Tools sheets
-             learn.js ← learn(): the topic panel, built on first open
+             learn-pill.js ← THE explainer trigger (pillEl / learnInline);
+                       learn-places.js (CORE) puts pills under subtitles
+             beat-drag.js ← the Beat Sheet's pointer drag; writes nothing
+             drive-ui.js ← the Drive migration and share sheets (via the
+                       driveUI port); storage-admin.js the console's switch
+             learn.js ← learn(): a "What is …?" button that opens
+                       explainer.js (kit modal / phone sheet) OVER the
+                       page; nothing expands in place (owner, 29 Oct 2026)
              story-bible.js ← the Story Bible: characters, conflict, stakes, theme, world
              stage-guide.js ← mountStageGuide(): a stage's blueprint steps, in the stage
              project-switcher.js ← the band's project switcher (CORE)
@@ -262,7 +297,8 @@ scripts/
   README     (scripts/README.md) what each script is for
   schema-tests/  the SQL fixtures `npm run test:schema` runs
 supabase/
-  functions/ the edge functions (rzp-order, rzp-verify, rzp-webhook, rzp-refund)
+  functions/ the edge functions (rzp-order, rzp-verify, rzp-webhook, rzp-refund,
+             google-token: the Drive refresh token, never sent back)
              and _shared/ — deploy with the CLI, see docs/BILLING.md
   schema/    supabase-schema.sql (sections 1–39), schema-40..47 files, patches/,
              README.md — SQL moved here from the repo root on 19 Oct 2026
@@ -372,14 +408,17 @@ compared like for like. Every one of those edits is inside a `<script>` block,
 which the extractor strips, so they never affected verification.
 
 **4. Colours, sizes and spacing come from `src/styles/tokens.css`.**
-Every colour is a token. **SWISS PRECISION, DARK ONLY (owner, 14 Oct 2026).**
-One palette on bare `:root`: a layered obsidian ground (`--surface-canvas`
-`#0D0E13` → rail `#121318` → card `#1A1B21` → elevated `#22232B`), white
-hairlines at 8% / 16%, and ONE violet accent. The light theme (`paper`) and
-its toggle are gone; `docs/DESIGN-KIT.md` is the token table and the kit
+Every colour is a token. **THE 8B MIX, LIGHT WORK SURFACE (owner, 28 Oct
+2026)** — this REVERSES the 14 Oct "Swiss Precision, dark only" rule, on
+purpose. One palette, no toggle: bare `:root` is the LIGHT work surface
+(canvas `#f4f3f8`, white cards), and a dark scope (`.sh-rail`, `.sh-bar`, the
+phone bar and sheets, `[data-surface="dark"]`) restates the same token names
+with near-black values for the rail, the top band and the public site's dark
+bands. ONE violet. `docs/DESIGN-KIT.md` is the token table and the kit
 reference, and **to change the look you edit `tokens.css` (and, for shapes,
 `skins/studio.css`) and nothing else.** Every older token NAME is still
-declared and re-pointed, so the page sheets did not change.
+declared and re-pointed, so the page sheets did not change. The scripts-off
+probe in verify asserts the light canvas under BOTH OS preferences.
 
 Three things worth knowing before you pick a colour:
 
@@ -446,6 +485,8 @@ string — do not use it. A key in a URL is a key in browser history, in proxy
 logs and in any error report that captures a URL. And `connect-src` in
 **both** `vercel.json` and `netlify.toml` must name a new provider's origin
 in the same commit, or the browser refuses the request before it leaves.
+
+**The Google G is brand artwork in `public/google-g.svg`** (owner, 31 Oct 2026: ONE way in, "Continue with Google", everywhere; `src/lib/google-button.js` + the kit's `kGoogleBtn`). The grep below cannot see it and no CSS or JS may recolour it or name its blue (`test:marketing` fails on `#4285F4` in `src/`).
 
 Anything else is a bug. To check:
 
@@ -1503,7 +1544,7 @@ numbered as they are in the history.
 | 51 | Paper writing fields (20 Oct 2026) | Done | HISTORY item 54. Writing inputs are `--paper-page` + black `var(--f-script)` via `src/ui/paper-field.js` (`paperTextarea`, `paperField`, `paperScope`); the app stays dark. Dates, money, numbers, search stay dark. `test:paper` fails a writing file that builds a bare textarea. Never restate the font stack (Tamil last). |
 | 52 | Script pipeline + Script analysis (20 Oct 2026) | Done | HISTORY item 54. `src/lib/script-pipeline.js` fills BLANKS only, re-runs write nothing, undo is in memory (kept in a toast after the sheet closes); the scenes step passes `fillOnly` so a typed location on a linked row survives. AI enhance = existing Desk tasks + `tension-notes`, own key, nothing before Accept. Analysis is a tab on screenplay.html, not a nav module. |
 | 53 | Shot list + storyboard UI (20 Oct 2026) | Done | HISTORY item 54. `shots.js` `readAll()` passes unknown fields through (an older tab must not wipe a newer field). Reorder renumbers plain ordinals only; a typed number (`numLocked`, or any non-ordinal like 4A) never moves. The CSV keeps its fixed header; only the PDF follows the column menu. Prefs: `shotView` in `fms_studio_prefs_v1`. |
-| 54 | Drive-only storage (planned) | Phase 0 spike built; waiting on the owner's two-account run | `docs/DRIVE-STORAGE.md`. Content to Drive only, one folder per project shared as the team unit, Supabase keeps login/billing/console, silent token renewal via a server-held refresh token. Supabase sync stays until Drive is proven (dual-write behind `storage_mode`). |
+| 54 | Drive-only storage | Built both halves (31 Oct 2026, integrated in item 77); **§66 not run live**, `google-token` not deployed, spike never run | `docs/DRIVE-STORAGE.md`, owner steps `docs/LIVE-STEPS-2026-10-31.md`. Behind `billing_settings.storage_mode` ('supabase' default; the console's People tab flips it, owner only): while it reads supabase NOTHING changes, every Supabase path byte-identical; a save waits for the mode rather than guessing. Client: `drive-store.js` is PURE (injected transport), `drive-project-sync.js` is cloud.js's LAZY drive branch — never `drive-sync.js`, which stays the backup file. No new key: `drive` field on the project entry (left out of backups), `store[<uid>]` / `migrate` inside `fms_drive_sync_v1`. Dirty = canonical hash differs from the agreed one; a head this device has not seen is never overwritten. Migration deletes a server row only after the Drive copy reads back identical (`drive_migrate_delete_scope` takes back the exact JSON, finish refuses while rows remain). Server: `google_tokens` is readable by NO client role; the refresh token is AES-GCM with the user id as AAD; the function never returns or logs one. A Drive screening pass is made with no project, then `screening_set_drive_file()`. `account_profile` is the first-ever-tour flag (`mark_tour_started()` true once per account, backfill on the FIRST load only). A new public table goes in the purge patch's lists (checksums recomputed). `test:drive-store`, `test:google-token`, `prove:drive-only`. |
 | 55 | Yearly plans, marketed by the day (21 Oct 2026) | Built; §52 ran live 21 Oct 2026; **functions not redeployed** | HISTORY item 55. A plan is 365 days; buying the same plan again stacks a year (`apply_plan`), an upgrade credits the unused part of the year, a downgrade waits for it to end, a refund removes that payment's own year; grants stay for good. A one-time backfill gives paid-for-good buyers a year from the switch. Per-day figures are DERIVED (`perDay()` in plans.js, stamps `{{fms:price.<id>.day}}` / `price.from.day`), never typed. Do NOT release to `main` before §52 runs and the four functions are redeployed (`docs/LIVE-STEPS-2026-10-21.md`). |
 | 56 | Audience test (21 Oct 2026) | Built; **never run against a real provider** | `docs/AUDIENCE-TEST-PLAN.md`. An idea from MiroFish, NO code from it (AGPL-3.0). Desk tasks `audience-test` (Script analysis), `audience-quick` and `audience-ask` (Story). One request per part with the whole panel, then one for verdicts — coverage's cost, coverage's checkpoint/Resume. `audience-model.js` stays PURE and never imports ai.js. A kept run is a Notes document in the script blob (`audience-store.js`): no new key. Every surface says "Simulated by a model, not by real viewers"; a missing verdict is shown as missing, never as Mixed. Persona ids in `audience-personas.json` are written into saved documents: never rename one. |
 | 57 | Ponytail audit (21 Oct 2026) | Done, all 21 findings; **§54 not run live**; `rzp-order` needs a redeploy | HISTORY item 56. The local sync clock only moves FORWARD (`markRemoteSeen`); a copy the server sent is never salvaged (meta `h` fingerprint); a refused write fires `storage:error`, never `saved`; `writeFields` reads back. §54: plan caps take `pg_advisory_xact_lock` before counting. A Stage Guide mount aborts its listeners on re-render. The 10 Nice findings followed: ids come from ONE `newId(prefix)` (`src/lib/record-id.js`) for the models sharing a shape — a model whose stored id shape differs keeps its own generator; never merge those. Redeploy `rzp-order` again for `failPending`. |
@@ -1519,7 +1560,15 @@ numbered as they are in the history.
 | 67 | Clean slate + auto-renew as a console choice (27 Oct 2026) | Built; **purge, §62 not run live**; Razorpay Subscriptions not enabled; legal DRAFTs await the owner | HISTORY item 66. The purge patch keeps ONE admin (`arunkumarmohanans@gmail.com`) and refuses on any unclassified public table: a new table must be added to its lists (and its four checksums recomputed). `pass_mode` / `plan_mode` default `once`; never word renewal terms outside `src/lib/offer-terms.js` and the `[data-offer-terms]` slots (`test:marketing`). One `payments` row per subscription charge, idempotent on `razorpay_payment_id`; a subscription keeps its signed-up amount (price lock). Cancel = at cycle end, access to `current_end`. |
 | 68 | Full-app QA, fixed and re-verified (27 Oct 2026) | Done; 29 medium/low left open in `docs/KNOWN-ISSUES.md` | HISTORY item 67. 4 rounds × 16 testers, skeptics per finding, one fixer per area in turn: 422 confirmed, 394 fixed, every high fixed. Focus after a redraw goes to the replacement control, never `<body>` and never with a scroll; an Undo restores only what it wrote; a page that read a blob once re-reads before saving. A proof waits for a signal, never a fixed delay (`data-vid-help-pending`). The Pro seed blurb changed in the schema file only; the live row needs its own section. |
 | 69 | Repo-side finish after the QA (28 Oct 2026) | Done; **§64 not run live** | HISTORY item 68. Legal pages final (no DRAFT; `test:marketing` fails on one, and on a stale date). Beat pages: `beatPageBasis()`, the target if set, else the script as written, named on both views. Budget: `showIndia()` hides GST/TDS/GSTIN and the FEFSI material for a film made outside India; Batta/UPI are display labels only, ids never change. A clipping cut at `VAULT_MAX` has `cut: true`. The beat-note line never redraws under focus. |
-| 70 | Two-level flyout, Blocking studio, AI blocking, focus mode (1 Nov 2026) | Done; AI blocking **never run against a real provider** | HISTORY item 69. Pre-Production's flyout opens groups in a second panel; Screen Time and Cast Matrix are on `breakdown.html` (`reports.html#screentime/#cast-matrix/#runtime` forward). Blocking adds `set`, `axis`, `path`, `curve`, `charId` to records in `fms_shots_v1` (additive, cleaned on read, no new key); every write is one `replaceBlock()`. Desk tasks `blocking-draft` / `blocking-enhance` are Pro (`aiUnlocked()`). Focus mode's Night is OFF unless chosen (`focusPageNight`; old `focusNight` is not read) and no side panel leaves a slab (`prove:scroll`). A page landing on its own target under a hash calls `resolveFragment()`, never a bare scrollIntoView. |
+| 70 | Final QA fix pass on the revamp (28 Oct 2026) | Done; gate green except the sandbox-proxy proofs | HISTORY item 69. ONE FILL: every selected/active/progress fill is `--brand`, a phase hue is a mark only; a selected tab is a tint. Mono is DATA only (labels, chips, crumb, switcher badge are Onest sentence case). Dashboard: h1 = the film, one Continue, readiness/tools/details in `details.db-more` (`revealTarget()` opens a closed disclosure for a fragment). Phone: one nav entry (Go to). Skip links move focus (`moveFocus`). Public: veils restored for print and after 8s, the device Reduce-motion switch honoured (`device-motion.js`, read-only, import-free), opt-out in the footer, h1 tiers. UI UX Pro Max NOT vendored: its README says CC-BY-NC-4.0 while package.json says MIT. |
+| 71 | Round 2 and 2b, final fix pass (28–29 Oct 2026) | Done; gate green except the sandbox-proxy proofs; **§65 not run live** | HISTORY items 70–71; `docs/LIVE-STEPS-2026-10-29.md`. Fonts: Gabarito + Onest only, `Glyph Fallback` carries arrows, ✕, ⋯ and the symbol blocks. Auto-pay is cancelled at the mandate, never in the app (wording only in `offer-terms.js`). The Dragon sample is open to everyone and never syncs (`cloud.js`). Purchase page: the comparison lives in the page (`#plCompare`), and "N more in the comparison" comes from `cardMore()` in `plan-matrix.js` for BOTH the studio and the public cards. A selected fill is `--brand-wash`/`--brand`, never a phase hue. |
+| 72 | Gaps round (29 Oct 2026) | Done; gate green | HISTORY item 72. A sample is stamped `sample: '<id>'` on its project entry (field, no new key); `sample-project.js` decides what is a sample (stamp, or title plus seed scene ids), so a user's own "Dragon" syncs. Remaining caps copy is sentence case (`extract` would undo it). `.k-seg` and `.tabs-tab` use `--sk-field-radius`. `exportPDF()` loads the print faces before `print()` (`prove:print-fonts`, not in CI; U+2713 has no fallback face). Call-sheet marketing media re-recorded. |
+| 74 | Landing scroll story (29 Oct 2026) | Done; gate green | HISTORY item 74. `src/pages/start-motion.js` (imported by start.js; motion, motion/mini, device-motion only) + the scroll-story block in `start.css`. Hero words are `.st-w` spans from `renderHome()`, risen by CSS. Video scale and the reveals are `scroll()`-linked; the stage stack is CSS sticky (1100x700 and up, never on phones or under either reduce switch) and the script only dims the cards and draws the line. The gap between stacked cards is the later card's TOP margin (a bottom margin pushes the stack off early). A focused card comes to the front. Off under webdriver, so check it by hand with `navigator.webdriver` deleted. marketing.js's calm motion skips a page with `.st-hero`. |
+| 75 | Explainers as a pop-up (29 Oct 2026) | Done; gate green except the sandbox-proxy proofs | HISTORY item 75. Every in-place explainer opens in ONE pop-up through `openExplainer()` in `src/ui/explainer.js`; `learn()` returns a trigger button, never a disclosure. Kit modal above 720px, the mobile-nav bottom sheet at 720px and below (same query as `MAB_QUERY`); body built once on open, up to two video facades, focus trapped and returned, Escape closes, no storage writes, no native dialog. `prove:explainer` (and `-c`). New help must call `learn()`/`openExplainer()`, never expand in place. |
+| 76 | Launch offer on the landing + `?buy=` checkout (30 Oct 2026) | Done; gate green | HISTORY item 76. `offerFrom()` (start-model.js, pure) picks pass / founding / nothing, and a missing field or fired rise is nothing; the countdown runs on the server's `now` only; the pass is still read only through `pass-offer.js`. `?buy=<id>` opens the checkout ONCE from the live button, then strips the address (a reload never reorders); a held plan or a currency mismatch is a status line, never an order; a `?buy=` stash is `buy:<id>` in `fms_purchase_plan`, no new key. start.html must stay off the studio CORE (`prove:offer` checks the chunks). The hero RESERVES the card's place until `html[data-offer-ready]` (nothing moves when the replies land; a late-reply block in `prove:offer`); the founding offer never ticks (the places can end it first). |
+| 77 | The 31 Oct round, six lanes integrated (31 Oct 2026) | Done on `integ/oct31`; gate green except `prove:storage`/`prove:drive` (sandbox proxy, as on develop); **§66 not run live**, `google-token` not deployed | HISTORY item 77. **(a) Sign-in:** ONE way in, `kGoogleBtn` / `src/lib/google-button.js` (startlib, import-free) and "Continue with Google" everywhere; the G's colours live only in `public/google-g.svg` (brand artwork, outside the raw-colour rule) and sit on a white chip on violet; no control is named sign in / log in / sign up / get started (`prove:gate`). **(b) Tour:** The flag is the SERVER's, per account: `cloud.js` `maybeAccountTour()` asks only after `runGate()` OPENS (never a walled visitor, never on invite/purchase/screening/start), marks only an explicit "not started", and starts only on "this call was first" — `src/lib/account-tour.js` fails CLOSED (an error, an absent function, signed out, an unknown shape: no start, no mark). `fms_tour_asked` is a per-tab sessionStorage marker, no localStorage key. Every start goes to `TOUR_START_URL` (`index.html?sample=1&tour=1`): the hub opens the Dragon sample and `continueFromSample()` moves on. `tour.json` walks every navigation page; a hidden step (module off, `admin` for non-admins) is SKIPPED, never filtered, so a stored `step` always names the same page. Pause keeps the step (`active:false`), Skip is `dismissed`, Esc pauses. The account menu has Take / Resume the tour. `prove:tour`. Shapes are §66's: `tour_status()` → `{started_at, finished_at}`, `mark_tour_started()` → boolean (the proof fakes exactly those). **(c) Pill:** ONE trigger for every explainer: `pillEl()` / `learnInline()` in `src/ui/learn-pill.js` (no data imports; `learn()` adds the topics), `button.learn.learn-pill`, help icon + label, 32px (28px `sm`, 44px on a coarse pointer). The retired `.learn-q`, `.fg-why-btn`, `.lib-term-more` are gone; a label that is not a "What is / What are" question must say `exempt` (`data-pill-exempt`). `learn.json` topics may carry `text` (own words), `pill` (short label; `question` stays the pop-up title) and `exempt`. `src/ui/learn-places.js` (CORE) puts pills under listed subtitles by selector, once per anchor. Inline `span.glossary-term` words in prose still open the pop-up and are NOT pills, on purpose. A topic with its own `text` and no `glossary` is checked for that text by `test:learn`. **(d) Beat views:** Two views of ONE outline, switched by a `k-seg` on the Beat Sheet; the choice is `beatView` in `fms_studio_prefs_v1` (`readBeatView`/`saveBeatView` in chrome-prefs.js, written on a click only, no new key). One card in both (`renderStepRow`, still `[data-step-row]` + `#stStep_<id>`): closed it is the text, the strip and the sync note; OPEN (its edit button, or the caret in its text) it carries every old control. A control on a closed card is not drawn, so a proof or a refocus opens the card first (`refocusStep` does). Every move (drag, Alt+arrows, buttons) is `Story.moveStep(s, id, beatKey, index)`, index counting the OTHER steps. `src/ui/beat-drag.js` is pointer events, writes nothing, Escape cancels. A beat keeps `[data-beat-card]` with `.st-ol-head`/`.st-beat-prompt`/`.st-ol-bp` as DIRECT children (refreshBeatNotes); Unassigned never carries it. `prove:beat-views`. **(e)+(f) Drive-only storage:** see row 54; the client calls §66's `screening_set_drive_file(p_pass, p_file_id, p_title, p_format)`, and the grant is revoked by ONE path, `google-token.js` `revokeGoogleGrant()` (sign-out everywhere, both DELETE TOTALLY paths). **Integration:** a page landing somewhere more precise than its hash calls `fragments.js` `standDown()` first (contacts' `?sheet=`), or the resolver re-lands the section on the next late insert. |
+| 78 | No change notices (1 Nov 2026) | Done; gate green | HISTORY item 78. What's new is hidden until an entry exists: `src/data/changelog.json` `entries` is empty, and the avatar row, the dashboard button and its New badge render only when an entry exists (`src/ui/changelog.js` and `whatsNewSeen` in `fms_studio_prefs_v1` stay wired, so posting an entry brings it back). Policy pages carry no date and no change notes; the current policy reads as the policy, in the present tense. The guard: `test:marketing` fails on `legal-date`, "Last updated", "What changed", "Changes since", "Effective", "new policy" or any `D Month YYYY` date on a legal page; `prove:conversion` asserts What's new is hidden while the list is empty and appears when one entry is injected. Guides and comparisons print no "Updated" line (the data field still feeds JSON-LD). |
+| 79 | Two-level flyout, Blocking studio, AI blocking, focus mode (1 Nov 2026) | Done; AI blocking **never run against a real provider** | HISTORY item 79. Pre-Production's flyout opens groups in a second panel (module rows only, as since 28 Oct); Screen Time and Cast Matrix are on `breakdown.html` (`reports.html#screentime/#cast-matrix/#runtime` forward). Blocking adds `set`, `axis`, `path`, `curve`, `charId` to records in `fms_shots_v1` (additive, cleaned on read, no new key); every write is one `replaceBlock()`. Desk tasks `blocking-draft` / `blocking-enhance` are Pro (`aiUnlocked()`). Focus mode's Night is OFF unless chosen (`focusPageNight`; old `focusNight` is not read) and no side panel leaves a slab (`prove:scroll`). A page landing on its own target under a hash calls `resolveFragment()` on that target (contacts' `?sheet=`), never a bare scrollIntoView. The tour's stage steps follow navigation.json's page order (`prove:tour`), so Reports comes after the Stripboard now. |
 
 **What is live and what is not** — the one list to trust, re-established
 by ASKING on 8 Oct 2026 rather than reading: schema §1–§14 have run on
@@ -1675,11 +1724,14 @@ argument for asking.
   badge or the one primary CTA of a view (`.k-btn--pill`) — never every
   button. (It was 2px "printed matter", then 16px and pills; each was one line
   in one skin file, which is the point of the contract.)
-- **One theme, dark.** Sepia and desk went first, then paper (14 Oct 2026).
-- **Serif only in three places.** Playfair Display *italic*
-  (`--f-editorial`) is the project title / cover preview and the landing
-  tagline; Courier Prime is screenplay text. A page title is Space Grotesk,
-  upright — `--face-accent` is the display face now.
+- **One theme, no toggle.** Sepia and desk went first, then paper (14 Oct 2026); since 28 Oct 2026 the one palette is the 8B mix: a light work surface with a dark rail and band.
+- **No serif, no mono UI face (owner, 28 Oct 2026).** Gabarito is every
+  heading and the project title / cover / landing tagline (`--f-editorial`
+  now points at `--face-display`, upright); Onest is everything else,
+  figures included (`--f-mono` / `--f-code` point at `--face-sans`; data
+  adds `font-variant-numeric: tabular-nums`). Courier Prime is screenplay
+  text only. Playfair Display, JetBrains Mono, Space Grotesk and Inter are
+  gone: no @font-face, preload or package. Token NAMES stay declared.
 - **Fonts are self-hosted** (`src/styles/fonts.css`, `@fontsource`); no page,
   CSP or worker names a Google Fonts host. The Material Symbols subset is cut
   at build time by `scripts/lib/icon-font.mjs` and FAILS THE BUILD on a name

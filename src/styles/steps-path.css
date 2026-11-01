@@ -40,10 +40,10 @@
 
 .st-path-eyebrow {
   margin: 0 0 var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--sk-eyebrow-track);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 
@@ -92,7 +92,7 @@
 .st-path-item:last-child { border-bottom: 0; }
 
 .st-path-tick {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
   color: var(--ink-muted);
 }
@@ -112,9 +112,9 @@
 .st-path-link:focus-visible .st-path-name { text-decoration: underline; }
 
 .st-path-num {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--accent-deep);
   font-variant-numeric: tabular-nums;
 }
@@ -155,10 +155,10 @@
   align-self: center;
   flex: 0 0 auto;
   padding: var(--s1) var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
   color: var(--accent-deep);
   background: var(--accent-wash);
@@ -191,9 +191,9 @@
   overflow-wrap: anywhere;
 }
 .st-why-label {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 

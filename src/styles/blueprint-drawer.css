@@ -16,11 +16,11 @@
   max-width: 100%;
   margin: 0 0 var(--s3);
   padding: var(--s1) var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   text-align: left;
   line-height: var(--lh-snug);
   color: var(--brand-deep);
@@ -87,10 +87,10 @@ header.bd-head > .bpd-pill { display: flex; width: fit-content; }
 .bpd-head-text { flex: 1 1 auto; min-width: 0; }
 .bpd-eyebrow {
   margin: 0 0 var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--brand-deep);
 }
 .bpd-title {

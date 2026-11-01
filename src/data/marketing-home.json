@@ -1,185 +1,183 @@
 {
-  "_about": "Copy for the rebuilt home page (start.html), rendered by scripts/make-marketing-pages.mjs. Every claim is checkable in this repo. No price, no date, no social proof. A figure is a {{fms:...}} stamp (dragon.*) filled by the fms-start-figures plugin in vite.config.js, never typed.",
+  "_about": "Copy for the home page (start.html), rendered by scripts/make-marketing-pages.mjs. The shape (30 Oct 2026, conversion pass): a pain-led hero with the OFFER CARD beside it (the launch pass while it is open, else the founding price, else nothing), the four-card scroll story, a value stack, three points on keeping your work, the plans teaser, a short FAQ and a closing offer band. Every claim is checkable in this repo. NO price, date, count or length is typed in the offer copy: each is a runtime slot filled from trial_offer() / price_notice(). A build figure is a {{fms:...}} stamp (dragon.*, price.from.day) filled by the fms-start-figures plugin in vite.config.js, never typed. {plan} is the offered plan's name, stamped by the generator.",
   "hero": {
-    "h1": "From first draft to final call sheet",
-    "sub": "For indie directors, writers and line producers. Write the script, break it down and plan the shoot in one place. Every keystroke is written to your own browser first, and sync is yours to switch off. A year of the studio from about {{fms:price.from.day}} a day, and it keeps working when the signal drops.",
-    "note": "A sample feature, {{fms:dragon.scenes}} scenes long, shows the studio filled in, so you can look around before you write.",
-    "cta": "Get started",
+    "h1": "From script to shooting schedule, without spreadsheets",
+    "sub": "Write the screenplay, then break it down, schedule it and print the call sheets from the same scenes. Your work is saved in your own browser first.",
+    "note": "Shown on the sample feature, {{fms:dragon.scenes}} scenes long, which you can open and look around before you write.",
+    "cta": "Continue with Google",
     "ctaPass": "Try the whole studio for {price}",
-    "mediaLabel": "A scene of the sample feature, broken down on the page"
+    "mediaLabel": "On the sample feature: a scene moved to another shoot day, and that day's call sheet built from the board",
+    "sample": "See it on the sample feature"
   },
+  "offer": {
+    "_": "The hero OFFER CARD (#offerCard), the slide-in (#offerDock) and the closing band's copy (#offerClose). Every figure is a runtime slot: start.js fills the price, the price it rises to, the day figure, the countdown and the places left from trial_offer().pass (through pass-offer.js, in marketing.js) or price_notice(). NEVER type a figure here (test:marketing). The CTA goes straight to purchase.html?buy=<id>; signed out, Google comes first.",
+    "passTag": "Launch offer",
+    "passName": "The launch pass",
+    "passWhat": "{length} of the whole studio, every tool included",
+    "passIncl": "Everything in {plan}",
+    "foundingTag": "Founding price",
+    "foundingName": "{plan} at the founding price",
+    "foundingIncl": "Everything in {plan}",
+    "unitYear": "a year",
+    "dayLead": "about",
+    "dayTail": "a day",
+    "wasLabel": "rises to",
+    "passEnds": "Offer ends in",
+    "until": "Founding price until",
+    "untilSeats": "or while the founding places last",
+    "ctaPass": "Get the launch pass — continue with Google",
+    "ctaPassIn": "Get the launch pass",
+    "ctaFounding": "Lock the founding price — continue with Google",
+    "ctaFoundingIn": "Lock the founding price",
+    "trust": "Secure checkout by Razorpay · UPI and cards ·",
+    "refund": "Purchases are final, with three exceptions",
+    "dockLabel": "Launch offer",
+    "close": "Close offer",
+    "dockGoogle": "Continues with a Google sign-in",
+    "fallback": "Continue with Google"
+  },
+  "value": {
+    "_": "The value stack (#value): what the offered plan includes, in the five stages. The module names and every count are derived at build time from navigation.json and plan-matrix.json (modules no plan sells are left out); never type a list or a count here.",
+    "h2": "What you get",
+    "sub": "Every tool reads the same scenes, so nothing is typed twice.",
+    "later": "With {plan}:",
+    "also": "Also included:",
+    "compare": "Compare every plan"
+  },
+  "stagesH2": "One studio for every stage",
   "stages": [
     {
       "id": "writing",
       "sym": "edit_note",
-      "h2": "Write the screenplay",
-      "body": "A screenplay writer for Tamil, Tanglish and English. The format sets itself as you type, drafts are numbered, and every scene heading becomes a scene the rest of the studio can use.",
-      "bodyElsewhere": "A screenplay writer in the standard format. It sets itself as you type, drafts are numbered, and every scene heading becomes a scene the rest of the studio can use.",
+      "h2": "Write",
+      "body": "A screenplay writer for Tamil, Tanglish and English. The format sets itself as you type, and every scene heading becomes a scene.",
+      "bodyElsewhere": "A screenplay writer in the standard format. It sets itself as you type, and every scene heading becomes a scene.",
       "cta": {
         "label": "Explore writing",
         "page": "writing"
-      },
-      "video": "writing"
+      }
     },
     {
       "id": "story",
       "sym": "lightbulb",
       "h2": "Develop the story",
-      "body": "Place your beats on one of eleven story structures, check where the pacing sags, then give each planned shot a frame on the storyboard.",
+      "body": "Place your beats on one of eleven story structures and see where the pacing sags.",
       "cta": {
-        "label": "Explore story development",
+        "label": "Explore story",
         "page": "story"
-      },
-      "video": "story"
+      }
     },
     {
       "id": "prep",
-      "mediaWide": true,
       "sym": "grid_view",
       "h2": "Plan the shoot",
-      "body": "Auto-tag suggests what each scene needs and you accept what is right. Then build the shot list, lay scenes onto a stripboard, and print the sides for the day.",
+      "body": "Break the script down, build the shot list and lay your scenes onto a stripboard.",
       "cta": {
         "label": "Explore pre-production",
         "page": "breakdown"
-      },
-      "video": "schedule"
+      }
     },
     {
       "id": "production",
       "sym": "videocam",
-      "h2": "Run the production",
-      "body": "Move a scene to another day on the stripboard, and the day-out-of-days follows. Build that day’s call sheet from the board and print it or send it on WhatsApp. The budget is in rupees and starts from dated Chennai rates.",
-      "bodyElsewhere": "Move a scene to another day on the stripboard, and the day-out-of-days follows. Build that day’s call sheet from the board and print it or send it on WhatsApp. The budget is line by line and follows the money once the shoot begins.",
+      "h2": "Run the shoot",
+      "body": "Build each day's call sheet from the board, print it or send it on WhatsApp. The budget starts from dated Chennai rates.",
+      "bodyElsewhere": "Build each day's call sheet from the board, print it or send it on WhatsApp. The budget is line by line and follows the money.",
       "cta": {
         "label": "Explore production",
         "page": "call-sheets"
-      },
-      "video": "chain"
-    },
-    {
-      "id": "local-first",
-      "sym": "lock",
-      "h2": "Local-first: your work stays yours",
-      "body": "Everything you write is saved in your own browser first, and the studio installs like an app. Once you sign in, your films also sync so they reach your other devices; switch sync off in Settings and the browser copy stays either way. It works on set without a signal for up to 14 days after you last signed in on that device, then needs a connection once to check your sign-in. A backup to your own Google Drive is there if you want a second copy.",
-      "cta": null,
-      "video": null
+      }
     }
   ],
-  "facts": [
-    {
-      "value": "Tamil, Tanglish, English",
-      "label": "Dialogue in the language you write",
-      "valueElsewhere": "US Letter",
-      "labelElsewhere": "Call sheets, reports and the day out of days, with US dates"
-    },
-    {
-      "value": "11",
-      "label": "Story structures to place your beats on"
-    },
-    {
-      "value": "Fountain, FDX, Word, PDF",
-      "label": "Screenplay formats in and out"
-    },
-    {
-      "value": "1 scene list",
-      "label": "Feeds breakdown, schedule, budget and call sheets"
-    }
-  ],
-  "pricingTeaser": "A plan is a year of the studio, from about {{fms:price.from.day}} a day, and what a plan lists is in it: breakdown, scheduling and call sheets are not add-ons. See what each one includes.",
-  "closing": {
-    "h2": "Open the studio and write scene one",
-    "sub": "Sign up with Google to start. Your work stays in your browser, and every tool reads the same scenes.",
-    "cta": "Get started"
-  },
-  "meta": {
-    "title": "{{brand:name}}: from first draft to final call sheet",
-    "description": "Write the screenplay, break it down and plan the shoot in one place. Built for indie directors, writers and line producers; your work stays in your own browser."
-  },
-  "factsLabel": "The studio in four facts",
-  "panel": {
-    "label": "What local-first means here",
+  "own": {
+    "h2": "Your work stays yours",
     "items": [
       {
         "sym": "storage",
         "title": "Saved in your browser",
-        "text": "Every keystroke is written to this device first."
+        "text": "Every keystroke is written to this device first. Sync to your other devices is yours to switch off."
       },
       {
         "sym": "cloud_off",
-        "title": "Keeps working when the signal drops",
-        "text": "Install it like an app. It works on set without a signal for up to 14 days after you last signed in on that device."
+        "title": "Works without a signal",
+        "text": "Install it like an app. It works on set offline for up to 14 days after you last signed in on that device."
       },
       {
         "sym": "backup",
-        "title": "Backup to your own Drive",
-        "text": "Switch on sync or a Google Drive backup when you want a second copy."
+        "title": "Backed up your way",
+        "text": "Download a backup of every project whenever you like, and restore it from the same menu."
       }
     ]
   },
-  "pricing": {
+  "plans": {
+    "h2": "Plans by the year",
+    "teaser": "A year of the studio from about {{fms:price.from.day}} a day. Breakdown, scheduling and call sheets are part of the plans, not add-ons.",
     "pill": "See plans"
+  },
+  "faq": {
+    "_": "At most six questions, answered only with facts already true in this repo. The year-end answer is an EMPTY offer-terms slot (offer-terms.js fills it) beside a neutral line; the trial clause shows only while trial_offer() reports one open and no pass is running. Never say \"free trial\".",
+    "h2": "Questions before you buy",
+    "items": [
+      {
+        "id": "private",
+        "q": "Is my script private?",
+        "a": "Your work is saved in your own browser first. Sync to your other devices is optional, and yours to switch off.",
+        "link": "privacy.html",
+        "linkLabel": "Read the Privacy Policy"
+      },
+      {
+        "id": "offline",
+        "q": "Does it work offline and on my phone?",
+        "a": "Yes. Install it like an app on a phone or a computer. The shoot day view is built for a phone on set, and your work is on the device, so it keeps working without a signal."
+      },
+      {
+        "id": "year",
+        "q": "What happens when the year ends?",
+        "a": "A plan runs for a year from the day you buy it. Its terms are shown on the plans page and at checkout, before you pay.",
+        "terms": true
+      },
+      {
+        "id": "refunds",
+        "q": "Can I get a refund?",
+        "a": "Purchases are final, with three exceptions that are not discretionary: a duplicate or erroneous charge, a payment for a plan that was never activated on your account, and any refund the law of India requires.",
+        "link": "refund.html",
+        "linkLabel": "Read the Refund Policy"
+      },
+      {
+        "id": "currency",
+        "q": "Do I pay in rupees or dollars?",
+        "a": "In India you pay in rupees. Elsewhere, prices are shown in US dollars where they are available, and the rupee amount Razorpay charges is always shown before you pay."
+      },
+      {
+        "id": "try",
+        "q": "Can I see it before I pay?",
+        "a": "Yes. Each stage above shows the tool working on the sample feature, and the plans page compares every feature.",
+        "trial": "While trials are open, the page after you continue with Google offers one before you buy."
+      }
+    ]
+  },
+  "closing": {
+    "h2": "Open the studio and write scene one",
+    "sub": "Continue with Google to start. Every tool reads the same scenes.",
+    "cta": "Continue with Google"
+  },
+  "meta": {
+    "title": "{{brand:name}}: from first draft to final call sheet",
+    "description": "Write the screenplay, break it down and plan the shoot in one place. Built for indie directors, writers and line producers; your work stays in your own browser."
   },
   "optOut": {
     "label": "Don't count this visit",
     "done": "This visit is not counted"
   },
   "pass": {
-    "_": "The line under the hero and the closing buttons. `note` shows only while the launch pass is open (its slots are filled from the server); `off` is what everybody else reads. `open` replaces both for a signed-in visitor.",
+    "_": "The line in the plans teaser and the hero and closing buttons. `note` shows only while the launch pass is open (its slots are filled from the server); `off` is what everybody else reads. `open` replaces both for a signed-in visitor.",
     "note": "{length} of the whole studio for {price}, once per account, paid through Razorpay. {passTerms} Move to a yearly plan whenever you like.",
-    "off": "A plan is a year of the studio, and each plan card states its price and terms before you pay. {planTerms}",
+    "off": "See each plan's price and terms on the plans page before you pay. {planTerms}",
     "open": "You are signed in: your plan is on the Purchase page."
   },
-  "exports": {
-    "h2": "Your work comes out in open formats",
-    "body": "Nothing you write is locked in here. Each of these is a download you can open without the studio.",
-    "items": [
-      {
-        "sym": "edit_note",
-        "title": "The screenplay",
-        "text": "PDF, Word (.docx), Final Draft (.fdx) and Fountain, from the Screenplay Writer's File menu. Fountain, Final Draft, Word, text and PDF scripts come in through Import."
-      },
-      {
-        "sym": "table_chart",
-        "title": "Spreadsheets (CSV)",
-        "text": "The breakdown's element index, the table read, script notes, the shot list, and the budget, actuals and expenses, plus the edit log and dialogue list on Pro. Each is a CSV for Excel or Google Sheets, on the plans that include that tool."
-      },
-      {
-        "sym": "backup",
-        "title": "Every project at once",
-        "text": "A backup file of every project, downloaded whenever you like and restored from the same menu. On Intermediate and Pro you can also back up to your own Google Drive."
-      }
-    ],
-    "footHtml": "Check the page for yourself: <a class=\"mk-link mk-link--inline\" href=\"{{media}}sample-screenplay.pdf\" download>download the sample screenplay as a PDF</a>, the whole sample feature exactly as Export PDF lays it out, written for this app. What a Final Draft file keeps on the way in and out is in the <a class=\"mk-link mk-link--inline\" href=\"pricing.html#faq\">FAQ</a>."
-  },
-  "answers": {
-    "h2": "Four questions to ask before you sign in",
-    "items": [
-      {
-        "sym": "login",
-        "q": "Why sign in with Google if my work is local?",
-        "a": "Sign-in is the door: it tells the studio who you are, so it can check your plan before it opens. Once you are in, your projects also sync to the studio's cloud to reach your other devices. You can switch sync off in Settings, and the copy in your browser stays either way."
-      },
-      {
-        "sym": "cloud_off",
-        "q": "Why does offline stop after 14 days?",
-        "a": "It works on set without a signal for up to 14 days after you last signed in on that device. After that it needs a connection once, to check your sign-in and your plan again. Nothing you wrote is deleted while it waits."
-      },
-      {
-        "sym": "timer",
-        "q": "Is there a free trial?",
-        "pass": true,
-        "a": "No. A plan is a year of the studio, and the Dragon sample shows the studio filled in before you buy.",
-        "aPass": "No. While the launch offer lasts, {length} of the whole studio is {price}, once per account. {passTerms} A plan after it costs what it costs on the day you buy it."
-      },
-      {
-        "sym": "storage",
-        "q": "What leaves my browser, and when?",
-        "a": "Your projects, when you are signed in and sync is on. A backup, when you connect your own Google Drive. The text you give an AI tool, when you run one with your own key, to the provider you chose. The studio also talks to its server to sign you in, check your plan and take a payment through Razorpay. While it is open and you are signed in, the device checks in about every 30 seconds so your account stays on one device at a time, and the server sees that device's IP address and browser type. Signed in, it also sends daily counts of which tools are opened and the reason code when a save is refused, never anything you wrote; you can switch both off in Settings, under Privacy. Visit counts on the public pages are daily totals with no name on them. The privacy policy lists every record in full."
-      }
-    ],
-    "contact": {
-      "before": "Something else? Talk to the team at",
-      "after": "A person reads every message, and payment and refund questions are answered within two working days."
-    }
+  "closeOffer": {
+    "_": "The closing band while an offer is open (#offerClose): the same slots as the hero card, filled by the same render function.",
+    "h2": "Start the film this week",
+    "sub": "The checkout opens with this offer in it, after a Google sign-in if you need one."
   }
 }

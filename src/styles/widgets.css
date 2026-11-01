@@ -98,11 +98,11 @@
 .ai-prompt-block h4,
 .sync-warning .lab {
   margin-bottom: var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--sk-slab-accent);
 }
 .budget-summary .label::before { content: "\03A3  "; }
@@ -178,13 +178,16 @@
 .scene-table th,
 .beat-table th,
 .equip-table th {
+  /* the kit table's head (.k-table thead th): the rail grey under the
+     muted ink, not the slab's violet wash under the accent */
   padding: var(--s2) var(--s3);
-  background: var(--sk-slab-bg);
-  color: var(--sk-slab-accent);
+  background: var(--surface-rail);
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--border-default);
   text-align: left;
-  font-family: var(--f-mono);
-  font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
+  font-size: var(--t-tiny);
+  letter-spacing: 0;
   font-weight: 600;
 }
 .pp-table td,
@@ -204,7 +207,7 @@
 .scene-table td.num,
 .beat-table .beat-name {
   background: var(--paper-sunk);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: var(--accent-deep);
 }
@@ -222,7 +225,7 @@
 .beat-table .beat-name .pct {
   display: block;
   margin-top: 2px;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--ink-muted);
 }
@@ -252,7 +255,7 @@
   cursor: pointer;
   appearance: none;
   padding-right: var(--s5);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   background-image:
     linear-gradient(45deg, transparent 50%, var(--accent) 50%),
@@ -291,7 +294,7 @@
 .equip-table td.item { font-weight: 600; color: var(--ink); }
 .equip-table td.rate {
   white-space: nowrap;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
   color: var(--accent-deep);
   font-variant-numeric: tabular-nums;
@@ -319,7 +322,7 @@
   border: 1px solid transparent;
   border-radius: var(--sk-radius, var(--radius));
   color: var(--ink-muted);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
   line-height: 1;
   cursor: pointer;
@@ -355,11 +358,11 @@
 .palette-picker .pp-label,
 .beat-visualizer-head {
   margin-bottom: var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--accent-deep);
 }
 .beat-visualizer-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--s3); }
@@ -401,9 +404,9 @@
 .pacing-svg .beat-label,
 .pacing-svg .act-label,
 .char-map-svg .char-role {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   fill: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -445,7 +448,7 @@
   .pacing-svg .beat-dot { r: 9; stroke-width: 3; }
 }
 .pacing-svg .beat-num {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 600;
   fill: var(--ink);
@@ -459,7 +462,7 @@
   flex-wrap: wrap;
   gap: var(--s5);
   margin-top: var(--s4);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--ink-muted);
 }
@@ -485,10 +488,10 @@
 }
 .beat-tooltip.show { opacity: 1; }
 .beat-tip-head {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--panel-gilt);
   margin-bottom: var(--s1);
 }
@@ -557,7 +560,7 @@
   margin-bottom: var(--s1);
 }
 .beat-eg-head strong {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
   font-weight: 700;
   color: var(--accent-deep);
@@ -566,7 +569,7 @@
    treatment and the quieter ink. --ink-muted, never --ink-faint:
    that token clears 4.5:1 against no ground in any theme. */
 .beat-eg-pg {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-variant-numeric: tabular-nums;
   color: var(--ink-muted);
@@ -583,11 +586,11 @@
    it. */
 .beat-eg-steal {
   margin-right: var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: var(--track-label);
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--accent-deep);
 }
 
@@ -646,10 +649,10 @@
 
 .bp-entry-eyebrow {
   margin: 0 0 var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--sk-eyebrow-track);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 
@@ -710,9 +713,9 @@
 }
 .char-map-svg .conn-line.solid { stroke-dasharray: none; stroke-opacity: .7; }
 .char-map-svg .conn-label {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   fill: var(--accent);
   text-anchor: middle;
 }
@@ -782,7 +785,7 @@
   bottom: calc(var(--s4) * -1);
   left: 50%;
   transform: translateX(-50%);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--ink-muted);
 }
@@ -794,7 +797,7 @@
   flex-wrap: wrap;
   gap: var(--s3);
   margin-top: var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
 }
 .scene-legend span,
@@ -895,9 +898,9 @@
 }
 .calc-row.head {
   margin-bottom: var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--sk-slab-accent);
 }
 .calc-row input,
@@ -920,7 +923,7 @@
   padding: var(--s2) var(--s3);
   background: var(--sk-slab-fill);
   text-align: right;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-small);
   color: var(--sk-slab-accent);
   font-variant-numeric: tabular-nums;
@@ -948,7 +951,7 @@
   white-space: nowrap;
 }
 .calc-row .calc-note {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   line-height: var(--lh-snug);
   color: var(--sk-slab-accent);
@@ -964,9 +967,9 @@
   border-top: 2px solid var(--sk-slab-accent);
 }
 .calc-grand .lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--sk-slab-accent);
 }
 .calc-grand .total {
@@ -1028,7 +1031,7 @@
   padding: var(--s1) var(--s2);
   background: var(--paper-raised);
   border: 1px solid var(--rule);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--ink-body);
 }
@@ -1068,9 +1071,9 @@
 .pitch-slide .slide-num,
 .pitch-slide .slide-label,
 .pitch-slide .footer {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--sk-slab-accent);
 }
 .pitch-slide .slide-num { position: absolute; top: var(--s5); right: var(--s6); }
@@ -1134,9 +1137,9 @@
   padding: var(--s1) var(--s3);
   background: var(--paper-raised);
   border: 1px solid var(--accent);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   color: var(--accent-deep);
 }
@@ -1193,10 +1196,10 @@
 .scene-block .action-label {
   display: block;
   margin: var(--s3) 0 var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .dialogue-block {
@@ -1228,25 +1231,25 @@
 .script-editor .add-scene-btn {
   margin-top: var(--s3);
   padding: var(--s2) var(--s3);
-  background: var(--accent);
-  color: var(--accent-on);
+  background: var(--brand);
+  color: var(--brand-on);
   border: none;
   border-radius: var(--sk-radius, var(--radius));
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
   cursor: pointer;
   transition: background var(--speed) var(--ease);
 }
 .scene-block .add-dialogue-btn:hover,
-.script-editor .add-scene-btn:hover { background: var(--accent-hover); }
+.script-editor .add-scene-btn:hover { background: var(--brand-hover); }
 /* The fill was changed to --library here without moving the text
    colour with it, so the label kept --accent-on from the rule above
    and rendered at 2.44:1 on the gold. An `on` colour belongs to the
    fill it sits on, not to whichever fill came first. */
-.script-editor .add-scene-btn { background: var(--library); color: var(--library-on); }
-.script-editor .add-scene-btn:hover { background: var(--library-deep); }
+.script-editor .add-scene-btn { background: var(--brand); color: var(--brand-on); }
+.script-editor .add-scene-btn:hover { background: var(--brand-hover); }
 
 /* Formatted preview — a sheet of screenplay paper, so it keeps
    the print palette in every theme. */
@@ -1284,7 +1287,7 @@
   padding-top: var(--s1);
   border-top: 1px dashed var(--print-rule);
   text-align: right;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: 9pt;
   color: var(--print-muted);
 }
@@ -1317,9 +1320,9 @@
 }
 .page-counter .pc-lab {
   margin-top: 2px;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--sk-slab-muted);
 }
 /* The status is carried by the RULE, and the text comes from the slab.
@@ -1335,9 +1338,9 @@
   padding: var(--s2) var(--s3);
   border: 1px solid var(--accent-lift);
   color: var(--sk-slab-ink);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
 }
 .page-counter .pc-status.ok   { border-color: var(--ok); }
 .page-counter .pc-status.warn { border-color: var(--danger); }
@@ -1359,9 +1362,9 @@
   border: 1px solid var(--panel-gilt);
   border-radius: var(--radius-pill);
   box-shadow: var(--shadow-panel);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   cursor: pointer;
   user-select: none;
   font-variant-numeric: tabular-nums;
@@ -1414,10 +1417,10 @@
 .dept-fields label {
   display: block;
   margin-bottom: var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .dept-fields input,
@@ -1475,11 +1478,11 @@
 }
 .hod-signoff h4 {
   margin-bottom: var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--ok-deep);
 }
 .hod-signoff .deck {
@@ -1498,10 +1501,10 @@
 }
 .hod-row:first-of-type { border-top: none; }
 .hod-row .role {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ok-deep);
 }
 .hod-row input {
@@ -1531,7 +1534,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent-on);
+  color: var(--brand-on);
   font-weight: 800;
   font-size: var(--t-base);
 }
@@ -1600,9 +1603,9 @@
 .comment-panel.open { display: block; }
 .comment-panel .lab {
   margin-bottom: var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--library-deep);
 }
 .comment-panel textarea {
@@ -1640,10 +1643,10 @@
 .sync-fields label {
   display: block;
   margin-bottom: var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 .sync-fields input {
@@ -1652,14 +1655,14 @@
   background: var(--paper-raised);
   border: 1px solid var(--rule);
   border-radius: var(--sk-radius, var(--radius));
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
   color: var(--ink);
 }
 .sync-fields input:focus { border-color: var(--accent); }
 .sync-status {
   padding: var(--s2) 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--ink-muted);
 }
@@ -1680,7 +1683,7 @@
 .sync-instructions pre {
   background: var(--panel);
   color: var(--panel-gilt);
-  font-family: var(--f-code);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   border-radius: var(--sk-radius, var(--radius));
 }
@@ -1702,7 +1705,7 @@
   border: 1px solid var(--sk-slab-hair);
   border-radius: var(--sk-radius, var(--radius));
   color: var(--sk-slab-ink);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
   line-height: var(--lh-body);
   resize: vertical;
@@ -1773,10 +1776,10 @@
     margin: 0;
     overflow: visible;
     clip-path: none;
-    font-family: var(--f-mono);
+    font-family: var(--f-body);
     font-size: var(--t-micro);
-    letter-spacing: var(--track-label);
-    text-transform: uppercase;
+    letter-spacing: 0;
+    text-transform: none;
     /* Still on the slab, so still the slab's accent. This one only
        exists below 820px, which is why it outlived the others. */
     color: var(--sk-slab-accent);
@@ -1851,7 +1854,7 @@
   font-family: var(--f-body);
   font-size: var(--t-tiny);
   font-weight: 700;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
   cursor: pointer;
   transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
@@ -1861,8 +1864,8 @@
 /* --accent is a fill, so the label on top of it takes --on-fill and
    never --ink, which would vanish in the dark themes. */
 .lang-btn.is-on {
-  background: var(--accent);
-  color: var(--on-fill);
+  background: var(--brand);
+  color: var(--brand-on);
 }
 /* Says what the switch does and does not do, so nobody waits for the
    headings to change. */

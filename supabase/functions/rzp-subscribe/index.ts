@@ -66,6 +66,21 @@ Deno.serve(async (req) => {
 
   // 2. the pending row, priced and locked by the database
   const svc = createClient(url, serviceKey);
+  /* A checkout the buyer opened and closed leaves a 'created' row that the
+     database counts as live for two hours (subscription_is_live), against
+     EVERY product, so cancelling Intermediate's form and then trying the
+     pass was refused with "You already have auto-pay running" and no
+     payment made. A 'created' row was never authenticated, so nothing is
+     charged on it: retire this buyer's own that are older than 5 seconds
+     and let the new attempt start clean. 5 s, not more: a person who
+     cancels and clicks another product straight away must get through,
+     while a double-click (well under a second) still finds the first row
+     and is refused. Best effort: if this fails the old rule still holds. */
+  try {
+    await svc.from('subscriptions').update({ status: 'expired', raw: { retired: 'new attempt' } })
+      .eq('user_id', user.id).eq('status', 'created')
+      .lt('created_at', new Date(Date.now() - 5_000).toISOString());
+  } catch { /* the refusal below is the fallback */ }
   const { data: pend, error: pendErr } = await svc.rpc('create_pending_subscription', {
     p_user: user.id, p_product: product, p_account: body.account_id ?? null, p_currency: currency
   });
@@ -78,8 +93,11 @@ Deno.serve(async (req) => {
   };
   const rzpAuth = basicAuth(keyId, keySecret);
   const rzp = async (path: string, payload: unknown) => {
+    /* 20 s: Razorpay answers in a second or two; a call that has not by
+       then is not going to, and a buyer should read a refusal, not a spinner. */
     const r = await fetch(`https://api.razorpay.com/v1/${path}`, {
-      method: 'POST', headers: { Authorization: rzpAuth, 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      method: 'POST', headers: { Authorization: rzpAuth, 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(20_000)
     }).catch(() => null);
     const j = r ? await r.json().catch(() => null) : null;
     return { ok: !!r?.ok, body: j };

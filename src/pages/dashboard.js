@@ -44,7 +44,7 @@
    rawGet(key + '__' + id) and never through the proxy.
    ============================================================ */
 import Store, { setProjectSubtitle } from '../lib/store.js';
-import { stageHueClass, favouriteOf } from '../lib/journey.js';
+import { stageHueClass } from '../lib/journey.js';
 import '../styles/base.css';
 import '../styles/chrome.css';
 import '../styles/editorial.css';
@@ -57,9 +57,8 @@ import '../styles/motion.css';
 import StudioUI from '../ui/chrome.js';
 import { mountShell } from '../ui/shell.js';
 import { h, commitMain, delegate } from '../lib/dom.js';
-import { reveal } from '../lib/motion.js';
 import { renderLauncher } from '../ui/launcher.js';
-import { statStrip, badge, meter, button, buttonGroup, eyebrow as kEyebrow, panel as kPanel, askText, pageHeader, field } from '../ui/kit/index.js';
+import { statStrip, badge, meter, button, buttonGroup, eyebrow as kEyebrow, askText, pageHeader, field } from '../ui/kit/index.js';
 /* The Title page: the Story stage's cover fields, the blueprint's own keys
    (src/lib/cover-fields.js), written through the merge-write. */
 import { readFields, writeFields, blobKey } from '../lib/blueprint-store.js';
@@ -73,17 +72,12 @@ import { formatEighths } from '../lib/scenes.js';
 import { formatPages } from '../lib/script.js';
 /* Derived, never stored — see the header of readiness.js. */
 import { readiness } from '../lib/readiness.js';
-import PlanGate from '../lib/plan-gate.js';
-import { getDriveStatus, push as drivePush } from '../lib/drive-sync.js';
-import { dprSummary } from '../lib/dpr.js';
-import { planName } from '../lib/plans.js';
-import { openChangelog, unseen as changelogUnseen } from '../ui/changelog.js';
-/* Every number on this page, derived: the snapshot, the dates, the
-   readiness order, the activity lines (docs/ARCHITECTURE.md). */
+import { openChangelog, unseen as changelogUnseen, hasEntries as changelogHasEntries } from '../ui/changelog.js';
+/* Every number on this page, derived: the snapshot, the readiness order,
+   the Continue target (docs/ARCHITECTURE.md). */
 import {
-  snapshot, relTime, sceneTagged, nextDatedDay, nextShootNote, crewCastNote, nextShootLine,
-  weekDays, coveredSceneIds, dayDetail, sortChecks, readinessDeck, WHY, continueTarget,
-  planLine, recentEntries, pathFactLine, when
+  snapshot, relTime, sceneTagged, nextShootNote, crewCastNote,
+  sortChecks, readinessDeck, WHY, continueTarget
 } from '../lib/dashboard-model.js';
 
 
@@ -110,7 +104,7 @@ const FORMAT_LABEL = {
 /* ============================================================
    PIECES
    ============================================================ */
-/* A figure for the KPI strip: the kit's stat card (JetBrains Mono value). */
+/* A figure for the KPI strip: the kit's stat card (Onest tabular value). */
 const stat = (value, unit, label, note) => ({ label, value, unit: value === '\u2014' ? '' : unit, note: note || '' });
 
 /* The strip's second line (sceneTagged, nextShootNote, crewCastNote) is
@@ -118,7 +112,7 @@ const stat = (value, unit, label, note) => ({ label, value, unit: value === '\u2
    nothing real to say. */
 
 function section(id, eyebrow, title, deck) {
-  const sec = h('section.db-sec', { id, 'data-reveal': '' });
+  const sec = h('section.db-sec', { id });
   // No eyebrow when it would only repeat the heading ("Title page" over "The title page").
   if (eyebrow) sec.append(kEyebrow(eyebrow));
   sec.append(h('h2.bd-h2', { text: title }));
@@ -149,7 +143,7 @@ function section(id, eyebrow, title, deck) {
 function renderReadiness() {
   const r = readiness();
   if (!r.hasFilm) {
-    return section('readiness', 'Derived from your scenes · nothing to tick',
+    return section('readiness', 'Readiness',
       'Could you shoot tomorrow?',
       (Store.currentProject() ? 'Nothing to check yet. Once this film has scenes' : 'Nothing to check yet. Open a project and give it scenes')
       + ' — written, imported or broken down — and this becomes a list of what would stop a shoot day.');
@@ -158,35 +152,48 @@ function renderReadiness() {
   const tone = r.blockers ? 'is-bad' : r.gaps ? 'is-warn' : 'is-ok';
   const deck = readinessDeck(r);
 
-  const sec = section('readiness', 'Derived from your scenes · nothing to tick',
+  const sec = section('readiness', 'Readiness',
     'Could you shoot tomorrow?', deck);
   const nPass = r.checks.filter((c) => c.passed).length;
   if (r.checks.length) {
     const pct = Math.round((nPass / r.checks.length) * 100);
-    sec.querySelector('.bd-h2').after(badge({ label: pct + '% ready', tone: pct === 100 ? 'ok' : r.blockers ? 'danger' : 'warn', class: 'db-pct' }));
+    /* The heading and its score share one flex row; the eyebrow keeps
+       its own line above (it ran into the heading as one word). */
+    const h2 = sec.querySelector('.bd-h2');
+    const row = h('div.db-sec-row');
+    h2.replaceWith(row);
+    row.append(h2, badge({ label: pct + '% ready', tone: pct === 100 ? 'ok' : r.blockers ? 'danger' : 'warn', class: 'db-pct' }));
   }
 
   /* Failures first and blockers above gaps, because the order IS the
      advice. Passed checks are still SHOWN, as evidence the question
-     was asked — but as one compact row of ticks under the work, so
-     five green cards no longer outweigh the two things to do. */
+     was asked — but inside ONE summary row that opens on demand
+     (28 Oct 2026), so the dashboard stays about two screens. */
   const sorted = sortChecks(r.checks);
   const fails = sorted.filter((c) => !c.passed);
   const passes = sorted.filter((c) => c.passed);
+  const more = h('details.db-more.rd-more', { 'data-more': 'ready' });
+  more.append(h('summary.db-more-sum', {}, [
+    h('span', { text: fails.length
+      ? fails.length + (fails.length === 1 ? ' thing' : ' things') + ' to fix · Show'
+      : 'Every check passes · Show' }),
+    h('span.sym', { 'aria-hidden': 'true', text: 'expand_more' })
+  ]));
   if (fails.length) {
     const list = h('ul.rd-list');
     fails.forEach((c) => list.append(readinessRow(c)));
-    sec.append(list);
+    more.append(list);
   }
   if (passes.length) {
-    sec.append(h('p.rd-pass-h', { text: 'Passing \u00b7 ' + passes.length + ' of ' + r.checks.length }));
+    more.append(h('p.rd-pass-h', { text: 'Passing \u00b7 ' + passes.length + ' of ' + r.checks.length }));
     const ul = h('ul.rd-pass');
     passes.forEach((c) => ul.append(h('li.rd-chip', {}, [
-      h('span.rd-mark', { 'aria-hidden': 'true', text: '\u2713' }),
+      h('span.rd-mark.sym', { 'aria-hidden': 'true', text: 'check' }),
       h('span', { text: c.label + ' — none' })
     ])));
-    sec.append(ul);
+    more.append(ul);
   }
+  if (r.checks.length) sec.append(more);
 
   const dot = sec.querySelector('.bd-eyebrow');
   if (dot) dot.classList.add(tone);
@@ -197,7 +204,7 @@ function readinessRow(c) {
   const row = h('li.rd-row' + (c.passed ? '.is-pass'
     : c.severity === 'blocker' ? '.is-blocker' : '.is-gap'));
 
-  row.append(h('span.rd-mark', { 'aria-hidden': 'true', text: c.passed ? '\u2713' : '\u2022' }));
+  row.append(c.passed ? h('span.rd-mark.sym', { 'aria-hidden': 'true', text: 'check' }) : h('span.rd-mark', { 'aria-hidden': 'true', text: '\u2022' }));
 
   const body = h('div.rd-body');
   body.append(h('p.rd-label', {
@@ -209,11 +216,11 @@ function readinessRow(c) {
        hunting; naming them is the difference between a report and a
        task list. Capped because a brand-new import can fail a check
        on every scene it has. */
-    const shown = c.items.slice(0, 8).join(' · ');
-    const more  = c.items.length > 8 ? ' … and ' + (c.items.length - 8) + ' more' : '';
+    const shown = c.items.slice(0, 5).join(' · ');
+    const more  = c.items.length > 5 ? ' … and ' + (c.items.length - 5) + ' more' : '';
     body.append(h('p.rd-items', { text: shown + more }));
     body.append(h('p.rd-hint', { text: c.hint }));
-    if (c.where) body.append(h('a.rd-go', { href: c.where, text: 'Fix it \u2192' }));
+    if (c.where) body.append(h('a.k-btn.k-btn--ghost.k-btn--sm.rd-go', { href: c.where, text: 'Fix it' }));
   }
 
   row.append(body);
@@ -221,301 +228,117 @@ function readinessRow(c) {
 }
 
 /* ============================================================
-   TODAY'S DESK
+   ONE SCREEN (owner, 28 Oct 2026)
    ------------------------------------------------------------
-   Six tiles, all derived on render and none stored. Where a figure
-   does not exist on the client the tile says so rather than inventing
-   one: the plan's project limit lives in the database (a trigger
-   raises P0402), and no model records when a backup file was last
-   exported, so neither is shown as a number. */
-/* The dates (localDay, daysFromToday, when) are src/lib/dashboard-model.js. */
+   The dashboard used to open with the project block, then the
+   launcher, then the title page, then a closed "Project overview"
+   holding a focus row, the five stage cards, the production chain,
+   the readiness list, recent activity and a desk of three tiles. Most
+   of it said one thing twice: the chain's twelve numbers are the
+   launcher's state lines, the stage cards are the launcher's rows, the
+   desk's backup tile is the rail's Backup, its plan tile the account
+   menu's Purchase, its week the Plan's calendar.
 
-/* A desk tile is the kit's panel: eyebrow in the header, the title
-   (an h2, so the heading order holds) opening the body. Callers append
-   to tb(tile), the panel's body. */
-function tile(id, eyebrow, title) {
-  const t = kPanel({ eyebrow, class: 'db-tile', attrs: { 'aria-labelledby': 'dbt-' + id } });
-  tb(t).append(h('h2.db-tile-h', { id: 'dbt-' + id, text: title }));
-  return t;
-}
-const tb = (t) => t.querySelector('.k-panel-body');
+   What is left is one answer per question, top to bottom:
+     who      the film's title, format and stage, and five figures
+     what now ONE Continue card (with the suggestion inside it)
+     where    the launcher, as a card grid
+     ready?   the readiness list, which journey.js links to
+     cover    the Title page, the one thing typed here
 
-/* ============================================================
-   THE FOCUS ROW — one answer to "what now?", one to "how ready?"
-   ------------------------------------------------------------
-   The page used to say "go here next" five ways (a Continue tile, a
-   suggested-next panel, a resume line, the journey strip's next step
-   and the suggested stage card) and "how ready is it" three ways (a
-   tick list on the project tile, "three things to do" and the full
-   readiness section). The first card below holds every "next"; the
-   second holds the readiness summary and links down to the full list.
-   The ids the old pieces carried (#suggested, #resume) live on here.
+   THE IDS THE OLD PIECES CARRIED STAY RESOLVABLE, on the piece that
+   answers the same question now — a nav target must not depend on a
+   redesign (CLAUDE.md): #resume and #suggested on the Continue card,
+   #focus on the hero, #stages on the launcher's section and #journey
+   on its grid, #readiness on the readiness card, #title-page, #slate.
    ============================================================ */
-/* WHY, the suggestion's reason, is src/lib/dashboard-model.js. */
 
 function renderContinue(snap) {
   /* THIS PROJECT ONLY (owner, 11 Oct 2026): it used to suggest the most
      recently edited OTHER film. Switching films is the home page's job. */
-  const tl = tile('continue', 'Continue', 'Pick up where you left off');
-  tl.classList.add('db-up');
+  const card = h('section.db-continue', { 'aria-labelledby': 'dbContinueH' });
   const t = continueTarget(snap);
-  tb(tl).append(h('p.db-tile-line', { id: 'resume', text: t.what + (t.ts ? ' · edited ' + relTime(t.ts) : '') }));
-  /* How far the stage you are in has got, from the same figures the stage
-     cards print. Tools is the measured one; with nothing to count it is left out. */
+  card.append(
+    kEyebrow('Continue'),
+    h('h2.db-continue-h', { id: 'dbContinueH', text: t.what }),
+    h('p.db-continue-line', { id: 'resume', text: t.ts ? 'Last edited ' + relTime(t.ts) : 'Pick up where you left off.' })
+  );
+  /* How far the stage you are in has got, from the same figures the
+     launcher prints. Left out when there is nothing to count. */
   const cur = snap.journey && snap.journey.stages.find((x) => x.id === snap.journey.current);
   if (cur && cur.tools.total) {
-    const m = meter({ label: cur.label + ' · ' + cur.tools.done + ' of ' + cur.tools.total + ' done', value: cur.tools.pct, max: 100, hue: stageHueClass(cur.hue), class: 'db-up-meter' });
-    tb(tl).append(m);
-    if (cur.tools.note) tb(tl).append(h('p.db-tile-line', { text: cur.tools.note }));
+    card.append(meter({ label: cur.label + ' · ' + cur.tools.done + ' of ' + cur.tools.total + ' done', value: cur.tools.pct, max: 100, class: 'db-continue-meter' }));
   }
-  tb(tl).append(
-    button({ label: 'Continue', variant: 'primary', size: 'lg', iconAfter: 'arrow_forward', href: t.href, class: 'db-big', attrs: { 'aria-label': 'Continue: ' + t.what } })
-  );
+  card.append(button({ label: 'Continue', variant: 'primary', size: 'lg', iconAfter: 'arrow_forward', href: t.href, class: 'db-big', attrs: { 'aria-label': 'Continue: ' + t.what } }));
 
+  /* The suggestion, one line under the one action: it is advice, never
+     a second primary button (journey.js: "Suggested next" is never forced). */
   const sug = snap.suggest;
   const sugState = sug && snap.states.find((s) => s.id === sug.id);
-  const box = h('div.db-up-next', { id: 'suggested' });
-  if (sugState) {
-    box.append(
-      h('p.db-tile-eyebrow', { text: 'Suggested next · only a suggestion' }),
-      h('p.db-up-stage.' + stageHueClass(sugState.hue), {}, [
-        h('span.db-dot', { 'aria-hidden': 'true' }),
-        h('strong', { text: sugState.label })
-      ]),
-      h('p.db-tile-line', { text: WHY[sug.why] || WHY.continue })
-    );
-    const acts = h('div.db-up-acts');
-    acts.append(button({ label: 'Go to ' + sugState.label, href: sugState.href, iconAfter: 'arrow_forward', attrs: { 'aria-label': 'Go to ' + sugState.label } }));
-    const nx = snap.journey && snap.journey.next;
-    if (nx && nx.href && nx.label) {
-      acts.append(h('a.db-gap-link', { href: nx.href, text: 'Next step: ' + nx.label }));
-    }
-    box.append(acts);
+  /* Left out when it names the stage Continue is already in: the same
+     advice twice. #suggested then sits on the card, so it resolves. */
+  const same = !sugState || (snap.journey && sug.id === snap.journey.current);
+  if (same) { card.id = 'suggested'; return card; }
+  const box = h('p.db-next', { id: 'suggested' });
+  if (sugState && sugState.href) {
+    box.append(h('span.db-next-k', { text: 'Suggested next' }), ' ',
+      h('a.db-link.' + stageHueClass(sugState.hue), { href: sugState.href, title: WHY[sug.why] || WHY.continue }, [
+        h('span.db-dot', { 'aria-hidden': 'true' }), txt(sugState.label)
+      ]));
   } else {
-    box.append(h('p.db-none', { text: 'Every stage is done. Open any card to review it.' }));
+    box.append(txt('Every stage has work in it.'));
   }
-  tb(tl).append(box);
-  return tl;
-}
-
-function renderReadyTile() {
-  const tl = tile('ready', 'Readiness', 'Three things to do');
-  tl.classList.add('db-ready');
-  const r = readiness();
-  if (!r.hasFilm) {
-    tb(tl).append(
-      h('p.db-tile-line', { text: 'No scenes yet, so nothing to check.' }),
-      h('ul.db-acts', {}, [h('li', {}, [
-        h('a.db-gap-link', { href: 'breakdown.html', text: 'Add the scenes' }),
-        h('span.db-gap-why', { text: 'Readiness is derived from them.' })
-      ])])
-    );
-    return tl;
-  }
-
-  const sorted = sortChecks(r.checks);
-  const pass = sorted.filter((c) => c.passed).length;
-  const total = sorted.length;
-
-  /* The score is a number AND a word, and the bar under it repeats the
-     list's own order — blockers, gaps, passes — one segment per check.
-     The segments carry no text, so a fill colour is safe there; the
-     counts beside them are ink. */
-  const label = pass + ' of ' + total + ' checks pass · '
-    + r.blockers + ' blocker' + (r.blockers === 1 ? '' : 's') + ', ' + r.gaps + ' gap' + (r.gaps === 1 ? '' : 's');
-  const seg = h('div.db-seg', { role: 'img', 'aria-label': label });
-  sorted.forEach((c) => seg.append(h('span.db-seg-i.' + (c.passed ? 'is-pass' : c.severity === 'blocker' ? 'is-blocker' : 'is-gap'))));
-  tb(tl).append(
-    h('p.db-score', {}, [h('strong', { text: pass + '/' + total }), h('span', { text: 'checks pass' })]),
-    seg,
-    h('p.db-tile-line', { text: 'Readiness: ' + label })
-  );
-
-  const todo = sorted.filter((c) => !c.passed).slice(0, 3);
-  const ul = h('ul.db-acts');
-  if (!todo.length) {
-    ul.append(h('li', {}, [h('span.db-gap-why', { text: 'Every readiness check passes.' })]));
-  } else {
-    todo.forEach((c) => ul.append(h('li.db-fix.' + (c.severity === 'blocker' ? 'is-blocker' : 'is-gap'), {}, [
-      h('span.db-fix-dot', { 'aria-hidden': 'true' }),
-      h('span.db-fix-body', {}, [
-        h('span.db-fix-label', { text: c.label }),
-        h('span.db-gap-why', { text: c.hint })
-      ]),
-      h('span.db-fix-n', { text: String(c.count), 'aria-label': c.count + ' affected' }),
-      h('a.db-fix-go', { href: c.where || 'dashboard.html#readiness', 'aria-label': 'Fix it: ' + c.label, text: 'Fix it \u2192' })
-    ])));
-  }
-  tb(tl).append(ul, h('a.db-link.db-tile-more', { href: '#readiness', text: 'See every check ↓' }));
-  return tl;
-}
-
-function renderFocus(snap) {
-  const sec = h('section.db-focus', { id: 'focus', 'aria-label': 'Where to go next', 'data-reveal-group': '' });
-  sec.append(renderContinue(snap), renderReadyTile());
-  return sec;
-}
-
-/* ============================================================
-   THE SIDE COLUMN — the calendar, the plan, the backup
-   ============================================================ */
-function renderWeek(snap) {
-  const tl = tile('week', 'This week', 'Shoot days and call sheets');
-  tb(tl).append(h('p.db-tile-line.db-strong', { text: nextShootLine(snap) }));
-  const covered = coveredSceneIds(snap.sheets);
-  /* The next dated day, in full: where, when the crew is called, and the
-     call sheet itself. Each line shows only what a record really holds. */
-  const nx = nextDatedDay(snap);
-  if (nx) {
-    const { places, sheet } = dayDetail(snap, nx.d);
-    const dl = h('dl.db-facts');
-    const fact = (k, v) => dl.append(h('dt', { text: k }), h('dd', { text: v }));
-    if (places.length) fact('Location', places.slice(0, 2).join(' · ') + (places.length > 2 ? ' +' + (places.length - 2) : ''));
-    if (sheet && sheet.generalCall) fact('Crew call', sheet.generalCall);
-    if (dl.children.length) tb(tl).append(dl);
-    tb(tl).append(sheet
-      ? h('a.db-link', { href: 'contacts.html#call-sheets', text: 'View call sheet' + (sheet.title ? ' · ' + sheet.title : '') + ' \u2192' })
-      : h('a.db-link', { href: 'contacts.html#call-sheets', text: 'Make a call sheet for day ' + nx.d.day + ' \u2192' }));
-  }
-  tb(tl).append(h('nav.db-trio', { 'aria-label': 'Shortcuts' }, [
-    h('a.db-trio-i', { href: 'breakdown.html', text: 'Breakdown' }),
-    h('a.db-trio-i', { href: 'stripboard.html', text: 'Stripboard' }),
-    h('a.db-trio-i', { href: 'visualize.html', text: 'Visualise' })
-  ]));
-  const rows = weekDays(snap);
-  if (!rows.length) {
-    tb(tl).append(h('p.db-tile-line', { text: snap.datedDays
-      ? 'No shoot day falls in the next seven days.' : 'No shoot day has a date yet.' }),
-      h('a.db-gap-link', { href: 'plan.html#calendar', text: 'Open the Shoot Calendar' }));
-    return tl;
-  }
-  const ul = h('ul.db-acts');
-  for (const x of rows) {
-    const sheet = x.d.scenes.some((s) => covered.has(s.id));
-    let dpr = '';
-    if (x.n <= 0) {
-      const rec = dprSummary(x.d.day, snap.scenes).record;
-      dpr = ' · report ' + (rec && (rec.crewCall || rec.wrap) ? 'started' : 'not started');
-    }
-    ul.append(h('li', {}, [
-      h('a.db-gap-link', { href: sheet ? 'contacts.html#call-sheets' : 'reports.html#sides',
-        text: 'Day ' + x.d.day + ' · ' + when(x.n) }),
-      h('span.db-gap-why', { text: x.d.scenes.length + ' scene' + (x.d.scenes.length === 1 ? '' : 's')
-        + ' · ' + (sheet ? 'call sheet made' : 'no call sheet') + dpr })
-    ]));
-  }
-  tb(tl).append(ul);
-  return tl;
-}
-
-function renderPlanTile() {
-  const tl = tile('plan', 'Plan', 'Your plan');
-  const cp = PlanGate.currentPlan();
-  const name = cp.planName || (cp.plan ? planName(cp.plan) : '');
-  const line = planLine(cp, name);
-  tb(tl).append(
-    h('p.db-tile-line', { text: line }),
-    button({ label: name && cp.plan !== 'free' ? 'Manage plan' : 'See plans', href: 'purchase.html', class: 'db-tile-go', attrs: { 'aria-label': 'Plans and upgrade' } })
-  );
-  return tl;
-}
-
-function renderBackupTile() {
-  const tl = tile('backup', 'Backup', 'Is your work safe?');
-  let st = null;
-  try { st = getDriveStatus(); } catch (e) { /* a status is not a transfer */ }
-  const on = !!(st && st.connected);
-  tb(tl).append(h('p.db-tile-line.db-state' + (on ? '.is-on' : '.is-off'), {}, [
-    h('span.db-dot', { 'aria-hidden': 'true' }),
-    txt(on
-      ? 'Google Drive: connected' + (st.syncedAt ? ', last synced ' + relTime(st.syncedAt) : ', not yet synced') + '.'
-      : 'Google Drive: not connected.')
-  ]));
-  tb(tl).append(h('p.db-tile-line', { text: 'Everything lives in this browser. A backup file is the only other copy unless Drive is on; '
-    + 'this page cannot see when you last exported one.' }));
-  if (on) tb(tl).append(button({ label: 'Sync now', icon: 'cloud_sync', attrs: { 'data-action': 'drive-sync', 'aria-label': 'Sync to Google Drive now' } }));
-  tb(tl).append(button({ label: 'Export a backup', href: 'index.html', class: 'db-tile-go', attrs: { 'aria-label': 'Export a backup, from the studio home page' } }));
-  return tl;
-}
-
-function renderDesk(snap) {
-  const aside = h('aside.db-desk', { id: 'desk', 'data-reveal-group': '', 'aria-label': 'Today’s desk' });
-  aside.append(renderWeek(snap), renderPlanTile(), renderBackupTile());
-  return aside;
+  card.append(box);
+  return card;
 }
 
 /* ---- header ----------------------------------------------------- */
 const txt = (t) => document.createTextNode(t);
 
-/* studies.js is four films' worth of data, so it is fetched only when a
-   favourite is set, and the page redraws once it arrives. */
-let studiesMod = null;
-let studiesAsked = false;
-function favTitle(slug) {
-  if (!studiesMod) return '';
-  const st = studiesMod.getStudy(slug);
-  return (st && st.meta && st.meta.title) || '';
-}
-
 function renderHead(snap) {
-  const p = snap.project;
-  const fav = favouriteOf(p, favTitle);
-  if (fav && !studiesMod && !studiesAsked) {
-    studiesAsked = true;
-    import('../lib/studies.js').then((m) => { studiesMod = m; render(); }).catch(() => { /* the slug stands in */ });
-  }
   /* The project's own block, under the page's header (ONE PAGE FRAME:
      the h1 is the page's name on every page; the film's title is the
-     first thing under it, as an h2). */
+     first thing under it, as an h2). Format and stage as two quiet
+     badges; the subtitle under the title. */
+  const p = snap.project;
   const head = h('header.db-head', { 'aria-label': 'This project' });
   const j = snap.journey;
   head.append(
     h('div.db-chips', {}, [
-      badge({ label: FORMAT_LABEL[p.format] || 'Project', tag: true, tone: 'info' }),
-      badge({ label: 'Project dashboard', tag: true }),
-      j ? badge({ label: 'Stage: ' + j.currentLabel, tag: true }) : null
+      badge({ label: FORMAT_LABEL[p.format] || 'Project', tone: 'info' }),
+      j ? badge({ label: 'Stage: ' + j.currentLabel }) : null
     ]),
-    h('h2.bd-title.k-project-title.db-project-title', { text: p.title }),
     h('p.db-slate', { id: 'slate' }, p.subtitle ? [
-      h('span.db-slate-k', { text: 'Slate' }), h('span.db-slate-v', { text: p.subtitle }), txt(' · '),
+      h('span.db-slate-v', { text: p.subtitle }), txt(' · '),
       h('button.db-link.db-slate-edit', { type: 'button', 'data-action': 'slate-edit', text: 'change' })
     ] : [
       h('button.db-link.db-slate-edit', { type: 'button', 'data-action': 'slate-edit', text: 'Add a subtitle' })
-    ]),
-    h('p.bd-deck', {
-      text: 'Five stages, in any order, each read from what you have already made. '
-          + 'Nothing is mandatory: with a screenplay in hand, start straight in Pre-Production.'
-    })
+    ])
   );
-  const favLine = h('p.st-fav', { id: 'favourite' });
-  if (fav) {
-    favLine.append(txt('Favourite film: '), h('strong', { text: fav.title }), txt(' · '),
-      h('a.db-link', { href: 'settings.html#favourite', text: 'change' }));
-  } else {
-    favLine.append(txt('No favourite film chosen yet · '),
-      h('a.db-link', { href: 'settings.html#favourite', text: 'choose one' }));
-  }
-  head.append(favLine);
-  if (!snap.isEmpty) {
-    const sc = snap.scenes.length;
-    head.append(statStrip([
-      stat(String(sc), sc === 1 ? 'scene' : 'scenes', 'Scenes', sc ? sceneTagged(snap) + ' broken down' : ''),
-      stat(formatEighths(snap.eighths), snap.eighths === 8 ? 'page' : 'pages', 'Page count',
-        snap.scriptPages ? formatPages(snap.scriptPages) + ' script pp' : ''),
-      stat(snap.days.length ? String(snap.days.length) : '\u2014', snap.days.length === 1 ? 'day' : 'days', 'Shoot days',
-        nextShootNote(snap)),
-      stat(snap.contacts.length ? String(snap.contacts.length) : '\u2014', 'people', 'Crew & cast', crewCastNote(snap)),
-      stat(snap.boardedShots ? String(snap.boardedShots) : '\u2014', 'shots', 'Boarded shots',
-        snap.shots.length ? snap.shots.length + ' shots planned' : ''),
-      // The live estimator's sum: nothing is locked, and contingency is
-      // not in it (the budget page's Total budget adds it). It once
-      // said 'Locked budget' while budget.html said 'Nothing locked yet'.
-      stat(snap.budget.lines ? snap.budget.short : '\u2014', '', 'Budget estimate',
-        snap.budget.lines ? snap.budget.lines + ' line item' + (snap.budget.lines === 1 ? '' : 's') + ', before contingency' : '')
-    ], { class: 'db-stats', label: 'This film in numbers' }));
-  }
   return head;
 }
+
+/* The figures: five, under the hero. The kit's stat card; each second
+   line is derived in dashboard-model.js and left out when there is
+   nothing real to say. */
+function renderStats(snap) {
+  if (snap.isEmpty) return null;
+  const sc = snap.scenes.length;
+  return statStrip([
+    stat(String(sc), sc === 1 ? 'scene' : 'scenes', 'Scenes', sc ? sceneTagged(snap) + ' broken down' : ''),
+    stat(formatEighths(snap.eighths), snap.eighths === 8 ? 'page' : 'pages', 'Page count',
+      snap.scriptPages ? formatPages(snap.scriptPages) + ' script pp' : ''),
+    stat(snap.days.length ? String(snap.days.length) : '—', snap.days.length === 1 ? 'day' : 'days', 'Shoot days',
+      nextShootNote(snap)),
+    stat(snap.contacts.length ? String(snap.contacts.length) : '—', 'people', 'Crew & cast', crewCastNote(snap)),
+    // The live estimator's sum: nothing is locked, and contingency is
+    // not in it (the budget page's Total budget adds it). It once
+    // said 'Locked budget' while budget.html said 'Nothing locked yet'.
+    stat(snap.budget.lines ? snap.budget.short : '—', '', 'Budget estimate',
+      snap.budget.lines ? snap.budget.lines + ' line item' + (snap.budget.lines === 1 ? '' : 's') + ', before contingency' : '')
+  ], { class: 'db-stats', label: 'This film in numbers' });
+}
+
 
 /* ---- the title page -----------------------------------------------
    The film's cover sheet — title, writer, draft (and, on a feature, the
@@ -549,7 +372,7 @@ function tpValue(key, stored, project) {
 function renderTitlePage(project) {
   const fmt = coverNs(project.format);
   const fields = coverFields('story', fmt);
-  const sec = section('title-page', null, 'The title page',
+  const sec = section('title-page', null, 'Title page',
     (fmt === 'short' ? 'What heads this film’s title page: its title, writer, start date and runtime.' : 'What heads this film’s title page: its title, writer, genre and draft.')
     + ' Change it here.');
   sec.classList.add('db-title-page');
@@ -619,170 +442,13 @@ delegate(app, 'click', '[data-action="tp-region"]', (e, el) => {
 const TP_NOT_PROSE = new Set(['meta_started', 'meta_runtime', 'v2_start', 'v2_shoot',
   'v2_budget', 'p3_start', 'p3_days', 'p4_lock']);
 
-/* ---- the five stage cards ----------------------------------------
-   State is derived by journey.js stageStates(); this only arranges it.
-   Status is a WORD plus a glyph, never colour alone. The ids always
-   render: #stages and #stage-<id> exist with no data behind them.
-
-   The journey strip used to sit under these as a second row of the
-   same five stages, with the Guide and Tools meters. The meters moved
-   INTO the cards, so each stage is said once; #journey is kept on the
-   list, because a fragment target must not disappear with a redesign. */
-const STATUS_GLYPH = { none: '○', doing: '◐', done: '●' };
-const GO = { none: 'Start', doing: 'Continue', done: 'Open' };
-
-/* The kit's meter, in the stage's own hue (the li carries the hue class). */
-function stageMeter(label, pct, value, hasTotal) {
-  const m = meter({ label, value: Math.max(0, Math.min(100, pct || 0)), max: 100, hue: 'st-hue', show: false });
-  m.classList.add('st-meter');
-  const read = h('b.k-meter-read', { text: value });
-  m.querySelector('.k-meter-row').append(read);
-  return m;
-}
-
-function stageCard(s, suggested, js, current) {
-  const li = h('li.st-card.' + stageHueClass(s.hue) + '.st-' + s.status.id + (suggested ? '.is-suggested' : ''),
-    { id: 'stage-' + s.id });
-  li.append(h('div.st-head', {}, [
-    h('span.st-part', { text: 'Part ' + s.part }),
-    s.status.id === 'done' ? badge({ label: 'Done', tone: 'ok', dot: true })
-      : s.status.id === 'doing' ? badge({ label: 'In progress', tone: 'info', dot: true }) : null,
-    /* The writer's own lock (outline locked / scene numbers locked), never inferred. */
-    s.locked ? badge({ label: 'Locked', tone: 'ok', icon: 'lock', title: s.id === 'story' ? 'The step outline is locked' : 'The scene numbers are locked' }) : null,
-    suggested ? h('span.st-sug', { text: 'Suggested next' })
-      : current ? h('span.st-sug', { text: 'You are here' }) : null
-  ]));
-  li.append(h('h3.st-name', { text: s.label }));
-  li.append(h('p.st-status', {}, [
-    h('span.st-glyph', { text: STATUS_GLYPH[s.status.id], 'aria-hidden': 'true' }),
-    h('span', { text: s.status.label })
-  ]));
-  if (js) {
-    li.append(h('div.st-meters', {}, [
-      stageMeter('Guide', js.guide.pct, js.guide.total ? js.guide.pct + '%' : '—'),
-      stageMeter('Tools', js.tools.pct, js.tools.total ? js.tools.done + '/' + js.tools.total : '—')
-    ]));
-  }
-  const facts = h('ul.st-facts');
-  s.facts.forEach((f) => facts.append(h('li', { text: f })));
-  li.append(facts);
-  const acts = h('div.st-acts');
-  /* No href: every module of the stage is switched off (journey.js
-     stageHref), so there is nothing to open and no button is drawn. */
-  if (s.href) acts.append(button({
-    label: GO[s.status.id], variant: suggested ? 'primary' : 'secondary', iconAfter: 'arrow_forward',
-    href: s.href, class: 'st-go',
-    attrs: { 'aria-label': GO[s.status.id] + ' ' + s.label + ' — ' + s.status.label }
-  }));
-  if (s.start && s.status.id === 'none') {
-    acts.append(h('a.db-link.st-alt', { href: s.start.href, text: s.start.label }));
-  }
-  li.append(acts);
-  return li;
-}
-
-function renderStages(snap) {
-  const sec = section('stages', 'The five stages', 'Where the film stands.');
-  const sug = snap.suggest;
-  const j = snap.journey;
-  if (j) {
-    const at = snap.states.findIndex((x) => x.id === j.current);
-    if (at >= 0) sec.querySelector('.bd-h2').after(badge({ label: j.complete ? 'All ' + snap.states.length + ' stages in hand' : 'Step ' + (at + 1) + ' of ' + snap.states.length, tag: true, class: 'db-step-n' }));
-  }
-  const list = h('ol.st-list', { id: 'journey', 'aria-label': 'The five stages of this film' });
-  snap.states.forEach((s) => list.append(stageCard(s, !!sug && s.id === sug.id,
-    j && j.stages.find((x) => x.id === s.id), !!j && j.current === s.id)));
-  sec.append(list);
-
-  sec.append(h('p.db-foot', {}, [
-    txt('Guide is how much of the blueprint is answered; Tools is how much of the stage’s work exists. '
-      + 'Prefer to be asked questions? '),
-    h('a.db-link', { href: snap.main.blueprint.href, text: 'Guided questions' }),
-    txt(' (' + snap.main.pct + '% answered) are a companion, not a step.')
-  ]));
-  return sec;
-}
-
-/* ---- the production chain ----------------------------------------
-   Twelve numbers, now in four labelled groups, because twelve equal
-   cards in a row read as twelve equal facts — and "scenes" and
-   "storyboards" are not equally the spine of the film. */
-function chainCard(number, label, note, href, hue) {
-  return h('a.db-card.hue-' + hue, { href }, [
-    h('strong.db-card-num', { text: number }),
-    h('span.db-card-label', { text: label }),
-    h('span.db-card-note', { text: note })
-  ]);
-}
-
-function renderChain(snap) {
-  const sec = section('chain', 'The chain', 'Scene to call sheet.',
-    'One scene model, read by every module below. Move a scene and all of '
-    + 'these move with it.');
-  const n = (v) => String(v);
-  const group = (title, cards) => h('div.db-chain-group', {}, [
-    h('p.db-chain-h', { text: title }), h('div.db-grid', {}, cards)
-  ]);
-
-  sec.append(
-    group('Breakdown', [
-      chainCard(n(snap.scenes.length), 'Scenes', 'Breakdown — the one place a scene is typed', 'breakdown.html', 'shorts'),
-      chainCard(formatEighths(snap.eighths), 'Scene pages', 'Length in eighths, from the breakdown', 'breakdown.html', 'shorts'),
-      chainCard(n(snap.elements), 'Elements tagged', 'Cast, props, wardrobe, vehicles', 'breakdown.html#elements', 'shorts'),
-      chainCard(formatPages(snap.scriptPages), 'Screenplay pages', 'Written in the editor · ' + n(snap.revisions) + ' draft' + (snap.revisions === 1 ? '' : 's') + ' saved', 'screenplay.html', 'library')
-    ]),
-    group('Plan & Schedule', [
-      chainCard(n(snap.locationCount), 'Locations', 'Distinct places named on a scene', 'plan.html#locations', 'plan'),
-      chainCard(n(snap.days.length), 'Shoot days', snap.unscheduled.length
-        ? snap.unscheduled.length + ' scene' + (snap.unscheduled.length === 1 ? '' : 's') + ' still unscheduled'
-        : 'Every scene has a day', 'stripboard.html', 'shoot'),
-      chainCard(n(snap.datedDays), 'Dated days', 'Shoot days with a real date against them', 'plan.html#calendar', 'plan'),
-      chainCard(snap.budget.short, 'Budget', snap.budget.lines
-        ? snap.budget.exact + ' across ' + snap.budget.lines + ' line item' + (snap.budget.lines === 1 ? '' : 's')
-        : 'Nothing costed yet', 'budget.html', 'plan')
-    ]),
-    group('Budget & People', [
-      chainCard(n(snap.contacts.length), 'Cast & Crew', 'Cast and crew, by department', 'contacts.html', 'shoot'),
-      chainCard(n(snap.sheets.length), 'Call sheets', 'Built from the day, the scenes and the people', 'contacts.html#call-sheets', 'shoot')
-    ]),
-    group('Visualise', [
-      chainCard(n(snap.shots.length), 'Shots', 'Shot list, hung off the scenes', 'visualize.html', 'visualize'),
-      chainCard(n(snap.boards), 'Storyboards', 'Frames, in order', 'visualize.html#storyboard', 'visualize')
-    ])
-  );
-  return sec;
-}
-
-/* ---- recent ------------------------------------------------------
-   TWO sources, both read-only, and the copy says which: the hub's log
-   and the shoot day's own marks (`shotAt`, written by shoot.html),
-   merged in src/lib/dashboard-model.js (recentEntries). */
-function renderActivity(scenes) {
-  const entries = recentEntries(scenes);
-  if (!entries.length) return null;
-  const sec = section('recent', 'Recent', 'What moved lately.',
-    'Blueprint progress, equipment lists and backups from the studio log, plus scenes '
-    + 'marked shot on set. Edits to scenes, people and the script are not logged. This project only.');
-  const list = h('ol.db-log');
-  for (const e of entries) {
-    const line = h('li.db-log-row');
-    const what = h('span.db-log-what', { text: e.what });
-    line.append(
-      e.url ? h('a.db-link', { href: e.url }, [what]) : what,
-      h('span.db-log-when', { text: relTime(e.ts) })
-    );
-    list.append(line);
-  }
-  sec.append(list);
-  return sec;
-}
 
 /* ---- empty states -------------------------------------------------
    Two different emptinesses, and conflating them was the old first-run
    bug: "no project at all" needs the hub, "a project with nothing in
    it" needs a first step. A wall of zeros answers neither. */
 function renderNoProject() {
-  const wrap = h('section.db-sec', { id: 'stages', 'data-reveal': '' });
+  const wrap = h('section.db-sec', { id: 'stages' });
   wrap.append(h('div.bd-empty', {}, [
     h('div.bd-empty-mark', { text: '◴', 'aria-hidden': 'true' }),
     h('h2', { text: 'Pick or start a project' }),
@@ -799,9 +465,9 @@ function renderNoProject() {
 }
 
 /* ---- the member row: What's new, and the referral share ----------
-   One slim row under the page's own cards. What's new is always there
-   (src/ui/changelog.js; "New" is a READ of the prefs blob, written only
-   when the drawer opens). The referral share appears only for a
+   One slim row under the page's own cards. What's new is there only then
+   (src/ui/changelog.js; it shows only while the list holds an entry;
+   "New" is a READ of the prefs blob, written only when the drawer opens). The referral share appears only for a
    signed-in member whose code exists and is on (my_referral(), §22):
    signed out, before a first purchase, or on a database without §22 it
    is simply absent. growth.js and the panel are fetched only once
@@ -826,17 +492,20 @@ function wantReferral() {
 }
 function renderMemberRow() {
   wantReferral();
-  const row = h('div.db-member', { 'data-reveal': '' });
-  const isNew = changelogUnseen();
-  row.append(h('div.db-member-news', {}, [
-    button({ label: 'What’s new', icon: 'auto_awesome', size: 'sm', action: 'db-whatsnew',
-      attrs: { 'aria-label': isNew ? 'What’s new (new changes since you last looked)' : 'What’s new' } }),
-    isNew ? badge({ label: 'New', tone: 'info' }) : null
-  ].filter(Boolean)));
+  const row = h('div.db-member');
+  /* Nothing to show while the list is empty (owner, 1 Nov 2026). */
+  if (changelogHasEntries()) {
+    const isNew = changelogUnseen();
+    row.append(h('div.db-member-news', {}, [
+      button({ label: 'What’s new', icon: 'auto_awesome', size: 'sm', action: 'db-whatsnew',
+        attrs: { 'aria-label': isNew ? 'What’s new (new changes since you last looked)' : 'What’s new' } }),
+      isNew ? badge({ label: 'New', tone: 'info' }) : null
+    ].filter(Boolean)));
+  }
   const d = ref.uid && ref.data;
   const share = d && ref.panel ? ref.panel(d, ref.link(d.code)) : null;
   if (share) row.append(share);
-  return row;
+  return row.childNodes.length ? row : null;
 }
 delegate(document, 'click', '[data-action="db-whatsnew"]', (e, el) => {
   /* Opening marks it seen: take the "New" off in place. A redraw here
@@ -847,35 +516,29 @@ delegate(document, 'click', '[data-action="db-whatsnew"]', (e, el) => {
   openChangelog(el);
 });
 
+
 /* ============================================================
    RENDER
    ============================================================ */
-let revealed = false;
-/* Open the closed 'Project overview' when the hash names something inside it. */
-function openOverviewFor(hash) {
-  const id = String(hash || '').replace(/^#/, '');
-  if (!id) return;
-  const el = document.getElementById(id);
-  const det = el && el.closest('details.db-overview');
-  if (det && !det.open) det.open = true;
-}
-window.addEventListener('hashchange', () => openOverviewFor(location.hash));
 
+
+const OPEN_MORE = new Set();
 function render() {
   const project = Store.currentProject();
   const main = h('main.db-main.k-page', { id: 'main' });
   main.append(pageHeader({
+    /* ONE TITLE (28 Oct 2026): with a film open the h1 IS the film's
+       title and "Dashboard" lives in the crumb; two near-equal headings
+       ("Dashboard" over "Dragon") competed. */
     eyebrow: ['Studio', 'Dashboard'],
-    title: 'Dashboard',
-    sub: 'Where a film stands across story, screenplay, pre-production, production '
-       + 'and post — read from the project you have open.',
+    title: project ? (project.title || 'Untitled') : 'Dashboard',
+    sub: project ? null : 'Where this film stands, and where to go next.',
     class: 'bd-head'
   }));
 
   if (!project) {
     main.append(
-      renderNoProject(),
-      renderMemberRow(),
+      ...[renderNoProject(), renderMemberRow()].filter(Boolean),
       /* The id, even here: a link into #readiness followed with no
          project open must land on the section that says why it is
          empty, not on nothing. */
@@ -883,44 +546,40 @@ function render() {
     );
   } else {
     const snap = snapshot(project);
-    /* Stage-first: the five stages lead, with the suggestion; the desk
-       tiles, the chain and the readiness checks sit below them. */
-    /* Top to bottom: what to do now (focus), where each stage stands,
-       then the detail in a main column with the calendar, plan and
-       backup beside it, and the full module map last. */
-    const col = h('div.db-col');
-    if (!snap.isEmpty) col.append(renderChain(snap));
-    /* OUTSIDE the isEmpty branch on purpose. `isEmpty` asks whether
-       the BLUEPRINT has been filled in, and readiness asks about the
-       SCENES — a producer who imported a script and has not answered
-       a single blueprint step is exactly who this is for, and the
-       first version hid it from them. Without scenes it renders the
-       section's empty state, so #readiness always resolves. */
-    col.append(renderReadiness());
-    const activity = renderActivity(snap.scenes);
-    if (activity) col.append(activity);
-    /* The launcher is the project home and leads; everything the dashboard
-       used to open with sits under a closed disclosure. Every node stays in
-       the DOM (verify reads innerHTML and data-keys), ids intact. */
-    const overview = h('details.db-overview', {}, [
-      h('summary.db-overview-sum', { text: 'Project overview' }),
-      renderFocus(snap), renderStages(snap),
-      h('div.db-body', {}, [col, renderDesk(snap)])
+    /* who · what now, side by side on a desk; the figures under both */
+    const hero = h('div.db-hero', { id: 'focus' }, [renderHead(snap), renderContinue(snap)]);
+    /* The launcher IS the map of the stages, so it carries the ids the
+       stage cards did (#stages on the section, #journey on its grid). */
+    /* Every tool, behind one closed disclosure (28 Oct 2026): the rail
+       already lists them, so the dashboard no longer repeats 26 tiles. */
+    const tools = h('details.db-tools.db-more', { id: 'stages', 'data-more': 'tools' }, [
+      h('summary.db-more-sum', {}, [h('span', { text: 'All tools for this film' }), h('span.sym', { 'aria-hidden': 'true', text: 'expand_more' })]),
+      renderLauncher()
     ]);
-    main.append(renderHead(snap), renderLauncher(), renderTitlePage(project), renderMemberRow(), overview);
+    const grid = tools.querySelector('.lx-grid');
+    if (grid) grid.id = 'journey';
+    /* Readiness is OUTSIDE any isEmpty test on purpose: `isEmpty` asks
+       whether the BLUEPRINT has been filled in, and readiness asks about
+       the SCENES — a producer who imported a script and answered no step
+       is exactly who it is for. Without scenes it renders the section's
+       empty state, so #readiness always resolves. */
+    /* The title page, under one closed "Project details" disclosure. */
+    const details = h('details.db-more.db-details', { 'data-more': 'details' }, [
+      h('summary.db-more-sum', {}, [h('span', { text: 'Project details and title page' }), h('span.sym', { 'aria-hidden': 'true', text: 'expand_more' })]),
+      renderTitlePage(project)
+    ]);
+    main.append(hero, ...[renderStats(snap)].filter(Boolean), renderReadiness(), tools, details, ...[renderMemberRow()].filter(Boolean));
   }
 
-  /* The path line is applied whether or not the swap happened: a skipped
-     swap leaves last time's DOM, whose path fact may have gone stale. */
+  /* A disclosure the reader opened stays open across a re-render (in
+     memory only; nothing is stored). */
+  main.querySelectorAll('details[data-more]').forEach((d) => {
+    if (OPEN_MORE.has(d.dataset.more)) d.open = true;
+    d.addEventListener('toggle', () => { if (d.open) OPEN_MORE.add(d.dataset.more); else OPEN_MORE.delete(d.dataset.more); });
+  });
   const painted = commitMain(app, main, mountShell);
-  if (project) { loadPath(); refreshTitleFields(); }
+  if (project) refreshTitleFields();
   if (!painted) return;
-  /* A link INTO the overview (#readiness, #resume...) has to open it: a
-     closed <details> hides its target, so the jump would land on nothing. */
-  openOverviewFor(location.hash);
-  /* Play once: render() runs on every store event, and a desk that
-     re-faded on each edit would be noise. */
-  if (!revealed) { revealed = true; reveal(main); }
   /* Chrome initialises at import time, when #app is still empty. Every
      page re-inits after its own render; this one has aria labels and
      glossary terms in its prose like the rest. */
@@ -931,42 +590,6 @@ function render() {
   } catch (e) { console.warn('[dashboard] chrome', e); }
 }
 
-/* ---- the Pre-production card says where on the path ---------------
-   "Step 3 of 11 · next: Vision & look". journey.js is first paint and
-   pure for Node, so it never imports the path model; this page loads
-   src/lib/preprod-path.js after the first render and patches the card.
-   The card already reads correctly without it (journey.js's own facts),
-   so a slow or failed import changes nothing. The line is derived at
-   patch time and stored nowhere; render() rebuilds the card on every
-   store event, so the patch is re-applied after each one. */
-let pathModule = null;      // the loaded module, once
-let pathLoading = false;
-
-function patchPathFact() {
-  const card = document.getElementById('stage-preprod');
-  const facts = card && card.querySelector('.st-facts');
-  if (!facts || !pathModule) return;
-  const old = facts.querySelector('.st-path-fact');
-  if (old) old.remove();
-  let line = '';
-  try {
-    line = pathFactLine(pathModule);
-    if (!line) return;
-  } catch (e) { return; }
-  facts.prepend(h('li.st-path-fact', { text: line }));
-}
-
-function loadPath() {
-  if (pathModule) { patchPathFact(); return; }
-  if (pathLoading) return;
-  pathLoading = true;
-  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 200));
-  idle(() => {
-    import('../lib/preprod-path.js')
-      .then((m) => { pathModule = m; patchPathFact(); })
-      .catch((e) => { pathLoading = false; console.warn('[dashboard] path', e); });
-  });
-}
 
 /* ---- events — delegated, no inline handlers ---------------------- */
 /* setCurrentProject notifies 'current:changed', and the subscriber
@@ -1053,29 +676,6 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 Store.subscribe('cloud:synced', () => refreshTitleFields());
 Store.subscribe('cloud:restored', () => refreshTitleFields());
 
-let syncing = false;
-delegate(app, 'click', '[data-action="drive-sync"]', async (e, el) => {
-  if (syncing) return;
-  syncing = true; el.disabled = true;
-  try {
-    /* push() never rejects: a stale token, a moved remote or a plan
-       refusal RESOLVE with ok:false and nothing uploaded. Read it. */
-    const r = await drivePush();
-    if (r && r.ok) StudioUI.toast('Synced to Google Drive.');
-    else {
-      const why = {
-        conflict: 'Drive has a newer copy, so nothing was uploaded. Open Settings to choose which one to keep.',
-        plan: 'Drive backup is not in this plan, so nothing was uploaded.',
-        'not-connected': 'Drive is not connected, so nothing was uploaded.'
-      }[r && r.reason];
-      let detail = '';
-      try { detail = getDriveStatus().detail || ''; } catch (e) { /* the status is only wording */ }
-      StudioUI.toastError(why || ('Nothing was uploaded. ' + (detail || 'Drive did not answer.')), { duration: 6000 });
-    }
-  }
-  catch (err) { StudioUI.toastError((err && err.message) || 'Drive did not answer.', { duration: 6000 }); }
-  finally { syncing = false; render(); }
-});
 
 Store.subscribe('current:changed', () => render());
 /* A rename from the Title page fires this while Tab is moving to the

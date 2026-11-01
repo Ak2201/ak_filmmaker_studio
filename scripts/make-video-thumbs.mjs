@@ -16,7 +16,7 @@
    origin in both host configs, in the same commit).
 
    SO THE THUMBNAIL IS FETCHED ONCE, HERE, AND COMMITTED. This is the
-   same shape as `public/media/demo-poster.webp`, which the landing
+   same shape as the retired demo poster, which the landing
    page's film already uses, and as `npm run og` and `npm run icons`:
    an author-time generator whose output is a static asset. At runtime
    the facade loads an image from `self`, which the existing CSP

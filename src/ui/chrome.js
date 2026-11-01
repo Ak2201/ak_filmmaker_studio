@@ -100,6 +100,7 @@ import './blueprint-drawer-mount.js';
    window for the few callers outside the module graph. */
 import Dialog from './dialog.js';
 import { holdFocus, releaseFocus } from './modal-focus.js';
+import './learn-places.js';   // the "What is …?" pills under newcomer terms
 import './ports-view.js';   // what this UI plugs into the logic layer's ports
 if (typeof window !== 'undefined') window.StudioDialog = Dialog;
 
@@ -168,7 +169,7 @@ function injectSkipLink() {
    A toast must never steal focus, so the ordinary one is
    aria-live="polite": it waits for the reader to finish the
    sentence it is already on. That is right for "SAVED" and wrong
-   for "COULD NOT SAVE — STORAGE IS FULL", which is a message about
+   for "Could not save — storage is full", which is a message about
    work that is being lost while the queue drains. An error goes in
    a role="alert" region, which is assertive and interrupts.
 
@@ -283,40 +284,39 @@ StudioUI.notify = StudioUI.toastInfo;
 // ============================================================
 // THEME — ONE, dark (owner, 14 Oct 2026)
 // ============================================================
-/* The studio is DARK-ONLY. paper (light) and the Dark/Light toggle are
-   gone; bare :root in tokens.css carries the one palette.
+/* ONE PALETTE, TWO SURFACES (owner, 28 Oct 2026; was dark-only from
+   14 Oct). Bare :root in tokens.css carries the light work surface and
+   a class-scoped dark block carries the chrome; there is no toggle.
 
    THE STORAGE KEY STAYS READABLE AND IS NEVER DELETED OR WRITTEN.
    `fms_studio_theme_v1` is part of the storage contract and lives in
-   people's browsers and backups; a stored 'paper' simply renders dark
-   now. Nothing here writes it any more, so the verify idle-write check
-   has one less writer to think about.
+   people's browsers and backups; a stored 'paper' or 'ink' simply
+   renders the one palette. Nothing here writes it, so the verify
+   idle-write check has one less writer to think about.
 
    The "four places" rule (THEME_ORDER's first entry, currentTheme()'s
-   fallback, loadTheme()'s fallback, applyTheme()'s `|| 'dark'`) has
-   collapsed to one value, and it still has to name the palette bare
-   :root carries. The API keeps its shape (themeOrder, currentTheme,
-   applyTheme, cycleTheme) so verify, the palette and the four legacy
-   pages keep working; with one theme, cycling is a no-op. */
+   fallback, loadTheme()'s fallback, applyTheme()'s stamp) is one value,
+   and it names the [data-theme] block tokens.css declares ('studio').
+   The API keeps its shape (themeOrder, currentTheme, applyTheme,
+   cycleTheme) so verify, the palette and the four legacy pages keep
+   working; with one theme, cycling is a no-op. */
 /* fms_studio_theme_v1 is read (never written) by chrome-prefs.js. */
-const THEME_ORDER = ['ink'];
-const THEME_LABEL = { ink: 'Dark' };
-const themeLabel = (t) => THEME_LABEL[t] || 'Dark';
+const THEME_ORDER = ['studio'];
+const THEME_LABEL = { studio: 'Studio' };
+const themeLabel = (t) => THEME_LABEL[t] || 'Studio';
 
-function currentTheme() { return 'ink'; }
+function currentTheme() { return 'studio'; }
 
 function applyTheme() {
   // Stamp the root FIRST; documentElement exists before <body>.
-  document.documentElement.setAttribute('data-theme', 'dark');
+  document.documentElement.setAttribute('data-theme', 'studio');
   if (!document.body) {
     document.addEventListener('DOMContentLoaded', () => applyTheme());
     return;
   }
-  /* hub.js, library.js, feature.js and short.js still read body.dark as
-     state; it is always set now. 'sepia' is removed for anyone carrying
-     it from a long-gone session. */
-  document.body.classList.remove('sepia');
-  document.body.classList.add('dark');
+  /* body.dark / body.sepia were theme state for four legacy pages; no
+     rule matches either, and neither is true any more. */
+  document.body.classList.remove('sepia', 'dark');
   // A legacy #darkBtn has nothing to switch to: remove it.
   const darkBtn = document.getElementById('darkBtn');
   if (darkBtn) darkBtn.remove();
@@ -377,13 +377,20 @@ function injectReadingProgress() {
 // ============================================================
 function ensureSaveIndicator() {
   let el = document.getElementById('saveIndicator');
-  if (el) return el;
-  el = document.createElement('div');
-  el.id = 'saveIndicator';
-  el.className = 'save-indicator';
-  el.setAttribute('aria-live', 'polite');
-  el.innerHTML = '<span class="si-dot"></span><span class="si-msg">SAVED</span>';
-  document.body.appendChild(el);
+  const band = document.querySelector('.sh-bar > .sh-where');
+  if (el && el.isConnected && (el.classList.contains('in-band') || !band)) return el;
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'saveIndicator';
+    el.className = 'save-indicator';
+    el.setAttribute('aria-live', 'polite');
+    el.innerHTML = '<span class="si-dot"></span><span class="si-msg">Saved</span>';
+  }
+  /* IN THE BAND, beside the crumb (28 Oct 2026): a fixed pill floated
+     over the content's first column. Pages without the shell keep the
+     fixed pill. */
+  if (band) { el.classList.add('in-band'); band.after(el); }
+  else document.body.appendChild(el);
   return el;
 }
 let saveTimer = null;
@@ -392,16 +399,16 @@ function setIndicator(state, msg) {
   el.classList.remove('saving', 'error');
   if (state === 'saving') el.classList.add('saving');
   if (state === 'error')  el.classList.add('error');
-  el.querySelector('.si-msg').textContent = msg || 'SAVED';
+  el.querySelector('.si-msg').textContent = msg || 'Saved';
   el.classList.add('show');
   clearTimeout(saveTimer);
   if (state !== 'saving') {
     saveTimer = setTimeout(() => el.classList.remove('show'), 1800);
   }
 }
-StudioUI.markSaving = (msg) => setIndicator('saving', msg || 'SAVING…');
-StudioUI.markSaved  = (msg) => setIndicator('saved', msg || 'SAVED');
-StudioUI.markError  = (msg) => setIndicator('error', msg || 'SAVE FAILED');
+StudioUI.markSaving = (msg) => setIndicator('saving', msg || 'Saving…');
+StudioUI.markSaved  = (msg) => setIndicator('saved', msg || 'Saved');
+StudioUI.markError  = (msg) => setIndicator('error', msg || 'Save failed');
 
 // Field-saved tick (per textarea / input)
 StudioUI.flashFieldSaved = function (el) {
@@ -871,7 +878,7 @@ function buildBeatVisualizer() {
 
   const head = document.createElement('div');
   head.className = 'beat-visualizer-head';
-  head.innerHTML = '<span>15-BEAT EMOTIONAL CURVE</span><span style="opacity:.6;">CLICK A DOT TO JUMP</span>';
+  head.innerHTML = '<span>15-beat emotional curve</span><span style="opacity:.6;">Click a dot to jump</span>';
   wrap.appendChild(head);
 
   const W = 800, H = 220, padX = 40, padY = 30;
@@ -1016,24 +1023,14 @@ function refreshBeatFills() {
 // ============================================================
 // GLOSSARY POPOVER
 // ============================================================
-// Glossary terms inline. Each blueprint can define a global
-// window.STUDIO_GLOSSARY = { 'logline': 'def…', … }.
+// Glossary terms inline. A press on one opens the shared explainer
+// pop-up (ui/glossary-explainer.js), never a tooltip in the page.
 // ============================================================
-function ensurePopover() {
-  let p = document.getElementById('glossaryPopover');
-  if (p) return p;
-  p = document.createElement('div');
-  p.id = 'glossaryPopover';
-  p.className = 'glossary-popover';
-  p.setAttribute('role', 'tooltip');
-  document.body.appendChild(p);
-  return p;
-}
 /* The dictionaries are derived from src/data/glossary.json, so a term is
    added by editing the JSON and nothing else. The globals stay because
    the legacy pages set them directly; anything already there wins, so a
    page can still override an entry. */
-const GLOSSARY = {};   // term -> { def, tanglish, examples }
+const GLOSSARY = {};   // term -> true (the pop-up reads glossary.json itself)
 /** Every term and alias, longest first so "the lie" wins over "lie".
  *  Filled by loadGlossary(); empty until the JSON has arrived. */
 let GLOSSARY_KEYS = [];
@@ -1049,18 +1046,9 @@ function loadGlossary() {
   if (glossaryLoading) return glossaryLoading;
   glossaryLoading = import('../data/glossary.json').then((m) => {
     const glossaryData = m.default || m;
-    const films = glossaryData.films || {};
     for (const entry of glossaryData.terms || []) {
-      const record = {
-        def: entry.def,
-        tanglish: entry.tanglish,
-        examples: (entry.examples || []).map((ex) => ({
-          film: films[ex.film] || ex.film,
-          note: ex.note
-        }))
-      };
       for (const key of [entry.term, ...(entry.aliases || [])]) {
-        GLOSSARY[key.toLowerCase()] = record;
+        GLOSSARY[key.toLowerCase()] = true;
         /* `notag` terms (take, wrap, scene…) are everyday words: they live
            in the library's Film terminology and its search, but are not
            auto-wrapped in step prose (the popover would speckle it). */
@@ -1072,60 +1060,6 @@ function loadGlossary() {
   return glossaryLoading;
 }
 
-function showPopover(term, anchor) {
-  const key = term.toLowerCase();
-  const entry = GLOSSARY[key];
-  const legacyDef = (global.STUDIO_GLOSSARY || {})[key];
-  const def = legacyDef || (entry && entry.def) || term;
-  const tn = (global.STUDIO_GLOSSARY_TN || {})[key] || (entry && entry.tanglish);
-  const p = ensurePopover();
-  // Built as nodes, not an innerHTML string: the definitions are authored
-  // but the term can come from page text, and this popover is one of the
-  // places a stray "<" used to disappear silently.
-  p.replaceChildren();
-  const head = document.createElement('div');
-  head.className = 'gp-term';
-  head.textContent = term.toUpperCase();
-  p.append(head);
-  const body = document.createElement('div');
-  body.textContent = def;
-  p.append(body);
-  if (tn) {
-    const t = document.createElement('div');
-    t.className = 'gp-tn';
-    t.textContent = tn;
-    p.append(t);
-  }
-  if (entry && entry.examples.length) {
-    const wrap = document.createElement('div');
-    wrap.className = 'gp-examples';
-    for (const ex of entry.examples) {
-      const row = document.createElement('div');
-      row.className = 'gp-example';
-      const film = document.createElement('span');
-      film.className = 'gp-film';
-      film.textContent = ex.film;
-      row.append(film, document.createTextNode(' ' + ex.note));
-      wrap.append(row);
-    }
-    p.append(wrap);
-  }
-  const rect = anchor.getBoundingClientRect();
-  p.classList.add('show');
-  requestAnimationFrame(() => {
-    const pw = p.offsetWidth, ph = p.offsetHeight;
-    let left = rect.left + rect.width / 2 - pw / 2;
-    let top = rect.top - ph - 10;
-    left = Math.max(8, Math.min(window.innerWidth - pw - 8, left));
-    if (top < 8) top = rect.bottom + 10;
-    p.style.left = left + 'px';
-    p.style.top  = top + 'px';
-  });
-}
-function hidePopover() {
-  const p = document.getElementById('glossaryPopover');
-  if (p) p.classList.remove('show');
-}
 /* Mark up glossary terms in the step prose.
 
    The alternative was hand-tagging every occurrence across 35 steps of
@@ -1148,6 +1082,9 @@ function autoTagGlossary(root) {
         if (node.nodeType !== 3) continue;            // text nodes only
         const text = node.nodeValue;
         if (!text || text.length < 4) continue;
+        /* At most three terms per section (28 Oct 2026): a dotted
+           underline in every paragraph read as noise. */
+        if (used.size >= 3) break;
         for (const key of GLOSSARY_KEYS) {
           if (used.has(key)) continue;
           // Whole words only, where "word" means what the verifier's
@@ -1194,23 +1131,13 @@ function wireGlossaryNow() {
     if (el._glossaryWired) return;
     el._glossaryWired = true;
     const term = el.getAttribute('data-glossary') || el.textContent.trim();
-    el.addEventListener('mouseenter', () => showPopover(term, el));
-    el.addEventListener('mouseleave', hidePopover);
-    el.addEventListener('focus', () => showPopover(term, el));
-    el.addEventListener('blur', hidePopover);
-    /* role="button" promises Enter and Space, and a popover that opens
-       on focus has to close on Esc without moving focus (WCAG 1.4.13).
-       Enter/Space toggle it, so a keyboard reader who dismissed it can
-       bring it back without tabbing away and back again. */
+    el.setAttribute('aria-haspopup', 'dialog');
+    const open = () => import('./glossary-explainer.js').then((m) => m.openGlossaryTerm(term, el))
+      .catch((e) => console.warn('[glossary] explainer', e));
+    el.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); open(); });
+    /* role="button" promises Enter and Space. */
     el.addEventListener('keydown', (e) => {
-      const p = document.getElementById('glossaryPopover');
-      const open = !!(p && p.classList.contains('show'));
-      if (e.key === 'Escape' && open) {
-        e.preventDefault(); e.stopPropagation(); hidePopover();
-      } else if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        if (open) hidePopover(); else showPopover(term, el);
-      }
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
     });
   });
 }
@@ -1545,13 +1472,13 @@ function openMigrationModal(count) {
     overlay.className = 'cm-overlay show';
     overlay.innerHTML =
       '<div class="cm-card" style="max-width:440px;">' +
-        '<div class="cm-eyebrow">MIGRATION</div>' +
+        '<div class="cm-eyebrow">Migration</div>' +
         '<h2>' + count + ' project' + (count === 1 ? '' : 's') + ' found <em>locally.</em></h2>' +
         '<p class="cm-deck">Upload to your cloud account so you can edit them on any device, share with collaborators, and never lose work to a cleared browser.</p>' +
         '<p class="cm-hint">You can decide later — projects stay on this device until uploaded.</p>' +
         '<div class="cm-actions">' +
-          '<button class="cm-btn" id="mmNo">NOT NOW</button>' +
-          '<button class="cm-btn primary" id="mmYes">UPLOAD ALL</button>' +
+          '<button class="cm-btn" id="mmNo">Not now</button>' +
+          '<button class="cm-btn primary" id="mmYes">Upload all</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(overlay);
@@ -1573,6 +1500,14 @@ function openShareDialog(projectId) {
     openCloudAuthModal();
     return;
   }
+  /* Drive-only storage (schema §66): the film is a folder in the owner's
+     Drive, shared by e-mail through Drive permissions — no link tokens. */
+  if (StudioCloud.storageModeNow && StudioCloud.storageModeNow() === 'drive') {
+    Promise.all([StudioCloud.drive(), import('./drive-ui.js')])
+      .then(([D, UI]) => { if (D) UI.openDriveShareSheet(projectId, D, { returnTo: document.activeElement }); })
+      .catch((e) => StudioUI.toastError((e && e.message) || String(e)));
+    return;
+  }
   let m = document.getElementById('shareDialog');
   if (m) m.remove();
   m = document.createElement('div');
@@ -1583,7 +1518,7 @@ function openShareDialog(projectId) {
   m.innerHTML =
     '<div class="cm-card" style="max-width:560px;">' +
       '<button type="button" class="cm-close" aria-label="Close">×</button>' +
-      '<div class="cm-eyebrow">SHARING</div>' +
+      '<div class="cm-eyebrow">Sharing</div>' +
       '<h2>Share <em>this project.</em></h2>' +
       '<p class="cm-deck">Create a link with a role. Anyone who opens it (and signs in) gets that level of access. Revoke any link any time.</p>' +
       '<div class="share-row">' +
@@ -1593,12 +1528,12 @@ function openShareDialog(projectId) {
           '<option value="edit">EDIT · full edit access</option>' +
         '</select>' +
         '<select id="shExp" aria-label="Expiry">' +
-          '<option value="">NO EXPIRY</option>' +
+          '<option value="">No expiry</option>' +
           '<option value="1">1 DAY</option>' +
           '<option value="7" selected>7 DAYS</option>' +
           '<option value="30">30 DAYS</option>' +
         '</select>' +
-        '<button class="cm-btn primary" id="shGen">GENERATE LINK</button>' +
+        '<button class="cm-btn primary" id="shGen">Generate link</button>' +
       '</div>' +
       '<div class="share-result" id="shResult" hidden>' +
         '<input type="text" id="shUrl" readonly>' +
@@ -1834,7 +1769,7 @@ function autoInit() {
     if (toolbar) attachSignInPill(toolbar);
     upgradeThemeButton(toolbar);
     /* Two frames, for the same reason shell.js measures twice: once
-       for layout and once for Fraunces and JetBrains Mono to land.
+       for layout and once for Gabarito and Onest to land.
        A toolbar measured in the fallback face is a toolbar measured
        at the wrong height. */
 
@@ -1861,10 +1796,10 @@ if (document.readyState === 'loading') {
 // Debounced so a stream of input events shows ONE pill, not 50.
 let _saveDebounce = null;
 Store.subscribe('saved', () => {
-  StudioUI.markSaving('SAVING…');
+  StudioUI.markSaving('Saving…');
   clearTimeout(_saveDebounce);
   _saveDebounce = setTimeout(() => {
-    StudioUI.markSaved('SAVED');
+    StudioUI.markSaved('Saved');
   }, 450);
 });
 
@@ -1897,7 +1832,7 @@ function _storageAlarm(kind, msg, offerBackup) {
   StudioUI.toast(msg, {
     type: 'error',
     duration: 0,
-    action: offerBackup ? 'DOWNLOAD A BACKUP' : null,
+    action: offerBackup ? 'Download a backup' : null,
     onAction: offerBackup ? () => {
       import('../lib/backup.js').then((m) => m.downloadBackup()).catch(() => {});
     } : null

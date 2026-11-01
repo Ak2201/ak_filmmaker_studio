@@ -319,7 +319,13 @@ function deny(reason) {
      page, which says what the product is and links on to invite.html;
      everyone else (signed in but not a member, nobody checkable, a
      timeout) goes straight to the doorway. Both targets are EXEMPT. */
-  location.replace(reason === 'signedout' ? 'start.html' : 'invite.html');
+  /* OWNER, 28 Oct 2026: ONE page for somebody signed in who has not paid:
+     the purchase page (plans, the pass, a refund's announcement). The doorway
+     stays for the cases that are not "go and buy": a membership an
+     administrator revoked, no cloud in the build, a database without the
+     membership functions, and the gate giving up (timeout / unreachable), where invite.html says what happened. */
+  const BROKEN = /^(nocloud|timeout|unreachable|revoked|notdeployed)$/;
+  location.replace(reason === 'signedout' ? 'start.html' : BROKEN.test(reason) ? 'invite.html' : 'purchase.html');
 }
 
 /** Why the current state is or is not through. Exported for the

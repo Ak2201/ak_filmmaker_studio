@@ -203,7 +203,7 @@ export function billingAdminSection(section, st, { part } = {}) {
     field('blurb', 'One line', h('input', { id: `ba_${p.id}_blurb`, name: 'blurb', type: 'text', maxlength: 200, value: p.blurb || '' }));
     form.append(fields);
     form.append(h('div.ba-actions', {}, [
-      h('button.btn.primary', { type: 'submit', text: 'SAVE ' + p.name.toUpperCase() }),
+      h('button.btn.primary', { type: 'submit', text: 'Save ' + p.name }),
       S.saved === p.id ? h('span.ba-saved', { role: 'status', text: 'Saved.' }) : null
     ].filter(Boolean)));
     list.append(form);
@@ -232,7 +232,7 @@ export function billingAdminSection(section, st, { part } = {}) {
           h('td', { text: (c.valid_from ? 'from ' + fmtDate(c.valid_from) + ' ' : '') + (c.valid_until ? 'until ' + fmtDate(c.valid_until) : c.valid_from ? '' : 'no end') }),
           h('td', { text: !c.active ? 'inactive' : c.valid_until && Date.parse(c.valid_until) <= Date.now() ? 'expired' : Number.isInteger(c.max_uses) && c.uses >= c.max_uses ? 'used up' : 'live' }),
           h('td', { text: c.note || '' }),
-          h('td', {}, [h('button.btn', { type: 'button', 'data-ba-action': 'promo-toggle', 'data-code': c.code, 'data-active': c.active ? 'true' : 'false', text: c.active ? 'DEACTIVATE' : 'REACTIVATE' })])
+          h('td', {}, [h('button.btn', { type: 'button', 'data-ba-action': 'promo-toggle', 'data-code': c.code, 'data-active': c.active ? 'true' : 'false', text: c.active ? 'Deactivate' : 'Reactivate' })])
         ]));
       }
       table.append(tb);
@@ -262,7 +262,7 @@ export function billingAdminSection(section, st, { part } = {}) {
     pf.append(h('strong', { text: 'Add a code' }));
     const kind = h('select', { id: 'baPromoKind', name: 'kind', value: d.kind || 'percent' }, [h('option', { value: 'percent', text: '% off' }), h('option', { value: 'amount', text: '₹ off' })]);
     pf.append(h('div.ba-fields', {}, [
-      h('div.ba-field', {}, [h('label', { for: 'baPromoCode', text: 'Code' }), h('input', keep('code', { id: 'baPromoCode', type: 'text', maxlength: 32, autocapitalize: 'characters', spellcheck: 'false', placeholder: 'LAUNCH10', required: true }))]),
+      h('div.ba-field', {}, [h('label', { for: 'baPromoCode', text: 'Code' }), h('input', keep('code', { id: 'baPromoCode', type: 'text', maxlength: 32, autocapitalize: 'characters', spellcheck: 'false', placeholder: 'Launch10', required: true }))]),
       h('div.ba-field', {}, [h('label', { for: 'baPromoKind', text: 'Discount' }), kind]),
       h('div.ba-field', {}, [h('label', { for: 'baPromoValue', text: 'Value (% or ₹)' }), h('input', keep('value', { id: 'baPromoValue', type: 'text', inputmode: 'decimal', placeholder: '10', required: true }))]),
       h('div.ba-field', {}, [h('label', { for: 'baPromoMax', text: 'Max uses' }), h('input', keep('max_uses', { id: 'baPromoMax', type: 'number', min: 1, step: 1, placeholder: 'unlimited' }))]),
@@ -273,7 +273,7 @@ export function billingAdminSection(section, st, { part } = {}) {
     const paid = S.plans.filter((p) => p.id !== 'free');
     pf.append(h('div.ba-promo-plans', {}, [h('span.gt-meta', { text: 'Applies to:' }), ...paid.map((p) => h('label', {}, [
       h('input', { type: 'checkbox', name: 'plan', value: p.id, checked: true }), h('span', { text: p.name || planName(p.id) })]))]));
-    pf.append(h('div.ba-actions', {}, [h('button.btn', { type: 'submit', text: 'ADD CODE' }), S.promoMade ? h('span.ba-saved', { role: 'status', text: S.promoMade }) : null].filter(Boolean)));
+    pf.append(h('div.ba-actions', {}, [h('button.btn', { type: 'submit', text: 'Add code' }), S.promoMade ? h('span.ba-saved', { role: 'status', text: S.promoMade }) : null].filter(Boolean)));
     pf.append(h('p.gt-meta', { text: 'Counted when a payment confirms. Never below ₹1 — to give a plan away, grant it.' }));
     sec.append(pf);
   }
@@ -291,7 +291,7 @@ export function billingAdminSection(section, st, { part } = {}) {
     h('div.ba-field', {}, [h('label', { for: 'baGrantPlan', text: 'Plan' }), plan]),
     h('div.ba-field.is-wide', {}, [h('label', { for: 'baGrantNote', text: 'Why (bank transfer, comp…)' }), h('input', { id: 'baGrantNote', name: 'note', type: 'text', maxlength: 300 })])
   ]));
-  g.append(h('div.ba-actions', {}, [h('button.btn', { type: 'submit', text: 'GRANT' }), S.granted ? h('span.ba-saved', { role: 'status', text: S.granted }) : null].filter(Boolean)));
+  g.append(h('div.ba-actions', {}, [h('button.btn', { type: 'submit', text: 'Grant' }), S.granted ? h('span.ba-saved', { role: 'status', text: S.granted }) : null].filter(Boolean)));
   g.append(h('p.gt-meta', { text: 'For good (a grant has no end date); admits a non-member; recorded as a ₹0 payment.' }));
   sec.append(g);
   }
@@ -324,7 +324,7 @@ export function billingAdminSection(section, st, { part } = {}) {
         h('td', { text: p.status + (inflight ? ' · refund ' + inflight.status : '') + (p.note ? ' — ' + p.note : '') }),
         h('td', {}, [h('code.gt-codeval', { text: p.razorpay_payment_id || p.razorpay_order_id || '—' })]),
         S.refunds ? h('td', {}, [p.status === 'paid' && p.razorpay_payment_id && p.amount_paise > 0 && !inflight
-          ? h('button.btn.danger', { type: 'button', 'data-ba-action': 'refund', 'data-id': p.id, 'aria-label': `Refund ${p.email}, ${planName(p.plan_id)}, ${money(p.amount_paise, p)}`, text: 'REFUND' })
+          ? h('button.btn.danger', { type: 'button', 'data-ba-action': 'refund', 'data-id': p.id, 'aria-label': `Refund ${p.email}, ${planName(p.plan_id)}, ${money(p.amount_paise, p)}`, text: 'Refund' })
           : null].filter(Boolean)) : null
       ].filter(Boolean)));
     }
@@ -334,7 +334,7 @@ export function billingAdminSection(section, st, { part } = {}) {
   }
   // Refund requests (schema section 27), after the ledger they refer to
   if (want('payments') && S.rreqs) sec.append(refundBlock());
-  if (want('payments')) sec.append(h('button.btn.ad-refresh', { type: 'button', 'data-ba-action': 'reload', text: 'REFRESH' }));
+  if (want('payments')) sec.append(h('button.btn.ad-refresh', { type: 'button', 'data-ba-action': 'reload', text: 'Refresh' }));
   return sec;
 }
 
@@ -415,8 +415,8 @@ function refundBlock() {
       h('td', {}, [h('strong', { text: categoryText(r.category) }), r.message ? h('p.rf-msg', { text: r.message }) : null].filter(Boolean)),
       h('td', {}, [h('span.rf-pill.is-' + r.status, { text: r.status }), r.admin_note ? h('p.rf-msg', { text: r.admin_note }) : null].filter(Boolean)),
       h('td', {}, open ? [h('div.rf-btns', {}, [
-        h('button.btn.danger', { type: 'button', 'data-ba-action': 'rreq-approve', 'data-id': r.id, 'aria-label': `Approve and refund ${r.email}`, text: 'APPROVE' }),
-        r.status === 'pending' ? h('button.btn', { type: 'button', 'data-ba-action': 'rreq-decline', 'data-id': r.id, 'aria-label': `Decline the request from ${r.email}`, text: 'DECLINE' }) : null
+        h('button.btn.danger', { type: 'button', 'data-ba-action': 'rreq-approve', 'data-id': r.id, 'aria-label': `Approve and refund ${r.email}`, text: 'Approve' }),
+        r.status === 'pending' ? h('button.btn', { type: 'button', 'data-ba-action': 'rreq-decline', 'data-id': r.id, 'aria-label': `Decline the request from ${r.email}`, text: 'Decline' }) : null
       ].filter(Boolean))] : [])
     ]));
   }

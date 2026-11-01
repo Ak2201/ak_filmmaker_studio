@@ -1194,7 +1194,7 @@ delegate(document, 'click', '[data-action="sb-banner-remove"]', (e, el) => {
   if (addBtn) addBtn.focus();
   const said = `${DPR.bannerLabel(gone.kind)} removed from Day ${day}.`;
   announce(said);
-  toast(said, { action: 'UNDO', onAction: () => { DPR.addBanner(day, gone); render(); announce('Undone.'); } });
+  toast(said, { action: 'Undo', onAction: () => { DPR.addBanner(day, gone); render(); announce('Undone.'); } });
 });
 
 /* ---- moving a strip: the shared tail -------------------------
@@ -1227,7 +1227,7 @@ function afterMove(rec, opts = {}) {
   focusStrip(rec.sceneId, opts.focus);
   dropMoveToast();
   const mine = toast(said, {
-    action: 'UNDO',
+    action: 'Undo',
     onAction: () => {
       if (moveToast === mine) moveToast = null;
       if (!Locations.undoPlace(rec)) {
@@ -1481,7 +1481,7 @@ function undoableToast(said, before, after, bannerAction, undone) {
      and it is the board's latest undo: the next move, clear or re-schedule
      dismisses it through dropMoveToast(). */
   const mine = toast(said, {
-    action: 'UNDO',
+    action: 'Undo',
     onAction: () => {
       if (moveToast === mine) moveToast = null;
       const now = new Map(Scenes.listScenes().map((s) => [s.id, s]));

@@ -47,6 +47,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadMatrixModule } from './make-plan-features-sql.mjs';
+import { googleBtnHTML } from '../src/lib/google-button.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const SITE_FILE = 'src/data/marketing-site.json';
@@ -171,7 +172,24 @@ export function passBand(site) {
 </aside>`;
 }
 
+/** THE CLOSING BAND every public page ends on (28 Oct 2026): one dark
+ *  band, one heading, the action(s) under it, and an optional line. The
+ *  buttons are passed in, because what a page may offer differs (the pass
+ *  pair, or the neutral door and the plans). id="start" is the anchor the
+ *  pages already link to. */
+export function closeBand(h2, buttons, extra = '', hue = '', sub = '') {
+  return `<section class="mk-sec mk-close${hue ? ' ' + hue : ''}" id="start" aria-labelledby="mkMidH" data-surface="dark">
+  <div class="mk-wrap mk-center">
+    <h2 class="mk-h2" id="mkMidH">${esc(h2)}</h2>${sub ? `
+    <p class="mk-sub">${sub}</p>` : ''}
+    <div class="mk-cta-row mk-cta-row--center">${buttons}
+    </div>${extra}
+  </div>
+</section>`;
+}
+
 export function loadInputs({ fixture = false } = {}) {
+
   const site = readJson(SITE_FILE);
   const pagesRel = fixture ? FIXTURE_FILE : PAGES_FILE;
   if (!fs.existsSync(path.join(ROOT, pagesRel))) {
@@ -286,62 +304,68 @@ function header(site, pages, current) {
 ${s.ids.map((id) => `              <li>${toolLink(site, pages, id, current)}</li>`).join('\n')}
             </ul>
           </div>`).join('');
+  /* Guides, the switching guides and the trust page sit in the Product
+     menu's last column, so the bar itself holds four things: Product,
+     Pricing, and the one Continue with Google button (31 Oct 2026). */
+  const cur = (k) => (current === k ? ' aria-current="page"' : '');
+  const resources = `
+          <div class="mk-mega-col mk-mega-col--more">
+            <p class="mk-mega-h">${esc(u.resources)}</p>
+            <ul>
+              <li><a href="guides.html"${cur('guides')}>${sym('menu_book')}<span>${esc(u.guides)}</span></a></li>
+              <li><a href="guides.html#compare"${cur('compare')}>${sym('swap_horiz')}<span>${esc(u.compare)}</span></a></li>
+              <li><a href="trust.html"${cur('trust')}>${sym('lock')}<span>${esc(site.footer.trust)}</span></a></li>
+            </ul>
+          </div>`;
   return `<a class="mk-skip" href="#main">${esc(u.skip)}</a>
 <div class="mk-sentinel" id="mkSentinel" aria-hidden="true"></div>
-<header class="mk-top" id="mkTop">
+<header class="mk-top" id="mkTop" data-surface="dark">
   <div class="mk-top-in">
     <a class="mk-brand" href="start.html"><span class="mk-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
     <nav class="mk-nav" id="mkNav" aria-label="${esc(u.mainNav)}">
       <div class="mk-nav-item">
         <a class="mk-nav-link mk-nav-prod" id="mkProd" href="start.html#tools" aria-haspopup="true" aria-expanded="false" aria-controls="mkMega"><span>${esc(u.product)}</span>${sym('expand_more')}</a>
-        <div class="mk-mega" id="mkMega" role="group" aria-label="${esc(u.productNav)}">${groups}
+        <div class="mk-mega" id="mkMega" role="group" aria-label="${esc(u.productNav)}">${groups}${resources}
         </div>
       </div>
-      <a class="mk-nav-link mk-nav-pricing" href="pricing.html"${current === 'pricing' ? ' aria-current="page"' : ''}>${esc(u.pricing)}</a>
-      <a class="mk-nav-link" href="guides.html"${current === 'guides' ? ' aria-current="page"' : ''}>${esc(u.guides)}</a>
-      <a class="mk-nav-link" href="guides.html#compare"${current === 'compare' ? ' aria-current="page"' : ''}>${esc(u.compare)}</a>
-      <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">${esc(u.login)}</a>
+      <a class="mk-nav-link mk-nav-pricing" href="pricing.html"${cur('pricing')}>${esc(u.pricing)}</a>
     </nav>
     <div class="mk-top-end">
-      <a class="mk-nav-link mk-end-login" href="invite.html" data-start-auth="google">${esc(u.login)}</a>
-      <a class="mk-btn mk-btn--outline mk-btn--sm" href="invite.html" data-open-signup>${esc(u.signup)}</a>
+      ${googleBtnHTML({ cls: 'mk-btn mk-btn--primary mk-btn--sm mk-top-google', label: u.continue, open: true })}
       <a class="mk-burger" id="mkBurger" href="#mkFoot" aria-controls="mkNav" aria-expanded="false" aria-label="${esc(u.menu)}">${sym('menu')}</a>
     </div>
   </div>
 </header>`;
 }
 
-function footer(site, pages) {
+/* The footer: the brand and one line, then three columns (the tools, the
+   company, the reading), then the legal row. Dark, like the header. */
+function footer(site, pages, extraLegal = '') {
   const f = site.footer;
-  const cols = navOrder(site).map((s) => `
-      <div class="mk-foot-col ${s.hue}">
-        <p class="mk-foot-h">${esc(s.label)}</p>
+  const tools = navOrder(site).flatMap((s) => s.ids);
+  const a = (href, t) => `<a href="${href}">${esc(t)}</a>`;
+  const col = (h, items, cls = '') => `
+      <div class="mk-foot-col${cls}">
+        <p class="mk-foot-h">${esc(h)}</p>
         <ul>
-${s.ids.map((id) => `          <li><a href="${esc(pages[id].file)}">${esc(pages[id].label)}</a></li>`).join('\n')}
+${items.map((it) => `          <li>${it}</li>`).join('\n')}
         </ul>
-      </div>`).join('');
-  return `<footer class="mk-foot" id="mkFoot">
+      </div>`;
+  return `<footer class="mk-foot" id="mkFoot" data-surface="dark">
   <div class="mk-wrap">
-    <div class="mk-foot-grid">${cols}
-      <div class="mk-foot-col">
-        <p class="mk-foot-h">${esc(f.legalHeading)}</p>
-        <ul>
-          <li><a href="pricing.html">${esc(f.pricing)}</a></li>
-          <li><a href="about.html">${esc(f.about)}</a></li>
-          <li><a href="trust.html">${esc(f.trust)}</a></li>
-          <li><a href="guides.html">${esc(f.guides)}</a></li>
-          <li><a href="guides.html#compare">${esc(f.compare)}</a></li>
-          <li><a href="contact.html">${esc(f.contact)}</a></li>
-          <li><a href="privacy.html">${esc(f.privacy)}</a></li>
-          <li><a href="terms.html">${esc(f.terms)}</a></li>
-          <li><a href="refund.html">${esc(f.refund)}</a></li>
-          <li><a href="mailto:{{brand:email}}">${esc(f.support)}</a></li>
-        </ul>
-      </div>
+    <div class="mk-foot-grid">
+      <div class="mk-foot-brand">
+        <a class="mk-brand" href="start.html"><span class="mk-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
+        <p class="mk-foot-note">${esc(f.note)}</p>
+      </div>${col(f.productHeading, tools.map((id) => a(esc(pages[id].file), pages[id].label)), ' mk-foot-col--tools')}${col(f.legalHeading, [a('pricing.html', f.pricing), a('about.html', f.about), a('contact.html', f.contact), a('trust.html', f.trust)])}${col(f.readHeading, [a('guides.html', f.guides), a('guides.html#compare', f.compare), a('mailto:{{brand:email}}', f.support)])}
     </div>
     <div class="mk-foot-base">
-      <p class="mk-foot-note">${esc(f.note)}</p>
       <p class="mk-foot-copy">${f.copyright}</p>
+      <ul class="mk-foot-legal">
+        <li>${a('privacy.html', f.privacy)}</li>
+        <li>${a('terms.html', f.terms)}</li>
+        <li>${a('refund.html', f.refund)}</li>${extraLegal}
+      </ul>
     </div>
   </div>
 </footer>`;
@@ -358,10 +382,9 @@ function modal(site) {
     <button class="mk-modal-x" type="button" data-close aria-label="${esc(s.close)}">${sym('close')}</button>
     <h2 class="mk-modal-h" id="mkSignupTitle">${passOr(passSlots(s.headingPass), esc(s.heading))}</h2>
     <p class="mk-modal-offer" id="mkOffer" data-off-text="${esc(s.offerOff)}" data-open-text="${esc(s.offerIn)}">${passOr(passSlots(s.offerPass), esc(s.offer))}</p>
-    <a class="mk-btn mk-btn--primary mk-btn--block" id="mkGoogle" href="invite.html" data-start-auth="google" data-open-text="${esc(s.googleIn)}">${esc(s.google)}</a>
+    ${googleBtnHTML({ id: 'mkGoogle', cls: 'mk-btn mk-btn--primary mk-btn--block', label: s.google, attrs: 'data-open-text="' + esc(s.googleIn) + '"' })}
     <p class="mk-msg" id="mkMsg" role="status"></p>
     <p class="mk-modal-terms">${terms}</p>
-    <p class="mk-modal-have">${esc(s.have)} <a href="invite.html" data-start-auth="google" data-open-text="${esc(s.googleIn)}">${esc(s.haveLink)}</a></p>
   </div>
 </div>`;
 }
@@ -375,21 +398,20 @@ export function renderPage(id, { site, pages }) {
   const media = (name) => MEDIA_BASE + name;
   const still = (n) => media(id + '-' + n + '.webp');
 
-  /* The hero shows the tool working: the headline across the top, the
-     words and the one action under it, then the demo loop at full width,
-     large on the first screen (the page's one moving picture, played in
-     view by marketing.js). The player carries id="demo"; the label bar
-     does not link to it, since the bar sits below it. No eyebrow: the label bar is the
-     breadcrumb. */
-  const hero = `<section class="mk-hero mk-hero--media ${stage.hue}" id="top" aria-labelledby="mkH1">
-  <div class="mk-wrap mk-hero-in mk-hero-grid">
+  /* THE TEMPLATE (28 Oct 2026): one dark hero (the stage as a kicker, the
+     headline, one sentence, one action, then the tool working at full
+     width), three plain facts, How it works, three related tools, and
+     one closing action. The player carries id="demo". */
+  const hero = `<section class="mk-hero mk-hero--media ${stage.hue}" id="top" aria-labelledby="mkH1" data-surface="dark">
+  <div class="mk-wrap mk-hero-in">
+    <p class="mk-kicker">${sym(site.tools[id].icon)}<span>${esc(stage.label)}</span></p>
     <h1 class="mk-h1" id="mkH1">${esc(p.hero.h1)}</h1>
     <p class="mk-sub"${alt(p.hero, 'sub')}>${esc(p.hero.sub)}</p>
     <div class="mk-cta-row">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(u.getStarted)}</a>
+      ${googleBtnHTML({ cls: 'mk-btn mk-btn--primary mk-btn--lg', label: u.continue, open: true })}
     </div>
     <figure class="mk-player mk-hero-media" id="demo" aria-label="${esc(p.demo.h2)}">
-      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="${media(id + '.webp')}">
+      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="${media(id + '.webp')}" aria-label="${esc(p.demo.h2)}">
         <source src="${media(id + '.webm')}" type="video/webm">
         ${esc(u.demoFallback)}
       </video>
@@ -397,29 +419,19 @@ export function renderPage(id, { site, pages }) {
   </div>
 </section>`;
 
-  const labelBar = `<div class="mk-label ${stage.hue}">
-  <div class="mk-wrap mk-label-in">
-    <p class="mk-label-path">${sym(site.tools[id].icon)}${stage.label === p.label ? '' : `<span>${esc(stage.label)}</span><span class="mk-label-sep" aria-hidden="true">/</span>`}<strong>${esc(p.label)}</strong></p>
-    <nav class="mk-label-nav" aria-label="${esc(u.labelNav)}">
-      <a href="#how">${esc(u.labelHow)}</a>
-      <a href="pricing.html">${esc(u.pricing)}</a>
-    </nav>
-  </div>
-</div>`;
-
-  const value = `<section class="mk-sec mk-band-b" id="value" aria-labelledby="mkValueH">
-  <div class="mk-wrap mk-split">
-    <div class="mk-split-text">
+  const value = `<section class="mk-sec mk-band-a" id="value" aria-labelledby="mkValueH">
+  <div class="mk-wrap grid gap-10 lg:grid-cols-12 lg:gap-16">
+    <div class="mk-intro lg:col-span-5">
       <h2 class="mk-h2" id="mkValueH">${esc(p.value.h2)}</h2>
 ${p.value.body.map((t, i) => `      <p class="mk-body"${alt(p.value, 'body', i)}>${esc(t)}</p>`).join('\n')}
     </div>
-    <ul class="mk-facts mk-facts--side" id="facts" aria-label="${esc(u.factsHeading)}">
+    <ul class="mk-facts grid gap-4 sm:grid-cols-3 lg:col-span-7 lg:grid-cols-1" id="facts" aria-label="${esc(u.factsHeading)}">
 ${p.facts.map((f) => `      <li><b class="mk-fact-n"${alt(f, 'value')}>${esc(f.value)}</b><span class="mk-fact-l"${alt(f, 'label')}>${esc(f.label)}</span></li>`).join('\n')}
     </ul>
   </div>
 </section>`;
 
-  const how = `<section class="mk-sec mk-band-c" id="how" aria-labelledby="mkHowH">
+  const how = `<section class="mk-sec mk-band-b" id="how" aria-labelledby="mkHowH">
   <div class="mk-wrap">
     <h2 class="mk-h2" id="mkHowH">${esc(u.howHeading)}</h2>
     <div class="mk-how ${stage.hue}" data-steps="${p.steps.length}">
@@ -436,7 +448,7 @@ ${p.steps.map((s, i) => `        <figure class="mk-still${i === 0 ? ' is-on' : '
   const related = `<section class="mk-sec mk-band-a" id="related" aria-labelledby="mkRelH">
   <div class="mk-wrap">
     <h2 class="mk-h2" id="mkRelH">${esc(u.relatedHeading)}</h2>
-    <div class="mk-cards">
+    <div class="mk-cards grid gap-5 md:grid-cols-3">
 ${p.related.map((rid) => {
     const rs = site.stages.find((s) => s.id === pages[rid].stage);
     return `      <article class="mk-card ${rs.hue}">
@@ -450,30 +462,10 @@ ${p.related.map((rid) => {
   </div>
 </section>`;
 
-  const tools = `<section class="mk-sec mk-band-b" id="tools" aria-labelledby="mkToolsH">
-  <div class="mk-wrap">
-    <h2 class="mk-h2" id="mkToolsH">${esc(u.toolsHeading)}</h2>
-    <div class="mk-stages">
-${navOrder(site).map((s) => `      <div class="mk-stage ${s.hue}">
-        <p class="mk-stage-h"><span class="mk-dot" aria-hidden="true"></span>${esc(s.label)}</p>
-        <ul>
-${s.ids.map((tid) => `          <li>${toolLink(site, pages, tid, id)}</li>`).join('\n')}
-        </ul>
-      </div>`).join('\n')}
-    </div>
-  </div>
-</section>`;
+  const mid = closeBand(p.midCta.h2, `
+      ${googleBtnHTML({ cls: 'mk-btn mk-btn--primary mk-btn--lg', label: u.continue, open: true, attrs: 'data-pass-off' })}
+      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(site.pass.ctaFull)}</a>`, '', stage.hue);
 
-  const mid = `<section class="mk-sec mk-band-c mk-mid ${stage.hue}" id="start" aria-labelledby="mkMidH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkMidH">${esc(p.midCta.h2)}</h2>
-    <div class="mk-cta-row mk-cta-row--center">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-off>${esc(u.getStarted)}</a>
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(site.pass.ctaFull)}</a>
-      <a class="mk-link mk-link--lg" href="pricing.html">${esc(u.viewPricing)}${sym('arrow_forward')}</a>
-    </div>
-  </div>
-</section>`;
 
   return `<!DOCTYPE html>
 <html lang="en" data-volume="studio" data-fms-marketing>
@@ -497,7 +489,7 @@ ${s.ids.map((tid) => `          <li>${toolLink(site, pages, tid, id)}</li>`).joi
 <meta name="twitter:image" content="https://{{brand:host}}/og.png">
 <meta name="twitter:image:alt" content="${OG_ALT}">
 <meta property="og:locale" content="en_IN">
-<meta name="theme-color" content="#0d0e13">
+<meta name="theme-color" content="#0d0c11">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -514,11 +506,9 @@ ${header(site, pages, id)}
 <main id="main" class="mk ${stage.hue}">
 ${passBand(site)}
 ${hero}
-${labelBar}
 ${value}
 ${how}
 ${related}
-${tools}
 ${mid}
 </main>
 ${footer(site, pages)}
@@ -569,7 +559,7 @@ export function renderPricing({ site, pages, compare, faq }) {
   const stamp = (kind, id) => '{{fms:' + kind + '.' + id + '}}';
   const buyText = (id) => esc(c.plans.buy).replace('{name}', stamp('plan', id));
 
-  const hero = `<section class="mk-hero pr-hero" id="top" aria-labelledby="mkH1">
+  const hero = `<section class="mk-hero pr-hero" id="top" aria-labelledby="mkH1" data-surface="dark">
   <div class="mk-wrap mk-hero-in">
     <h1 class="mk-h1" id="mkH1">${esc(c.hero.h1)}</h1>
     <p class="mk-sub">${priceSpans(chargeVariants(esc(c.hero.sub), c.hero.subUsd && esc(c.hero.subUsd)))}</p>
@@ -578,7 +568,11 @@ export function renderPricing({ site, pages, compare, faq }) {
 
   const card = (id, i) => {
     const pick = id === c.plans.pick;
-    const buy = `<a class="mk-btn mk-btn--primary mk-btn--block pr-buy" href="purchase.html?plan=${id}" data-start-buy="${id}" data-plan="${id}" data-off-text="${esc(c.plans.buySignIn)}" data-open-text="${buyText(id)}">${buyText(id)}</a>`;
+    /* ONE filled button in the row: the recommended plan's (owner,
+       28 Oct 2026: promote Intermediate). The others are outlined. The
+       li order stays the matrix order; pricing.css moves the pick first
+       on a phone. */
+    const buy = `<a class="mk-btn ${pick ? 'mk-btn--primary' : 'mk-btn--outline'} mk-btn--block pr-buy" href="purchase.html?plan=${id}" data-start-buy="${id}" data-plan="${id}" data-off-text="${esc(c.plans.buySignIn)}" data-open-text="${buyText(id)}">${buyText(id)}</a>`;
     return `      <li class="pr-tier${pick ? ' pr-pick' : ''}" data-tier="${id}">${pick ? `<p class="pr-pick-flag">${esc(c.plans.pickFlag)}</p>` : ''}<span class="pr-tier-tag">${esc(c.plans.tags[id])}</span><strong class="pr-tier-name">${stamp('plan', id)}</strong><p class="pr-tier-line">${stamp('tier.line', id)}</p><b class="pr-price">${priceSpans(stamp('price', id))}</b><span class="pr-once">${esc(c.plans.once)}<span class="pr-keep"> &middot; ${priceSpans(esc(c.plans.keep).replace('{{day}}', '{{fms:price.' + id + '.day}}'))}</span></span><span class="pr-charge" data-price-charge="${id}" hidden></span>${termsChip('year', 'pr-charge pr-terms', false)}<ul class="pr-inc">${stamp('tier.list', id)}</ul>${buy}<a class="pr-alt" href="invite.html" data-start-auth="google" data-pass-only hidden data-open-text="${esc(c.plans.altOpen)}">${passSlots(c.plans.alt)}</a></li>`;
   };
 
@@ -626,12 +620,15 @@ ${g.keys.map((k) => { const r = rowOf(Array.isArray(k) ? k[0] : k); return `    
   <div class="mk-wrap">
     <h2 class="mk-h2" id="prCompH">${esc(c.compare.h)}</h2>
     <p class="mk-body pr-lede">${esc(c.compare.lede)}</p>
+    <details class="pr-more" id="compare-table">
+      <summary class="pr-more-s"><span>${esc(c.compare.toggle)}</span>${sym('expand_more')}</summary>
     <table class="pr-table">
       <caption class="mk-vh">${esc(c.compare.caption)}</caption>
       <colgroup><col class="pr-col-what">${PAID.map(() => '<col>').join('')}</colgroup>
       <thead><tr><th scope="col">${esc(c.compare.what)}</th>${PAID.map((p) => `<th scope="col"><span class="pr-th-name">${stamp('plan', p)}</span><span class="pr-th-price">${priceSpans(stamp('price', p))}</span></th>`).join('')}</tr></thead>
 ${body}
     </table>
+    </details>
   </div>
 </section>`;
 
@@ -654,12 +651,8 @@ ${g.items.map((it) => { const t = it.pass ? ' data-pass-faq' : (it.modes ? ' dat
   </div>
 </section>`;
 
-  const close = `<section class="mk-sec mk-band-c mk-mid pr-close" id="start" aria-labelledby="mkMidH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkMidH">${esc(c.close.h)}</h2>
-    <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup>${esc(c.close.cta)}</a>
-  </div>
-</section>`;
+  const close = closeBand(c.close.h, `
+      ${googleBtnHTML({ cls: 'mk-btn mk-btn--primary mk-btn--lg', label: c.close.cta, open: true })}`);
 
   return `<!DOCTYPE html>
 <html lang="en" data-volume="studio" data-fms-marketing>
@@ -682,7 +675,7 @@ ${g.items.map((it) => { const t = it.pass ? ' data-pass-faq' : (it.modes ? ' dat
 <meta name="twitter:image" content="https://{{brand:host}}/og.png">
 <meta name="twitter:image:alt" content="${OG_ALT}">
 <meta property="og:locale" content="en_IN">
-<meta name="theme-color" content="#0d0e13">
+<meta name="theme-color" content="#0d0c11">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -726,168 +719,312 @@ export function validateHome(home, { site, pages }) {
   const w = (m) => bad.push('marketing-home.json: ' + m);
   if (!home.hero || !home.hero.h1 || !home.hero.sub || !home.hero.note || !home.hero.cta || !home.hero.mediaLabel) w('hero needs h1, sub, note, cta and mediaLabel');
   if (!home.meta || !home.meta.title || !home.meta.description) w('meta needs title and description');
-  if (!Array.isArray(home.stages) || home.stages.length !== 5) w('five stages');
+  /* THE HOME PAGE (28 Oct 2026): a hero, four stage cards, three points
+     on keeping your work, a plans teaser and one closing action. */
+  if (!home.stagesH2) w('stagesH2 missing');
+  if (!Array.isArray(home.stages) || home.stages.length !== 4) w('four stage cards');
   else home.stages.forEach((s, i) => {
-    const last = i === 4;
     if (!s.id || !s.sym || !s.h2 || !s.body) w('stage ' + (i + 1) + ' needs id, sym, h2 and body');
-    if (last) { if (s.cta || s.video) w('the fifth stage has no CTA and no video'); }
-    else {
-      if (!s.cta || !pages[s.cta.page] || !s.cta.label) w('stage ' + (i + 1) + ': cta.page must be a product page id');
-      /* A stage's clip is a product page's, or one of the recorder's
-         cross-page clips (record-marketing-media.mjs SPACES.chain: the
-         scene chain end to end), which no single product page owns. */
-      const HOME_CLIPS = ['chain'];
-      if (!s.video || !(site.stepCounts[s.video] || HOME_CLIPS.includes(s.video))) w('stage ' + (i + 1) + ': video must be a product page id or one of ' + HOME_CLIPS.join(', '));
-      if (!site.stages.some((g) => g.id === s.id)) w('stage ' + (i + 1) + ': id ' + s.id + ' is not a stage in marketing-site.json');
-    }
+    if (!s.cta || !pages[s.cta.page] || !s.cta.label) w('stage ' + (i + 1) + ': cta.page must be a product page id');
+    if (!site.stages.some((g) => g.id === s.id)) w('stage ' + (i + 1) + ': id ' + s.id + ' is not a stage in marketing-site.json');
   });
-  if (!Array.isArray(home.facts) || home.facts.length !== 4) w('exactly four facts');
-  if (!home.panel || !Array.isArray(home.panel.items) || home.panel.items.length !== 3) w('panel needs three items');
-  if (!home.pricing || !home.pricing.pill || !home.pricingTeaser) w('the closing needs pricingTeaser and pricing.pill');
+  if (!home.own || !home.own.h2 || !Array.isArray(home.own.items) || home.own.items.length !== 3 || home.own.items.some((i) => !i.sym || !i.title || !i.text)) w('own needs h2 and three {sym, title, text}');
+  if (!home.plans || !home.plans.h2 || !home.plans.pill || !/\{\{fms:price\.from\.day\}\}/.test(home.plans.teaser || '')) w('plans needs h2, pill and a teaser naming {{fms:price.from.day}}');
   if (!home.optOut || !home.optOut.label || !home.optOut.done) w('optOut needs label and done (privacy.html promises the control)');
   if (!home.closing || !home.closing.h2 || !home.closing.sub || !home.closing.cta) w('closing needs h2, sub and cta');
-  /* the pass line under the hero: no figure is typed, marketing.js fills
-     its slots from trial_offer().pass and shows it only while it is open */
+  /* the pass line in the plans teaser: no figure is typed, marketing.js
+     fills its slots from trial_offer().pass and shows it only while it is open */
   const ps = home.pass;
   if (!ps || !ps.note || !ps.off || !ps.open || !home.hero.ctaPass) w('pass needs note, off and open, and hero.ctaPass');
   else if (/\d/.test(ps.note + ps.off + home.hero.ctaPass)) w('the pass copy types a number; every figure comes from the server');
   else if (!/\{price\}/.test(home.hero.ctaPass)) w('hero.ctaPass names the price as {price}');
-  const ex = home.exports;
-  if (!ex || !ex.h2 || !ex.body || !Array.isArray(ex.items) || ex.items.length !== 3 || ex.items.some((i) => !i.sym || !i.title || !i.text)) w('exports needs h2, body and three {sym, title, text}');
-  const an = home.answers;
-  if (!an || !an.h2 || !Array.isArray(an.items) || an.items.length !== 4 || an.items.some((i) => !i.sym || !i.q || !(i.a || i.aHtml))) w('answers needs h2 and four {sym, q, a|aHtml}');
-  if (!an || !an.contact || !an.contact.before || !an.contact.after) w('answers.contact needs before and after');
+  /* THE OFFER (30 Oct 2026): the hero card, the slide-in and the closing
+     band. Copy only: every figure is a runtime slot (start.js), so a digit
+     anywhere in this block is a typed figure and fails the build. */
+  const o = home.offer;
+  const OFFER_KEYS = ['passTag', 'passName', 'passWhat', 'passIncl', 'foundingTag', 'foundingName', 'foundingIncl', 'unitYear', 'dayLead', 'dayTail',
+    'wasLabel', 'passEnds', 'until', 'untilSeats', 'ctaPass', 'ctaPassIn', 'ctaFounding', 'ctaFoundingIn', 'trust', 'refund', 'dockLabel', 'close', 'dockGoogle', 'fallback'];
+  if (!o) w('offer block missing');
+  else {
+    const miss = OFFER_KEYS.filter((k) => typeof o[k] !== 'string' || !o[k].trim());
+    if (miss.length) w('offer needs ' + miss.join(', '));
+    if (OFFER_KEYS.some((k) => /\d|₹|\$/.test(o[k] || ''))) w('the offer copy types a figure; every figure comes from the server at runtime');
+    if (!/\{length\}/.test(o.passWhat || '')) w('offer.passWhat names the length as {length}');
+    if (/free trial|risk-free|money-back|hurry|only \w+ left/i.test(OFFER_KEYS.map((k) => o[k] || '').join(' '))) w('the offer copy makes a claim it may not (free trial, risk-free, money-back, urgency words)');
+  }
+  const v = home.value;
+  if (!v || !v.h2 || !v.sub || !v.later || !v.also || !v.compare) w('value needs h2, sub, later, also and compare');
+  else if (/\d/.test(v.h2 + v.sub + v.later + v.also + v.compare)) w('the value stack types a number; its counts are derived');
+  const f = home.faq;
+  if (!f || !f.h2 || !Array.isArray(f.items) || !f.items.length) w('faq needs h2 and items');
+  else {
+    if (f.items.length > 6) w('faq: at most six questions');
+    f.items.forEach((it, i) => { if (!it.id || !it.q || !it.a) w('faq item ' + (i + 1) + ' needs id, q and a'); });
+    if (f.items.filter((it) => it.terms).length !== 1) w('faq: exactly one item carries the year-end offer-terms slot (terms: true)');
+    if (f.items.some((it) => /renews|nothing renews|one payment|cancel anytime/i.test(it.a + (it.trial || '')))) w('faq: renewal wording belongs to offer-terms.js only');
+  }
+  if (!home.closeOffer || !home.closeOffer.h2 || !home.closeOffer.sub) w('closeOffer needs h2 and sub');
   return bad;
 }
+
+/* ---- THE OFFER SURFACES (30 Oct 2026) -----------------------------------
+   One offer, three places: the hero card (#offerCard), the slide-in /
+   phone bar (#offerDock) and the closing band (#offerClose). All three are
+   HIDDEN in the markup with EMPTY runtime slots and no digit: start.js
+   picks the state (src/lib/start-model.js offerFrom) — the launch pass
+   while trial_offer().pass is open, else the founding price from
+   price_notice(), else nothing — and fills every slot from the server.
+   A crawler, verify and a reader with scripts off see the hero's plain
+   door and the plans, never an offer the server has not made.
+
+   The pass's own pieces are [data-pass-only] as well as [data-o-for="pass"],
+   so marketing.js's pass switch and test:marketing's pass rules (no figure,
+   "whole studio" only inside a pass element) cover them like every other
+   pass element. What each offer includes is derived here from
+   plan-matrix.json's card picks: the founding offer is OFFER_PLAN.founding,
+   the pass is the plan it unlocks. */
+export const OFFER_PLAN = { founding: 'indie', pass: 'pro' };
+const planLabel = (id) => (M.MATRIX.plans && M.MATRIX.plans[id]) || id;
+const planBelow = (id) => M.PAID[M.PAID.indexOf(id) - 1] || '';
+/** The offer's three bullets: what it adds, from the matrix `card` picks. */
+export function offerIncl(planId) {
+  const own = M.addedBy(planId);
+  return ((M.MATRIX.card && M.MATRIX.card[planId]) || []).slice(0, 3)
+    .map((k) => own.find((r) => r.key === k)).filter(Boolean).map((r) => M.labelOf(r));
+}
+const NAV = readJson('src/data/navigation.json');
+/** The value stack's groups for a plan: each stage of navigation.json with
+ *  the modules the plan includes (a module no plan sells has `plans: []`
+ *  in the matrix and so is never included), and, for a stage the plan
+ *  leaves out, the plan that brings it. */
+export function valueGroups(planId) {
+  const row = (id) => M.MATRIX.features.find((r) => r.key === id && r.kind === 'module');
+  return (NAV.phases || []).map((ph) => {
+    const mods = (ph.modules || []).filter((m) => { const r = row(m.id); return r && M.planHas(r, planId); }).map((m) => m.label);
+    let later = '', laterMods = [];
+    if (!mods.length) {
+      const next = M.PAID.slice(M.PAID.indexOf(planId) + 1).find((p) => (ph.modules || []).some((m) => { const r = row(m.id); return r && M.planHas(r, p); }));
+      if (next) { later = next; laterMods = (ph.modules || []).filter((m) => { const r = row(m.id); return r && M.planHas(r, next); }).map((m) => m.label); }
+    }
+    return { id: ph.id, label: ph.label, sym: ph.sym || '', mods, later, laterMods };
+  });
+}
+/** The capabilities a plan includes that are not a module (exports, Drive…). */
+export const valueAlso = (planId) => M.MATRIX.features.filter((r) => r.kind === 'capability' && !r.inverted && M.planHas(r, planId)).map((r) => M.labelOf(r));
+
+function offerSlots(o, { surface }) {
+  const lower = (id) => esc(planLabel(planBelow(id)));
+  const incl = (kind, id, text) => `<ul class="st-offer-incl" data-o-for="${kind}"${kind === 'pass' ? ' data-pass-only' : ''} hidden><li>${esc(text).replace('{plan}', lower(id))}</li>${offerIncl(id).map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`;
+  const name = `<span data-o-for="pass" data-pass-only hidden>${esc(o.passName)}</span><span data-o-for="founding" hidden>${esc(o.foundingName).replace('{plan}', esc(planLabel(OFFER_PLAN.founding)))}</span>`;
+  const price = `<p class="st-offer-price"><span class="st-offer-amt" data-o-price></span> <s class="st-offer-was" data-o-was hidden><span class="mk-vh">${esc(o.wasLabel)} </span><span data-o-was-amt></span></s> <span class="st-offer-unit" data-o-unit></span></p>`;
+  const timer = `<p class="st-offer-timer" data-o-timer hidden><span data-o-timer-lead></span> <span class="st-clock" data-o-clock aria-hidden="true"></span><span class="mk-vh" role="timer" aria-live="off" data-o-spoken></span></p>`;
+  const cta = `<a class="mk-btn mk-btn--primary mk-btn--lg st-offer-cta" href="purchase.html?buy=${OFFER_PLAN.founding}" data-start-buy="${OFFER_PLAN.founding}" data-offer-cta>${esc(o.ctaFounding)}</a>`;
+  if (surface === 'dock') {
+    return `<div class="st-dock-in">
+    <p class="st-dock-what"><b class="st-dock-name">${name}</b> <span class="st-offer-amt" data-o-price></span> <span class="st-offer-unit" data-o-unit></span></p>
+    <p class="st-offer-timer st-dock-timer" data-o-timer hidden><span class="st-clock" data-o-clock aria-hidden="true"></span><span class="mk-vh" role="timer" aria-live="off" data-o-spoken></span></p>
+    <a class="mk-btn mk-btn--primary mk-btn--sm st-offer-cta" href="purchase.html?buy=${OFFER_PLAN.founding}" data-start-buy="${OFFER_PLAN.founding}" data-offer-cta>${esc(o.ctaFoundingIn)}</a>
+    <p class="mk-small st-dock-google" data-o-google hidden>${esc(o.dockGoogle)}</p>
+    <button class="st-dock-close" type="button" data-offer-close aria-label="${esc(o.close)}"><span aria-hidden="true">✕</span></button>
+  </div>`;
+  }
+  const tag = `<p class="st-offer-tag"><span data-o-for="pass" data-pass-only hidden>${esc(o.passTag)}</span><span data-o-for="founding" hidden>${esc(o.foundingTag)}</span></p>`;
+  const what = `<p class="st-offer-what" data-o-for="pass" data-pass-only hidden>${passSlots(o.passWhat)}</p>`;
+  const terms = `<p class="st-offer-terms mk-small"><span data-o-for="pass" data-pass-only hidden>${termsSlot('pass', true)}</span><span data-o-for="founding" hidden>${termsSlot('year', true)}</span></p>`;
+  const trust = `<p class="mk-small st-offer-trust">${esc(o.trust)} <a class="mk-link mk-link--inline" href="refund.html">${esc(o.refund)}</a></p>`;
+  const day = `<p class="st-offer-day" data-o-day hidden></p>`;
+  const usd = `<p class="mk-small st-offer-usd" data-o-usd hidden></p>`;
+  const seats = `<p class="st-offer-seats" data-o-seats hidden></p>`;
+  if (surface === 'close') {
+    return `${tag}
+      <p class="st-offer-name">${name}</p>
+      ${price}
+      ${day}
+      ${usd}
+      ${timer}
+      ${seats}
+      ${cta}
+      ${trust}`;
+  }
+  return `${tag}
+    <h2 class="st-offer-name" id="stOfferName">${name}</h2>
+    ${what}
+    ${price}
+    ${day}
+    ${usd}
+    ${incl('founding', OFFER_PLAN.founding, o.foundingIncl)}
+    ${incl('pass', OFFER_PLAN.pass, o.passIncl)}
+    ${timer}
+    ${seats}
+    ${terms}
+    ${cta}
+    ${trust}`;
+}
+/* The words start.js swaps in by state and sign-in, as attributes on each
+   surface (never typed into start.js). */
+const offerData = (o) => ` data-offer-state="none" data-pass-tag="${esc(o.passTag)}" data-unit-year="${esc(o.unitYear)}" data-day-lead="${esc(o.dayLead)}" data-day-tail="${esc(o.dayTail)}" data-pass-ends="${esc(o.passEnds)}" data-until="${esc(o.until)}" data-until-seats="${esc(o.untilSeats)}" data-cta-pass="${esc(o.ctaPass)}" data-cta-pass-in="${esc(o.ctaPassIn)}" data-cta-founding="${esc(o.ctaFounding)}" data-cta-founding-in="${esc(o.ctaFoundingIn)}"`;
+
+/* The stage card's picture: its product page's own poster frame. */
+export const HOME_HERO_CLIP = 'chain';
 
 export function renderHome({ site, pages, home }) {
   const u = site.ui;
   const media = (name) => MEDIA_BASE + name;
   const hue = (id) => (site.stages.find((s) => s.id === id) || {}).hue || '';
 
-  /* The first screen shows the product: the sample feature's scene list,
-     large, beside the words (breakdown.* is the one loop the explorer
-     below does not already use). */
-  const hero = `<section class="mk-hero st-hero" id="top" aria-labelledby="mkH1">
-  <div class="mk-wrap mk-hero-in st-hero-grid">
-    <div class="st-hero-copy">
-      <h1 class="mk-h1" id="mkH1">${esc(home.hero.h1)}</h1>
+  /* The first screen (30 Oct 2026, the conversion pass): the pain-led
+     line, one sentence and, beside them, the OFFER CARD — the launch pass
+     while it is open, else the founding price, else nothing (start.js).
+     With no offer the hero keeps its plain door ([data-o-fallback]), so it
+     always has exactly one primary action. Each word of the h1 is its own
+     .st-w span (29 Oct 2026) so start.css can rise them in one after
+     another; with no CSS the spans are plain inline text. The product
+     video moved down into the scroll story (#tools). */
+  const o = home.offer;
+  const hero = `<section class="mk-hero st-hero" id="top" aria-labelledby="mkH1" data-surface="dark">
+  <div class="mk-wrap mk-hero-in st-hero-in">
+    <div class="st-hero-text">
+      <h1 class="mk-h1" id="mkH1">${home.hero.h1.split(' ').map((w) => `<span class="st-w">${esc(w)}</span>`).join(' ')}</h1>
       <p class="mk-sub"${alt(home.hero, 'sub')}>${priceSpans(esc(home.hero.sub))}</p>
       <div class="mk-cta-row">
-        <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-off>${esc(home.hero.cta)}</a>
-        <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(home.hero.ctaPass)}</a>
+        ${googleBtnHTML({ cls: 'mk-btn mk-btn--primary mk-btn--lg', label: o.fallback, open: true, attrs: 'data-o-fallback' })}
+        <a class="mk-link" href="#tools">${esc(home.hero.sample)}${sym('arrow_downward')}</a>
       </div>
-      <p class="st-note" data-off-text="${esc(site.signup.offerOff)}" data-open-text="${esc(home.pass.open)}">${passOr(passSlots(home.pass.note), esc(home.pass.off))}</p>
-      <p class="st-note">${esc(home.hero.note)}</p>
     </div>
-    <figure class="mk-player st-hero-media" aria-label="${esc(home.hero.mediaLabel)}">
-      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="${media('breakdown.webp')}">
-        <source src="${media('breakdown.webm')}" type="video/webm">
+    <article class="st-offer" id="offerCard" aria-labelledby="stOfferName"${offerData(o)} hidden>
+    ${offerSlots(o, { surface: 'card' })}
+    </article>
+  </div>
+</section>`;
+
+  /* The product video, in the scroll story's first screen. Keeps the
+     st-hero-media class start-motion.js scales on scroll. */
+  const video = `    <figure class="mk-player st-hero-media st-tools-media" aria-label="${esc(home.hero.mediaLabel)}">
+      <video controls muted loop playsinline preload="none" width="1280" height="720" poster="${media(HOME_HERO_CLIP + '.webp')}" aria-label="${esc(home.hero.mediaLabel)}">
+        <source src="${media(HOME_HERO_CLIP + '.webm')}" type="video/webm">
         ${esc(u.demoFallback)}
       </video>
     </figure>
-  </div>
-</section>`;
+    <p class="mk-caption st-tools-caption">${esc(home.hero.note)}</p>`;
 
-  const facts = `<section class="st-facts-band" id="facts" aria-label="${esc(home.factsLabel)}">
-  <div class="mk-wrap">
-    <ul class="st-facts">
-${home.facts.map((f) => `      <li><b class="st-fact-n"${alt(f, 'value')}>${esc(f.value)}</b><span class="st-fact-l"${alt(f, 'label')}>${esc(f.label)}</span></li>`).join('\n')}
-    </ul>
-  </div>
-</section>`;
-
-  const row = (s, i) => {
+  const card = (s) => {
     const h = hue(s.id);
-    const copy = `    <div class="st-copy">
-      <span class="st-glyph">${sym(s.sym)}</span>
-      <h2 class="mk-h2" id="st-h-${esc(s.id)}">${esc(s.h2)}</h2>
-      <p class="mk-body"${alt(s, 'body')}>${esc(s.body)}</p>${s.cta ? `
-      <a class="mk-link" href="${esc(pages[s.cta.page].file)}">${esc(s.cta.label)}${sym('arrow_forward')}</a>` : ''}
-    </div>`;
-    let mediaHtml;
-    if (s.video) {
-      mediaHtml = `    <div class="st-media">
-      <div class="mk-player st-player">
-        <video controls muted loop playsinline preload="none" width="1280" height="720" poster="${media(s.video + '.webp')}">
-          <source src="${media(s.video + '.webm')}" type="video/webm">
-          ${esc(u.demoFallback)}
-        </video>
-      </div>
-    </div>`;
-    } else {
-      mediaHtml = `    <div class="st-media">
-      <div class="st-panel" role="group" aria-label="${esc(home.panel.label)}">
-        <ul>
-${home.panel.items.map((it) => `          <li>${sym(it.sym)}<div><b>${esc(it.title)}</b><span>${esc(it.text)}</span></div></li>`).join('\n')}
-        </ul>
-      </div>
-    </div>`;
-    }
-    /* Three compositions, not one zigzag five times: the first stage is
-       WIDE (words in a row, the loop full width under them), the middle
-       three alternate at varied ratios, the last is a FIELD (no media). */
-    const shape = i === 0 ? ' st-stage--wide' : (!s.video ? ' st-stage--field' : (s.mediaWide ? ' st-stage--media-wide' : ''));
-    return `  <article class="st-stage${h ? ' ' + h : ' st-stage--brand'}${i % 2 ? ' st-stage--flip' : ''}${shape}" id="stage-${esc(s.id)}" aria-labelledby="st-h-${esc(s.id)}">
-${copy}
-${mediaHtml}
-  </article>`;
+    const page = pages[s.cta.page];
+    return `      <article class="mk-card st-stage ${h}" id="stage-${esc(s.id)}" aria-labelledby="st-h-${esc(s.id)}">
+        <img class="st-shot" src="${media(s.cta.page + '.webp')}" width="1280" height="720" alt="" loading="lazy" decoding="async">
+        <div class="st-stage-in">
+          <span class="mk-card-icon">${sym(s.sym)}</span>
+          <h3 class="mk-h3" id="st-h-${esc(s.id)}">${esc(s.h2)}</h3>
+          <p class="mk-card-p"${alt(s, 'body')}>${esc(s.body)}</p>
+          <a class="mk-link" href="${esc(page.file)}">${esc(s.cta.label)}${sym('arrow_forward')}</a>
+        </div>
+      </article>`;
   };
-
-  const explorer = `<section class="mk-sec mk-band-b st-explorer" id="tools" aria-label="${esc(u.product)}">
-  <div class="mk-wrap st-stages">
-${home.stages.map(row).join('\n')}
+  const stages = `<section class="mk-sec mk-band-a st-tools" id="tools" aria-labelledby="stToolsH">
+  <div class="mk-wrap">
+    <h2 class="mk-h2" id="stToolsH">${esc(home.stagesH2)}</h2>
+${video}
+    <div class="st-stages grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+${home.stages.map(card).join('\n')}
+    </div>
   </div>
 </section>`;
 
-  const closing = `<section class="mk-sec mk-band-c mk-mid st-closing" id="start" aria-labelledby="mkMidH">
+  const own = `<section class="mk-sec mk-band-b st-own" id="local-first" aria-labelledby="stOwnH">
+  <div class="mk-wrap">
+    <h2 class="mk-h2" id="stOwnH">${esc(home.own.h2)}</h2>
+    <ul class="st-points grid gap-5 md:grid-cols-3">
+${home.own.items.map((it) => `      <li class="mk-point"><span class="mk-card-icon">${sym(it.sym)}</span><b class="mk-h3">${esc(it.title)}</b><span class="mk-card-p">${esc(it.text)}</span></li>`).join('\n')}
+    </ul>
+    <p class="mk-more"><a class="mk-link" href="trust.html">${esc(site.trustLink)}${sym('arrow_forward')}</a></p>
+  </div>
+</section>`;
+
+  const plans = `<section class="mk-sec mk-band-a st-plans" id="plans" aria-labelledby="stPlansH">
+  <div class="mk-wrap">
+    <div class="st-plans-in grid gap-8 lg:grid-cols-12 lg:items-center">
+      <div class="lg:col-span-8">
+        <h2 class="mk-h2" id="stPlansH">${esc(home.plans.h2)}</h2>
+        <p class="mk-body">${priceSpans(esc(home.plans.teaser))}</p>
+        <p class="mk-small st-note" data-off-text="${esc(site.signup.offerOff)}" data-open-text="${esc(home.pass.open)}">${passOr(passSlots(home.pass.note), esc(home.pass.off))}</p>
+      </div>
+      <div class="st-plans-cta lg:col-span-4">
+        <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(home.plans.pill)}</a>
+      </div>
+    </div>
+  </div>
+</section>`;
+
+  /* THE VALUE STACK (#value): what the offered plan includes, by stage.
+     Derived here from navigation.json and plan-matrix.json, counts
+     included, one list per plan the offer can be; start.js shows the
+     offered one (the founding plan unless the pass is open). The price
+     line under it is a runtime slot. */
+  const v = home.value;
+  const stack = (planId, shown) => {
+    const groups = valueGroups(planId);
+    return `    <div class="st-value-plan" data-value-for="${planId}"${shown ? '' : ' hidden'}>
+      <ol class="st-value-groups">
+${groups.map((g) => `        <li class="st-value-group${g.mods.length ? '' : ' st-value-later'}"><h3 class="st-value-h"><span>${esc(g.label)}</span>${g.mods.length ? `<span class="st-value-n">${g.mods.length} ${g.mods.length === 1 ? 'tool' : 'tools'}</span>` : ''}</h3>${g.mods.length
+    ? `<ul class="st-value-mods">${g.mods.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>`
+    : (g.later ? `<p class="st-value-more">${esc(v.later).replace('{plan}', esc(planLabel(g.later)))} ${esc(g.laterMods.join(', '))}</p>` : '')}</li>`).join('\n')}
+      </ol>
+      <p class="st-value-also"><b>${esc(v.also)}</b> ${esc(valueAlso(planId).join(', '))}.</p>
+    </div>`;
+  };
+  const value = `<section class="mk-sec mk-band-b st-value" id="value" aria-labelledby="stValueH">
+  <div class="mk-wrap">
+    <h2 class="mk-h2" id="stValueH">${esc(v.h2)}</h2>
+    <p class="mk-sub">${esc(v.sub)}</p>
+${stack(OFFER_PLAN.founding, true)}
+${stack(OFFER_PLAN.pass, false)}
+    <p class="st-value-price" data-v-price hidden></p>
+    <p class="mk-more"><a class="mk-link" href="pricing.html">${esc(v.compare)}${sym('arrow_forward')}</a></p>
+  </div>
+</section>`;
+
+  /* THE FAQ (#faq): native <details>, at most six. The year-end answer
+     is a neutral line plus the EMPTY offer-terms slot; the trial clause is
+     hidden until start.js knows a trial is open and no pass is running. */
+  const fq = home.faq;
+  const answer = (it) => (it.terms
+    ? `<span data-mode-answer="neutral" data-offer-product="year">${esc(it.a)}</span> ${termsSlot('year')}<span data-mode-answer="renew" data-offer-product="year" hidden> ${esc(site.terms.renewNote)}</span>`
+    : esc(it.a))
+    + (it.trial ? `<span data-o-trial hidden> ${esc(it.trial)}</span>` : '')
+    + (it.link ? ` <a class="mk-link mk-link--inline" href="${esc(it.link)}">${esc(it.linkLabel)}</a>` : '');
+  const faqSec = `<section class="mk-sec mk-band-a st-faq" id="faq" aria-labelledby="stFaqH">
+  <div class="mk-wrap">
+    <h2 class="mk-h2" id="stFaqH">${esc(fq.h2)}</h2>
+    <div class="st-faq-list">
+${fq.items.map((it) => `      <details class="st-faq-item" id="faq-${esc(it.id)}">
+        <summary class="st-faq-q">${esc(it.q)}</summary>
+        <p class="st-faq-a">${answer(it)}</p>
+      </details>`).join('\n')}
+    </div>
+  </div>
+</section>`;
+
+  /* THE CLOSING BAND (#start): the offer again, compact (#offerClose),
+     while there is one; the plain door ([data-o-fallback]) when not. */
+  const closing = `<section class="mk-sec mk-close st-close" id="start" aria-labelledby="mkMidH" data-surface="dark">
   <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkMidH">${esc(home.closing.h2)}</h2>
-    <p class="mk-sub st-closing-sub">${esc(home.closing.sub)}</p>
-    <div class="mk-cta-row mk-cta-row--center">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-off>${esc(home.closing.cta)}</a>
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(site.pass.cta)}</a>
-      <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(home.pricing.pill)}</a>
+    <h2 class="mk-h2" id="mkMidH"><span data-o-fallback>${esc(home.closing.h2)}</span><span data-o-only hidden>${esc(home.closeOffer.h2)}</span></h2>
+    <p class="mk-sub"><span data-o-fallback>${esc(home.closing.sub)}</span><span data-o-only hidden>${esc(home.closeOffer.sub)}</span></p>
+    <div class="mk-cta-row mk-cta-row--center" data-o-fallback>
+      ${googleBtnHTML({ cls: 'mk-btn mk-btn--primary mk-btn--lg', label: home.closing.cta, open: true })}
     </div>
-    <p class="st-note st-closing-note">${priceSpans(esc(home.pricingTeaser))}</p>
-    <p class="st-note st-closing-note" data-pass-only hidden>${passSlots(site.pass.note)}</p>
+    <div class="st-offer st-offer--close" id="offerClose"${offerData(o)} hidden>
+      ${offerSlots(o, { surface: 'close' })}
+    </div>
   </div>
 </section>`;
 
-  /* What comes out (every format listed is a download the studio has
-     today), then the four questions the launch study's panel asked
-     first, answered, and the support address. Both reuse the shared
-     card classes in marketing.css: three export cards in .mk-cards, four
-     answers in .mk-stages (4 / 2 / 1 columns). */
-  const exportsSec = `<section class="mk-sec mk-band-a" id="exports" aria-labelledby="stExH">
-  <div class="mk-wrap">
-    <h2 class="mk-h2" id="stExH">${esc(home.exports.h2)}</h2>
-    <p class="mk-body">${esc(home.exports.body)}</p>
-    <div class="mk-cards">
-${home.exports.items.map((it) => `      <article class="mk-card">
-        <span class="mk-card-icon">${sym(it.sym)}</span>
-        <h3 class="mk-h3">${esc(it.title)}</h3>
-        <p class="mk-card-p">${esc(it.text)}</p>
-      </article>`).join('\n')}
-    </div>${home.exports.footHtml ? `
-    <p class="mk-body mk-ex-foot">${home.exports.footHtml.replace('{{media}}', MEDIA_BASE)}</p>` : ''}
-  </div>
-</section>`;
-
-  const answersSec = `<section class="mk-sec mk-band-b" id="answers" aria-labelledby="stAnH">
-  <div class="mk-wrap">
-    <h2 class="mk-h2" id="stAnH">${esc(home.answers.h2)}</h2>
-    <div class="mk-stages">
-${home.answers.items.map((it) => `      <article class="mk-card">
-        <span class="mk-card-icon">${sym(it.sym)}</span>
-        <h3 class="mk-h3">${esc(it.q)}</h3>
-        <p class="mk-card-p">${it.pass ? passOr(passSlots(it.aPass), esc(it.a)) : (it.aHtml || esc(it.a))}</p>
-      </article>`).join('\n')}
-    </div>
-    <p class="st-note">${esc(home.answers.contact.before)} <a class="mk-link mk-link--inline" href="mailto:{{brand:email}}" translate="no">{{brand:email}}</a>. ${esc(home.answers.contact.after)}</p>
-    <p class="st-note"><a class="mk-link" href="trust.html">${esc(site.trustLink)}${sym('arrow_forward')}</a></p>
-  </div>
-</section>`;
+  /* THE SLIDE-IN (desk) / BOTTOM BAR (phone): shown by start.js only while
+     there is an offer and neither the hero card nor the closing band is on
+     screen; closed, it stays closed for the session. Not modal. */
+  const dock = `<aside class="st-dock" id="offerDock" role="region" aria-label="${esc(o.dockLabel)}" data-surface="dark"${offerData(o)} hidden>
+  ${offerSlots(o, { surface: 'dock' })}
+</aside>`;
 
   const t = esc(home.meta.title), d = esc(home.meta.description);
   return `<!DOCTYPE html>
@@ -898,7 +1035,6 @@ ${home.answers.items.map((it) => `      <article class="mk-card">
 <title>${t}</title>
 <meta name="description" content="${d}">
 <link rel="canonical" href="https://{{brand:host}}/start">
-<link rel="preload" as="image" href="${media('breakdown.webp')}" fetchpriority="high">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{brand:name}}">
 <meta property="og:title" content="${t}">
@@ -914,7 +1050,7 @@ ${home.answers.items.map((it) => `      <article class="mk-card">
 <meta name="twitter:image" content="https://{{brand:host}}/og.png">
 <meta name="twitter:image:alt" content="${OG_ALT}">
 <meta property="og:locale" content="en_IN">
-<meta name="theme-color" content="#0d0e13">
+<meta name="theme-color" content="#0d0c11">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -930,28 +1066,32 @@ ${home.answers.items.map((it) => `      <article class="mk-card">
      the markup (a crawler, a link preview and a reader with scripts off get the
      whole page). src/pages/start.js adds, on top of marketing.js (header state,
      mega-menu, sign-up modal, invite-code hold): the reason a Google sign-in
-     did not complete, the landing_view count and the doorway rewrite of app
-     links under the site gate. Every figure is an fms stamp
-     (vite.config.js startFigures()), never typed; no price is printed here. -->
+     did not complete, the landing_view count, the doorway rewrite of app
+     links under the site gate, and THE OFFER (#offerCard, #offerDock,
+     #offerClose: hidden here, every figure a runtime slot from the server,
+     the button straight to purchase.html?buy=<id>). Every figure is an fms stamp
+     (vite.config.js startFigures()), never typed. -->
 ${header(site, pages, 'home')}
 <main id="main" class="mk st">
-${passBand(site)}
 ${hero}
-${facts}
-${explorer}
-${exportsSec}
-${answersSec}
+${stages}
+${value}
+${own}
+${plans}
+${faqSec}
 ${closing}
 ${leadForm(site.lead, 'st')}
-  <div class="mk-wrap st-optout"><button class="st-optout-btn" id="noCount" type="button" data-done="${esc(home.optOut.done)}">${esc(home.optOut.label)}</button></div>
 </main>
-${footer(site, pages)}
+${dock}
+${footer(site, pages, `
+        <li class="st-optout"><button class="st-optout-btn" id="noCount" type="button" data-done="${esc(home.optOut.done)}">${esc(home.optOut.label)}</button></li>`)}
 ${modal(site)}
 <script type="module" src="/src/pages/start.js"></script>
 </body>
 </html>
 `;
 }
+
 
 /* ---- contact.html and about.html -------------------------------------
    The company pages: the same header, footer and sign-up modal, the copy
@@ -1018,7 +1158,7 @@ function companyHead({ title, description, slug }) {
 <meta name="twitter:image" content="https://{{brand:host}}/og.png">
 <meta name="twitter:image:alt" content="${OG_ALT}">
 <meta property="og:locale" content="en_IN">
-<meta name="theme-color" content="#0d0e13">
+<meta name="theme-color" content="#0d0c11">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -1038,26 +1178,25 @@ ${ldScripts([orgLd()])}
  *  state, whether or not the pass is open. */
 function companyCta(company, h2) {
   const cta = company.cta;
-  return `<section class="mk-sec mk-band-c mk-mid co-cta" id="start" aria-labelledby="mkMidH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkMidH">${esc(h2)}</h2>
-    <div class="mk-cta-row mk-cta-row--center">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-open-text="${esc(cta.startOpen)}">${esc(cta.start)}</a>
-      <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(cta.plans)}</a>
-    </div>
-  </div>
-</section>`;
+  return closeBand(h2, `
+      ${googleBtnHTML({ cls: 'mk-btn mk-btn--primary mk-btn--lg', label: cta.start, open: true, attrs: 'data-open-text="' + esc(cta.startOpen) + '"' })}
+      <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(cta.plans)}</a>`);
 }
 
-function companyHero(company, h1, sub) {
+function companyHero(company, h1, sub, own) {
   const cta = company.cta;
-  return `<section class="mk-hero co-hero" id="top" aria-labelledby="mkH1">
+  /* A page with its own job (contact: send a message) leads with THAT,
+     as the one primary, instead of the site-wide pair (28 Oct 2026). */
+  const row = own
+    ? `<a class="mk-btn mk-btn--primary mk-btn--lg" href="${own.href}">${esc(own.label)}</a>`
+    : `${googleBtnHTML({ cls: 'mk-btn mk-btn--primary mk-btn--lg', label: cta.start, open: true, attrs: 'data-open-text="' + esc(cta.startOpen) + '"' })}
+      <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(cta.plans)}</a>`;
+  return `<section class="mk-hero co-hero" id="top" aria-labelledby="mkH1" data-surface="dark">
   <div class="mk-wrap mk-hero-in">
     <h1 class="mk-h1" id="mkH1">${esc(h1)}</h1>
     <p class="mk-sub">${esc(sub)}</p>
     <div class="mk-cta-row">
-      <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-open-text="${esc(cta.startOpen)}">${esc(cta.start)}</a>
-      <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(cta.plans)}</a>
+      ${row}
     </div>
   </div>
 </section>`;
@@ -1115,7 +1254,7 @@ ${field('message', f.message, `<textarea class="co-input co-area" id="co-message
   return `${companyHead({ title: c.meta.title, description: c.meta.description, slug: 'contact' })}
 ${header(site, pages, 'contact')}
 <main id="main" class="mk mk-company co-page">
-${companyHero(company, c.hero.h1, c.hero.sub)}
+${companyHero(company, c.hero.h1, c.hero.sub, { href: '#write', label: c.hero.cta || 'Write to us' })}
 ${form}
 ${companyCta(company, c.close.h2)}
 </main>
@@ -1313,7 +1452,7 @@ function publicHead({ title, description, slug, ld }) {
 <meta name="twitter:image" content="${ORIGIN}/og.png">
 <meta name="twitter:image:alt" content="${OG_ALT}">
 <meta property="og:locale" content="en_IN">
-<meta name="theme-color" content="#0d0e13">
+<meta name="theme-color" content="#0d0c11">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -1345,16 +1484,10 @@ export const longDay = (iso) => { const [y, m, d] = String(iso).split('-').map(N
  *  the server says it is open, its figures runtime slots) and the plans,
  *  which are true in every state. */
 function passClose(g, h2, hue = '') {
-  return `<section class="mk-sec mk-band-c mk-mid${hue ? ' ' + hue : ''}" id="start" aria-labelledby="mkMidH">
-  <div class="mk-wrap mk-center">
-    <h2 class="mk-h2" id="mkMidH">${esc(h2)}</h2>
-    <div class="mk-cta-row mk-cta-row--center">
+  return closeBand(h2, `
       <a class="mk-btn mk-btn--primary mk-btn--lg" href="invite.html" data-open-signup data-pass-only hidden>${passBtn(g.ui.ctaPass)}</a>
-      <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(g.ui.ctaPlans)}</a>
-    </div>
-    <p class="mk-small mk-close-note" data-pass-only hidden>${passSlots(g.ui.ctaPassNote)}</p>
-  </div>
-</section>`;
+      <a class="mk-btn mk-btn--outline mk-btn--lg" href="pricing.html">${esc(g.ui.ctaPlans)}</a>`, `
+    <p class="mk-small mk-close-note" data-pass-only hidden>${passSlots(g.ui.ctaPassNote)}</p>`, hue);
 }
 
 /* ---- the guides, the comparisons and the trust page (26 Oct 2026) ------
@@ -1440,7 +1573,7 @@ function guideCard(g, y) {
 }
 
 function articleHero(h1, sub, crumbItems, extra = '') {
-  return `<section class="mk-hero mk-hero--article" id="top" aria-labelledby="mkH1">
+  return `<section class="mk-hero mk-hero--article" id="top" aria-labelledby="mkH1" data-surface="dark">
   <div class="mk-wrap mk-hero-in">
 ${crumbItems ? `    ${crumbs(crumbItems)}\n` : ''}    <h1 class="mk-h1" id="mkH1">${esc(h1)}</h1>
     <p class="mk-sub">${esc(sub)}</p>${extra}
@@ -1481,9 +1614,8 @@ ${genNote(GUIDES_COPY)}
 ${header(site, pages, 'guides')}
 <main id="main" class="mk mk-guide ${x.hue}">
 ${passBand(site)}
-${articleHero(x.h1, x.sub, [{ name: g.ui.breadcrumbHome, href: 'start.html' }, { name: g.ui.breadcrumbGuides, href: 'guides.html' }, { name: x.label }],
-  `\n    <p class="mk-small mk-updated">${esc(g.ui.updatedLabel)} <time datetime="${esc(g.updated)}">${longDay(g.updated)}</time></p>`)}
-<section class="mk-sec mk-band-b mk-article" id="guide" aria-label="${esc(x.label)}">
+${articleHero(x.h1, x.sub, [{ name: g.ui.breadcrumbHome, href: 'start.html' }, { name: g.ui.breadcrumbGuides, href: 'guides.html' }, { name: x.label }])}
+<section class="mk-sec mk-band-a mk-article" id="guide" aria-label="${esc(x.label)}">
   <div class="mk-wrap mk-article-grid">
     <nav class="mk-toc" aria-label="${esc(site.ui.labelNav)}">
       <p class="mk-toc-h">${esc(site.ui.labelNav)}</p>
@@ -1494,7 +1626,7 @@ ${x.sections.map(guideBlock).join('\n')}
     </div>
   </div>
 </section>
-<section class="mk-sec mk-band-a mk-studio" id="studio" aria-labelledby="mkStudioH">
+<section class="mk-sec mk-band-b mk-studio" id="studio" aria-labelledby="mkStudioH">
   <div class="mk-wrap mk-prose">
     <h2 class="mk-h2" id="mkStudioH">${esc(g.ui.inStudio)}</h2>
 ${st.body.map((t) => `    <p class="mk-body">${esc(t)}</p>`).join('\n')}
@@ -1613,9 +1745,8 @@ ${genNote(COMPARE_COPY)}
 ${header(site, pages, 'compare')}
 <main id="main" class="mk mk-guide mk-compare">
 ${passBand(site)}
-${articleHero(p.h1, p.sub, [{ name: g.ui.breadcrumbHome, href: 'start.html' }, { name: g.index.compareH, href: 'guides.html#compare' }, { name: p.label }],
-  `\n    <p class="mk-small mk-updated">${esc(c.ui.updatedLabel)} <time datetime="${esc(c.updated)}">${longDay(c.updated)}</time></p>`)}
-<section class="mk-sec mk-band-b mk-article" id="guide" aria-label="${esc(p.label)}">
+${articleHero(p.h1, p.sub, [{ name: g.ui.breadcrumbHome, href: 'start.html' }, { name: g.index.compareH, href: 'guides.html#compare' }, { name: p.label }])}
+<section class="mk-sec mk-band-a mk-article" id="guide" aria-label="${esc(p.label)}">
   <div class="mk-wrap mk-article-grid">
     <nav class="mk-toc" aria-label="${esc(site.ui.labelNav)}">
       <p class="mk-toc-h">${esc(site.ui.labelNav)}</p>

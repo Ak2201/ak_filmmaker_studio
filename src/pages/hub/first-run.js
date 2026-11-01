@@ -56,28 +56,27 @@ function sampleButtons(prefix, primary) {
 function renderFirstRun() {
   const panel = h('div#doors.first-run-doors');
   panel.append(h('div.fr-pick', {}, [
-    h('div.lab', { text: 'PICK A PATH' }),
-    h('p.deck', { text: 'New to filmmaking? That is fine. Choose what you want to do first. We will ask for a name and a favourite film, then open your script, with the rest of your project one step away.' })
+    h('h2.fr-title', { text: 'Pick a path' }),
+    h('p.deck', { text: 'New to filmmaking? That is fine. Choose what you want to do first. We will ask for a name and a favourite film, then open your script.' })
   ]));
-  const doors = h('div.doors', {}, [
-    h('div.door', {}, [
-      h('div.door-tag', {}, [h('span.door-num-circle', { text: 'I' }), ' A FULL-LENGTH STORY']),
-      h('h3', {}, ['Feature', h('br'), h('span.light', { text: 'film.' })]),
-      h('p.door-sub', { text: 'A story you tell over an hour or more. We walk you from the first spark to the finished film, one stage at a time.' }),
-      h('button.door-cta', { type: 'button', 'data-action': 'start-feature' }, [h('span', { text: 'Start a feature' }), h('span.arrow', { text: '→' })])
-    ]),
-    h('div.door.shorts', {}, [
-      h('div.door-tag', {}, [h('span.door-num-circle', { text: 'II' }), ' UNDER 30 MINUTES']),
-      h('h3', {}, ['Short', h('br'), h('span.light', { text: 'film.' })]),
-      h('p.door-sub', { text: 'The quickest way to make something real. A tighter story, a smaller crew, a film you can finish and show.' }),
-      h('button.door-cta', { type: 'button', 'data-action': 'start-short' }, [h('span', { text: 'Start a short' }), h('span.arrow', { text: '→' })])
-    ]),
-    h('div.door.library', {}, [
-      h('div.door-tag', {}, [h('span.door-num-circle', { text: 'III' }), ' LEARN FIRST']),
-      h('h3', {}, ['Learning', h('br'), h('span.light', { text: 'library.' })]),
-      h('p.door-sub', { text: 'Not ready to start? Read how films you know were built: ' + films.length + ' films, ' + directors.length + ' directors and ' + rules.length + ' rules of thumb. No project needed.' }),
-      h('a.door-cta', { href: 'library.html' }, [h('span', { text: 'Open the library' }), h('span.arrow', { text: '→' })])
-    ])
+  /* THREE EQUAL KIT CARDS (28 Oct 2026). One icon tile each in the
+     accent wash, one line of copy, one button; only the feature door is
+     the primary. The per-door hue fills, Roman numerals and mono
+     taglines are gone: one violet, one primary per view. The
+     data-action hooks are unchanged. */
+  const door = (icon, title, sub, cta) => h('div.fr-door', {}, [
+    h('span.fr-door-ic', { 'aria-hidden': 'true' }, [h('span.sym', { text: icon })]),
+    h('h3.fr-door-title', { text: title }),
+    h('p.fr-door-sub', { text: sub }),
+    cta
+  ]);
+  const doors = h('div.fr-doors', {}, [
+    door('movie', 'Feature film', 'A story of an hour or more, walked from the first idea to the finished film.',
+      h('button.k-btn.k-btn--primary', { type: 'button', 'data-action': 'start-feature', text: 'Start a feature' })),
+    door('timer', 'Short film', 'Under 30 minutes. A tighter story and a smaller crew, a film you can finish.',
+      h('button.k-btn.k-btn--secondary', { type: 'button', 'data-action': 'start-short', text: 'Start a short' })),
+    door('local_library', 'Learn first', films.length + ' films, ' + directors.length + ' directors and ' + rules.length + ' rules of thumb. No project needed.',
+      h('a.k-btn.k-btn--secondary', { href: 'library.html', text: 'Open the library' }))
   ]);
   panel.append(doors);
   /* The library door always shows (owner, 19 Oct 2026): the films,

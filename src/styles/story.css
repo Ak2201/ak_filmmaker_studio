@@ -75,7 +75,7 @@
 .k-page-actions .st-bar { border-bottom: 0; padding-block: 0; }
 /* A field label, not the Import button (a label.k-btn): that one keeps
    the kit's sentence-case face instead of turning mono capitals. */
-.st-bar label:not(.k-btn) { font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.st-bar label:not(.k-btn) { font-family: var(--f-body); font-size: var(--t-tiny); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 .st-bar select { min-width: 0; max-width: 100%; }
 .st-import { position: relative; overflow: hidden; }
 .st-import input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
@@ -152,7 +152,7 @@
   min-width: 0;
 }
 .st-beat-name:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.st-beat-at, .st-beat-tlabel { font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--ink-muted); }
+.st-beat-at, .st-beat-tlabel { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-tiny); color: var(--ink-muted); }
 .st-beat-t { width: 4.5rem; }
 .st-beat-prompt { margin: var(--s1) 0 0; font-size: var(--t-small); color: var(--ink-muted); }
 .st-beat-marks { list-style: none; margin: var(--s2) 0 0; padding: 0; display: grid; gap: var(--s2); }
@@ -163,10 +163,10 @@
 .st-beat-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s2); }
 .st-retag { min-width: 0; max-width: 100%; font-size: var(--t-small); }
 .st-badge {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   border: 1px solid var(--rule);
   border-radius: var(--radius-pill);
@@ -205,7 +205,7 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
 .st-step .st-text { max-width: var(--measure, 70ch); }
 .st-step-nav { margin-top: var(--s4); }
 .st-example { margin: var(--s3) 0 0; max-width: var(--measure, 70ch); color: var(--ink-body); font-style: var(--sk-deck-style, italic); }
-.st-example-k { font-style: normal; font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.st-example-k { font-style: normal; font-family: var(--f-body); font-size: var(--t-tiny); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 .st-offer {
   display: flex;
   flex-wrap: wrap;
@@ -246,7 +246,7 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
 .st-fw.is-on { background: var(--accent-wash); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .st-fw-top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 .st-fw-name { font-weight: 700; flex: 1 1 8rem; min-width: 0; overflow-wrap: anywhere; }
-.st-fw-count { font-family: var(--f-mono); font-size: var(--t-tiny); color: var(--ink-muted); }
+.st-fw-count { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-tiny); color: var(--ink-muted); }
 .st-fw-suits { font-size: var(--t-small); color: var(--ink-body); }
 .st-badge.is-on { border-color: var(--accent); color: var(--ink); }
 .st-mini { display: block; width: 100%; height: 36px; }
@@ -257,33 +257,14 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
 
 /* ---- 4 · the step outline ----------------------------------- */
 .st-coverage { margin: var(--s3) 0; color: var(--ink-body); }
-.st-ol-beats {
-  list-style: none; margin: var(--s3) 0 0; padding: 0;
-  display: grid; gap: var(--s4); align-items: start;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr));   /* the beat board: a card grid, not one long column */
-}
-.st-ol-board { min-width: 0; }
-/* steps filed under another format are a holding column beside the board
-   (the shape of Celtx's Unassigned column); without any, the grid is the whole width */
-@media (min-width: 1100px) {
-  .st-ol-board.has-holding { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: var(--s4); align-items: start; }
-  .st-ol-board.has-holding > .st-unplaced { grid-column: 1; grid-row: 1; position: sticky; top: calc(var(--sh-chrome-h, 0px) + var(--s4)); margin-top: var(--s3); }
-  .st-ol-board.has-holding > .st-ol-beats { grid-column: 2; grid-row: 1; }
-}
-.st-ol-beat, .st-unplaced {
+/* The board itself, both views, is src/styles/beat-views.css. */
+.st-unplaced {
   padding: var(--s3) var(--s4);
   background: var(--paper-raised);
   border: var(--sk-card-line-w, 1px) solid var(--rule);
   border-radius: var(--sk-radius, var(--radius));
   min-width: 0;
 }
-.st-ol-beat {
-  background-color: var(--surface-card);
-  background-image: var(--surface-card-sheen);
-  box-shadow: var(--sk-card-shadow, var(--shadow-card-rest));
-  border-top: 3px solid var(--accent-primary);
-}
-.st-ol-beat.is-empty { background-color: var(--paper); background-image: none; border-style: dashed; border-top-style: dashed; box-shadow: none; }
 .st-unplaced { background-color: var(--surface-rail); box-shadow: var(--shadow-card-rest); }
 .st-unplaced { margin-top: var(--s4); border-color: var(--warn); }
 .st-ol-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s2); }
@@ -291,7 +272,7 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
 .st-ol-bp { margin: var(--s2) 0 0; font-size: var(--t-small); color: var(--ink-body); }
 .st-ol-steps { margin: var(--s3) 0 0; padding: 0; list-style: none; display: grid; gap: var(--s3); }
 .st-ol-step { display: grid; gap: var(--s1); padding-top: var(--s2); border-top: 1px solid var(--rule-hair); min-width: 0; }
-.st-ol-n { font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.st-ol-n { font-family: var(--f-body); font-size: var(--t-tiny); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 /* A step box grows with what is written in it: fixed at two rows, 59 of
    68 sample steps cut their text off. Two lines minimum (plus the paper
    field's vertical padding and 1px rules), twelve maximum, then it scrolls.
@@ -452,11 +433,27 @@ main > section[data-path], #pacing, #pitch, #guide { scroll-margin-top: var(--st
 .st-ol-step.st-peer-row .st-ol-n::after { content: ' · ' attr(data-peer); }
 .st-kept { margin: var(--s4) 0; padding: var(--s3) var(--s4); border: 1px solid var(--warn); border-radius: var(--sk-radius, var(--radius)); background: var(--surface-card); min-width: 0; }
 .st-kept-item { display: grid; gap: var(--s2); padding-top: var(--s3); margin-top: var(--s3); border-top: 1px solid var(--rule-hair); min-width: 0; }
-.st-kept-when { margin: 0; font-family: var(--f-mono); font-size: var(--t-tiny); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-muted); }
+.st-kept-when { margin: 0; font-family: var(--f-body); font-size: var(--t-tiny); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 .st-kept-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink-body); max-height: 16lh; overflow: auto; }
 .st-kept-ctl { display: flex; flex-wrap: wrap; gap: var(--s2); }
 @media print {
   .st-peers, .st-kept { display: none !important; }
   .st-ol-step.st-peer-row { box-shadow: none; }
   .st-ol-step.st-peer-row .st-ol-n::after { content: none; }
+}
+
+/* ---- 8B PASS (28 Oct 2026, lane C): labels in the body face ---------
+   The template sets every label in the body face, sentence case, with no
+   tracking; mono capitals stay for DATA (figures, codes, the breakdown
+   sheet, the printed shot list) and the script page. These rules came
+   last on purpose (the ordering trap in CLAUDE.md): the same selectors,
+   later in the file, so they win on order and nothing else. */
+.st-bar label:not(.k-btn),
+.st-badge,
+.st-example-k,
+.st-kept-when {
+  font-family: var(--f-body);
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 600;
 }

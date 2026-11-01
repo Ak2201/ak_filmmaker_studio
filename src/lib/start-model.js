@@ -255,7 +255,109 @@ export function passCopy(st, P) {
   return { open: true, price, length, timer: P.countdownText(st.msLeft), left: P.leftText(st), spoken: spokenLeft(st.msLeft) };
 }
 
+/* ---- THE OFFER: which one the landing page makes (30 Oct 2026) ------
+   One offer at a time, on three surfaces (the hero card, the slide-in,
+   the closing band), and EVERY FIGURE IN IT IS THE SERVER'S:
+
+     pass      while trial_offer().pass is open (passState() in
+               pass-offer.js, said through passCopy() above): its price,
+               its length, a countdown to ends_at on the server's clock
+     founding  no open pass, and price_notice() carries a scheduled rise
+               for OFFER_FOUNDING still ahead: today's price, the price it
+               rises to, the deadline and the founding places left
+     null      anything else, including any missing or malformed field:
+               no offer is drawn, the plans stand (fails CLOSED, like
+               passState: an invented offer is a stranger refused at
+               checkout)
+
+   THE CLOCK IS THE SERVER'S. `serverNowMs` is the server's own now at
+   this moment (its reported `now` plus the local time elapsed since the
+   reply), or null when no reply carried one; then the founding offer has
+   NO ticking timer (`msLeft` null) and says the IST day instead
+   (`until`). A visitor's own clock never decides what the page claims,
+   except that the rise having already fired by the visitor's clock
+   withdraws the offer rather than advertise it (a card can only ever
+   say less than the server, never more). */
+export const OFFER_FOUNDING = 'indie';
+const pos = (n) => typeof n === 'number' && Number.isFinite(n) && n > 0;
+
+/** "39 of 100 founding places left", or '' without a published cap. */
+export function seatsLeft(notice) {
+  const total = Number(notice && notice.seats_total), taken = Number(notice && notice.seats_taken);
+  if (!(Number.isFinite(total) && total > 0 && Number.isFinite(taken) && taken >= 0)) return '';
+  const left = Math.max(0, Math.round(total - taken));
+  return left.toLocaleString('en-IN') + ' of ' + Math.round(total).toLocaleString('en-IN') + ' founding places left';
+}
+
+/** "2d 04:10:05", "04:10:05" under a day; '' for nothing (the same shape
+ *  as pass-offer.js countdownText, restated: this file imports nothing). */
+export function clockText(msLeft) {
+  if (msLeft == null || !(msLeft > 0)) return '';
+  const s = Math.floor(msLeft / 1000);
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  const two = (n) => String(n).padStart(2, '0');
+  return (d ? d + 'd ' : '') + two(h) + ':' + two(m) + ':' + two(sec);
+}
+
+/**
+ * The offer to draw, or null.
+ *   passSt   passState() from pass-offer.js (or null)
+ *   copy     passCopy(passSt, PassOffer) (or null)
+ *   notice   price_notice() (or null)
+ *   nowMs    the visitor's clock now
+ *   opts     { serverNowMs, off }  off: purchases are not required
+ * Answers
+ *   { kind: 'pass', id: 'pass', plan, price, length, unit, msLeft, left }
+ *   { kind: 'founding', id, plan, paise, price, wasPaise, was, day, ends, msLeft, until, seats }
+ */
+export function offerFrom(passSt, copy, notice, nowMs, { serverNowMs = null, off = false } = {}) {
+  if (off) return null;
+  if (passSt && passSt.state === 'open' && copy && copy.open && copy.price && copy.length) {
+    return { kind: 'pass', id: 'pass', plan: (passSt.pass && passSt.pass.plan) || 'pro', price: copy.price, length: copy.length,
+      unit: 'for ' + copy.length, msLeft: passSt.msLeft == null ? null : passSt.msLeft, left: copy.left || '' };
+  }
+  if (!notice || !Array.isArray(notice.plans)) return null;
+  const p = notice.plans.find((x) => x && x.id === OFFER_FOUNDING);
+  if (!p || !pos(p.price_paise) || !pos(p.next_price_paise) || !(p.next_price_paise > p.price_paise) || typeof p.next_price_at !== 'string') return null;
+  const ends = Date.parse(p.next_price_at);
+  if (!Number.isFinite(ends)) return null;
+  const at = serverNowMs != null && Number.isFinite(serverNowMs) ? serverNowMs : null;
+  if (!(ends > nowMs) || (at != null && !(ends > at))) return null;   // fired, by either clock: say nothing
+  return {
+    kind: 'founding', id: OFFER_FOUNDING, plan: OFFER_FOUNDING,
+    paise: p.price_paise, price: inr(p.price_paise),
+    wasPaise: p.next_price_paise, was: inr(p.next_price_paise),
+    day: perDayOf(p.price_paise),
+    ends, msLeft: at != null ? ends - at : null,
+    until: onDate(p.next_price_at) + ' (IST)',
+    seats: seatsLeft(notice)
+  };
+}
+
+/* The slide-in, once closed, stays closed for this browser SESSION
+   (owner, 30 Oct 2026): a per-tab flag like fms_attrib_session, never a
+   localStorage key and in no registry. Storage that throws answers "not
+   closed", so it may show again on the next load, never vanish for good. */
+export const DOCK_KEY = 'fms_offer_dock_closed';
+export function dockClosed() {
+  try { return sessionStorage.getItem(DOCK_KEY) === '1'; } catch (e) { return false; }
+}
+export function rememberDockClosed() {
+  try { sessionStorage.setItem(DOCK_KEY, '1'); } catch (e) { /* closed for this load at least */ }
+}
+
+/** The CTA's words for an offer, signed in or not, from the surface's
+ *  data attributes (`texts`: { pass, passIn, founding, foundingIn }). */
+export function ctaText(offer, signedIn, texts) {
+  if (!offer || !texts) return '';
+  const k = offer.kind === 'pass' ? 'pass' : 'founding';
+  return (signedIn ? texts[k + 'In'] : texts[k]) || texts[k] || '';
+}
+/** The CTA's address: the one-press checkout for this offer. */
+export const offerHref = (offer) => 'purchase.html?buy=' + encodeURIComponent(offer && offer.id ? offer.id : OFFER_FOUNDING);
+
 export default {
+  OFFER_FOUNDING, seatsLeft, clockText, offerFrom, ctaText, offerHref, DOCK_KEY, dockClosed, rememberDockClosed,
   passCopy, spokenLeft,
   INVITE_PLAN_KEY, REGION_KEY, deviceRegion, cleanPlanId, stashPlan, readPlanStash, clearPlanStash, takeAuthError, isAppPage, buyHref,
   validEmail, consentText, consentedVoices, voiceByline, filmByline, inr, onDate, timeLeft, risingTiers,

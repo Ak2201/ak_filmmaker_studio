@@ -843,6 +843,36 @@ still describe the switched-on database), `prove:billing` (p),
 `prove:gate` (m2), `prove:growth` (start.html off). The fake defaults the
 switch ON so every older proof still asserts the wall.
 
+### Option B: send through your own mailbox (Hostinger SMTP), no Resend
+
+LIVE 28 Oct 2026: the three secrets are set and all four functions are deployed with it; the first real send is still untested.
+The password is a Hostinger APP PASSWORD (hPanel → Emails → the mailbox → ⋮ → App passwords → Generate; shown once, revocable without touching the mailbox login), not the mailbox's own password. The mailbox has 2FA on.
+Set it WITHOUT typing it on a command line: `read -rs "P?App password: "` needs a real terminal (the app's one-line input box is not interactive and silently stores an EMPTY value). Check a secret without seeing it: `supabase secrets list` shows SHA-256 digests; the digest of the empty string is `e3b0c442…b855`.
+
+Added 28 Oct 2026. If `RESEND_API_KEY` is NOT set, `_shared/mail.js` sends
+through a mailbox over SMTP instead (`_shared/smtp.js`, denomailer). With both
+set, Resend wins. Nothing else changes: the same claim-then-send, the same
+release on failure, never in the payment path.
+
+1. Create (or pick) a mailbox in Hostinger for sending; a dedicated one such as
+   `noreply@filmmakerstudio.in` keeps the password away from the inbox people
+   write to.
+2. `supabase secrets set MAIL_FROM="FilmMakerStudio <support@filmmakerstudio.in>" SMTP_USER=<the mailbox address> SMTP_PASSWORD=<its password> --project-ref conhlrulxfwkhsnymakz`
+   (`SMTP_HOST` defaults to `smtp.hostinger.com`, `SMTP_PORT` to `465`; set them
+   only to change that). Never put the password in the repo or in chat. The
+   `From` address should be the mailbox or an alias of it, or Hostinger may
+   refuse the send.
+3. Redeploy all four payment functions (and `rzp-cancel` / `rzp-remind` if
+   deployed): they all import `_shared/mail.js`.
+
+PORT 465 ONLY: Supabase edge functions refuse outbound 25 and 587. Hostinger
+limits messages per hour and per day, depending on the plan, and SMTP gives no
+delivery log or bounce handling. The SMTP library import
+(`https://deno.land/x/denomailer@1.6.0`) was NOT run under Deno when it was
+written (no Deno in the build environment); the first real send is its test.
+`mailConfigured()` and `mailEnvFrom()` are the one definition of "configured"
+and of the variables every function reads.
+
 ### Deploy (owner)
 
 1. Run **§32** (from `-- 32. PURCHASES REQUIRED` down to, NOT including,
@@ -1504,7 +1534,7 @@ pages that show and take a dollar price are PRICING-CLIENT's.
    `charged_currency: 'USD'`. Make one USD test-mode purchase and one refund
    before taking a live dollar payment.
 
-## 25. The launch week pass (schema §61, 27 Oct 2026). NOT YET RUN LIVE.
+## 25. The launch week pass (schema §61, 27 Oct 2026). RUN LIVE 28 Oct 2026; functions redeployed the same day.
 
 The owner's decision: the public free trial is retired, and in its place a
 **launch offer** — a short paid pass of the whole studio (₹49 for 7 days
@@ -1586,7 +1616,11 @@ redeploy `rzp-order`, `rzp-verify` and `rzp-webhook` (the shared `razorpay.js`
 and `mail.js` changed; `rzp-refund` imports `razorpay.js` too, so deploy all
 four), Resend before ANY real payment, then the pass in the console.
 
-## 26. Auto-renew: Razorpay Subscriptions, chosen per product (schema §62, 27 Oct 2026). NOT YET RUN LIVE.
+> **Update, 28 Oct 2026 (later):** the three functions are deployed, the webhook carries the subscription events, `CRON_SECRET` and the hourly job work. Only the test run and the switch are open: see `docs/AUTORENEW-TEST-CHECKLIST.md`.
+>
+> **State of auto-renew, 28 Oct 2026 (earlier).** §62 and §63 are live and change nothing while both modes read `once`. Razorpay LIVE mode has Subscriptions enabled (UPI Autopay and cards; no plans yet, the app creates them) and Cards Recurring activated. NOT done: `rzp-subscribe`, `rzp-cancel` and `rzp-remind` are in the repo but not deployed (only the four payment functions are live); the webhook has 7 events and needs the `subscription.*` ones (the code handles `subscription.charged` among them); `CRON_SECRET` and the reminder job; a TEST-mode run (`docs/SECURITY-RLS.md` §62 checks 2 to 10); the auto-renew legal passages approved; then `admin_set_billing_modes`.
+
+## 26. Auto-renew: Razorpay Subscriptions, chosen per product (schema §62, 27 Oct 2026). SCHEMA RUN LIVE 28 Oct 2026; functions deployed; pass and yearly plan both on `renew` (28 Oct 2026).
 
 The owner's decision of 27 Oct 2026 reverses §18 ("no subscription model")
 and §52 ("no mandate"), but ONLY AS AN OPTION. In the console, the week pass
@@ -1704,7 +1738,7 @@ as §61 left them. A mode change applies to NEW purchases only.
     never undoes a terminal status.
   - `x-razorpay-event-id` is logged.
 
-## 27. Renewal reminders (schema §63, 27 Oct 2026). NOT YET RUN LIVE.
+## 27. Renewal reminders (schema §63, 27 Oct 2026). SCHEMA RUN LIVE 28 Oct 2026; `rzp-remind` deployed 28 Oct 2026.
 
 One e-mail before each auto-pay charge, about 48 hours ahead, once per
 billing cycle. It is a courtesy beside Razorpay's own pre-debit notice and is
@@ -1736,3 +1770,52 @@ never in the payment path.
   `FMS_FUNCTIONS_URL`, `CRON_SECRET`; a no-op without them). The exact steps
   and SQL are `docs/LIVE-STEPS-2026-10-27.md` "§63 renewal reminders".
 - sha256 `39984700e14ed247e9ef0255484fe020ad55e9923eae3fc3bfa2ec60e1fea54e`.
+
+## 28. Launch state and the one-page access model (28 Oct 2026). LIVE.
+
+What is switched on in production, set by direct SQL (so there are no
+`admin_set_*` audit rows for them):
+
+- **The ₹49 launch pass** is on until 30 Nov 2026, and `pass_mode` and
+  `plan_mode` are both `renew`. `trial_enabled` stays true: it carries the
+  §30 grandfathered members, and the public trial is retired by
+  `start_trial()` refusing signups while the pass is on.
+- **The price rise** is 15 Nov 2026 (`plans.next_price_at` 2026-11-15T18:29Z).
+- **The admin account** is on Pro for good (a grant, not a purchase).
+- **A live-only fix not in any schema file:** `email_grant_active(uuid)`
+  was missing live, so `billing_status()` failed and `purchase.html` said
+  "Plans are not set up". It was created exactly as §33.2a defines it, with
+  the same revoke. A fresh project gets it from the schema.
+- **Mail** goes out through Hostinger SMTP (port 465, `SMTP_*` secrets) with
+  Resend as the fallback; receipts, an auto-pay receipt and a refund were
+  received. All five functions that send or refund were redeployed on
+  28 Oct 2026 (`rzp-verify`, `rzp-webhook`, `rzp-cancel`, `rzp-remind`,
+  `rzp-refund`).
+
+**One payment page.** A signed-in visitor who has no plan, pass, grant or
+running trial is sent to `purchase.html` (`sitegate.js` `deny()`,
+`plan-gate.js` `apply()`, `cloud.js` `landOnInvite()`); a broken gate
+(`nocloud`, `timeout`, `unreachable`, `revoked`, `notdeployed`) still goes
+to `invite.html`. Only the legal pages, contact and sign-out stay reachable.
+A refunded payment shows `refundNotice()` as a large banner on the purchase
+page until they buy again. The wall's "download my work" buttons are gone;
+the wall says everything they wrote is still saved on this device. A proof
+sets `window.__fmsKeepWall` to draw the wall instead of redirecting.
+**Legal follow-up:** terms.html and refund.html should not promise a
+"download your work" step on a lapse; the data stays on the device.
+
+**Subscription retry.** `rzp-subscribe` retires `created` rows older than
+5 s before a new attempt, and its Razorpay calls time out after 20 s, so a
+closed checkout no longer answers "Auto-pay is already on". Deployed (v3).
+
+**Premium mail and PDF.** `_shared/mail.js` `message()` draws one branded
+layout (band, kicker, hero figure, button, detail card, footer) for all five
+mails; the PDF is the same `.inv-doc` with roomier print styles.
+
+**verify is offline.** `scripts/verify-migration.mjs` refuses `*.supabase.co`:
+the committed `.env` names the live project, and a run used to draw whatever
+the owner had switched on (the pass changed the invite and purchase pages).
+
+**Still open:** the Razorpay primary website (still the Vercel URL), the
+end-to-end renewal test (`docs/AUTORENEW-TEST-CHECKLIST.md`), the webhook
+secret match, the GSTIN decision, international cards.

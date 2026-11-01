@@ -203,7 +203,7 @@ function sceneMapRow(prefill) {
   const ctrl = document.createElement('td'); ctrl.className = 'row-ctrl';
   ctrl.append(
     h('button.row-ctrl-btn', { type: 'button', 'data-sg': 'map-dup', title: 'Duplicate', 'aria-label': 'Duplicate this scene', text: '⎘' }),
-    h('button.row-ctrl-btn.del', { type: 'button', 'data-sg': 'map-del', title: 'Delete', 'aria-label': 'Delete this scene', text: '✕' })
+    h('button.row-ctrl-btn.del', { type: 'button', 'data-sg': 'map-del', title: 'Delete', 'aria-label': 'Delete this scene', }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })])
   );
   tr.append(num, cell(slug), cell(who), cell(what), cell(beat), cell(pages), ctrl);
   return tr;
@@ -295,7 +295,7 @@ function dialogueBlock(prefill) {
   return h('div.dialogue-block', {}, [
     h('div.dlg-row', {}, [
       character, line,
-      h('button.row-ctrl-btn.del', { type: 'button', 'data-sg': 'script-del-dlg', title: 'Delete', 'aria-label': 'Delete this dialogue', text: '✕' })
+      h('button.row-ctrl-btn.del', { type: 'button', 'data-sg': 'script-del-dlg', title: 'Delete', 'aria-label': 'Delete this dialogue', }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })])
     ]),
     h('div.paren', {}, [paren])
   ]);
@@ -311,7 +311,7 @@ function sceneBlock(prefill) {
   return h('div.scene-block', {}, [
     h('div.scene-header', {}, [
       h('span.scene-tag', { text: 'SCENE 01' }), slug,
-      h('button.row-ctrl-btn.del', { type: 'button', 'data-sg': 'script-del-scene', title: 'Delete this scene', 'aria-label': 'Delete this scene', text: '✕' })
+      h('button.row-ctrl-btn.del', { type: 'button', 'data-sg': 'script-del-scene', title: 'Delete this scene', 'aria-label': 'Delete this scene', }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })])
     ]),
     h('span.action-label', { text: 'ACTION' }),
     action, dialogues,
@@ -344,7 +344,7 @@ export function scriptWidget(ctx) {
     scenesEl,
     h('button.add-scene-btn', { type: 'button', 'data-sg': 'script-add-scene', text: '+ ADD SCENE' }),
     h('div.editor-actions', {}, [
-      h('button.mini-btn.danger', { type: 'button', 'data-sg': 'script-clear', text: 'CLEAR SCRIPT' })
+      h('button.mini-btn.danger', { type: 'button', 'data-sg': 'script-clear', text: 'Clear script' })
     ]),
     fullGuideLink('short', 'step-08', 'The formatted preview and the Fountain / text exports are in the full guide.')
   ]);
@@ -429,11 +429,11 @@ function drawCharMap(q, get) {
   const t = (k) => String(get(k) || '').trim();
   const cx = 360, cy = 180;
   const pos = {
-    protagonist: { x: cx, y: cy, name: t('s4_name'), label: 'PROTAGONIST', conn: 'Story · Step 4' },
-    antagonist: { x: cx + 240, y: cy, name: t('s5_name'), label: 'ANTAGONIST', conn: 'opposes' },
-    ally: { x: cx - 240, y: cy - 90, name: t('s6_ally_name'), label: 'ALLY', conn: 'reflects' },
-    lover: { x: cx - 240, y: cy + 90, name: t('s6_lover_name'), label: 'LOVE / MIRROR', conn: 'pulls toward need' },
-    mentor: { x: cx, y: cy - 130, name: t('s6_mentor_name'), label: 'MENTOR / CATALYST', conn: 'hands over tool' }
+    protagonist: { x: cx, y: cy, name: t('s4_name'), label: 'Protagonist', conn: 'Story · Step 4' },
+    antagonist: { x: cx + 240, y: cy, name: t('s5_name'), label: 'Antagonist', conn: 'opposes' },
+    ally: { x: cx - 240, y: cy - 90, name: t('s6_ally_name'), label: 'Ally', conn: 'reflects' },
+    lover: { x: cx - 240, y: cy + 90, name: t('s6_lover_name'), label: 'Love / mirror', conn: 'pulls toward need' },
+    mentor: { x: cx, y: cy - 130, name: t('s6_mentor_name'), label: 'Mentor / catalyst', conn: 'hands over tool' }
   };
   let s = '';
   for (const key of Object.keys(pos)) {

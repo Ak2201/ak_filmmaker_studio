@@ -5,200 +5,581 @@
    the look, edit THIS FILE (and the one skin file); no component reads
    a raw hex. If a value is missing here, add it here.
 
-   SWISS PRECISION, DARK ONLY (owner, 14 Oct 2026). A layered obsidian
-   ground, hairline borders instead of shadows, one violet accent, and
-   colour only where colour is data (strip hues, DOOD codes, element
-   categories, status). Space Grotesk for display, Inter for the
-   interface, JetBrains Mono for figures. See docs/DESIGN-KIT.md.
+   THE 8B MIX (owner, 28 Oct 2026) — REVERSES "dark only" (14 Oct).
+   Palette taken from the 8B design-studio template (MIT; notice in
+   docs/CREDITS.md): near-black #0d0c11, white, ONE violet #6c3cff, a
+   pale card #efeef4, muted inks #5d5a67 (on white) / #aaa7b4 (on
+   black). Gabarito for headings, Onest for the interface and figures
+   (tabular-nums). See docs/DESIGN-KIT.md.
 
-   THERE IS ONE THEME. The light theme (paper) and its toggle are gone.
-   Bare :root carries the whole palette and nothing overrides it, so the
-   first paint is right before any script runs and there is no second
-   palette to drift. chrome.js still stamps [data-theme="dark"] (the
-   stored key `fms_studio_theme_v1` is read, never deleted), and the
-   [data-theme="dark"] block below exists only so that stamp and the
-   scripts-off probe agree; it restates color-scheme and nothing else.
+   TWO SURFACES, STILL ONE PALETTE. There is no theme switch and no
+   prefers-color-scheme fork:
+     - bare :root is the LIGHT work surface — the canvas, cards,
+       fields and dialogs every page reads (color-scheme: light);
+     - the DARK SCOPE below (the rail, the top band, the phone's bar
+       and sheets, the project switcher, and anything carrying
+       [data-surface="dark"]) restates the same token NAMES with dark
+       values, so a rule written as `color: var(--ink)` is right on
+       either side without knowing which side it is on.
+   That is why the scope restates names rather than introducing new
+   ones: ~90 stylesheets read --ink / --surface-* / --panel and none of
+   them had to change. Custom properties inherit COMPUTED values, so
+   every token that is an alias (var() of a scope-varying token) lives
+   in the ALIAS block, whose selector matches both :root and the dark
+   scope — declared once, re-evaluated on each side.
 
-   Light surfaces survive in exactly three places, each with its own
-   token family rather than a theme: print / PDF (--print-*), the legal
-   documents ([data-surface="paper"], below) and the screenplay's paper
-   page (--paper-page*).
+   THE ACCENT ACROSS THE SEAM. A page's accent is set on <html> by
+   [data-phase] / [data-volume], so it is computed with the LIGHT inks.
+   Each of those blocks therefore also names its --accent-night (the
+   hue as text on near-black) and --accent-night-wash, and the dark
+   scope points --accent-deep / -lift / -wash at them. The --x-night
+   constants are the hues as text on a dark ground; --x-deep is the hue
+   as text on a light one.
+
+   The first paint is right with scripts off: bare :root carries the
+   light palette, the dark scope is plain class selectors on markup the
+   shell renders, and verify's scripts-off probe reads both.
+
+   Light documents survive as their own families: print / PDF
+   (--print-*), [data-surface="paper"] and the screenplay's paper page
+   (--paper-page*).
 
    Token NAMES are a contract with ~90 stylesheets: every name the
-   previous palettes declared is still declared, re-pointed. The old
-   names (--paper, --ink, --feature, --chrome, --panel, the revamp's
-   --bg-* / --accent-gold* aliases) keep working; the Swiss role names
-   (--surface-*, --border-*, --strip-*, --dood-*, --status-*) are new.
+   previous palettes declared is still declared, re-pointed.
    ============================================================ */
 
 :root {
-  /* Dark in every state. Without it a form control, a scrollbar and a
-     native date picker paint their light UA chrome on a near-black
-     page — the one flash no palette fix can cover. */
+  color-scheme: light;
+
+  /* ---- surfaces: the light work stack ------------------------
+       canvas    the page behind the work
+       rail      inset fields, table heads, sunk strips (level 1)
+       card      panels, strips, breakdown cards (level 2)
+       elevated  modals, menus, popovers (level 3)
+     and two interaction fills for hover and active. Depth is a
+     hairline plus a whisper of shadow, never a glow. */
+  --surface-canvas:   #f4f3f8;
+  --surface-rail:     #efeef4;
+  --surface-card:     #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-hover:    #e9e8f0;
+  --surface-active:   #dfdde8;
+
+  /* Hairlines: near-black at low alpha. */
+  --border-hair:    rgba(13, 12, 17, .08);
+  --border-default: rgba(13, 12, 17, .12);
+  --border-strong:  rgba(13, 12, 17, .18);
+  --border-grip:    rgba(13, 12, 17, .28);
+
+  /* ---- ink ----------------------------------------------------
+     Three text inks. --ink-muted is the template's secondary ink:
+     6.7:1 on white, 5.0:1 on the active fill. */
+  --ink:          #0d0c11;
+  --ink-body:     #2b2932;
+  --ink-muted:    #5d5a67;
+  /* --ink-faint IS NOT A TEXT COLOUR (verify greps for it). */
+  --ink-faint:    #a8a5b3;
+
+  /* ---- the accent: ONE violet --------------------------------
+     #6c3cff carries white text at 5.6:1, so the MARK and the FILL are
+     the same violet now; --accent-primary is the mark (focus rings,
+     selection bars, dots, meters), --brand the fill under words. */
+  --accent-primary:       #6c3cff;
+  --accent-primary-hover: #5a2ee0;
+  --accent-glow:          rgba(108, 60, 255, .18);
+
+  --brand:            #6c3cff;
+  --brand-hover:      #5a2ee0;
+  --brand-deep:       #5326d9;   /* the brand as TEXT: 7.9:1 on white, 5.7:1 on active */
+  --brand-wash:       #efeaff;
+  --brand-lift:       #5326d9;   /* text on --panel (a light panel now) */
+  --brand-on:         #ffffff;
+  --brand-night:      #b9a3ff;   /* the brand as text on near-black: 9.5:1 */
+  --brand-night-wash: #1f1838;
+  --glow-soft:        rgba(108, 60, 255, .10);
+  /* The announcement strip: a near-black plate, constant ink. */
+  --brand-bar:        #0d0c11;
+  --brand-bar-2:      #1f1d26;
+  --brand-bar-ink:    #ffffff;
+  --brand-bar-accent: #b9a3ff;
+
+  /* ---- the phase hues -----------------------------------------
+     A stage's FILL, its text on light (-deep), its tint (-wash), and
+     its text on near-black (-night / -night-wash, for the dark
+     scope). The story stage IS the brand violet: one violet. */
+  --feature:      #6c3cff;
+  --feature-deep: #5326d9;
+  --feature-wash: #efeaff;
+  --feature-night: #c4b5fd;
+  --feature-night-wash: #1f1838;
+
+  --shorts:       #3b82f6;
+  --shorts-deep:  #1d4ed8;
+  --shorts-wash:  #e8f0fe;
+  --shorts-night: #93c5fd;
+  --shorts-night-wash: #121d30;
+
+  --library:      #d6a44a;
+  --library-deep: #7a4f00;
+  --library-wash: #fbf1dd;
+  --library-night: #e8c384;
+  --library-night-wash: #241c0e;
+
+  --visualize:    #d946ef;
+  --visualize-deep: #86198f;
+  --visualize-wash: #fbeafd;
+  --visualize-night: #f0abfc;
+  --visualize-night-wash: #2a1230;
+
+  --plan:         #2dd4bf;
+  --plan-deep:    #0b5f58;
+  --plan-wash:    #e2f5f2;
+  --plan-night:   #7fe8da;
+  --plan-night-wash: #0f2724;
+
+  --shoot:        #f472b6;
+  --shoot-deep:   #9d174d;
+  --shoot-wash:   #fde9f2;
+  --shoot-night:  #f9a8d4;
+  --shoot-night-wash: #2d1624;
+
+  /* ---- breakdown category hues: the INDUSTRY colour code ----
+     (owner, 20 Oct 2026): cast red, stunts orange, background green,
+     special effects blue, props violet, vehicles and animals pink,
+     sound brown; wardrobe, makeup and special equipment take the rest.
+     CATEGORY colours, reached only through .hue-el-*. Every chip
+     carries its category's NAME as well as its colour. */
+  --el-cast: #f87171;      --el-cast-deep: #991b1b;      --el-cast-wash: #fdeaea;      --el-cast-night: #fca5a5;      --el-cast-night-wash: #331618;
+  --el-stunts: #fb923c;    --el-stunts-deep: #9a3412;    --el-stunts-wash: #fdeede;    --el-stunts-night: #fdba74;    --el-stunts-night-wash: #2c180b;
+  --el-extras: #4ade80;    --el-extras-deep: #166534;    --el-extras-wash: #e3f6e9;    --el-extras-night: #86efac;    --el-extras-night-wash: #10291a;
+  --el-sfx: #3b82f6;       --el-sfx-deep: #1e40af;       --el-sfx-wash: #e6eefd;       --el-sfx-night: #93c5fd;       --el-sfx-night-wash: #0f1d36;
+  --el-props: #a78bfa;     --el-props-deep: #5b21b6;     --el-props-wash: #efeaff;     --el-props-night: #c4b5fd;     --el-props-night-wash: #1f1838;
+  --el-vehicles: #f472b6;  --el-vehicles-deep: #9d174d;  --el-vehicles-wash: #fde9f2;  --el-vehicles-night: #f9a8d4;  --el-vehicles-night-wash: #2d1624;
+  --el-animals: #e879f9;   --el-animals-deep: #86198f;   --el-animals-wash: #fbeafd;   --el-animals-night: #f0abfc;   --el-animals-night-wash: #2a1430;
+  --el-wardrobe: #2dd4bf;  --el-wardrobe-deep: #0b5f58;  --el-wardrobe-wash: #e2f5f2;  --el-wardrobe-night: #7fe8da;  --el-wardrobe-night-wash: #0f2724;
+  --el-makeup: #facc15;    --el-makeup-deep: #713f12;    --el-makeup-wash: #fdf6d4;    --el-makeup-night: #fde68a;    --el-makeup-night-wash: #2b250c;
+  --el-sound: #c08457;     --el-sound-deep: #6b3e1f;     --el-sound-wash: #f6ece3;     --el-sound-night: #e3b58f;     --el-sound-night-wash: #2a1d12;
+  --el-dressing: #b5c25a;  --el-dressing-deep: #4d5a12;  --el-dressing-wash: #f1f4dc;  --el-dressing-night: #d6df9a;  --el-dressing-night-wash: #22260f;
+  --el-vfx: #38bdf8;       --el-vfx-deep: #075985;       --el-vfx-wash: #e2f3fc;       --el-vfx-night: #7dd3fc;       --el-vfx-night-wash: #0e2433;
+  --el-special: #94a3b8;   --el-special-deep: #475569;   --el-special-wash: #eceff3;   --el-special-night: #cbd5e1;   --el-special-night-wash: #1c222c;
+
+  /* ---- semantic: emerald / amber / crimson ------------------
+     --status-* are FILLS (dots, bars, solid badges). --ok / --warn are
+     fills too (verify forbids them as text; near-black reads on both),
+     -deep is their text. --danger is text-safe on every light surface
+     (4.7:1 on active), so as a FILL it carries --danger-on (white). */
+  --status-success: #10b981;
+  --status-warning: #f59e0b;
+  --status-danger:  #ef4444;
+  --ok:           #10b981;
+  --ok-deep:      #065f46;
+  --ok-wash:      #e3f6ec;
+  --ok-night:     #6ee7b7;
+  --warn:         #f59e0b;
+  --warn-deep:    #7a3e00;
+  --warn-wash:    #fdf1dc;
+  --warn-night:   #fbbf24;
+  --danger:       #b42318;
+  --danger-deep:  #912018;
+  --danger-wash:  #fdeceb;
+  --danger-night: #fca5a5;
+  --danger-on:    #ffffff;
+  --ok-line:      rgba(16, 185, 129, .35);
+  --warn-line:    rgba(245, 158, 11, .40);
+  --danger-line:  rgba(239, 68, 68, .35);
+  --info-line:    rgba(108, 60, 255, .30);
+
+  /* ---- strip hues: time of day ------------------------------
+     -bg is a light alpha wash; -ink the badge's text (AA on the wash
+     over a card). */
+  --strip-day:      #d6a44a;
+  --strip-day-bg:   rgba(214, 164, 74, .16);
+  --strip-day-ink:  #7a4f00;
+  --strip-night:    #3b82f6;
+  --strip-night-bg: rgba(59, 130, 246, .12);
+  --strip-night-ink: #1d4ed8;
+  --strip-dusk:     #f472b6;
+  --strip-dusk-bg:  rgba(244, 114, 182, .14);
+  --strip-dusk-ink: #9d174d;
+  --strip-dawn:     #a78bfa;
+  --strip-dawn-bg:  rgba(167, 139, 250, .16);
+  --strip-dawn-ink: #5b21b6;
+  --strip-move:     #f59e0b;
+  --strip-move-bg:  rgba(245, 158, 11, .14);
+  --strip-move-ink: #7a3e00;
+
+  /* ---- DOOD codes (day out of days) -------------------------
+     Each code also carries its LETTERS: colour is never alone. */
+  --dood-sw:      #10b981;
+  --dood-sw-bg:   rgba(16, 185, 129, .14);
+  --dood-sw-ink:  #065f46;
+  --dood-w:       #6c3cff;
+  --dood-w-bg:    rgba(108, 60, 255, .12);
+  --dood-w-ink:   #5326d9;
+  --dood-h:       #f59e0b;
+  --dood-h-bg:    rgba(245, 158, 11, .16);
+  --dood-h-ink:   #7a3e00;
+  --dood-wf:      #ef4444;
+  --dood-wf-bg:   rgba(239, 68, 68, .14);
+  --dood-wf-ink:  #912018;
+
+  /* ---- per-page accent ---------------------------------------
+     Each page sets --accent once, on <html data-volume|data-phase>. */
+  --accent:       var(--feature);
+  --accent-deep:  var(--feature-deep);
+  --accent-wash:  var(--feature-wash);
+  --accent-lift:  var(--feature-deep);
+  --accent-night: var(--feature-night);
+  --accent-night-wash: var(--feature-night-wash);
+  /* The accent fill's HOVER, carrying --accent-on: the deeper brand
+     under white, or the paler hue under near-black. */
+  --accent-hover: var(--brand-hover);
+  /* Text on a saturated hue FILL. One base value the --*-on tokens
+     point at (never at each other: a var() cycle makes text land on
+     its own background). The two violets carry white instead. */
+  --on-fill:      #0d0c11;
+  --accent-on:    #ffffff;
+  --feature-on:   #ffffff;
+  --shorts-on:    var(--on-fill);
+  --library-on:   var(--on-fill);
+  --visualize-on: var(--on-fill);
+  --plan-on:      var(--on-fill);
+  --shoot-on:     var(--on-fill);
+  --el-cast-on: var(--on-fill);
+  --el-stunts-on: var(--on-fill);
+  --el-extras-on: var(--on-fill);
+  --el-sfx-on: var(--on-fill);
+  --el-props-on: var(--on-fill);
+  --el-vehicles-on: var(--on-fill);
+  --el-animals-on: var(--on-fill);
+  --el-wardrobe-on: var(--on-fill);
+  --el-makeup-on: var(--on-fill);
+  --el-sound-on: var(--on-fill);
+  --el-dressing-on: var(--on-fill);
+  --el-vfx-on: var(--on-fill);
+  --el-special-on: var(--on-fill);
+
+  /* ---- chrome: the rail, the band, the dock -----------------
+     Constant: the chrome is near-black on every page. */
+  --chrome:       #0d0c11;
+  --chrome-ink:   #ffffff;
+  --chrome-muted: #aaa7b4;
+  --chrome-hair:  rgba(255, 255, 255, .08);
+  --chrome-hair-strong: rgba(255, 255, 255, .16);
+  --chrome-fill:  rgba(255, 255, 255, .06);
+  --chrome-fill-strong: rgba(108, 60, 255, .34);
+  --chrome-accent:      #b9a3ff;
+
+  /* ---- the floating family ----------------------------------
+     Toast, tooltip, popover, menu, modal: white, near-black ink. */
+  --panel:        #ffffff;
+  --panel-raised: #f4f3f8;
+  --panel-ink:    #0d0c11;
+  --panel-muted:  #5d5a67;
+  --panel-hair:   rgba(13, 12, 17, .12);
+  --panel-hair-soft: rgba(13, 12, 17, .07);
+
+  --scrim:        rgba(13, 12, 17, .55);
+
+  /* ---- type -------------------------------------------------- */
+  /* Catamaran follows every UI face for TAMIL only (fonts.css ships just
+     its tamil subset). The "Fallback" faces are metric-matched local
+     Arial (fonts.css, from the 8B template) so the swap does not jump. */
+  --face-display:   'Gabarito', 'Rupee Fallback', 'Glyph Fallback', 'Gabarito Fallback', 'Catamaran', ui-sans-serif, system-ui, sans-serif;
+  --face-sans:      'Onest', 'Rupee Fallback', 'Glyph Fallback', 'Onest Fallback', 'Catamaran', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* No serif any more: the project title, the cover preview and the
+     landing tagline are Gabarito. The name stays declared (CLAUDE.md). */
+  --face-editorial: var(--face-display);
+  --face-serif:     var(--face-sans);
+  --face-accent:    var(--face-display);
+  --face-accent-style: normal;
+
+  --f-display:   var(--sk-display, var(--face-display));
+  --f-body:      var(--sk-body, var(--face-sans));
+  --f-sans:      var(--f-body);
+  --f-editorial: var(--face-editorial);
+  /* --f-mono / --f-code keep their names for the sheets that read them,
+     but there is no monospace UI face: data is Onest, and the rule that
+     sets it adds font-variant-numeric: tabular-nums. */
+  --f-mono:    var(--face-sans);
+  --f-code:    var(--face-sans);
+  /* 'Noto Sans Tamil' LAST, which the gate asserts in source: a family
+     listed earlier would claim every Latin glyph it can draw and break
+     the fixed-width grid pageCount() is arithmetic on. */
+  --f-script:  'Courier Prime', 'Courier New', Courier, 'Noto Sans Tamil', monospace;
+
+  /* The scale. */
+  --t-nano:  0.5625rem;  /* 9px */
+  --t-micro: 0.688rem;   /* 11px */
+  --t-tiny:  0.75rem;    /* 12px */
+  --t-ui:    0.8125rem;  /* 13px */
+  --t-small: 0.875rem;   /* 14px */
+  --t-base:  1rem;       /* 16px */
+  --t-lg:    1.125rem;   /* 18px */
+  --t-xl:    1.375rem;   /* 22px */
+  --t-2xl:   1.75rem;    /* 28px */
+  --t-3xl:   2.25rem;    /* 36px */
+  --t-4xl:   3rem;       /* 48px */
+  --t-5xl:   4.25rem;    /* 68px */
+  --t-6xl:   6.5rem;     /* 104px */
+
+  --lh-display: 1.0;
+  --lh-tight: 1.12;
+  --lh-snug:  1.3;
+  --lh-body:  1.55;
+
+  --track-label: 0.06em;
+  --track-wide:  0.14em;
+  --track-tight: -0.025em;   /* Gabarito headings */
+  --track-display: -0.04em;  /* display sizes */
+
+  /* ---- space (4px base) --------------------------------------- */
+  --s1: 4px;   --s2: 8px;   --s3: 12px;  --s4: 16px;
+  --s5: 24px;  --s6: 32px;  --s7: 48px;  --s8: 64px;
+  --s9: 96px;  --s10: 128px;
+  --s-half: 2px;  --s1h: 6px;
+
+  /* ---- control heights ---------------------------------------- */
+  --h-compact: 30px;
+  --h-control: 36px;
+  --h-field:   40px;
+  --h-badge:   20px;
+
+  /* ---- edges ---------------------------------------------------
+     The template's soft geometry: 8 micro-controls, 10 fields and
+     buttons, 16 cards, 24 modals, 28 the public site's big surfaces.
+     A pill is a STATUS badge or the one primary CTA. */
+  --radius-sm:   8px;
+  --radius:      10px;
+  --radius-md:   10px;
+  --radius-lg:   16px;
+  --radius-xl:   24px;
+  --radius-2xl:  28px;
+  --radius-pill: 9999px;
+
+  --blur-chrome:  saturate(140%) blur(12px);
+
+  --measure:       68ch;
+  /* --measure-wide is THE STUDIO'S ONE FRAME (owner, 19 Oct 2026: the
+     whole viewport beside the rail); prose reads --measure-text. */
+  --measure-wide:  100vw;
+  --measure-text:  92ch;
+  --content-max:   1280px;
+  --rail-w:        220px;
+  --viz-min:       560px;
+  --modal-w:       480px;
+  --modal-w-lg:    560px;
+  --popover-w:     320px;
+  --gutter:  clamp(16px, 3vw, 40px);
+
+  --focus: 2px solid var(--border-focus);
+  --focus-offset: 2px;
+
+  /* ---- no decorative images ---------------------------------
+     The sheens and the hero glow are kept as NAMES (rules layer them as
+     background-image over a solid colour) and resolve to nothing: the
+     8B look has no gradients on surfaces. */
+  --surface-card-sheen:   none;
+  --surface-rail-sheen:   none;
+  --cta-sheen:            none;
+  --hero-glow:            none;
+  --band-line:            linear-gradient(var(--chrome-hair), var(--chrome-hair));
+  --shadow-sm:            0 0 0 0 transparent;
+  --shadow-rail:          1px 0 0 var(--chrome-hair);
+  --shadow-band:          0 1px 0 var(--chrome-hair);
+
+  /* ---- motion --------------------------------------------------
+     --motion is the DISTANCE half of the reduced-motion switch: every
+     translate and scale is `calc(<distance> * var(--motion))`, and the
+     media query at the foot sets it to 0. Exit is ~65% of enter. */
+  --motion:       1;
+  --speed-tap:  0.12s;
+  --speed:      0.16s;
+  --speed-slow: 0.26s;
+  --speed-lazy: 0.42s;
+  --speed-exit: 0.16s;
+  --ease:     cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:  cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
+
+  /* ---- stacking ------------------------------------------------ */
+  --z-rail:    50;
+  --z-toolbar: 100;
+  --z-float:   150;
+  --z-overlay: 1100;
+  --z-toast:   1500;
+
+  /* ---- print: paper is paper, ink is ink ------------------------ */
+  --print-paper: #ffffff;
+  --print-ink:   #000000;
+  --print-rule:  #888888;
+  --print-muted: #666666;
+  --print-wash:  #f0f0f0;
+  /* The brand on paper (the receipt PDF): violet deep enough for
+     white (7.9:1), used sparingly so a mono printer prints clean. */
+  --print-accent: #5326d9;
+  --print-rev-white:     #ffffff;
+  --print-rev-blue:      #dde9fb;
+  --print-rev-pink:      #fbe1ea;
+  --print-rev-yellow:    #fbf4c8;
+  --print-rev-green:     #def3d8;
+  --print-rev-goldenrod: #f7e2ad;
+  --print-rev-buff:      #f3e8d3;
+  --print-rev-salmon:    #fadccf;
+  --print-rev-cherry:    #f6cfd6;
+
+  /* ---- the screenplay's paper page ------------------------------
+     A script reads as a page: 16.9:1 ink, 6.4:1 muted. */
+  --paper-page:       #fbfaf6;
+  --paper-page-ink:   #17171c;
+  --paper-page-muted: #5b5b66;
+  --paper-page-rule:  #d9d7ce;
+  --paper-page-shadow: 0 0 0 1px rgba(13, 12, 17, .08), 0 8px 24px rgba(13, 12, 17, .08);
+
+  /* ---- sticky notes (src/lib/notes-model.js) --------------------
+     Five pastel stocks, one ink (>= 12:1 / >= 4.9:1 muted). */
+  --note-yellow: #fbe9a8;
+  --note-pink:   #f8d3e1;
+  --note-blue:   #d2e4fa;
+  --note-green:  #d4efd6;
+  --note-violet: #e3d9fb;
+  --note-ink:    var(--paper-page-ink);
+  --note-muted:  var(--paper-page-muted);
+
+  /* ---- elevation (light side) ---------------------------------- */
+  --shadow-md:    0 8px 24px rgba(13, 12, 17, .10);
+  --shadow-lg:    0 12px 32px rgba(13, 12, 17, .12), 0 0 0 1px var(--border-hair);
+  --shadow-panel: 0 12px 32px rgba(13, 12, 17, .14), 0 0 0 1px var(--panel-hair);
+  --shadow-modal: 0 24px 64px rgba(13, 12, 17, .22), 0 0 0 1px var(--panel-hair);
+  --shadow-card-rest:    0 1px 2px rgba(13, 12, 17, .04);
+  --shadow-card-hover:   0 8px 24px rgba(13, 12, 17, .08);
+  --shadow-control-rest: none;
+  --shadow-cta-hover:    0 6px 18px rgba(108, 60, 255, .22);
+}
+
+/* The stamp chrome.js writes. Restates the scheme only — there is no
+   second palette for it to choose. */
+:root[data-theme="studio"] {
+  color-scheme: light;
+}
+
+/* ============================================================
+   THE DARK SCOPE — the chrome, and [data-surface="dark"]
+   ------------------------------------------------------------
+   The same NAMES, dark values. Keep this selector list in step with
+   the one in skins/studio.css (which re-evaluates the --sk-* aliases
+   on the same elements). Every element listed paints var(--chrome)
+   (or the public site's near-black band) as its own background.
+   ============================================================ */
+.sh-rail, .sh-bar, .toolbar, .mobile-actionbar, .mn-sheet, .ps-pop,
+.skip-to-content, .step-rail-toggle, [data-surface="dark"] {
   color-scheme: dark;
 
-  /* ---- surfaces: the obsidian stack ------------------------- */
-  /* Depth comes from luminance in four steps plus a hairline, never
-     from a soft shadow:
-       0 canvas    the page, timeline tracks, dead gutters
-       1 rail      persistent chrome, toolbars, inset fields, headers
-       2 card      panels, strips, breakdown cards
-       3 elevated  modals, menus, popovers
-     and two interaction fills for hover and active. */
-  --surface-canvas:   #0d0e13;
-  --surface-rail:     #121318;
-  --surface-card:     #1a1b21;
-  --surface-elevated: #22232b;
-  --surface-hover:    #2a2b35;
-  --surface-active:   #343542;
+  --surface-canvas:   #0d0c11;
+  --surface-rail:     #16151c;
+  --surface-card:     #1a1922;
+  --surface-elevated: #1f1d26;
+  --surface-hover:    #27252f;
+  --surface-active:   #322f3c;
 
-  /* Hairlines. 8% at rest, 16% on hover / focus / seams. */
   --border-hair:    rgba(255, 255, 255, .08);
   --border-default: rgba(255, 255, 255, .10);
   --border-strong:  rgba(255, 255, 255, .16);
-  --border-grip:    rgba(255, 255, 255, .20);   /* drag handles, checkbox edges */
+  --border-grip:    rgba(255, 255, 255, .22);
 
-  /* ---- ink & paper (the original names, re-pointed) --------- */
+  --ink:          #ffffff;
+  --ink-body:     #d6d4de;
+  --ink-muted:    #aaa7b4;   /* 5.5:1 on the active fill */
+  --ink-faint:    #6f6c7a;
+
+  --accent-primary:       #8b5cf6;
+  --accent-primary-hover: #7c3aed;
+  --accent-glow:          rgba(139, 92, 246, .25);
+
+  --brand-deep:  var(--brand-night);
+  --brand-lift:  var(--brand-night);
+  --brand-wash:  var(--brand-night-wash);
+
+  --accent-deep: var(--accent-night);
+  --accent-lift: var(--accent-night);
+  --accent-wash: var(--accent-night-wash);
+
+  --feature-deep: var(--feature-night);     --feature-wash: var(--feature-night-wash);
+  --shorts-deep: var(--shorts-night);       --shorts-wash: var(--shorts-night-wash);
+  --library-deep: var(--library-night);     --library-wash: var(--library-night-wash);
+  --visualize-deep: var(--visualize-night); --visualize-wash: var(--visualize-night-wash);
+  --plan-deep: var(--plan-night);           --plan-wash: var(--plan-night-wash);
+  --shoot-deep: var(--shoot-night);         --shoot-wash: var(--shoot-night-wash);
+  --el-cast-deep: var(--el-cast-night);         --el-cast-wash: var(--el-cast-night-wash);
+  --el-stunts-deep: var(--el-stunts-night);     --el-stunts-wash: var(--el-stunts-night-wash);
+  --el-extras-deep: var(--el-extras-night);     --el-extras-wash: var(--el-extras-night-wash);
+  --el-sfx-deep: var(--el-sfx-night);           --el-sfx-wash: var(--el-sfx-night-wash);
+  --el-props-deep: var(--el-props-night);       --el-props-wash: var(--el-props-night-wash);
+  --el-vehicles-deep: var(--el-vehicles-night); --el-vehicles-wash: var(--el-vehicles-night-wash);
+  --el-animals-deep: var(--el-animals-night);   --el-animals-wash: var(--el-animals-night-wash);
+  --el-wardrobe-deep: var(--el-wardrobe-night); --el-wardrobe-wash: var(--el-wardrobe-night-wash);
+  --el-makeup-deep: var(--el-makeup-night);     --el-makeup-wash: var(--el-makeup-night-wash);
+  --el-sound-deep: var(--el-sound-night);       --el-sound-wash: var(--el-sound-night-wash);
+  --el-dressing-deep: var(--el-dressing-night); --el-dressing-wash: var(--el-dressing-night-wash);
+  --el-vfx-deep: var(--el-vfx-night);           --el-vfx-wash: var(--el-vfx-night-wash);
+  --el-special-deep: var(--el-special-night);   --el-special-wash: var(--el-special-night-wash);
+
+  --ok:          #34d399;
+  --ok-deep:     var(--ok-night);
+  --ok-wash:     #0f291e;
+  --warn:        #f59e0b;
+  --warn-deep:   var(--warn-night);
+  --warn-wash:   #2a1d08;
+  --danger:      #f87171;
+  --danger-deep: var(--danger-night);
+  --danger-wash: #2d1517;
+  --danger-on:   var(--on-fill);
+
+  --strip-day-ink:   #e8c384;
+  --strip-night-ink: #93c5fd;
+  --strip-dusk-ink:  #f9a8d4;
+  --strip-dawn-ink:  #c4b5fd;
+  --strip-move-ink:  #fcd34d;
+  --dood-sw-ink: #6ee7b7;
+  --dood-w-ink:  #c4b5fd;
+  --dood-h-ink:  #fcd34d;
+  --dood-wf-ink: #fca5a5;
+
+  --panel:        #1f1d26;
+  --panel-raised: #27252f;
+  --panel-ink:    #ffffff;
+  --panel-muted:  #aaa7b4;
+  --panel-hair:   rgba(255, 255, 255, .12);
+  --panel-hair-soft: rgba(255, 255, 255, .07);
+
+  --shadow-md:    0 8px 24px rgba(0, 0, 0, .55);
+  --shadow-lg:    0 8px 24px rgba(0, 0, 0, .55), 0 0 0 1px var(--border-strong);
+  --shadow-panel: 0 12px 32px rgba(0, 0, 0, .55), 0 0 0 1px var(--panel-hair);
+  --shadow-modal: 0 24px 64px rgba(0, 0, 0, .65), 0 0 0 1px var(--panel-hair);
+  --shadow-card-rest:  none;
+  --shadow-card-hover: 0 0 0 1px var(--border-strong);
+}
+
+/* ============================================================
+   THE ALIAS BLOCK — every token that is var() of a scope-varying
+   token, declared once and re-evaluated on each side of the seam.
+   ============================================================ */
+:root,
+.sh-rail, .sh-bar, .toolbar, .mobile-actionbar, .mn-sheet, .ps-pop,
+.skip-to-content, .step-rail-toggle, [data-surface="dark"] {
   --paper:        var(--surface-canvas);
   --paper-raised: var(--surface-card);
   --paper-sunk:   var(--surface-rail);
   --paper-edge:   var(--surface-hover);
-
-  --ink:          #ededf2;
-  --ink-body:     #c7c4d7;
-  --ink-muted:    #94a3b8;   /* 4.72:1 on the active fill, 6.7:1 on a card */
-  /* --ink-faint IS NOT A TEXT COLOUR. It clears 4.5:1 on no ground and
-     verify greps for `color: var(--ink-faint)`. A line, a swatch, a
-     hover border — never `color` or an SVG text `fill`. The text
-     hierarchy is THREE inks: --ink, --ink-body, --ink-muted. */
-  --ink-faint:    #64748b;
-
-  /* Also not text colours: hairlines. */
   --rule:         var(--border-strong);
   --rule-hair:    var(--border-hair);
+  --border-focus: var(--accent-primary);
 
-  /* ---- the accent: violet ----------------------------------
-     --accent-primary is THE violet (#8B5CF6), and it is a MARK: focus
-     rings, the selected row's bar, active outlines, glows, dots,
-     progress. As a FILL UNDER WHITE TEXT it measures 4.23:1, which is
-     under the 4.5 the gate holds — so a fill that carries words
-     (primary button, avatar, selected segment) takes --brand, one step
-     deeper (#7C3AED, 5.70:1 under white), and hovers deeper still. */
-  --accent-primary:       #8b5cf6;
-  --accent-primary-hover: #7c3aed;
-  --accent-glow:          rgba(139, 92, 246, .25);
-  --border-focus:         var(--accent-primary);
+  --cta-fill:       var(--brand);
+  --cta-fill-hover: var(--brand-hover);
+  --cta-glow:       var(--accent-glow);
 
-  /* ---- the brand hue -----------------------------------------
-     The product's own colour, beside the phase hues: the nav's primary
-     action, the hub, every eyebrow on a page that belongs to no phase.
-       --brand        the FILL that carries text (white on it: 5.70:1)
-       --brand-deep   the brand as TEXT on any dark surface (5.0:1 on
-                      the active fill, 7.1:1 on a card)
-       --brand-lift   a paler text variant for small type on --panel
-       --brand-wash   a tinted ground for a selected row or a slab */
-  --brand:            #7c3aed;
-  --brand-hover:      #6d28d9;
-  --brand-deep:       #b197fc;
-  --brand-wash:       #1d1832;
-  --brand-lift:       #c4b5fd;
-  --brand-on:         #ffffff;
-  --cta-fill:         var(--brand);
-  --cta-fill-hover:   var(--brand-hover);
-  --cta-glow:         var(--accent-glow);
-  --glow-soft:        rgba(139, 92, 246, .12);
-  /* The announcement strip: a brand plate, constant ink. */
-  --brand-bar:        #2e1065;
-  --brand-bar-2:      #4c1d95;
-  --brand-bar-ink:    #f4f0fe;
-  --brand-bar-accent: #f6c26b;
-
-  /* ---- the volume / phase hues ------------------------------
-     Each blueprint and each stage owns a hue (the spine stripe, step
-     numbers, progress fills, door cards). Four variables per hue:
-       --x        the FILL
-       --x-deep   the hue as TEXT (the ground is dark, so "deep" is
-                  LIGHTER — the emphatic version against near-black)
-       --x-lift   text on --panel (identical here; kept as a name)
-       --x-wash   a tinted ground
-     A fill is not a text colour. Phase hues never mean a status. */
-  --feature:      #8b5cf6;
-  --feature-deep: #c4b5fd;
-  --feature-wash: #1d1832;
-
-  --shorts:       #60a5fa;
-  --shorts-deep:  #93c5fd;
-  --shorts-wash:  #121d30;
-
-  --library:      #d6a44a;
-  --library-deep: #e8c384;
-  --library-wash: #241c0e;
-
-  --visualize:    #e879f9;
-  --visualize-deep: #f0abfc;
-  --visualize-wash: #2a1230;
-
-  --plan:         #2dd4bf;
-  --plan-deep:    #7fe8da;
-  --plan-wash:    #0f2724;
-
-  --shoot:        #f472b6;
-  --shoot-deep:   #f9a8d4;
-  --shoot-wash:   #2d1624;
-
-  /* ---- breakdown category hues: the INDUSTRY colour code ----
-     (owner, 20 Oct 2026). The colours a 1st AD's highlighters have
-     always used on a paper script: cast red, stunts orange, background
-     green, special effects blue, props violet, vehicles and animals
-     pink, sound brown. Wardrobe, hair & makeup and special equipment
-     were marks rather than colours on paper (a circle, an asterisk, a
-     box); here they take the remaining hues and the sheet prints the
-     mark beside the name. CATEGORY colours, reached only through
-     .hue-el-* — never a phase, never a status. Every chip carries its
-     category's NAME as well as its colour: identity is never colour
-     alone. */
-  --el-cast: #f87171;
-  --el-cast-deep: #fca5a5;
-  --el-cast-wash: #331618;
-  --el-stunts: #fb923c;
-  --el-stunts-deep: #fdba74;
-  --el-stunts-wash: #2c180b;
-  --el-extras: #4ade80;
-  --el-extras-deep: #86efac;
-  --el-extras-wash: #10291a;
-  --el-sfx: #3b82f6;
-  --el-sfx-deep: #93c5fd;
-  --el-sfx-wash: #0f1d36;
-  --el-props: #a78bfa;
-  --el-props-deep: #c4b5fd;
-  --el-props-wash: #1f1838;
-  --el-vehicles: #f472b6;
-  --el-vehicles-deep: #f9a8d4;
-  --el-vehicles-wash: #2d1624;
-  --el-animals: #e879f9;
-  --el-animals-deep: #f0abfc;
-  --el-animals-wash: #2a1430;
-  --el-wardrobe: #2dd4bf;
-  --el-wardrobe-deep: #7fe8da;
-  --el-wardrobe-wash: #0f2724;
-  --el-makeup: #facc15;
-  --el-makeup-deep: #fde68a;
-  --el-makeup-wash: #2b250c;
-  --el-sound: #c08457;
-  --el-sound-deep: #e3b58f;
-  --el-sound-wash: #2a1d12;
-  --el-dressing: #b5c25a;
-  --el-dressing-deep: #d6df9a;
-  --el-dressing-wash: #22260f;
-  --el-vfx: #38bdf8;
-  --el-vfx-deep: #7dd3fc;
-  --el-vfx-wash: #0e2433;
-  --el-special: #94a3b8;
-  --el-special-deep: #cbd5e1;
-  --el-special-wash: #1c222c;
-
-  /* Lifted: text on --panel. Identical to -deep in a dark-only palette;
-     the names stay because rules read them. */
   --feature-lift: var(--feature-deep);
   --shorts-lift:  var(--shorts-deep);
   --library-lift: var(--library-deep);
@@ -218,343 +599,13 @@
   --el-dressing-lift: var(--el-dressing-deep);
   --el-vfx-lift: var(--el-vfx-deep);
   --el-special-lift: var(--el-special-deep);
-  --ok-lift:      #6ee7b7;
-  --danger-lift:  #fca5a5;
+  --ok-lift:      var(--ok-deep);
+  --danger-lift:  var(--danger-deep);
 
-  /* ---- semantic: emerald / amber / crimson ------------------
-     The --status-* values are the spec's FILLS (dots, bars, solid
-     badges). --ok / --warn / --danger are what the rules read, and
-     each is chosen to work as TEXT on every surface too, which the
-     500-weight fills do not (crimson #EF4444 is 4.15:1 on elevated). */
-  --status-success: #10b981;
-  --status-warning: #f59e0b;
-  --status-danger:  #ef4444;
-  --ok:           #34d399;
-  --ok-deep:      #6ee7b7;
-  --ok-wash:      #0f291e;
-  --warn:         #f59e0b;
-  --warn-deep:    #fbbf24;
-  --warn-wash:    #2a1d08;
-  --danger:       #f87171;
-  --danger-deep:  #fca5a5;
-  --danger-wash:  #2d1517;
-  /* Status badge parts (spec 3.5): a dark wash, a 30% hairline, a
-     light ink. */
-  --ok-line:      rgba(16, 185, 129, .30);
-  --warn-line:    rgba(245, 158, 11, .30);
-  --danger-line:  rgba(239, 68, 68, .30);
-  --info-line:    rgba(139, 92, 246, .30);
-
-  /* ---- strip hues: time of day ------------------------------
-     The stripboard's left telemetry stripe, the DAY / NIGHT badges,
-     the shoot day's sun line. -bg is the 12% wash a badge sits on;
-     -ink the badge's text (AA on the wash). */
-  --strip-day:      #d6a44a;
-  --strip-day-bg:   rgba(214, 164, 74, .12);
-  --strip-day-ink:  #e8c384;
-  --strip-night:    #60a5fa;
-  --strip-night-bg: rgba(96, 165, 250, .12);
-  --strip-night-ink: #93c5fd;
-  --strip-dusk:     #f472b6;
-  --strip-dusk-bg:  rgba(244, 114, 182, .12);
-  --strip-dusk-ink: #f9a8d4;
-  --strip-dawn:     #a78bfa;
-  --strip-dawn-bg:  rgba(167, 139, 250, .12);
-  --strip-dawn-ink: #c4b5fd;
-  /* The company-move / end-of-day banner on a stripboard. */
-  --strip-move:     #f59e0b;
-  --strip-move-bg:  rgba(245, 158, 11, .10);
-  --strip-move-ink: #fcd34d;
-
-  /* ---- DOOD codes (day out of days) -------------------------
-     SW start-work, W work, H hold, WF work-finish, plus D drop and
-     the empty cell. Each code also carries its LETTERS, so the colour
-     is never the only signal. */
-  --dood-sw:      #10b981;
-  --dood-sw-bg:   rgba(16, 185, 129, .14);
-  --dood-sw-ink:  #6ee7b7;
-  --dood-w:       #8b5cf6;
-  --dood-w-bg:    rgba(139, 92, 246, .18);
-  --dood-w-ink:   #c4b5fd;
-  --dood-h:       #f59e0b;
-  --dood-h-bg:    rgba(245, 158, 11, .16);
-  --dood-h-ink:   #fcd34d;
-  --dood-wf:      #ef4444;
-  --dood-wf-bg:   rgba(239, 68, 68, .16);
-  --dood-wf-ink:  #fca5a5;
   --dood-d-ink:   var(--ink-muted);
   --dood-empty:   var(--ink-muted);   /* the "·" is text: never --ink-faint */
 
-  /* ---- per-page accent ---------------------------------------
-     Each page sets --accent once, on <html data-volume|data-phase>.
-     Everything else refers to --accent. */
-  --accent:       var(--feature);
-  --accent-deep:  var(--feature-deep);
-  --accent-wash:  var(--feature-wash);
-  --accent-lift:  var(--feature-lift); /* accent ON a dark panel */
-  /* The accent fill's HOVER, carrying --accent-on. On a phase page the
-     -deep hue (near-black on it); on a studio page the deeper brand
-     (white on it) — because --accent-on differs between the two and a
-     hover must keep its text legible. */
-  --accent-hover: var(--accent-deep);
-  /* Text on any saturated hue FILL. One base value that --accent-on and
-     every --*-on token point at — never at each other: a var() cycle is
-     invalid at computed-value time and makes text land on its own
-     background (a door numeral measured 1:1). Near-black, because every
-     hue fill here is light enough to carry it (4.55:1 on the violet,
-     more on the rest). */
-  --on-fill:      #0d0e13;
-  --accent-on:    var(--on-fill);
-  --feature-on:   var(--on-fill);
-  --shorts-on:    var(--on-fill);
-  --library-on:   var(--on-fill);
-  --visualize-on: var(--on-fill);
-  --plan-on:      var(--on-fill);
-  --shoot-on:     var(--on-fill);
-  --el-cast-on: var(--on-fill);
-  --el-stunts-on: var(--on-fill);
-  --el-extras-on: var(--on-fill);
-  --el-sfx-on: var(--on-fill);
-  --el-props-on: var(--on-fill);
-  --el-vehicles-on: var(--on-fill);
-  --el-animals-on: var(--on-fill);
-  --el-wardrobe-on: var(--on-fill);
-  --el-makeup-on: var(--on-fill);
-  --el-sound-on: var(--on-fill);
-  --el-dressing-on: var(--on-fill);
-  --el-vfx-on: var(--on-fill);
-  --el-special-on: var(--on-fill);
-  --danger-on:    var(--accent-on);
-
-  /* ---- chrome: the rail, the band, the dock (level 1) -------- */
-  --chrome:       var(--surface-rail);
-  --chrome-ink:   #ededf2;
-  --chrome-muted: #94a3b8;
-  --chrome-hair:  var(--border-hair);
-  --chrome-hair-strong: var(--border-strong);
-  --chrome-fill:  rgba(255, 255, 255, .05);
-  --chrome-fill-strong: rgba(139, 92, 246, .18);
-  --chrome-accent:      var(--brand-deep);
-
-  /* ---- the floating family (level 3) -------------------------
-     Toast, tooltip, popover, phase menu, focus timer, modal. */
-  --panel:        var(--surface-elevated);
-  --panel-raised: var(--surface-hover);
-  --panel-ink:    #ededf2;
-  --panel-muted:  #a1a8b8;
-  --panel-hair:   rgba(255, 255, 255, .12);
-  --panel-hair-soft: rgba(255, 255, 255, .07);
   --panel-gilt:   var(--brand-lift);
-
-  --scrim:        rgba(0, 0, 0, .75);
-
-  /* ---- type -------------------------------------------------- */
-  /* Catamaran follows every UI face for TAMIL only (fonts.css ships just
-     its tamil subset): none of Space Grotesk, Inter or JetBrains Mono
-     has a Tamil glyph, and CSS falls back per glyph. */
-  --face-display:   'Space Grotesk', 'Catamaran', ui-sans-serif, system-ui, sans-serif;
-  --face-sans:      'Inter', 'Catamaran', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  /* The serif, ITALIC, for exactly three things: the project title, the
-     cover preview, and the landing hero's tagline. Never a page title.
-     fonts.css ships only its italic. */
-  --face-editorial: 'Playfair Display', 'Catamaran', Georgia, 'Times New Roman', serif;
-  /* --face-serif keeps its NAME (eleven stylesheets read it); it has
-     named the body sans since the first redesign. */
-  --face-serif:     var(--face-sans);
-  /* The accent half of a headline ("…where you left off."). Was the
-     italic serif; a page title is never serif now, so it is the
-     display face, upright. */
-  --face-accent:    var(--face-display);
-  --face-accent-style: normal;
-
-  --f-display:   var(--sk-display, var(--face-display));
-  --f-body:      var(--sk-body, var(--face-sans));
-  --f-sans:      var(--f-body);
-  --f-editorial: var(--face-editorial);
-  /* --f-mono is the LABEL and DATA face: eyebrows, chips, table heads,
-     eighths, timecodes, DOOD codes. JetBrains Mono, so the 643 rules
-     that name it now ARE monospace again. Tabular figures are asked
-     for where columns must align (modules.css puts tabular-nums on
-     every data table; .mono-num in kit.css). */
-  --f-mono:    'JetBrains Mono', 'Catamaran', ui-monospace, 'SF Mono', Menlo, monospace;
-  --f-code:    'JetBrains Mono', 'Catamaran', ui-monospace, 'SF Mono', Menlo, monospace;
-  /* 'Noto Sans Tamil' LAST, which the gate asserts in source: a family
-     listed earlier would claim every Latin glyph it can draw and break
-     the fixed-width grid pageCount() is arithmetic on. (fonts.css ships
-     it with the tamil subset only, so it cannot — the order is kept
-     anyway.) */
-  --f-script:  'Courier Prime', 'Courier New', Courier, 'Noto Sans Tamil', monospace;
-
-  /* The scale (unchanged steps; the skin decides which a title takes). */
-  --t-nano:  0.5625rem;  /* 9px — telemetry-xs */
-  --t-micro: 0.688rem;   /* 11px — mono labels, meta */
-  --t-tiny:  0.75rem;    /* 12px */
-  --t-ui:    0.8125rem;  /* 13px — Swiss body-md */
-  --t-small: 0.875rem;   /* 14px */
-  --t-base:  1rem;       /* 16px */
-  --t-lg:    1.125rem;   /* 18px */
-  --t-xl:    1.375rem;   /* 22px — headline-lg */
-  --t-2xl:   1.75rem;    /* 28px — display-sm */
-  --t-3xl:   2.25rem;    /* 36px — display-lg */
-  --t-4xl:   3rem;       /* 48px */
-  --t-5xl:   4.25rem;    /* 68px — cover */
-  --t-6xl:   6.5rem;     /* 104px — master cover ceiling */
-
-  --lh-display: 1.0;
-  --lh-tight: 1.15;
-  --lh-snug:  1.32;
-  --lh-body:  1.55;
-
-  --track-label: 0.08em;    /* mono caps labels */
-  --track-wide:  0.16em;    /* stamps, phase eyebrows */
-  --track-tight: -0.02em;   /* Space Grotesk headings (-0.015 to -0.03) */
-  --track-display: -0.03em;
-
-  /* ---- space (4px base) --------------------------------------- */
-  --s1: 4px;   --s2: 8px;   --s3: 12px;  --s4: 16px;
-  --s5: 24px;  --s6: 32px;  --s7: 48px;  --s8: 64px;
-  --s9: 96px;  --s10: 128px;
-  --s-half: 2px;  --s1h: 6px;   /* Swiss space-sm */
-
-  /* ---- control heights ---------------------------------------- */
-  --h-compact: 28px;
-  --h-control: 32px;
-  --h-field:   36px;
-  --h-badge:   18px;
-
-  /* ---- edges ---------------------------------------------------
-     4 inner micro-controls, 6 fields and buttons, 8 cards and panels,
-     12 modals. A pill is a STATUS badge or the one primary CTA. */
-  --radius-sm:   4px;
-  --radius:      6px;
-  --radius-md:   6px;
-  --radius-lg:   8px;
-  --radius-xl:   12px;
-  --radius-pill: 9999px;
-
-  /* ---- elevation: almost none ----------------------------------
-     No soft Gaussian shadows on in-page surfaces; a FLOATING surface
-     gets one sharp clipped shadow (spec: 0 4px 16px / 60%). */
-  --shadow-sm:    0 0 0 0 transparent;
-  --shadow-md:    0 4px 16px rgba(0, 0, 0, .60);
-  --shadow-lg:    0 4px 16px rgba(0, 0, 0, .60), 0 0 0 1px var(--border-strong);
-  --shadow-panel: 0 4px 16px rgba(0, 0, 0, .60), 0 0 0 1px var(--panel-hair);
-  --shadow-modal: 0 24px 64px rgba(0, 0, 0, .70), 0 0 0 1px var(--panel-hair);
-  --blur-chrome:  saturate(140%) blur(12px);
-
-  --measure:       68ch;
-  /* --measure-wide is THE STUDIO'S ONE FRAME: the column every studio
-     page's header, tab strip and content share (.k-page, the .bd-head
-     family, tabs.css, the footer). It was 92ch — about 812px — which
-     left a third of a 1440px screen empty either side of every page
-     (owner, 19 Oct 2026: "space in left and right side, remove them,
-     same throughout the app"). It is a width now, not a reading
-     measure; prose that wants a line length reads --measure-text.
-     Then 78rem still left a gap on a wide screen, so it is the whole
-     viewport now (owner, 19 Oct 2026: "occupy the full page"): every
-     max(gutter, (100% - measure) / 2) collapses to the gutter, and the
-     page runs edge to edge beside the rail at every width. */
-  --measure-wide:  100vw;
-  --measure-text:  92ch;
-  --content-max:   1280px;
-  --rail-w:        220px;
-  --viz-min:       560px;
-
-  /* ---- premium depth, specular highlights & subtle sheens ----
-     Declared on bare :root only. Every sheen is an IMAGE layered over a
-     solid background-color (verify's groundOf() reads backgroundColor,
-     so a gradient must never replace the colour). White-alpha insets
-     are invisible on the light theme's white surfaces, so one value
-     serves both palettes. */
-  --border-specular:      rgba(255, 255, 255, .12);
-  --surface-card-sheen:   linear-gradient(180deg, rgba(255, 255, 255, .035) 0%, rgba(255, 255, 255, 0) 100%);
-  --surface-rail-sheen:   linear-gradient(180deg, rgba(255, 255, 255, .02) 0%, rgba(255, 255, 255, 0) 100%);
-  --cta-sheen:            linear-gradient(180deg, rgba(255, 255, 255, .18) 0%, rgba(255, 255, 255, 0) 100%);
-  --shadow-card-rest:     0 1px 2px rgba(0, 0, 0, .40), inset 0 1px 0 rgba(255, 255, 255, .05);
-  --shadow-card-hover:    0 10px 28px rgba(0, 0, 0, .50), 0 0 0 1px rgba(139, 92, 246, .32), inset 0 1px 0 rgba(255, 255, 255, .09);
-  --shadow-control-rest:  0 1px 2px rgba(0, 0, 0, .30), inset 0 1px 0 rgba(255, 255, 255, .04);
-  --shadow-cta-hover:     0 0 0 1px rgba(139, 92, 246, .65), 0 6px 20px rgba(139, 92, 246, .35), inset 0 1px 0 rgba(255, 255, 255, .22);
-  --shadow-rail:          1px 0 0 var(--chrome-hair), 4px 0 24px rgba(0, 0, 0, .35);
-  --shadow-band:          0 4px 20px var(--scrim);
-  --modal-w:       480px;
-  --modal-w-lg:    560px;
-  --popover-w:     320px;
-  --gutter:  clamp(16px, 3vw, 40px);
-
-  --focus: 2px solid var(--border-focus);
-  --focus-offset: 2px;
-
-  /* ---- motion --------------------------------------------------
-     --motion is the DISTANCE half of the reduced-motion switch: every
-     translate and scale is `calc(<distance> * var(--motion))`, and the
-     media query at the foot sets it to 0. Exit is ~65% of enter. */
-  --motion:       1;
-  --speed-tap:  0.12s;
-  --speed:      0.12s;
-  --speed-slow: 0.22s;
-  --speed-lazy: 0.36s;
-  --speed-exit: 0.14s;
-  --ease:     cubic-bezier(0.32, 0.72, 0, 1);
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in:  cubic-bezier(0.55, 0, 1, 0.45);
-  --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
-
-  /* ---- stacking ------------------------------------------------ */
-  --z-rail:    50;
-  --z-toolbar: 100;
-  --z-float:   150;
-  --z-overlay: 1100;
-  --z-toast:   1500;
-
-  /* ---- print: paper is paper, ink is ink ------------------------ */
-  --print-paper: #ffffff;
-  --print-ink:   #000000;
-  --print-rule:  #888888;
-  /* Secondary ink on the page (5.74:1); --print-rule is a hairline. */
-  --print-muted: #666666;
-  --print-wash:  #f0f0f0;
-  /* The brand on paper (the receipt PDF's rule, PAID badge and total):
-     violet deep enough to read on white (7.1:1), used sparingly so a
-     mono printer still prints a clean document. */
-  --print-accent: #6d28d9;
-  /* Revised-page stock for the optional page tint on a revised PDF. */
-  --print-rev-white:     #ffffff;
-  --print-rev-blue:      #dde9fb;
-  --print-rev-pink:      #fbe1ea;
-  --print-rev-yellow:    #fbf4c8;
-  --print-rev-green:     #def3d8;
-  --print-rev-goldenrod: #f7e2ad;
-  --print-rev-buff:      #f3e8d3;
-  --print-rev-salmon:    #fadccf;
-  --print-rev-cherry:    #f6cfd6;
-
-  /* ---- the screenplay's paper page ------------------------------
-     The one light surface inside the app: a script reads as a page.
-     Ink and muted both clear AA on it (16.9:1 / 6.4:1). */
-  --paper-page:       #f7f6f1;
-  --paper-page-ink:   #17171c;
-  --paper-page-muted: #5b5b66;
-  --paper-page-rule:  #d9d7ce;
-  --paper-page-shadow: 0 1px 0 rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .45);
-
-  /* ---- sticky notes (src/lib/notes-model.js, owner 23 Oct 2026) --
-     Paper too: a note is something you write on. Five pastel stocks,
-     one ink. --paper-page-ink clears AA on every one (≥ 12:1), and
-     --paper-page-muted on every one (≥ 4.9:1). A note's colour is a
-     category the writer chose, so these are not phase hues. */
-  --note-yellow: #fbe9a8;
-  --note-pink:   #f8d3e1;
-  --note-blue:   #d2e4fa;
-  --note-green:  #d4efd6;
-  --note-violet: #e3d9fb;
-  --note-ink:    var(--paper-page-ink);
-  --note-muted:  var(--paper-page-muted);
-}
-
-/* The stamp chrome.js writes. Restates the scheme only — there is no
-   second palette for it to choose. */
-:root[data-theme="dark"] {
-  color-scheme: dark;
 }
 
 /* ============================================================
@@ -599,28 +650,29 @@
    an alias of the palette above. "gold" and "teal" are historical
    names; both mean the brand.
    ============================================================ */
-:root {
+:root,
+.sh-rail, .sh-bar, .toolbar, .mobile-actionbar, .mn-sheet, .ps-pop,
+.skip-to-content, .step-rail-toggle, [data-surface="dark"] {
   --bg-primary:         var(--paper);
   --bg-secondary:       var(--paper-raised);
   --bg-tertiary:        var(--paper-sunk);
   --bg-elevated:        var(--surface-elevated);
-  --bg-glass:           color-mix(in srgb, var(--chrome) 92%, transparent);
+  /* The band is solid near-black now: no frosted glass. */
+  --bg-glass:           var(--chrome);
   --text-primary:       var(--ink);
   --text-secondary:     var(--ink-body);
   --text-muted:         var(--ink-faint);     /* NOT a text colour */
   --text-muted-aa:      var(--ink-muted);
   --border-subtle:      var(--border-hair);
-  --border-accent:      rgba(139, 92, 246, .35);
+  --border-accent:      rgba(108, 60, 255, .35);
   --accent-gold:        var(--brand);
   --accent-gold-hover:  var(--brand-hover);
   --accent-gold-glow:   var(--accent-glow);
   --accent-teal:        var(--brand-deep);
   --accent-teal-subtle: var(--brand-wash);
-  --shadow-cta:         0 0 0 1px rgba(139, 92, 246, .45), 0 2px 8px var(--accent-glow);
-  --hero-glow:          radial-gradient(ellipse at top, rgba(139, 92, 246, .06), transparent 70%);
-  --blur-glass:         blur(12px);
-  /* The 1px line under the nav band: the violet easing to nothing. */
-  --band-line:          linear-gradient(90deg, var(--accent-primary) 0%, rgba(139, 92, 246, .35) 40%, transparent 100%);
+  /* A primary button has no glow: a flat violet fill. */
+  --shadow-cta:         none;
+  --blur-glass:         none;
 }
 
 /* ============================================================
@@ -634,12 +686,12 @@
    is its colour; the volume only speaks where there is no stage (the
    hub, the blueprints, the Library, Settings).
    ============================================================ */
-[data-volume="feature"] { --accent: var(--feature); --accent-deep: var(--feature-deep); --accent-wash: var(--feature-wash); --accent-lift: var(--feature-lift); --accent-on: var(--feature-on); }
-[data-volume="short"]   { --accent: var(--shorts);  --accent-deep: var(--shorts-deep);  --accent-wash: var(--shorts-wash);  --accent-lift: var(--shorts-lift); --accent-on: var(--shorts-on); }
-[data-volume="library"] { --accent: var(--library); --accent-deep: var(--library-deep); --accent-wash: var(--library-wash); --accent-lift: var(--library-lift); --accent-on: var(--library-on); }
+[data-volume="feature"] { --accent: var(--feature); --accent-deep: var(--feature-deep); --accent-wash: var(--feature-wash); --accent-lift: var(--feature-lift); --accent-on: var(--feature-on); --accent-night: var(--feature-night); --accent-night-wash: var(--feature-night-wash); --accent-hover: var(--brand-hover); }
+[data-volume="short"]   { --accent: var(--shorts);  --accent-deep: var(--shorts-deep);  --accent-wash: var(--shorts-wash);  --accent-lift: var(--shorts-lift); --accent-on: var(--shorts-on); --accent-night: var(--shorts-night); --accent-night-wash: var(--shorts-night-wash); --accent-hover: var(--shorts-night); }
+[data-volume="library"] { --accent: var(--library); --accent-deep: var(--library-deep); --accent-wash: var(--library-wash); --accent-lift: var(--library-lift); --accent-on: var(--library-on); --accent-night: var(--library-night); --accent-night-wash: var(--library-night-wash); --accent-hover: var(--library-night); }
 /* The studio itself is no phase: it takes the brand — the hub, the
    dashboard, Settings, the console. */
-[data-volume="studio"]  { --accent: var(--brand); --accent-deep: var(--brand-deep); --accent-wash: var(--brand-wash); --accent-lift: var(--brand-lift); --accent-on: var(--brand-on); --accent-hover: var(--brand-hover); }
+[data-volume="studio"]  { --accent: var(--brand); --accent-deep: var(--brand-deep); --accent-wash: var(--brand-wash); --accent-lift: var(--brand-lift); --accent-on: var(--brand-on); --accent-hover: var(--brand-hover); --accent-night: var(--brand-night); --accent-night-wash: var(--brand-night-wash); }
 
 /* ============================================================
    PHASE ACCENTS — set once per page on <html data-phase>
@@ -651,11 +703,11 @@
    The value is the page's HOME STAGE (src/lib/nav-stage.js), the same
    whichever link the page was opened from.
    ============================================================ */
-[data-phase="story"]      { --accent: var(--feature);   --accent-deep: var(--feature-deep);   --accent-wash: var(--feature-wash);   --accent-lift: var(--feature-lift); --accent-on: var(--feature-on); --accent-hover: var(--feature-deep); }
-[data-phase="screenplay"] { --accent: var(--library);   --accent-deep: var(--library-deep);   --accent-wash: var(--library-wash);   --accent-lift: var(--library-lift); --accent-on: var(--library-on); --accent-hover: var(--library-deep); }
-[data-phase="preprod"]    { --accent: var(--plan);      --accent-deep: var(--plan-deep);      --accent-wash: var(--plan-wash);      --accent-lift: var(--plan-lift); --accent-on: var(--plan-on); --accent-hover: var(--plan-deep); }
-[data-phase="production"] { --accent: var(--shoot);     --accent-deep: var(--shoot-deep);     --accent-wash: var(--shoot-wash);     --accent-lift: var(--shoot-lift); --accent-on: var(--shoot-on); --accent-hover: var(--shoot-deep); }
-[data-phase="post"]       { --accent: var(--visualize); --accent-deep: var(--visualize-deep); --accent-wash: var(--visualize-wash); --accent-lift: var(--visualize-lift); --accent-on: var(--visualize-on); --accent-hover: var(--visualize-deep); }
+[data-phase="story"]      { --accent: var(--feature);   --accent-deep: var(--feature-deep);   --accent-wash: var(--feature-wash);   --accent-lift: var(--feature-lift); --accent-on: var(--feature-on); --accent-hover: var(--brand-hover); --accent-night: var(--feature-night); --accent-night-wash: var(--feature-night-wash); }
+[data-phase="screenplay"] { --accent: var(--library);   --accent-deep: var(--library-deep);   --accent-wash: var(--library-wash);   --accent-lift: var(--library-lift); --accent-on: var(--library-on); --accent-hover: var(--library-night); --accent-night: var(--library-night); --accent-night-wash: var(--library-night-wash); }
+[data-phase="preprod"]    { --accent: var(--plan);      --accent-deep: var(--plan-deep);      --accent-wash: var(--plan-wash);      --accent-lift: var(--plan-lift); --accent-on: var(--plan-on); --accent-hover: var(--plan-night); --accent-night: var(--plan-night); --accent-night-wash: var(--plan-night-wash); }
+[data-phase="production"] { --accent: var(--shoot);     --accent-deep: var(--shoot-deep);     --accent-wash: var(--shoot-wash);     --accent-lift: var(--shoot-lift); --accent-on: var(--shoot-on); --accent-hover: var(--shoot-night); --accent-night: var(--shoot-night); --accent-night-wash: var(--shoot-night-wash); }
+[data-phase="post"]       { --accent: var(--visualize); --accent-deep: var(--visualize-deep); --accent-wash: var(--visualize-wash); --accent-lift: var(--visualize-lift); --accent-on: var(--visualize-on); --accent-hover: var(--visualize-night); --accent-night: var(--visualize-night); --accent-night-wash: var(--visualize-night-wash); }
 
 /* One swatch variable, --hue, set by two families of class:
    .sh-ph-* maps a PHASE to its hue (the nav); .hue-* names the hue
@@ -694,7 +746,7 @@
 
 
 /* Volume II of the feature blueprint switches accent mid-document. */
-.vol-2 { --accent: var(--shorts); --accent-deep: var(--shorts-deep); --accent-wash: var(--shorts-wash); --accent-lift: var(--shorts-lift); }
+.vol-2 { --accent: var(--shorts); --accent-deep: var(--shorts-deep); --accent-wash: var(--shorts-wash); --accent-lift: var(--shorts-lift); --accent-night: var(--shorts-night); --accent-night-wash: var(--shorts-night-wash); }
 
 
 /* ============================================================

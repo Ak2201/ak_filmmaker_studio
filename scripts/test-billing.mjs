@@ -150,6 +150,28 @@ eq((await M.sendMail(rm, { apiKey: 'k', from: 'f', fetch: async () => { throw ne
 // claim -> send -> release on failure, against a fake service client
 const fakeSvc = (rowsByFn) => { const log = []; return { log, rpc: async (fn, args) => { log.push([fn, args]); return { data: rowsByFn[fn] ?? null, error: null }; } }; };
 const env = { RESEND_API_KEY: 'k', MAIL_FROM: 'f' };
+
+// SMTP path (a mailbox, e.g. Hostinger's): used only when there is no Resend key
+const smtpCalls = [];
+const fakeSmtp = (fail) => async (conn, m) => { smtpCalls.push({ conn, m }); if (fail) throw new Error('535 auth'); };
+const smtpEnv = { MAIL_FROM: 'Studio <support@x.in>', SMTP_USER: 'support@x.in', SMTP_PASSWORD: 'pw' };
+ok(M.mailConfigured(smtpEnv) && !M.mailConfigured({ MAIL_FROM: 'f' }) && M.mailConfigured({ MAIL_FROM: 'f', RESEND_API_KEY: 'k' }) && !M.mailConfigured({ SMTP_USER: 'u', SMTP_PASSWORD: 'p' }),
+  'configured = a From address and either a Resend key or an SMTP user and password');
+{
+  const smtpSvc = fakeSvc({ claim_receipt_email: [inv] });
+  const out = await M.sendReceiptOnce(smtpSvc, 'order_1', smtpEnv, { smtpSend: fakeSmtp(false), fetch: async () => { throw new Error('Resend must not be called'); } });
+  ok(out.ok && smtpCalls.length === 1, 'no Resend key: one SMTP send, Resend never called');
+  ok(smtpCalls[0].conn.host === 'smtp.hostinger.com' && smtpCalls[0].conn.port === 465 && smtpCalls[0].conn.user === 'support@x.in' && smtpCalls[0].conn.pass === 'pw', 'Hostinger on 465 by default');
+  ok(smtpCalls[0].m.from === 'Studio <support@x.in>' && smtpCalls[0].m.to === 'buyer@example.com' && smtpCalls[0].m.replyTo === brandJson.supportEmail && smtpCalls[0].m.html && smtpCalls[0].m.text, 'from, to, reply-to, html and text');
+  const bad = fakeSvc({ claim_receipt_email: [inv] });
+  const fo = await M.sendReceiptOnce(bad, 'order_1', smtpEnv, { smtpSend: fakeSmtp(true) });
+  ok(!fo.ok && fo.reason === 'smtp' && bad.log.some(([fn, a]) => fn === 'release_receipt_email' && a.p_invoice === 'inv-1'), 'a failed SMTP send is reported and releases the claim');
+  const both = fakeSvc({ claim_receipt_email: [inv] }); calls.length = 0; smtpCalls.length = 0;
+  await M.sendReceiptOnce(both, 'order_1', { ...smtpEnv, RESEND_API_KEY: 'k' }, { smtpSend: fakeSmtp(false), fetch: fakeFetch() });
+  ok(calls.length === 1 && smtpCalls.length === 0, 'with both set, Resend wins');
+  ok(M.mailEnvFrom((k) => ({ SMTP_USER: 'u' })[k]).SMTP_USER === 'u' && M.mailEnvFrom(() => undefined).SMTP_PASSWORD === '', 'mailEnvFrom reads all six variables and defaults to empty');
+}
+
 let svc = fakeSvc({ claim_receipt_email: [inv] }); calls.length = 0;
 ok((await M.sendReceiptOnce(svc, 'order_1', env, { fetch: fakeFetch() })).ok && calls.length === 1, 'claimed -> one mail');
 ok(!svc.log.some(([fn]) => fn === 'release_receipt_email'), '... and no release');
@@ -366,8 +388,8 @@ eq(R.parseRupees('₹499.50'), 49950, 'parseRupees is unchanged');
     valid_from: '2026-10-27T10:00:00Z', valid_until: '2026-11-03T10:00:00Z', razorpay_payment_id: 'pay_C1',
     renews: true, renews_at: '2026-11-03T10:00:00Z', renew_minor: 9900, renew_currency: 'INR', every_days: 7 };
   const cm = Ms.chargeReceiptMail(cinv);
-  ok(cm.text.includes('Renews on 3 November 2026 at ₹99. Cancel anytime in Settings → Plan.'),
-    'a charge receipt says "Renews on <date> at <amount>. Cancel anytime in Settings → Plan."');
+  ok(cm.text.includes('Renews on 3 November 2026 at ₹99. Cancel anytime with Razorpay, in your mandate e-mail or your bank / UPI app.'),
+    'a charge receipt says "Renews on <date> at <amount>. Cancel anytime with Razorpay, in your mandate e-mail or your bank / UPI app."');
   ok(!/nothing renews/i.test(cm.text) && cm.text.includes('7-day pass') && cm.text.includes('FMS/2026-27/000042') && cm.text.includes(Ms.REFUND_TERMS),
     'it never says "nothing renews", names the 7-day pass and the invoice, and keeps the refund terms');
   const off = Ms.chargeReceiptMail({ ...cinv, renews: false });
@@ -381,11 +403,11 @@ eq(R.parseRupees('₹499.50'), 49950, 'parseRupees is unchanged');
     'the cancellation mail: nothing more charged, access until the date, what it was, no refund for a cancel');
   eq(Ms.cancelMail({ email: '' }), null, 'no e-mail, no cancellation mail');
   const rem = Ms.renewalReminderMail({ email: 'sub@example.com', plan_name: 'Pro', period: 'pass', days: 7, amount_minor: 9900, currency: 'INR', next_charge_at: '2026-11-03T10:00:00Z' });
-  ok(rem.subject.includes('3 November 2026') && rem.text.includes('₹99') && rem.text.includes('Settings → Plan'), 'the pre-charge reminder names the date, the amount and where to cancel');
+  ok(rem.subject.includes('3 November 2026') && rem.text.includes('₹99') && rem.text.includes('Razorpay'), 'the pre-charge reminder names the date, the amount and where to cancel');
   eq(Ms.renewalReminderMail({ email: 'x@y.in' }), null, 'no next charge date, no reminder');
 
   /* ---- §63: the reminder is sent, once per cycle ---- */
-  ok(rem.text.includes('Cancel anytime in Settings → Plan & purchases → Cancel auto-pay; nothing more is charged after you cancel')
+  ok(rem.text.includes('Cancel anytime in your Razorpay mandate e-mail or your bank / UPI app; nothing more is charged after you cancel')
      && rem.subject.includes('₹99') && rem.text.includes('every 7 days') && rem.text.includes(Ms.REFUND_TERMS),
     'the reminder says where to cancel and that nothing more is charged after, with the amount, the repeat and the refund terms');
   const remRow = { subscription_row_id: 'sub-row-1', email: 'sub@example.com', name: 'Rina', product: 'starter', plan_name: 'Basic',

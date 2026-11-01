@@ -24,23 +24,55 @@ import { offerTerms } from './offer-terms.js';
 const PLAN_STASH = 'fms_purchase_plan';
 
 const planParam = (search) => new URLSearchParams(search).get('plan');
+const ID = /^[\w-]{1,32}$/;
+/** ?buy=<id> (the landing page's offer buttons): the id, or ''. It names
+ *  a plan or 'pass' and means "open the checkout for it". */
+export function buyParam(search) {
+  try { const q = new URLSearchParams(search).get('buy'); return q && ID.test(q) ? q : ''; } catch (e) { return ''; }
+}
+/* A stash written from ?buy= reads "buy:<id>" so the intent survives the
+   Google hop in the same key (no new key); a ?plan= stash is the bare id. */
+const BUY_TAG = 'buy:';
 
-/** The plan named in the address, else the one stashed for this tab, else ''. */
+/** The plan named in the address (?plan=, then ?buy=), else the one
+ *  stashed for this tab, else ''. */
 export function wantedPlan(search) {
   try {
-    const q = planParam(search);
+    const q = planParam(search) || buyParam(search);
     if (q) return q;
-    return session.readText(PLAN_STASH) || '';
+    const v = session.readText(PLAN_STASH) || '';
+    return v.startsWith(BUY_TAG) ? v.slice(BUY_TAG.length) : v;
   } catch (e) { return ''; }
+}
+/** True when the visitor pressed a BUY (the press is the consent): ?buy=
+ *  in the address, or a tab stash that was written from one. */
+export function wantsBuy(search) {
+  try {
+    if (buyParam(search)) return true;
+    if (planParam(search)) return false;
+    return (session.readText(PLAN_STASH) || '').startsWith(BUY_TAG);
+  } catch (e) { return false; }
 }
 /** The stash is spent once its card has been marked. */
 export const clearPlanStash = () => { session.removeKey(PLAN_STASH); };
-/** Before the Google hop: hold ?plan= for the return. */
+/** Before the Google hop: hold ?plan= / ?buy= for the return. */
 export function stashPlanFromAddress(search) {
   try {
     const q = planParam(search);
-    if (q && /^[\w-]{1,32}$/.test(q)) session.writeText(PLAN_STASH, q);
+    const b = buyParam(search);
+    if (q && ID.test(q)) session.writeText(PLAN_STASH, q);
+    else if (b) session.writeText(PLAN_STASH, BUY_TAG + b);
   } catch (e) { /* ignore */ }
+}
+/** Take ?buy= and ?plan= off the address, so a reload or Back never
+ *  opens the checkout a second time. */
+export function stripBuyFromAddress() {
+  try {
+    const u = new URL(location.href);
+    if (!u.searchParams.has('buy') && !u.searchParams.has('plan')) return;
+    u.searchParams.delete('buy'); u.searchParams.delete('plan');
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+  } catch (e) { /* the address keeps it */ }
 }
 
 /* ---- the referral code in the address ----------------------------- */
@@ -110,7 +142,7 @@ export const passHeading = (st) => passName(passDays(st)) + (st && st.account_na
 
 /** The heading while the plans have not arrived. */
 export function plansPendingHeading({ missing, error }) {
-  return missing ? 'Plans are not set up on this project yet.' : error ? 'The plans did not load.' : 'Loading the plans…';
+  return missing ? 'Plans are temporarily unavailable.' : error ? 'The plans did not load.' : 'Loading the plans…';
 }
 
 /** The line for a plan that has lapsed (its year ran out, or a refund).
@@ -122,7 +154,34 @@ export function lapsedLine(st) {
   const refunded = Array.isArray(st.payments) && st.payments.some((p) => p && p.status === 'refunded' && p.plan_id === st.bought_plan);
   const ends = st.plan_until ? Date.parse(st.plan_until) : NaN;
   const when = Number.isFinite(ends) ? ' on ' + new Date(ends).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '';
-  return `Your ${Billing.planName(st.bought_plan)} plan ${when ? 'ended' + when : 'has ended'}${refunded ? ' (refunded)' : ''}. Renew it, or choose a plan, to keep using the studio.`;
+  /* A launch pass (§61) is not a plan: it is a week, bought once per
+     account, and a refunded one is not given back or followed by a trial.
+     Telling its buyer "Your Pro plan ended. Renew it" named a product they
+     never bought and offered a renewal that does not exist. billing_status()
+     keeps plan_period = 'pass' on a lapsed pass account. */
+  if (st.plan_period === 'pass' || (st.bought_plan === 'pro' && Array.isArray(st.payments) && st.payments.some((p) => p && p.period === 'pass'))) {
+    return `Your ${passName(passDays(st))} ${when ? 'ended' + when : 'has ended'}${refunded ? ' (refunded)' : ''}. The launch pass can be bought once per account, so choose a plan to keep using the studio.`;
+  }
+  return `Your ${Billing.planName(st.bought_plan)} plan ${when ? 'ended' + when : 'has ended'}${refunded ? ' (refunded)' : ''}.${refunded ? ' Choose a plan to keep using the studio.' : ' Renew it, or choose a plan, to keep using the studio.'}`;
+}
+
+/** The big announcement for a signed-in person whose payment was refunded and
+ *  who has not bought again: { title, text }, else null. It is shown on the
+ *  purchase page (the one page an unpaid person can reach) until a paid plan
+ *  is running, i.e. for as long as billing_status() says `lapsed`.
+ *  The amount is the most recent refunded payment's, in rupees (the
+ *  billing_status() payload carries no currency, and rupee checkout is the
+ *  only one on sale; dollar checkout is off until Razorpay approves it). */
+export function refundNotice(st) {
+  if (!st || st.lapsed !== true || !Array.isArray(st.payments)) return null;
+  const refunded = st.payments.filter((p) => p && p.status === 'refunded' && Number(p.amount_paise) > 0);
+  if (!refunded.length) return null;
+  const last = refunded.reduce((a, b) => (Date.parse(b.created_at) > Date.parse(a.created_at) ? b : a), refunded[0]);
+  const amount = Billing.fmtPaise(Number(last.amount_paise));
+  return {
+    title: `${amount} has been refunded.`,
+    text: `Your payment was refunded to the way you paid. Please purchase again to keep using the studio. Everything you wrote is still saved on this device.`
+  };
 }
 
 /** §33 — WHERE THE TRIAL STANDS, or null when there is nothing to say.
@@ -157,6 +216,6 @@ export function trialStatus(st, now, canStart = false) {
 }
 
 export default {
-  wantedPlan, clearPlanStash, stashPlanFromAddress, linkCode, visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, DECK,
-  planHeading, passHeading, plansPendingHeading, lapsedLine, trialStatus
+  wantedPlan, buyParam, wantsBuy, stripBuyFromAddress, clearPlanStash, stashPlanFromAddress, linkCode, visitCode, EMPTY_BILLING, loadBilling, purchasesOff, FREE_LINE, DECK,
+  planHeading, passHeading, plansPendingHeading, lapsedLine, refundNotice, trialStatus
 };

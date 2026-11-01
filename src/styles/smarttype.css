@@ -37,10 +37,10 @@
 .st-opt:hover { background: var(--surface-hover); color: var(--ink); }
 .st-opt.is-active { background: var(--brand-wash); color: var(--ink); box-shadow: inset 2px 0 0 var(--accent-primary); }
 .st-hint {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 @media (pointer: coarse) {
@@ -57,10 +57,10 @@
 .wk-panel > summary {
   padding: var(--s2) var(--s3);
   cursor: pointer;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .wk-panel > summary strong { color: var(--ink); font-weight: 700; }
@@ -89,10 +89,10 @@
 }
 .wk-flow legend {
   margin-bottom: var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .wk-flow label {
@@ -115,7 +115,7 @@
   color: var(--ink-body);
 }
 .wk-digits kbd, .wk-print kbd, .wk-nav kbd {
-  font-family: var(--f-code);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 700;
   padding: 1px var(--s1);
@@ -154,7 +154,7 @@
   border-radius: var(--sk-modal-radius, var(--radius-xl));
   box-shadow: var(--shadow-modal);
 }
-.wk-nav h2 { margin: 0; font-size: var(--t-micro); font-family: var(--f-mono); font-weight: 600; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-body); }
+.wk-nav h2 { margin: 0; font-size: var(--t-micro); font-family: var(--f-body); font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-body); }
 .wk-nav input { width: 100%; min-width: 0; }
 .wk-nav ul { margin: 0; padding: 0; list-style: none; overflow-y: auto; }
 .wk-nav li {
@@ -169,7 +169,7 @@
   overflow-wrap: anywhere;
 }
 .wk-nav li:hover { background: var(--surface-hover); color: var(--ink); }
-.wk-nav li .wk-n { min-width: 2.5em; color: var(--ink-muted); font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.wk-nav li .wk-n { min-width: 2.5em; color: var(--ink-muted); font-family: var(--f-body); font-variant-numeric: tabular-nums; }
 .wk-nav li.is-active { background: var(--brand-wash); color: var(--ink); box-shadow: inset 2px 0 0 var(--accent-primary); }
 .wk-nav li.is-active .wk-n { color: var(--brand-deep); }
 .wk-nav .wk-note { font-size: var(--t-micro); }
@@ -192,9 +192,9 @@
 /* The `?` sheet's Write section (StudioUI.setPageShortcuts). */
 .shortcut-sheet-page {
   margin: var(--s5) 0 var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }

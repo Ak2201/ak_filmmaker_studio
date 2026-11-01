@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="https://{{brand:host}}/og.png">
 <meta name="twitter:image:alt" content="{{brand:name}}: {{brand:tagline}}">
 <meta property="og:locale" content="en_IN">
-<meta name="theme-color" content="#0d0e13">
+<meta name="theme-color" content="#0d0c11">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -38,7 +38,7 @@
      pass's runtime slots, and nothing else. -->
 <a class="mk-skip" href="#main">Skip to content</a>
 <div class="mk-sentinel" id="mkSentinel" aria-hidden="true"></div>
-<header class="mk-top" id="mkTop">
+<header class="mk-top" id="mkTop" data-surface="dark">
   <div class="mk-top-in">
     <a class="mk-brand" href="start.html"><span class="mk-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
     <nav class="mk-nav" id="mkNav" aria-label="Main">
@@ -76,16 +76,20 @@
               <li><a href="product-call-sheets.html"><span class="sym" aria-hidden="true" translate="no">assignment</span><span>Call sheets</span></a></li>
             </ul>
           </div>
+          <div class="mk-mega-col mk-mega-col--more">
+            <p class="mk-mega-h">Learn</p>
+            <ul>
+              <li><a href="guides.html" aria-current="page"><span class="sym" aria-hidden="true" translate="no">menu_book</span><span>Guides</span></a></li>
+              <li><a href="guides.html#compare"><span class="sym" aria-hidden="true" translate="no">swap_horiz</span><span>Switching</span></a></li>
+              <li><a href="trust.html"><span class="sym" aria-hidden="true" translate="no">lock</span><span>Your work stays yours</span></a></li>
+            </ul>
+          </div>
         </div>
       </div>
       <a class="mk-nav-link mk-nav-pricing" href="pricing.html">Pricing</a>
-      <a class="mk-nav-link" href="guides.html" aria-current="page">Guides</a>
-      <a class="mk-nav-link" href="guides.html#compare">Switching</a>
-      <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">Sign in</a>
     </nav>
     <div class="mk-top-end">
-      <a class="mk-nav-link mk-end-login" href="invite.html" data-start-auth="google">Sign in</a>
-      <a class="mk-btn mk-btn--outline mk-btn--sm" href="invite.html" data-open-signup>Sign up</a>
+      <a class="gbtn mk-btn mk-btn--primary mk-btn--sm mk-top-google" href="invite.html" data-open-signup><img class="gbtn-g" src="/google-g.svg" width="18" height="18" alt="" aria-hidden="true"><span class="gbtn-l">Continue with Google</span></a>
       <a class="mk-burger" id="mkBurger" href="#mkFoot" aria-controls="mkNav" aria-expanded="false" aria-label="Menu"><span class="sym" aria-hidden="true" translate="no">menu</span></a>
     </div>
   </div>
@@ -98,15 +102,14 @@
     <a class="mk-btn mk-btn--primary mk-btn--sm mk-pass-cta" href="invite.html" data-open-signup data-pass-cta><span>Try it for <span data-pass-price></span></span></a>
   </div>
 </aside>
-<section class="mk-hero mk-hero--article" id="top" aria-labelledby="mkH1">
+<section class="mk-hero mk-hero--article" id="top" aria-labelledby="mkH1" data-surface="dark">
   <div class="mk-wrap mk-hero-in">
     <nav class="mk-crumbs" aria-label="Breadcrumb"><ol><li><a href="start.html">Home</a></li><li><a href="guides.html">Guides</a></li><li><span aria-current="page">Film festival planner</span></li></ol></nav>
     <h1 class="mk-h1" id="mkH1">Planning a film festival run</h1>
     <p class="mk-sub">A festival run is a sequence, not a list. The order you send the film out in decides which festivals can still take it, so plan it before you submit anywhere.</p>
-    <p class="mk-small mk-updated">Updated <time datetime="2026-10-26">26 October 2026</time></p>
   </div>
 </section>
-<section class="mk-sec mk-band-b mk-article" id="guide" aria-label="Film festival planner">
+<section class="mk-sec mk-band-a mk-article" id="guide" aria-label="Film festival planner">
   <div class="mk-wrap mk-article-grid">
     <nav class="mk-toc" aria-label="On this page">
       <p class="mk-toc-h">On this page</p>
@@ -137,7 +140,7 @@
     </div>
   </div>
 </section>
-<section class="mk-sec mk-band-a mk-studio" id="studio" aria-labelledby="mkStudioH">
+<section class="mk-sec mk-band-b mk-studio" id="studio" aria-labelledby="mkStudioH">
   <div class="mk-wrap mk-prose">
     <h2 class="mk-h2" id="mkStudioH">In the studio</h2>
     <p class="mk-body">The Short Film guide's festival step holds a catalogue of eighteen festivals by tier, each with its premiere rule, and some with this edition's dates read from the festival's own site on the day shown on its card. A festival that was not re-checked says so instead of showing a guessed date.</p>
@@ -174,7 +177,7 @@
     </div>
   </div>
 </section>
-<section class="mk-sec mk-band-c mk-mid hue-library" id="start" aria-labelledby="mkMidH">
+<section class="mk-sec mk-close hue-library" id="start" aria-labelledby="mkMidH" data-surface="dark">
   <div class="mk-wrap mk-center">
     <h2 class="mk-h2" id="mkMidH">Do this in the studio</h2>
     <div class="mk-cta-row mk-cta-row--center">
@@ -185,36 +188,25 @@
   </div>
 </section>
 </main>
-<footer class="mk-foot" id="mkFoot">
+<footer class="mk-foot" id="mkFoot" data-surface="dark">
   <div class="mk-wrap">
     <div class="mk-foot-grid">
-      <div class="mk-foot-col hue-library">
-        <p class="mk-foot-h">Writing</p>
+      <div class="mk-foot-brand">
+        <a class="mk-brand" href="start.html"><span class="mk-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
+        <p class="mk-foot-note">Your work is saved in your browser first. Syncing to the cloud is optional.</p>
+      </div>
+      <div class="mk-foot-col mk-foot-col--tools">
+        <p class="mk-foot-h">Product</p>
         <ul>
           <li><a href="product-writing.html">Writing</a></li>
-        </ul>
-      </div>
-      <div class="mk-foot-col hue-feature">
-        <p class="mk-foot-h">Story development</p>
-        <ul>
           <li><a href="product-story.html">Story</a></li>
           <li><a href="product-storyboard.html">Storyboard</a></li>
-        </ul>
-      </div>
-      <div class="mk-foot-col hue-plan">
-        <p class="mk-foot-h">Pre-production</p>
-        <ul>
           <li><a href="product-breakdown.html">Breakdown</a></li>
           <li><a href="product-catalog.html">Elements</a></li>
           <li><a href="product-shot-list.html">Shot list</a></li>
           <li><a href="product-schedule.html">Schedule</a></li>
           <li><a href="product-cast-crew.html">Cast and crew</a></li>
           <li><a href="product-sides.html">Sides</a></li>
-        </ul>
-      </div>
-      <div class="mk-foot-col hue-shoot">
-        <p class="mk-foot-h">Production</p>
-        <ul>
           <li><a href="product-budget.html">Budget</a></li>
           <li><a href="product-call-sheets.html">Call sheets</a></li>
         </ul>
@@ -224,20 +216,26 @@
         <ul>
           <li><a href="pricing.html">Pricing</a></li>
           <li><a href="about.html">About us</a></li>
-          <li><a href="trust.html">Your work stays yours</a></li>
-          <li><a href="guides.html">Guides</a></li>
-          <li><a href="guides.html#compare">Switching to the studio</a></li>
           <li><a href="contact.html">Contact us</a></li>
-          <li><a href="privacy.html">Privacy</a></li>
-          <li><a href="terms.html">Terms</a></li>
-          <li><a href="refund.html">Refunds</a></li>
+          <li><a href="trust.html">Your work stays yours</a></li>
+        </ul>
+      </div>
+      <div class="mk-foot-col">
+        <p class="mk-foot-h">Learn</p>
+        <ul>
+          <li><a href="guides.html">Guides</a></li>
+          <li><a href="guides.html#compare">Switching guides</a></li>
           <li><a href="mailto:{{brand:email}}">Support</a></li>
         </ul>
       </div>
     </div>
     <div class="mk-foot-base">
-      <p class="mk-foot-note">Your work is saved in your browser first. Syncing to the cloud is optional.</p>
       <p class="mk-foot-copy">© {{brand:name}}</p>
+      <ul class="mk-foot-legal">
+        <li><a href="privacy.html">Privacy</a></li>
+        <li><a href="terms.html">Terms</a></li>
+        <li><a href="refund.html">Refunds</a></li>
+      </ul>
     </div>
   </div>
 </footer>
@@ -245,12 +243,11 @@
   <div class="mk-modal-scrim" data-close></div>
   <div class="mk-modal-card" tabindex="-1">
     <button class="mk-modal-x" type="button" data-close aria-label="Close"><span class="sym" aria-hidden="true" translate="no">close</span></button>
-    <h2 class="mk-modal-h" id="mkSignupTitle"><span data-pass-off>Sign in to get started</span><span data-pass-only hidden>Sign in to try the whole studio for <span data-pass-price></span></span></h2>
-    <p class="mk-modal-offer" id="mkOffer" data-off-text="The studio is open: sign in with Google and use it, with your work saved in your browser." data-open-text="You are already signed in."><span data-pass-off>Sign in with Google, then choose a yearly plan. Each plan states its price and terms before you pay. <span data-offer-terms data-offer-product="year"></span></span><span data-pass-only hidden><span data-pass-length></span> of the whole studio for <span data-pass-price></span>, once per account. You pay on the next page, after you sign in.</span></p>
-    <a class="mk-btn mk-btn--primary mk-btn--block" id="mkGoogle" href="invite.html" data-start-auth="google" data-open-text="Open the studio">Continue with Google</a>
+    <h2 class="mk-modal-h" id="mkSignupTitle"><span data-pass-off>Continue with Google</span><span data-pass-only hidden>Continue with Google to try the whole studio for <span data-pass-price></span></span></h2>
+    <p class="mk-modal-offer" id="mkOffer" data-off-text="The studio is open: continue with Google and use it, with your work saved in your browser." data-open-text="You are already signed in."><span data-pass-off>New here or coming back, it is the same button. Then choose a yearly plan. Each plan states its price and terms before you pay. <span data-offer-terms data-offer-product="year"></span></span><span data-pass-only hidden><span data-pass-length></span> of the whole studio for <span data-pass-price></span>, once per account. You pay on the next page, after you continue with Google.</span></p>
+    <a class="gbtn mk-btn mk-btn--primary mk-btn--block" id="mkGoogle" href="invite.html" data-start-auth="google" data-open-text="Open the studio"><img class="gbtn-g" src="/google-g.svg" width="18" height="18" alt="" aria-hidden="true"><span class="gbtn-l">Continue with Google</span></a>
     <p class="mk-msg" id="mkMsg" role="status"></p>
     <p class="mk-modal-terms">By continuing you agree to the <a href="terms.html">Terms</a> and the <a href="privacy.html">Privacy Policy</a>.</p>
-    <p class="mk-modal-have">Already have an account? <a href="invite.html" data-start-auth="google" data-open-text="Open the studio">Sign in</a></p>
   </div>
 </div>
 <script type="module" src="/src/pages/marketing.js"></script>

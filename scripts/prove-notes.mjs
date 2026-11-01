@@ -220,6 +220,7 @@ await page.waitForTimeout(300);
 await page.evaluate(() => document.activeElement && document.activeElement.blur());
 await page.waitForTimeout(400);
 const firstStep = await page.getAttribute('[data-st="step-down"]:not([disabled])', 'data-step');
+await page.focus(`#stStep_${firstStep}`);   // its controls are on its open card (Beat Sheet views, 31 Oct 2026)
 await page.focus(`[data-st="step-down"][data-step="${firstStep}"]`);
 await page.keyboard.press('Enter');
 await page.waitForTimeout(300);

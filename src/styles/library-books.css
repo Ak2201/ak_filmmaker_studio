@@ -11,11 +11,11 @@
 
 .book-label {
   margin: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 
@@ -86,7 +86,7 @@
 .book-kicker { margin-top: var(--s1); font-size: var(--t-base); color: var(--ink-muted); font-style: italic; }
 .book-num {
   flex: none;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-small);
   font-variant-numeric: tabular-nums;
   color: var(--accent-deep);
@@ -106,7 +106,7 @@
   color: var(--ink-body);
   line-height: var(--lh-body);
 }
-.book-list li::marker { color: var(--ink-muted); font-family: var(--f-mono); font-size: var(--t-tiny); }
+.book-list li::marker { color: var(--ink-muted); font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-tiny); }
 .book-list-x { list-style: none; padding-left: 0; }
 .book-list-x li { position: relative; padding-left: var(--s5); }
 .book-list-x li::before {
@@ -180,7 +180,7 @@
   border-radius: var(--sk-radius, var(--radius));
   max-width: 80ch;
 }
-.book-template p { font-family: var(--f-mono); font-size: var(--t-small); color: var(--ink); line-height: var(--lh-body); }
+.book-template p { font-family: var(--f-body); font-variant-numeric: tabular-nums; font-size: var(--t-small); color: var(--ink); line-height: var(--lh-body); }
 
 .book-grid {
   display: grid;
@@ -219,7 +219,7 @@
 .book-beat-body { display: grid; gap: var(--s3); min-width: 0; }
 .book-beat-body .book-p { font-size: var(--t-small); }
 .book-page {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-tiny);
   font-variant-numeric: tabular-nums;
   color: var(--ink-muted);
@@ -280,4 +280,17 @@
   background: var(--accent-wash);
   border: var(--sk-card-line-w, 1px) solid var(--sk-card-line, var(--border-hair));
   border-radius: var(--sk-radius, var(--radius));
+}
+
+/* ---- 8B PASS (28 Oct 2026, lane C): labels in the body face ---------
+   The template sets every label in the body face, sentence case, with no
+   tracking; mono capitals stay for DATA (figures, codes, the breakdown
+   sheet, the printed shot list) and the script page. These rules came
+   last on purpose (the ordering trap in CLAUDE.md): the same selectors,
+   later in the file, so they win on order and nothing else. */
+.book-label {
+  font-family: var(--f-body);
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 600;
 }

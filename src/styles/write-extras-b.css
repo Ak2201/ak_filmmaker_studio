@@ -32,9 +32,9 @@
 .wx-handoff-list {
   margin: var(--s1) 0 0;
   color: var(--ink-muted);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   overflow-wrap: anywhere;
 }
 .wx-handoff-acts {
@@ -90,7 +90,7 @@
 }
 #main .btn.wx-chip:hover:not(:disabled) { background: var(--accent-deep); color: var(--paper-raised); }
 .wx-kbd {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: inherit;
 }
@@ -129,10 +129,10 @@
 }
 .wx-take-now { margin: 0; display: grid; gap: var(--s1); }
 .wx-label {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .wx-take-text {

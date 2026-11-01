@@ -35,7 +35,7 @@
      (n) refunds (schema section 27): the customer's "Request a
          refund" is absent while the admin's switch is off and appears
          when it is on; a request is filed, not refunded; the console
-         lists it and APPROVE opens the REFUND dialog, which calls the
+         lists it and Approve opens the Refund dialog, which calls the
          rzp-refund function (admin-checked) and the fake Razorpay
          refund endpoint; a partial refund from the ledger needs a
          reason, stays pending until the webhook, and the webhook is
@@ -56,16 +56,16 @@
      (q) THE END OF A TRIAL, AND THE WAY OUT (schema section 33): a trial
          that runs out while a page is open walls it with no navigation,
          and a fresh load after expiry is one navigation and a wall that
-         stays (counted over ten seconds); the wall offers SIGN OUT, which
+         stays (counted over ten seconds); the wall offers Sign out, which
          signs out, lands on start.html and stays out, and signing back in
          works; invite.html no longer tells a lapsed member "You're in";
-         purchase.html says the trial ended and offers SIGN OUT; a
+         purchase.html says the trial ended and offers Sign out; a
          membership with no trial is offered one on the wall; two tabs:
          a plan bought in one takes the other's wall down with no focus
      (pass) THE LAUNCH PASS (schema §61): the offer page leads with the
          server's price, countdown and cap and offers no free trial; a
          stranger buys it there (period 'pass', ₹49) and is a member on
-         Pro for 7 days; the rail says PASS ENDS IN; a second pass is
+         Pro for 7 days; the rail says Pass ends in; a second pass is
          refused; a yearly plan bought on a pass starts now and replaces
          it; the wall offers the pass first and plans only once the
          offer has ended; switched off, the old offer returns; the
@@ -153,12 +153,15 @@ const waitTrial = (page, up = true, timeout = 10000) => page.waitForFunction((u)
   return (!!b && !b.hidden && !!b.querySelector('[role="timer"]')) === u;
 }, up, { timeout });
 
-async function newContext(browser, { tok = null, timezoneId = null, locale = null } = {}) {
+async function newContext(browser, { tok = null, timezoneId = null, locale = null, keepWall = true } = {}) {
   /* THE VISITOR IS IN INDIA unless a block says otherwise
      (docs/US-MARKET-PLAN.md §B): the shop's currency follows the time
      zone, and a CI runner in UTC with en-US would otherwise be shown
      dollars on every card this proof reads in rupees. */
   const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1280, height: 900 }, timezoneId: timezoneId || 'Asia/Kolkata', locale: locale || 'en-IN' });
+  /* THE WALL'S OWN LOGIC (the fallback now: a walled person is SENT to purchase.html, 28 Oct 2026). Most of this proof is about that
+     logic, so the wall is held in place; the redirect itself is asserted in its own block with keepWall: false. */
+  if (keepWall) await ctx.addInitScript(() => { window.__fmsKeepWall = true; });
   await ctx.route(SB + '/**', handle);
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.fulfill({ status: 200, body: '' }));
   /* THE CHECKOUT LOGO. billing.js passes Razorpay an absolute
@@ -219,9 +222,36 @@ try {
     /* NO FREE CARD (owner, 11 Oct 2026): a free TRIAL, not a free plan.
        The table's 'free' row is the no-plan state and is never drawn. */
     ok(p.length === 3 && p.map((x) => x[0]).join() === 'starter,indie,pro', 'three cards, the paid tiers in order, and no Free card: ' + p.map((x) => x[0]).join(', '));
+    /* INTERMEDIATE IS PROMOTED (owner, 28 Oct 2026): the badge, and its
+       button the only filled one; "Your plan" says plainly nothing is held. */
+    { const r = await page.evaluate(() => ({
+        rec: [...document.querySelectorAll('#plan .pl-card.is-recommended')].map((c) => c.dataset.plan),
+        badge: ((document.querySelector('#plan .pl-card[data-plan="indie"] .pl-tag') || {}).textContent || '').trim(),
+        primary: [...document.querySelectorAll('#plan .pl-card [data-plan-action="buy"].k-btn--primary')].map((b) => b.dataset.plan),
+        bullets: [...document.querySelectorAll('#plan .pl-card')].map((c) => c.querySelectorAll('.pl-check li').length),
+        summary: ((document.querySelector('#plan .pu-current') || {}).textContent || '')
+      }));
+      ok(r.rec.join() === 'indie' && r.badge === 'Recommended', 'Intermediate wears the "Recommended" badge: ' + JSON.stringify(r.rec));
+      ok(r.primary.join() === 'indie', 'and its button is the only filled primary in the row: ' + JSON.stringify(r.primary));
+      ok(r.bullets.every((n) => n > 0 && n <= 5), 'every card lists at most five bullets: ' + r.bullets.join('/'));
+      ok(/No plan yet/.test(r.summary), '"Your plan" says plainly that nothing is bought yet'); }
     ok(p.find((x) => x[0] === 'indie')[1] === '₹7,999', 'the card shows the table’s ONE price (₹7,999)');
-    { const t = await page.textContent('#plan');
-      ok(/a year/.test(t) && /≈ ₹21\.92 a day/.test(t) && /₹7,999 for a year · one payment, nothing renews/.test(t), 'and says it is a year, priced by the day (₹7,999 ÷ 365 ≈ ₹21.92), one payment that does not renew (§62 one-time)'); }
+    /* ONE price line a card, the currency and the term said ONCE (QA r2b,
+       29 Oct 2026; wording changed deliberately, the facts are the same):
+       "₹7,999 a year · about ₹21.92 a day" on the card, the currency and
+       "a year each" beside the switch, "One payment · nothing renews"
+       once above the row (§62 one-time). */
+    { const r = await page.evaluate(() => ({
+        line: ((document.querySelector('#plan .pl-card[data-plan="indie"] .pl-price') || {}).textContent || '').trim(),
+        cur: ((document.querySelector('#plan .pu-currency-line') || {}).textContent || ''),
+        terms: [...document.querySelectorAll('#plan .pl-row-terms')].map((e) => e.textContent),
+        cardTerms: document.querySelectorAll('#plan .pl-card .pl-terms').length,
+        charge: document.querySelectorAll('#plan .pl-card .pl-charge').length,
+        rupees: (document.querySelector('#plan').textContent.match(/Indian rupees/g) || []).length
+      }));
+      ok(r.line === '₹7,999 a year · about ₹21.92 a day', 'the card says it is a year, priced by the day, on ONE line (₹7,999 ÷ 365 ≈ ₹21.92): ' + JSON.stringify(r.line));
+      ok(/Indian rupees, a year each/.test(r.cur) && r.rupees === 1, 'the currency and the term are said once, beside the switch: ' + r.cur + ' (' + r.rupees + '× "Indian rupees")');
+      ok(r.terms.length === 1 && r.terms[0] === 'One payment · nothing renews' && r.cardTerms === 0 && r.charge === 0, 'and "One payment · nothing renews" once above the row, no terms or charge line repeated on each card: ' + JSON.stringify(r)); }
     ok(!(await page.$('[data-plan-action="period"]')), 'there is no period switch — section 18 withdrew the subscription model');
     ok(!(await page.$('#plan .is-current')) && !/Baseline/.test(await page.textContent('#plan')), 'with nothing bought, no card is "Your plan" and none is a "Baseline"');
     ok(!(await page.textContent('#plan')).includes('Your usage'), 'and no usage against a free tier\'s caps (there is no free tier)');
@@ -243,11 +273,13 @@ try {
     ok(pay && pay.period === 'year' && pay.ends_at === acc.plan_until && Date.parse(pay.ends_at) - Date.parse(pay.starts_at) === 365 * 86400e3, 'the payment records the year it bought');
     await page.waitForFunction(() => /Valid until/.test((document.querySelector('#plan .is-current') || {}).textContent || ''), null, { timeout: 8000 })
       .then(() => ok(true, 'the current card says until when it is valid'), () => ok(false, 'the current card says until when it is valid'));
-    await page.waitForFunction(() => /RENEW INTERMEDIATE — ADD A YEAR/.test((document.querySelector('#plan .is-current') || {}).textContent || ''), null, { timeout: 8000 })
+    { const t = (await page.textContent('#plan .pu-current .pu-facts').catch(() => '')) || '';
+      ok(/Active/.test(t) && /Valid from/.test(t) && /Valid until/.test(t) && /Days left\s*36[45] days/.test(t), '"Your plan" states status, valid from, valid until and days left: ' + t.replace(/\s+/g, ' ').slice(0, 160)); }
+    await page.waitForFunction(() => /Renew Intermediate — add a year/.test((document.querySelector('#plan .is-current') || {}).textContent || ''), null, { timeout: 8000 })
       .then(() => ok(true, 'and offers to renew: another year, bought by hand'), () => ok(false, 'and offers to renew: another year, bought by hand'));
     /* §52: renewing early stacks the new year onto the end of the one running */
     await page.click('#plan .is-current [data-plan-action="buy"]');
-    await page.waitForFunction(() => /RENEW INTERMEDIATE/.test((document.querySelector('#plan .is-current') || {}).textContent || ''), null, { timeout: 15000 }).catch(() => {});
+    await page.waitForFunction(() => /Renew Intermediate/.test((document.querySelector('#plan .is-current') || {}).textContent || ''), null, { timeout: 15000 }).catch(() => {});
     await page.waitForTimeout(500);
     { const paid = F.db.payments.filter((x) => x.plan_id === 'indie' && x.status === 'paid');
       const left = (Date.parse(acc.plan_until) - Date.now()) / 86400e3;
@@ -304,7 +336,7 @@ try {
        billing read before it (it did, and a second press charged a
        second year). The card holds on "confirming" until billing moves;
        a reload is a fresh look, and is how this proof buys again. */
-    ok(await page.$eval('.pl-card[data-plan="pro"] [data-plan-action="buy"]', (b) => b.disabled && /CONFIRMING/.test(b.textContent)).catch(() => false),
+    ok(await page.$eval('.pl-card[data-plan="pro"] [data-plan-action="buy"]', (b) => b.disabled && /confirming/i.test(b.textContent)).catch(() => false),
       'after an unconfirmed payment the Pro BUY stays held on "confirming"');
     await page.reload();
     await page.waitForSelector('.pl-card[data-plan="pro"] [data-plan-action="buy"]:not([disabled])', { timeout: 15000 }).catch(() => {});
@@ -372,8 +404,16 @@ try {
     await page.waitForSelector('#tiers .ba-plan', { timeout: 15000 });
     ok((await page.$$eval('#tiers .ba-plan', (e) => e.length)) === 4, 'the console lists the four tiers for editing');
     ok(!(await page.$('#ba_indie_monthly')) && !(await page.$('#ba_indie_yearly')), 'the console has one price field per tier, no monthly/yearly');
-    await page.fill('#ba_indie_price', '599');
-    await page.fill('#ba_indie_projects', '12');
+    /* The console can re-draw the form after its plans arrive, and a fill
+       that lands mid-draw read back as "1210" (the old 10 kept). Fill until
+       both fields read back exactly, then submit. */
+    for (let t = 0; t < 20; t++) {
+      await page.fill('#ba_indie_price', '599');
+      await page.fill('#ba_indie_projects', '12');
+      await page.waitForTimeout(150);
+      const v = await page.evaluate(() => [document.querySelector('#ba_indie_price').value, document.querySelector('#ba_indie_projects').value]);
+      if (v[0] === '599' && v[1] === '12') break;
+    }
     await page.click('form[data-plan="indie"] button[type="submit"]');
     await page.waitForSelector('.ba-saved', { timeout: 8000 });
     /* .ba-saved can already be on the page from the render before this
@@ -459,7 +499,7 @@ try {
     await amy.page.evaluate((uid) => {
       const list = JSON.parse(localStorage.getItem('fms_studio_projects_v1') || '[]');
       const now = new Date().toISOString();
-      list.push({ id: 'p-dragon', title: 'Dragon', format: 'feature', createdAt: now, updatedAt: now, ns: ['', uid] });
+      list.push({ id: 'p-dragon', title: 'Dragon', format: 'feature', sample: 'dragon', createdAt: now, updatedAt: now, ns: ['', uid] });   // stamped as openSampleProject() stamps it: a sample is never found by title
       list.push({ id: 'p-mine', title: 'My own film', format: 'short', createdAt: now, updatedAt: now, ns: ['', uid] });
       localStorage.setItem('fms_studio_projects_v1', JSON.stringify(list));
     }, USERS['tok-amy'].id);
@@ -470,7 +510,7 @@ try {
     const titles = await amy.page.$$eval('#projectsGrid .project-card:not(.new-card)', (cards) => cards.map((c) => c.textContent));
     ok(titles.length === 1 && /Dragon/.test(titles[0]) && !/My own film/.test(titles.join()), 'and it is the Dragon sample — her own film is hidden, not deleted');
     ok(await amy.page.evaluate(() => JSON.parse(localStorage.getItem('fms_studio_projects_v1')).some((p) => p.title === 'My own film')), 'the hidden film is still on the device');
-    ok(await amy.page.evaluate(() => [...document.querySelectorAll('[data-action="new-project"]')].every((el) => el.hidden || el.closest('[hidden]') || getComputedStyle(el).display === 'none')), 'no NEW PROJECT control is offered');
+    ok(await amy.page.evaluate(() => [...document.querySelectorAll('[data-action="new-project"]')].every((el) => el.hidden || el.closest('[hidden]') || getComputedStyle(el).display === 'none')), 'no New project control is offered');
     ok(!(await amy.page.$('#projectsGrid .new-card')), 'and no new-project card in the grid');
     await amy.page.goto(BASE + 'story.html');
     await amy.page.waitForSelector('.pg-lock', { timeout: 10000 }).then(() => ok(true, 'story.html (its one plan row unticked for Free) shows the plan lock'), () => ok(false, 'story.html (its one plan row unticked for Free) shows the plan lock'));
@@ -616,7 +656,7 @@ try {
     const p = await prices(page);
     ok(p.find((x) => x[0] === 'indie')[1] === '₹5,000' && p.find((x) => x[0] === 'pro')[1] === '₹17,000', 'the cards price the DIFFERENCE from quote_order (Indie ₹5,000, Pro ₹17,000)');
     ok((await page.textContent('#plan .pl-card[data-plan="indie"] .pl-list')) === '₹7,999', 'with the list price struck beside it');
-    ok(/RENEW BASIC — ADD A YEAR/.test(await page.textContent('#plan .pl-card[data-plan="starter"]')), 'the plan already held offers a renewal, not a purchase of what you have');
+    ok(/Renew Basic — add a year/.test(await page.textContent('#plan .pl-card[data-plan="starter"]')), 'the plan already held offers a renewal, not a purchase of what you have');
     await page.click('.pl-card[data-plan="indie"] [data-plan-action="buy"]');
     await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'indie', null, { timeout: 15000 })
       .then(() => ok(true, 'the upgrade goes through and Indie is the current plan'), () => ok(false, 'the upgrade goes through and Indie is the current plan'));
@@ -818,7 +858,7 @@ try {
     await A.page.click('#billing [data-ba-action="reload"]');
     await A.page.waitForSelector('#refunds tr[data-rreq] [data-ba-action="rreq-approve"]', { timeout: 10000 });
     ok(/ben@example\.com/.test(await A.page.textContent('#refunds tr[data-rreq]')) && /plan never showed/.test(await A.page.textContent('#refunds tr[data-rreq]')), 'the console lists the request with who and why');
-    ok((await A.page.getAttribute('#refunds [data-ba-action="rreq-approve"]', 'aria-label')) === 'Approve and refund ben@example.com', 'APPROVE carries the customer in its aria-label');
+    ok((await A.page.getAttribute('#refunds [data-ba-action="rreq-approve"]', 'aria-label')) === 'Approve and refund ben@example.com', 'Approve carries the customer in its aria-label');
     await A.page.click('#refunds [data-ba-action="rreq-approve"]');
     await A.page.waitForSelector('.rf-dialog #rfReason', { timeout: 5000 });
     ok(/ends .*plan today/.test(await A.page.textContent('.rf-dialog .rf-warn')), 'the dialog warns the refund ends the plan');
@@ -834,7 +874,7 @@ try {
     ok(F.db.rreqs[0].status === 'refunded', 'and the request is settled as refunded');
     await A.page.waitForFunction(() => /\brefunded\b/.test(document.querySelector('#refunds tr[data-rreq]')?.textContent || ''), null, { timeout: 8000 })
       .then(() => ok(true, 'the console list shows it refunded'), () => ok(false, 'the console list shows it refunded'));
-    ok(!(await A.page.$('#billing .ba-ledger button[data-ba-action="refund"][aria-label^="Refund ben@example.com"]')), 'and the ledger offers no REFUND for that payment any more');
+    ok(!(await A.page.$('#billing .ba-ledger button[data-ba-action="refund"][aria-label^="Refund ben@example.com"]')), 'and the ledger offers no Refund for that payment any more');
     await A.page.click('#billing [data-ba-action="reload"]');
     await A.page.waitForFunction(() => [...document.querySelectorAll('#billing .ba-ledger tbody tr')].some((r) => /ben@example\.com/.test(r.textContent) && /refunded/.test(r.textContent)), null, { timeout: 8000 }).catch(() => {});
     {
@@ -852,7 +892,7 @@ try {
     await A.page.waitForSelector(amyBtn, { timeout: 10000 });
     await A.page.click(amyBtn);
     await A.page.waitForSelector('.rf-dialog #rfAmount', { timeout: 5000 });
-    ok((await A.page.inputValue('#rfAmount')) === '7999', 'the ledger REFUND dialog opens at the full ₹7,999');
+    ok((await A.page.inputValue('#rfAmount')) === '7999', 'the ledger Refund dialog opens at the full ₹7,999');
     await A.page.fill('#rfAmount', '99999');
     await A.page.fill('#rfReason', 'x');
     await A.page.click('.rf-dialog button[type="submit"]');
@@ -867,7 +907,7 @@ try {
     await A.page.click('#billing [data-ba-action="reload"]');
     await A.page.waitForFunction(() => /refund pending/.test(document.querySelector('#billing .ba-ledger')?.textContent || ''), null, { timeout: 8000 })
       .then(() => ok(true, 'the ledger shows "refund pending"'), () => ok(false, 'the ledger shows "refund pending"'));
-    ok(!(await A.page.$(amyBtn)), 'and the REFUND button is gone while it is in flight (no double refund)');
+    ok(!(await A.page.$(amyBtn)), 'and the Refund button is gone while it is in flight (no double refund)');
     const dbl = await A.page.evaluate(async ([sb, tok]) => {
       const r = await fetch(sb + '/functions/v1/rzp-refund', { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ payment_id: 'payR2', reason: 'again' }) });
       return { status: r.status, body: await r.json() };
@@ -938,7 +978,7 @@ try {
     await amy.page.evaluate((uid) => {
       const list = JSON.parse(localStorage.getItem('fms_studio_projects_v1') || '[]');
       const now = new Date().toISOString();
-      list.push({ id: 'p-dragon', title: 'Dragon', format: 'feature', createdAt: now, updatedAt: now, ns: ['', uid] });
+      list.push({ id: 'p-dragon', title: 'Dragon', format: 'feature', sample: 'dragon', createdAt: now, updatedAt: now, ns: ['', uid] });   // stamped as openSampleProject() stamps it: a sample is never found by title
       list.push({ id: 'p-mine', title: 'My own film', format: 'short', createdAt: now, updatedAt: now, ns: ['', uid] });
       localStorage.setItem('fms_studio_projects_v1', JSON.stringify(list));
     }, USERS['tok-amy'].id);
@@ -984,32 +1024,27 @@ try {
     ok(!(await amy.page.$('.pg-lock.pg-wall')), 'purchase.html is NOT walled — it is where a plan is bought');
     ok(!!(await amy.page.$('#plan .pl-card')), 'and the tiers are there to buy');
 
-    /* ---- DOWNLOAD MY WORK ----------------------------------------
-       The one door that must stay open. It calls backup.js directly
-       rather than the hub's exportAll(), because the wall appears on
-       every page and exportAll() needs hub.js. */
+    /* ---- NO DOWNLOAD ON THE WALL (owner, 28 Oct 2026) -------------
+       "Terms, privacy, refund, contact and sign out" are what an unpaid
+       person may reach, and the owner did not tick "download my work".
+       The wall is only the fallback now, but it must not offer one. */
     await amy.page.goto(BASE + 'index.html');
-    await amy.page.waitForSelector('.pg-lock.pg-wall [data-action="pg-export"]', { timeout: 12000 }).catch(() => {});
-    const btn = await amy.page.$('.pg-lock.pg-wall [data-action="pg-export"]');
-    ok(!!btn, 'the wall offers DOWNLOAD MY WORK');
-    if (!btn) {
-      skip('the download produces a real file (no button to press)');
-    } else {
-      const dl = amy.page.waitForEvent('download', { timeout: 15000 }).catch(() => null);
-      await btn.click();
-      const file = await dl;
-      ok(!!file, 'pressing it produces a real download' + (file ? ': ' + file.suggestedFilename() : ''));
-      if (file) {
-        const to = path.join(OUT, '__wall-backup.json');
-        await file.saveAs(to).catch(() => {});
-        let body = null; try { body = JSON.parse(fs.readFileSync(to, 'utf8')); } catch (e) { /* */ }
-        ok(!!body, 'and the file is a readable backup, not an empty blob');
-        ok(!!body && /Dragon|p-dragon/.test(JSON.stringify(body)), 'carrying the work that was on the device');
-        try { fs.unlinkSync(to); } catch (e) { /* */ }
-      } else {
-        skip('the downloaded file is a readable backup (nothing was downloaded)');
-      }
-    }
+    await amy.page.waitForSelector('.pg-lock.pg-wall', { timeout: 12000 }).catch(() => {});
+    ok(!(await amy.page.$('.pg-lock.pg-wall [data-action="pg-export"]')), 'the wall no longer offers DOWNLOAD MY WORK');
+    ok(!!(await amy.page.$('.pg-lock.pg-wall [data-auth-action="signout"]')), 'and still offers Sign out');
+
+    /* ---- THE ONE PAGE (owner, 28 Oct 2026) -------------------------
+       Without the proof hook, a walled person is SENT to purchase.html. */
+    const redir = await newContext(browser, { tok: 'tok-amy', keepWall: false });
+    await redir.page.goto(BASE + 'index.html');
+    await redir.page.waitForURL(/purchase\.html/, { timeout: 15000 }).catch(() => {});
+    ok(/purchase\.html/.test(redir.page.url()), 'a lapsed account on index.html is sent to purchase.html: ' + redir.page.url());
+    await redir.page.goto(BASE + 'settings.html');
+    await redir.page.waitForURL(/purchase\.html/, { timeout: 15000 }).catch(() => {});
+    ok(/purchase\.html/.test(redir.page.url()), 'settings.html is no longer a way around it: ' + redir.page.url());
+    await redir.page.waitForTimeout(1500);
+    ok(/purchase\.html/.test(redir.page.url()) && !(await redir.page.$('.pg-lock.pg-wall')), 'purchase.html stays put, with no wall and no loop');
+    allErrors.push(...redir.errors); await redir.ctx.close();
     allErrors.push(...amy.errors); await amy.ctx.close();
 
     /* ---- an administrator is never walled -------------------------
@@ -1140,7 +1175,7 @@ try {
       await A.page.waitForTimeout(6000);
       ok(navs.length <= 1 && !(await A.page.$('.pg-wall')), 'purchase.html after expiry: not walled, no loop');
       ok(/free trial ended/i.test(await A.page.textContent('#plan').catch(() => '')), 'and it says the free trial ended (not "Your plan: Free")');
-      ok(!!(await A.page.$('#plan [data-auth-action="signout"]')), 'with a SIGN OUT beside the plans');
+      ok(!!(await A.page.$('#plan [data-auth-action="signout"]')), 'with a Sign out beside the plans');
       ok(!!(await A.page.$('#plan .pl-card[data-plan="starter"] [data-plan-action="buy"]:not([disabled])')), 'and a plan it can actually buy');
       allErrors.push(...A.errors); await A.ctx.close();
     }
@@ -1152,18 +1187,18 @@ try {
       await A.page.waitForFunction(() => /free trial is over/i.test(document.body.textContent), null, { timeout: 12000 }).catch(() => {});
       const t = await A.page.textContent('main').catch(() => '');
       ok(/free trial is over/i.test(t) && !/You’re in/.test(t), 'invite.html tells a lapsed member the trial is over, not "You’re in"');
-      ok(!!(await A.page.$('main a[href="purchase.html"]')) && !!(await A.page.$('main [data-auth-action="signout"]')), 'and offers SEE PLANS and SIGN OUT');
+      ok(!!(await A.page.$('main a[href="purchase.html"]')) && !!(await A.page.$('main [data-auth-action="signout"]')), 'and offers See plans and Sign out');
       allErrors.push(...A.errors); await A.ctx.close();
     }
 
-    // 5. SIGN OUT from the wall, at desktop and at phone width; it stays out; signing back in works
+    // 5. Sign out from the wall, at desktop and at phone width; it stays out; signing back in works
     for (const width of [1280, 390]) {
       const A = await soloContext({ tok: 'tok-amy' });
       await A.page.setViewportSize({ width, height: 860 });
       await A.page.goto(BASE + 'index.html');
       await A.page.waitForSelector('.pg-wall [data-auth-action="signout"]', { timeout: 12000 }).catch(() => {});
       const btn = await A.page.$('.pg-wall [data-auth-action="signout"]');
-      ok(!!btn && await btn.isVisible(), `${width}px: the wall offers a visible SIGN OUT (the band and the phone bar are hidden under it)`);
+      ok(!!btn && await btn.isVisible(), `${width}px: the wall offers a visible Sign out (the band and the phone bar are hidden under it)`);
       if (!btn) { skip(`${width}px: signing out from the wall (no button)`); allErrors.push(...A.errors); await A.ctx.close(); continue; }
       const navs = navCounter(A.page);
       await btn.click();
@@ -1190,7 +1225,7 @@ try {
       allErrors.push(...A.errors); await A.ctx.close();
     }
 
-    // 6. SIGN OUT from Settings (the account pill's destination) during a RUNNING trial
+    // 6. Sign out from Settings (the account pill's destination) during a RUNNING trial
     F.reset();
     F.db.members.set(amyId, { role: 'user', disabled_at: null });
     setTrial(amyId, { minutes: 30 });
@@ -1205,7 +1240,7 @@ try {
       await A.page.waitForSelector('[data-auth-action="signout"]', { timeout: 10000 }).catch(() => {});
       await A.page.click('[data-auth-action="signout"]').catch(() => {});
       await A.page.waitForURL(/start\.html/, { timeout: 15000 }).catch(() => {});
-      ok(/start\.html/.test(A.page.url()) && !(await trialUp(A.page)), 'Settings’ SIGN OUT signs a trial user out to start.html, with no band left behind');
+      ok(/start\.html/.test(A.page.url()) && !(await trialUp(A.page)), 'Settings’ Sign out signs a trial user out to start.html, with no band left behind');
       allErrors.push(...A.errors); await A.ctx.close();
     }
 
@@ -1219,7 +1254,7 @@ try {
       await A.page.goto(BASE + 'index.html');
       await A.page.waitForSelector('.pg-wall [data-action="pg-start-trial"]', { timeout: 12000 }).catch(() => {});
       const b = await A.page.$('.pg-wall [data-action="pg-start-trial"]');
-      ok(!!b && /2 HOURS/.test(await b.textContent()), 'a member who never had a trial is offered one on the wall, in hours: ' + (b ? await b.textContent() : 'no button'));
+      ok(!!b && /2 hours/i.test(await b.textContent()), 'a member who never had a trial is offered one on the wall, in hours: ' + (b ? await b.textContent() : 'no button'));
       if (b) {
         await b.click();
         await A.page.waitForFunction(() => !document.querySelector('.pg-wall') && (() => { const b = document.querySelector('#studioRail .sh-rail-trial'); return b && !b.hidden && b.querySelector('[role="timer"]'); })(), null, { timeout: 12000 })
@@ -1284,7 +1319,7 @@ try {
     const N = await soloContext({ tok: 'tok-ben' });
     await N.page.goto(BASE + 'invite.html');
     await N.page.waitForSelector('[data-iv-action="start-trial"]', { timeout: 12000 }).catch(() => {});
-    ok(/START MY 3 HOURS/.test(await N.page.textContent('[data-iv-action="start-trial"]').catch(() => '')), 'invite.html offers the trial in hours: START MY 3 HOURS');
+    ok(/Start my 3 hours/.test(await N.page.textContent('[data-iv-action="start-trial"]').catch(() => '')), 'invite.html offers the trial in hours: Start my 3 hours');
     ok(!(await N.page.$('.pl-card')) && !!(await N.page.$('#buy a[href="purchase.html"]')), 'invite.html draws no plan cards: it links to purchase.html, where plans are bought');
     await N.page.goto(BASE + 'purchase.html');
     await N.page.waitForSelector('#plan .pl-card', { timeout: 12000 }).catch(() => {});
@@ -1527,7 +1562,8 @@ try {
     await page.goto(BASE + 'purchase.html');
     await page.waitForSelector('#plan .pl-card', { timeout: 10000 });
     await waitText(page, '#plan .pl-card[data-plan="starter"] .pl-price strong', /^\$25$/, 'dollar checkout on: the Basic card reads the owner\'s new $25');
-    await waitText(page, '#plan .pl-card[data-plan="starter"] .pl-charge', /Charged in US dollars/, 'and says it is charged in US dollars');
+    await waitText(page, '#plan .pu-currency-line', /charged in US dollars/, 'and the line beside the switch says it is charged in US dollars');
+    ok(!(await page.$('#plan .pl-card .pl-charge')), 'which no card repeats (a card names the charge only when it differs from what it shows)');
     await page.click('.pl-card[data-plan="starter"] [data-plan-action="buy"]');
     await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'starter', null, { timeout: 15000 }).catch(() => {});
     const last = await page.evaluate(() => window.__rzpLast);
@@ -1580,19 +1616,22 @@ try {
             async () => ok(false, 'Settings › Team leaves "Reading the account…" — read: ' + (await page.textContent('#acctHost').catch(() => '(no #acctHost)'))));
     await page.waitForTimeout(3000);
     ok(await page.evaluate(() => document.querySelectorAll('#acctHost').length === 1 && !/Reading the account/.test(document.getElementById('acctHost').textContent)), 'and stays shown after the later re-renders');
-    /* purchase.html: the deck's per-day figure is the cheapest CARD's,
+    /* purchase.html: the card's per-day figure is derived from the card's
+       own price (the deck no longer restates it: QA r2b, 29 Oct 2026),
        and the count and comparison tell the plans apart. */
     await page.goto(BASE + 'purchase.html');
-    await page.waitForSelector('#plan .pl-card[data-plan="starter"] .pl-price-cap', { timeout: 15000 });
+    await page.waitForSelector('#plan .pl-card[data-plan="starter"] .pl-day', { timeout: 15000 });
     await page.waitForTimeout(1500);
     const pu = await page.evaluate(() => ({
       deck: (document.querySelector('#plan .bd-sub') || {}).textContent || '',
-      cap: (document.querySelector('#plan .pl-card[data-plan="starter"] .pl-price-cap') || {}).textContent || '',
+      price: (document.querySelector('#plan .pl-card[data-plan="starter"] .pl-price strong') || {}).textContent || '',
+      cap: (document.querySelector('#plan .pl-card[data-plan="starter"] .pl-day') || {}).textContent || '',
       counts: [...document.querySelectorAll('#plan .pl-card .pl-features-n')].map((n) => n.textContent.trim()),
       off: document.querySelectorAll('#plan td.is-off').length
     }));
     const cardDay = (pu.cap.match(/₹[\d,.]+/) || [''])[0];
-    ok(!!cardDay && pu.deck.includes('from about ' + cardDay + ' a day'), 'the deck quotes the Basic card\'s own per-day figure (' + cardDay + '), not the build-time one: ' + pu.deck.slice(0, 160));
+    const want = '₹' + (Math.round(Number(pu.price.replace(/[^\d]/g, '')) * 100 / 365) / 100).toFixed(2);
+    ok(!!cardDay && cardDay === want && !/a day/.test(pu.deck), 'the Basic card\'s per-day figure is its own price ÷ 365 (' + pu.price + ' → ' + cardDay + '), and the deck does not restate it: ' + pu.deck.slice(0, 160));
     ok(pu.counts.length === 3 && new Set(pu.counts).size === 3, 'with empty feature maps the three cards count different features, from the matrix: ' + pu.counts.join(' / '));
     ok(pu.off > 0, 'and the comparison table marks what Basic lacks (' + pu.off + ' cells)');
     allErrors.push(...errors); await ctx.close();
@@ -1622,8 +1661,11 @@ try {
       ok(id === 'plPromoCode', 'after ' + code + ' focus stays in the code field (' + id + ')');
     }
     {
-      const fine = await page.textContent('.pl-promise');
-      ok(/where Indian law requires it/.test(fine), 'the fine print names all three refund exceptions');
+      /* purchase.html draws the fine print once, in its numbered "Read this
+         before you purchase" card (planCards({fine:false}), 28 Oct 2026);
+         invite.html keeps plan-cards.js's .pl-promise (test:billing). */
+      const fine = await page.textContent('#plan .pu-terms').catch(() => '');
+      ok(/Read this before you purchase/.test(fine) && /duplicate or erroneous charge/i.test(fine) && /Charged but not delivered/.test(fine) && /Where the law requires it/.test(fine) && !(await page.$('#plan .pl-fine')), 'the terms card names all three refund exceptions, and the fine print is not said a second time');
     }
     /* invite.html: the trial is offered, and the deck does not say "You are in". */
     await page.goto(BASE + 'invite.html');
@@ -1646,14 +1688,32 @@ try {
     allErrors.push(...errors); await ctx.close();
   }
   {
-    /* Signed out, in rupees: the list quotes price_notice's current price. */
+    /* Signed out, in rupees: the prices are price_notice's current ones.
+       purchase.html draws the SAME cards a member sees (QA r2b, 29 Oct
+       2026), invite.html its light list. */
     const { ctx, page, errors } = await newContext(browser, {});
-    for (const pg of ['purchase.html', 'invite.html']) {
+    for (const [pg, sel] of [['purchase.html', '.pl-card[data-plan="starter"] .pl-price'], ['invite.html', '.pl-list-prices']]) {
       await page.goto(BASE + pg);
-      await page.waitForFunction(() => /₹2,999/.test((document.querySelector('.pl-list-prices') || {}).textContent || ''), null, { timeout: 12000 })
-        .then(() => ok(true, pg + ' signed out: the rupee list reads the server\'s ₹2,999, not the build-time ₹599'),
-              async () => ok(false, pg + ' signed out: the rupee list reads ₹2,999 — read: ' + (await page.textContent('.pl-list-prices').catch(() => '')).slice(0, 120)));
+      await page.waitForFunction((s) => /₹2,999/.test((document.querySelector(s) || {}).textContent || ''), sel, { timeout: 12000 })
+        .then(() => ok(true, pg + ' signed out: the rupee price reads the server\'s ₹2,999, not the build-time ₹599'),
+              async () => ok(false, pg + ' signed out: the rupee price reads ₹2,999 — read: ' + (await page.textContent(sel).catch(() => '')).slice(0, 120)));
     }
+    await page.goto(BASE + 'purchase.html');
+    await page.waitForFunction(() => document.querySelectorAll('#plan .pl-card .pl-check li').length > 0, null, { timeout: 12000 }).catch(() => {});
+    { const r = await page.evaluate(() => ({
+        cards: [...document.querySelectorAll('#plan .pl-card')].map((c) => c.dataset.plan),
+        lead: ((document.querySelector('#plan .pl-card[data-plan="indie"] .pl-adds-lead') || {}).textContent || ''),
+        bullets: [...document.querySelectorAll('#plan .pl-card')].map((c) => c.querySelectorAll('.pl-check li').length),
+        primary: [...document.querySelectorAll('#plan .pl-card .k-btn--primary')].map((b) => b.textContent),
+        outline: [...document.querySelectorAll('#plan .pl-card [data-plan-signin].k-btn--secondary')].map((b) => b.dataset.planSignin),
+        google: [...document.querySelectorAll('#plan .pl-card [data-plan-signin]')].every((b) => b.dataset.authAction === 'google'),
+        buy: document.querySelectorAll('#plan [data-plan-action="buy"]').length,
+        rec: ((document.querySelector('#plan .pl-card.is-recommended .pl-tag') || {}).textContent || '').trim(),
+        terms: !!document.querySelector('#plan .pl-row + .pu-terms')
+      }));
+      ok(r.cards.join() === 'starter,indie,pro' && /^Everything in Basic, plus:$/.test(r.lead) && r.bullets.every((n) => n > 0 && n <= 5), 'purchase.html signed out: the three cards, "Everything in Basic, plus:" and at most five bullets each: ' + JSON.stringify(r));
+      ok(r.primary.join() === 'Continue with Google' && r.outline.join() === 'starter,pro' && r.google && r.rec === 'Recommended', 'the one filled button is "Continue with Google" (Recommended), the others outline, each a Google sign-in');
+      ok(r.buy === 0 && r.terms, 'nothing on it can buy, and "Read this before you purchase" is under the row'); }
     allErrors.push(...errors); await ctx.close();
   }
   {
@@ -1661,12 +1721,13 @@ try {
     const ctx0 = await newContext(browser, { timezoneId: 'America/New_York', locale: 'en-US' });
     await ctx0.page.setViewportSize({ width: 390, height: 900 });
     await ctx0.page.goto(BASE + 'purchase.html');
-    await ctx0.page.waitForFunction(() => /Charged as/.test((document.querySelector('.pl-list-prices') || {}).textContent || ''), null, { timeout: 12000 }).catch(() => {});
+    await ctx0.page.waitForFunction(() => /Charged as/.test((document.querySelector('#plan .pl-card .pl-charge') || {}).textContent || ''), null, { timeout: 12000 }).catch(() => {});
     /* LINES of text, not the box: a grid item stretches to its row. */
-    const rows = await ctx0.page.$$eval('.pl-list-prices > li > strong', (ss) => ss.map((s) => { const rg = document.createRange(); rg.selectNodeContents(s); const tops = new Set([...rg.getClientRects()].map((r) => Math.round(r.top))); return { t: s.textContent, w: Math.round(s.getBoundingClientRect().width), lines: tops.size }; }));
-    const caption = await ctx0.page.textContent('.pl-list-prices').catch(() => '');
-    ok(/Charged as/.test(caption), 'the dollar list shows its long charge caption');
-    ok(rows.length === 3 && rows.every((r) => r.w > 20 && r.lines === 1), 'at 390 each plan name is on one line beside the wrapping price: ' + JSON.stringify(rows));
+    const rows = await ctx0.page.$$eval('#plan .pl-card .pl-name', (ss) => ss.map((s) => { const rg = document.createRange(); rg.selectNodeContents(s); const tops = new Set([...rg.getClientRects()].map((r) => Math.round(r.top))); return { t: s.textContent, w: Math.round(s.getBoundingClientRect().width), lines: tops.size }; }));
+    const caption = await ctx0.page.textContent('#plan .pl-card[data-plan="starter"]').catch(() => '');
+    ok(/Charged as/.test(caption), 'a dollar card charged in rupees names the rupee charge on the card');
+    ok(rows.length === 3 && rows.every((r) => r.w > 20 && r.lines === 1), 'at 390 each plan name is on one line: ' + JSON.stringify(rows));
+    ok(await ctx0.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'and the signed-out cards do not overflow 390px');
     allErrors.push(...ctx0.errors); await ctx0.ctx.close();
   }
   {
@@ -1763,7 +1824,7 @@ try {
     await passWait(page, '#pass', /Try the whole studio for ₹49/, 'signed out, invite.html leads with the pass: "Try the whole studio for ₹49"');
     await passWait(page, '#pass [data-pass-timer]', /^3d \d\d:\d\d:\d\d$/, 'the countdown runs to the server deadline (3d hh:mm:ss)');
     await passWait(page, '#pass [data-pass-left]', /^500 of 500 left$/, 'and the cap line reads the real count: 500 of 500 left');
-    ok(/TRY IT FOR ₹49/.test(await page.textContent('#pass button').catch(() => '')) && (await page.getAttribute('#pass button', 'data-auth-action')) === 'google', 'TRY IT FOR ₹49 signs in first (Google)');
+    ok(/Try it for ₹49/.test(await page.textContent('#pass button').catch(() => '')) && (await page.getAttribute('#pass button', 'data-auth-action')) === 'google', 'Try it for ₹49 signs in first (Google)');
     ok(!(await page.$('#trial')), 'and no free trial is offered to the public');
     allErrors.push(...errors); await ctx.close();
   }
@@ -1787,8 +1848,8 @@ try {
     void last;
     await page.goto(BASE + 'index.html');
     ok(await waitGate(page, 'open'), 'the studio opens');
-    await page.waitForFunction(() => { const b = document.querySelector('#studioRail .sh-rail-trial'); return b && !b.hidden && /PASS ENDS IN/.test(b.textContent); }, null, { timeout: 10000 })
-      .then(() => ok(true, 'the rail says PASS ENDS IN'), () => ok(false, 'the rail says PASS ENDS IN'));
+    await page.waitForFunction(() => { const b = document.querySelector('#studioRail .sh-rail-trial'); return b && !b.hidden && /Pass ends in/.test(b.textContent); }, null, { timeout: 10000 })
+      .then(() => ok(true, 'the rail says Pass ends in'), () => ok(false, 'the rail says Pass ends in'));
     ok(/7 days/.test(await page.textContent('#studioRail .sh-rail-trial').catch(() => '')), 'with 7 days left');
     ok(!(await page.$('.pg-wall')), 'and no wall');
 
@@ -1816,7 +1877,7 @@ try {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
     await page.goto(BASE + 'index.html');
     await page.waitForSelector('.pg-wall [data-action="pg-buy-pass"]', { timeout: 12000 }).then(() => ok(true, 'the wall offers the pass'), () => ok(false, 'the wall offers the pass'));
-    ok(/TRY THE WHOLE STUDIO FOR ₹49 · 7 DAYS/.test(await page.textContent('.pg-wall [data-action="pg-buy-pass"]').catch(() => '')), 'labelled TRY THE WHOLE STUDIO FOR ₹49 · 7 DAYS');
+    ok(/Try the whole studio for ₹49 · 7 days/.test(await page.textContent('.pg-wall [data-action="pg-buy-pass"]').catch(() => '')), 'labelled Try the whole studio for ₹49 · 7 days');
     ok(!(await page.$('.pg-wall [data-action="pg-start-trial"]')), 'and no START MY FREE TRIAL');
     /* the offer ends (the deadline passes on the server) */
     F.db.settings.pass_ends_at = new Date(Date.now() - 1000).toISOString();
@@ -1887,7 +1948,8 @@ try {
     await page.waitForSelector('#plan .pl-card .pl-terms', { timeout: 12000 }).catch(() => {});
     const t = await page.textContent('#plan').catch(() => '');
     ok(/₹49 for 7 days/.test(t) && !/renew/i.test((await page.textContent('#pass').catch(() => '')) || 'renew'), 'no §62: the pass card says ₹49 for 7 days and claims neither one-time nor auto-renew');
-    ok(await page.$$eval('#plan .pl-terms', (els) => els.length === 3 && els.every((e) => e.dataset.offerMode === 'unknown' && !/renew/i.test(e.textContent))), 'and each plan card prints its price for a year, mode unknown, no renewal claim');
+    ok(await page.$$eval('#plan .pl-card .pl-price', (els) => els.length === 3 && els.every((e) => e.dataset.offerMode === 'unknown' && / a year/.test(e.textContent) && !/renew/i.test(e.textContent))), 'and each plan card prints its price for a year, mode unknown, no renewal claim');
+    ok(!(await page.$('#plan .pl-row-terms')) && !(await page.$('#plan .pl-card .pl-terms')), 'and no terms line, above the row or on a card (an unknown mode states neither)');
     allErrors.push(...errors); await ctx.close();
   }
   {
@@ -1896,7 +1958,8 @@ try {
     const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben' });
     await page.goto(BASE + 'purchase.html');
     await waitRe(page, '#pass .pu-pass-terms', /^₹49 for 7 days · one payment, nothing renews$/, 'one-time: the pass card reads "₹49 for 7 days · one payment, nothing renews"');
-    await waitRe(page, '.pl-card[data-plan="indie"] .pl-terms', /^₹7,999 for a year · one payment, nothing renews$/, 'and the Intermediate card "₹7,999 for a year · one payment, nothing renews"');
+    await waitRe(page, '.pl-card[data-plan="indie"] .pl-price', /^₹7,999 a year · about ₹21\.92 a day$/, 'and the Intermediate card "₹7,999 a year · about ₹21.92 a day"');
+    await waitRe(page, '#plan .pl-row-terms', /^One payment · nothing renews$/, 'with "One payment · nothing renews" said once above the row');
     await shot(page, 'purchase-once');
     await page.click('#pass [data-pu-action="buy-pass"]');
     await waitRe(page, '#pass, #plan', /pass is on|7-day pass/, 'the one-time pass is bought');
@@ -1914,7 +1977,8 @@ try {
     await waitRe(page, '#pass .pu-pass-terms', /^₹49 every 7 days · renews until you cancel · cancel anytime$/, 'auto-renew: the pass card reads "₹49 every 7 days · renews until you cancel · cancel anytime"');
     await shot(page, 'purchase-pass-renew');
     ok((await page.getAttribute('#pass .pu-pass-terms', 'data-offer-mode')) === 'renew', 'the mode on the card is the server\'s (renew)');
-    ok(/Cancel in Settings/.test(await page.textContent('#pass .pu-pass-p').catch(() => '')), 'and says where it is cancelled');
+    /* auto-pay is cancelled with the payment service, not in Settings (owner, 28 Oct 2026) */
+    ok(/Cancel it any time with Razorpay/.test(await page.textContent('#pass .pu-pass-p').catch(() => '')), 'and says where it is cancelled: with the payment service');
     await page.click('#pass [data-pu-action="buy-pass"]');
     await page.waitForFunction(() => /pass is on/i.test((document.querySelector('#pass .pl-status, #plan .pl-status') || {}).textContent || '') || /7-day pass/.test((document.querySelector('#plan .pu-current') || {}).textContent || ''), null, { timeout: 20000 })
       .then(() => ok(true, 'the pass is on after the charge lands'), () => ok(false, 'the pass is on after the charge lands'));
@@ -1940,14 +2004,16 @@ try {
     await waitRe(page, '#autopay', /Auto-pay on/, 'Settings has an Auto-pay card: Auto-pay on');
     await waitRe(page, '#autopay', /7-day pass · Renews .* · ₹49/, 'with the next charge date and the amount');
     await shot(page, 'settings-autopay-on');
-    ok(!!(await page.$('section#purchases[data-tab-label="Plan & purchases"] #autopay')), 'the card sits in Settings → Plan & purchases (tap 1 is its button, tap 2 the confirm)');
-    await page.click('#autopay [data-action="autopay-cancel"]');
-    await page.waitForSelector('button.mbtn.primary', { timeout: 5000 }).catch(() => {});
-    ok(/You keep access until .*\. Nothing more will be charged\./.test(await page.textContent('.dlg[role="dialog"]').catch(() => '')), 'the dialog says "You keep access until <date>. Nothing more will be charged."');
-    await page.click('button.mbtn.primary');
-    await waitRe(page, '#autopay', /Auto-pay off · access until /, 'after cancelling: "Auto-pay off · access until <date>"');
+    ok(!!(await page.$('section#purchases[data-tab-label="Plan & purchases"] #autopay')), 'the card sits in Settings → Plan & purchases');
+    /* No cancel button and no rail box (owner, 28 Oct 2026): cancelling is at the mandate. */
+    ok(!(await page.$('#autopay button')), 'Settings has NO cancel button for auto-pay');
+    ok(/To cancel, use the link in your Razorpay mandate e-mail or your bank \/ UPI app\./.test(await page.textContent('#autopay')), 'it says to cancel from the Razorpay mandate e-mail or the bank / UPI app');
+    ok(await page.evaluate(() => { const b = document.querySelector('#studioRail .sh-rail-trial'); return !b || b.hidden || !/AUTO-PAY|MANAGE/.test(b.textContent); }), 'the rail carries no AUTO-PAY box and no MANAGE link');
+    /* the mandate is cancelled outside the app (Razorpay / the bank): the same state rzp-cancel leaves */
+    Object.assign(benSub, { cancel_at_period_end: true, cancelled_at: new Date().toISOString() });
+    await page.reload();
+    await waitRe(page, '#autopay', /Auto-pay off · access until /, 'after the mandate is cancelled elsewhere: "Auto-pay off · access until <date>"');
     await shot(page, 'settings-autopay-off');
-    ok(benSub.cancel_at_period_end === true && F.db.calls.includes('fn:rzp-cancel ' + benSub.id), 'rzp-cancel cancelled it at the end of the period');
     { const before = acc().plan_until; ok(chargeSubscription(benSub.id) === null && acc().plan_until === before, 'after a cancel no new charge is applied, and the days paid for are kept'); }
     allErrors.push(...errors); await ctx.close();
   }
@@ -1960,7 +2026,7 @@ try {
     await waitRe(page, '.pl-card[data-plan="indie"] .pl-terms', /^₹7,999 every year · renews until you cancel · cancel anytime$/, 'auto-renew: the Intermediate card reads "₹7,999 every year · renews until you cancel · cancel anytime"');
     await shot(page, 'purchase-year-renew');
     ok(!(await page.$('#plan [data-plan-promo]')), 'no code box on auto-renew (a code has nowhere to ride on a subscription)');
-    ok(/BUY INTERMEDIATE$/.test((await page.textContent('.pl-card[data-plan="indie"] [data-plan-action="buy"]').catch(() => '')).trim()), 'the button does not promise "1 YEAR"');
+    ok(/Buy Intermediate$/.test((await page.textContent('.pl-card[data-plan="indie"] [data-plan-action="buy"]').catch(() => '')).trim()), 'the button does not promise "1 YEAR"');
     await page.click('.pl-card[data-plan="indie"] [data-plan-action="buy"]');
     await page.waitForFunction(() => document.querySelector('#plan .is-current') && document.querySelector('#plan .is-current').dataset.plan === 'indie', null, { timeout: 20000 })
       .then(() => ok(true, 'Intermediate becomes the current plan once the first charge lands'), () => ok(false, 'Intermediate becomes the current plan once the first charge lands'));
@@ -1972,7 +2038,7 @@ try {
     await waitRe(page, '#plan .is-current', /Renews .* · ₹7,999/, 'the current card says when it renews and at what amount');
     await shot(page, 'purchase-year-renewing');
     ok(!(await page.$('#plan [data-plan-action="buy"]')), 'and nothing more is bought while auto-pay runs');
-    ok(/Auto-pay is on/.test(await page.textContent('#plan').catch(() => '')), 'the row says auto-pay is on and links to Settings');
+    ok(/Auto-pay is on/.test(await page.textContent('#plan').catch(() => '')), 'the row says auto-pay is on (no Settings link: auto-pay is managed with the payment service)');
     chargeSubscription(sub.id);
     ok(left() > 729.9 && left() <= 730, 'a yearly renewal stacks a year (' + left().toFixed(2) + ' days left)');
     allErrors.push(...errors); await ctx.close();
@@ -2070,6 +2136,92 @@ try {
     await page.waitForFunction(() => (document.querySelector('#plan .is-current') || {}).dataset?.plan === 'starter', null, { timeout: 20000 })
       .then(() => ok(true, 'renew plans: after stopping the weekly auto-pay, Basic is bought'), () => ok(false, 'renew plans: after stopping the weekly auto-pay, Basic is bought'));
     ok(sub && sub.cancel_at_period_end && F.db.calls.includes('fn:rzp-subscribe refused subscribed') && F.db.calls.includes('fn:rzp-order starter year'), 'rzp-subscribe said subscribed (the pass runs to its end), so the year was paid once through rzp-order');
+    allErrors.push(...errors); await ctx.close();
+  }
+  /* ---- (buy) ?buy=<id>: the landing page's press IS the consent -------
+     One press opens the checkout, once. The address is cleaned first, so
+     a reload or Back never reopens it; a closed pass, a plan already held
+     or an unknown id gets one line (or none) and never a charge; a signed-out
+     press is held through the sign-in and forwarded by invite.html. No new
+     localStorage key anywhere. */
+  console.log('(buy) ?buy= opens the checkout once');
+  F.reset(); RZP.mode = 'pay';
+  F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
+  const orders = () => F.db.calls.filter((c) => c.startsWith('fn:rzp-order ') && !/refused|code/.test(c)).length;
+  const lsKeys = (page) => page.evaluate(() => Object.keys(localStorage).sort().join('|'));
+  {
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
+    await page.goto(BASE + 'purchase.html?buy=indie');
+    await page.waitForFunction(() => window.__rzpOpened === 1, null, { timeout: 15000 }).then(() => ok(true, '?buy=indie, signed in: the checkout opened with no second click'), () => ok(false, '?buy=indie, signed in: the checkout opened with no second click'));
+    await page.waitForFunction(() => document.querySelector('#plan .is-current'), null, { timeout: 15000 }).catch(() => {});
+    ok(orders() === 1 && F.db.calls.includes('fn:rzp-order indie year'), 'exactly one order, for Intermediate, for a year');
+    ok(!/[?&](buy|plan)=/.test(page.url()), 'the address no longer carries ?buy=: ' + page.url());
+    const before = await lsKeys(page);
+    await page.reload();
+    await page.waitForSelector('#plan .pl-card', { timeout: 12000 });
+    await page.waitForTimeout(1500);
+    ok(orders() === 1 && (await page.evaluate(() => window.__rzpOpened || 0)) === 0, 'a reload does not reopen the checkout');
+    ok(!/plan|buy|razorpay|payment/i.test(before), 'no plan, buy or payment key in localStorage: ' + before);
+    /* the plan is held now: the link only says so */
+    await page.goto(BASE + 'purchase.html?buy=indie');
+    await page.waitForSelector('#plan .pl-card', { timeout: 12000 });
+    await page.waitForSelector('#plan .pl-buy-note', { timeout: 8000 }).then(() => ok(true, 'a plan already held: one status line'), () => ok(false, 'a plan already held: one status line'));
+    ok(/You already have Intermediate\./.test(await page.textContent('#plan .pl-buy-note').catch(() => '')) && (await page.getAttribute('#plan .pl-buy-note', 'role')) === 'status', 'it reads "You already have Intermediate."');
+    await page.waitForTimeout(1200);
+    ok(orders() === 1, 'and no order was made');
+    await page.goto(BASE + 'purchase.html?buy=nonsense');
+    await page.waitForSelector('#plan .pl-card', { timeout: 12000 });
+    await page.waitForTimeout(800);
+    ok(orders() === 1 && !(await page.$('#plan .pl-buy-note')), 'an unknown id: the normal page, no line, no order');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* ?buy=pass while the pass is closed */
+    F.reset(); RZP.mode = 'pay';
+    F.db.members.set(USERS['tok-ben'].id, { role: 'user', disabled_at: null });
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben' });
+    await page.goto(BASE + 'purchase.html?buy=pass');
+    await page.waitForSelector('#plan .pl-buy-note', { timeout: 15000 }).then(() => ok(true, '?buy=pass while closed: one status line'), () => ok(false, '?buy=pass while closed: one status line'));
+    ok(/The launch pass has closed\. Here are the plans\./.test(await page.textContent('#plan .pl-buy-note').catch(() => '')), 'it says the pass has closed');
+    ok(!F.db.calls.some((c) => c.startsWith('fn:rzp-order')) && !/buy=/.test(page.url()), 'no rzp-order call, and the address is clean');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* ?buy=pass while open: once, and a reload does not repeat it */
+    F.reset(); RZP.mode = 'pay';
+    Object.assign(F.db.settings, { pass_enabled: true, pass_paise: 4900, pass_days: 7, pass_plan: 'pro', pass_ends_at: new Date(Date.now() + 3 * 86400e3).toISOString(), pass_cap: 500 });
+    F.db.members.set(USERS['tok-ben'].id, { role: 'user', disabled_at: null });
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-ben' });
+    await page.goto(BASE + 'purchase.html?buy=pass');
+    await page.waitForFunction(() => window.__rzpOpened === 1, null, { timeout: 20000 }).then(() => ok(true, '?buy=pass while open: the checkout opened with no second click'), () => ok(false, '?buy=pass while open: the checkout opened with no second click'));
+    await page.waitForTimeout(1500);
+    ok(F.db.calls.filter((c) => c === 'fn:rzp-order pro pass').length === 1, 'one pass order');
+    await page.reload();
+    await page.waitForTimeout(2500);
+    ok(F.db.calls.filter((c) => c === 'fn:rzp-order pro pass').length === 1, 'a reload does not order a second time');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* the landing page's stash survives the Google hop; the signed-in
+       return lands on invite.html, which forwards ?buy= and the sheet opens */
+    F.reset(); RZP.mode = 'pay';
+    F.db.members.set(USERS['tok-amy'].id, { role: 'user', disabled_at: null });
+    const { ctx, page, errors } = await newContext(browser, { tok: 'tok-amy' });
+    await ctx.addInitScript(() => { if (!sessionStorage.getItem('__stashed')) { sessionStorage.setItem('__stashed', '1'); sessionStorage.setItem('fms_invite_plan', JSON.stringify({ plan: 'indie', buy: true })); } });
+    await page.goto(BASE + 'invite.html');
+    await page.waitForFunction(() => window.__rzpOpened === 1, null, { timeout: 25000 }).then(() => ok(true, 'signed-out press, signed-in return: invite.html forwards ?buy=indie and the checkout opens'), () => ok(false, 'signed-out press, signed-in return: invite.html forwards ?buy=indie and the checkout opens'));
+    ok(orders() === 1, 'one order');
+    allErrors.push(...errors); await ctx.close();
+  }
+  {
+    /* signed out on purchase.html?buy=indie: pressing Google holds the buy for the tab */
+    F.reset();
+    const { ctx, page, errors } = await newContext(browser);
+    await page.goto(BASE + 'purchase.html?buy=indie');
+    await page.waitForSelector('[data-plan-signin="indie"]', { timeout: 15000 }).catch(() => {});
+    await page.evaluate(() => { document.addEventListener('click', (e) => e.preventDefault(), true); });
+    await page.click('[data-plan-signin="indie"]', { force: true }).catch(() => {});
+    { const v = await page.evaluate(() => sessionStorage.getItem('fms_purchase_plan')); ok(v === 'buy:indie', 'the press holds buy:indie in sessionStorage (no new key, nothing in localStorage): ' + v + ' at ' + page.url()); }
     allErrors.push(...errors); await ctx.close();
   }
 } catch (e) {

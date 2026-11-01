@@ -263,7 +263,7 @@ const smart = createSmartType({
 });
 let openDocId = null;
 
-/* Page view (see "PAGE VIEW" below). In memory: a way of looking at
+/* Page view (see "Page view" below). In memory: a way of looking at
    the script, not part of it, so it is neither stored nor synced. */
 let pageView = false;
 let Typeset = null;            // screenplay-export.js, once page view has asked for it
@@ -573,8 +573,7 @@ function renderPass(el) {
     h('h4.ai-title', { text: 'A pass on this speech' }),
     h('button.bd-icon', {
       type: 'button', 'data-action': 'pass-close',
-      title: 'Close', 'aria-label': 'Close the pass panel', text: '✕'
-    })
+      title: 'Close', 'aria-label': 'Close the pass panel', }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })])
   ]));
   if (!String(el.text || '').trim()) {
     panel.append(h('p.ai-gate', {}, [
@@ -795,8 +794,7 @@ function renderImport() {
     h('h3.wr-imp-title', { text: 'Import a script' }),
     h('button.bd-icon', {
       type: 'button', 'data-action': 'import-cancel',
-      title: 'Close the importer', 'aria-label': 'Close the importer', text: '✕'
-    })
+      title: 'Close the importer', 'aria-label': 'Close the importer', }, [h('span.sym', { 'aria-hidden': 'true', text: 'close' })])
   ]));
   panel.append(importPlan ? importPreview(importPlan) : importChooser());
   return panel;

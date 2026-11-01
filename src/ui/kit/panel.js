@@ -1,7 +1,7 @@
 /* KIT · PANEL — a card with a compact header
    panel({ eyebrow, title, meta, actions, body, foot, flush, id, tag })
      eyebrow  the mono label in the header (STANDARD ACTION CONTROLS)
-     title    an optional Space Grotesk title beside / instead of it
+     title    an optional Gabarito title beside / instead of it
      meta     text or nodes at the header's right (4 SPEC VARIANTS)
      body     nodes; flush removes the body padding (a table inside)
      foot     nodes for a right-aligned footer bar

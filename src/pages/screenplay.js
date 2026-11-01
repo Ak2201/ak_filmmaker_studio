@@ -15,7 +15,7 @@
    and that line is saved only when the writer types in it.
    ============================================================ */
 import { flushStorage, currentProject, currentProjectId, subscribe, onWriteElsewhere } from '../lib/store.js';
-import { incomingAction, keepBoth, takeTheirs, scriptSignature, displacedCopy, ARRIVAL_PREFIX, ARRIVAL_WINDOW_PREFIX, YOURS_PREFIX } from '../lib/script-incoming.js';
+import { incomingAction, keepBoth, takeTheirs, scriptSignature, displacedCopy, crossedSave, settleCrossed, ARRIVAL_PREFIX, ARRIVAL_WINDOW_PREFIX, YOURS_PREFIX } from '../lib/script-incoming.js';
 import { mergeScript } from '../lib/script-merge.js';
 import { ask, askDanger } from '../ui/dialog.js';
 import { holdFocus, releaseFocus } from '../ui/modal-focus.js';
@@ -126,6 +126,7 @@ function persist() {
    edits that never overlapped). */
 let savedSig = scriptSignature(doc);
 let savedEls = null;          // the elements this page last saved, if it saved since it last loaded
+let savedLines = null;        // the same, with their ids: what crossedSave() compares (script-incoming.js)
 /* A REFUSED save is not a save. The storage proxy swallows a quota
    failure and says so with storage:error (CLAUDE.md item 57), so
    saveScript() still returns true; without this the status line settled
@@ -143,11 +144,12 @@ function persistNow() {
   Script.saveScript(doc);
   savedSig = scriptSignature(doc);
   savedEls = doc.elements.map((e) => [e.type, e.text]);
+  savedLines = doc.elements.map((e) => ({ id: e.id, type: e.type, text: e.text }));
   const settle = () => {
     saving = false;
     if (saveOwed) { saveOwed = false; persistNow(); return; }
     if (saveRefused) { savedSig = null; setStatus('Not saved: this browser is out of storage'); return; }
-    setStatus('Autosaved ✓');
+    setStatus('Autosaved');
     refreshDraftLabel();
   };
   flushStorage().then(settle, settle);
@@ -245,7 +247,7 @@ function mergeIncoming(fresh) {
   const differsThere = scriptSignature(merged) !== scriptSignature(fresh);
   doc = merged;
   notePageBase(fresh);
-  if (!differsThere) { savedSig = scriptSignature(doc); savedEls = null; }
+  if (!differsThere) { savedSig = scriptSignature(doc); savedEls = null; savedLines = null; }
   if (changedHere) showDoc();
   if (differsThere) persistNow();   // this writer's part goes up too
 }
@@ -263,6 +265,7 @@ function onIncomingScript(live, where = 'device') {
   const fresh = Script.loadScript();
   const dirty = !!(saveTimer || saving || saveOwed) || scriptSignature(doc) !== savedSig;
   if (coEditOn()) { dropTheirsOffer(); mergeIncoming(fresh); return; }
+  const base = pageBase;   // the copy this page last loaded or received, before this one
   notePageBase(fresh);
   const act = incomingAction({ mine: doc, fresh, dirty });
   if (act === 'same') { dropTheirsOffer(); return; }
@@ -283,7 +286,27 @@ function onIncomingScript(live, where = 'device') {
     const known = new Set((doc.revisions || []).map(sig));
     const added = { ...fresh, revisions: (fresh.revisions || []).filter((r) => !known.has(sig(r))) };
     const gone = displacedCopy(added, savedEls || doc.elements.map((e) => [e.type, e.text]));
-    savedEls = null;
+    /* Both windows saved within the same moment, each without the
+       other's lines (crossedSave, script-incoming.js): loading this copy
+       would drop what this writer just saved, from the screen AND from
+       storage, because the other window's write landed on top of it and
+       that window saw nothing to keep. Settle it instead: one copy on
+       the page, the other kept whole in Drafts, the same in both
+       windows. Another window only: a synced copy has its own clocks. */
+    if (!gone && where === 'window' && crossedSave(base, savedLines, fresh)) {
+      const { doc: next, mineWon, draft } = settleCrossed(doc, fresh, ARRIVAL_WINDOW_PREFIX + clock());
+      doc = next;
+      savedEls = null; savedLines = null;
+      persistNow();   // the side copy has to reach storage: the other window may never have seen it
+      if (mineWon) { refreshDraftLabel(); return; }
+      showDoc();
+      try {
+        StudioUI.toast('Another window kept its own version of this script, which is now on screen. What you saved here is in Drafts as “' + draft.name + '”.',
+          { type: 'info', action: 'Open Drafts', onAction: () => { location.href = 'drafts.html'; } });
+      } catch (e) { /* chrome may not be up */ }
+      return;
+    }
+    savedEls = null; savedLines = null;
     doc = fresh;
     savedSig = scriptSignature(doc);
     showDoc();
@@ -307,7 +330,7 @@ function onIncomingScript(live, where = 'device') {
      network allows. Only the newest offer to swap stays on screen. */
   const prefix = where === 'window' ? ARRIVAL_WINDOW_PREFIX : ARRIVAL_PREFIX;
   doc = keepBoth(doc, arrived, prefix + clock(), { replaceId: incomingDraftId });
-  savedEls = null;
+  savedEls = null; savedLines = null;
   incomingDraftId = doc.revisions[doc.revisions.length - 1]?.id || null;
   persist();
   refreshDraftLabel();
@@ -526,7 +549,7 @@ delegate(document, 'click', '[data-action="sc-pipeline"]', () => {
 });
 
 function buildTop() {
-  statusNode = h('span.sc-status', { role: 'status', 'aria-live': 'polite', text: 'Autosaved ✓' });
+  statusNode = h('span.sc-status', { role: 'status', 'aria-live': 'polite', text: 'Autosaved' });
   typeSel = h('select.sc-type', { id: 'scType', 'aria-label': 'Current line type' });
   ELEMENT_TYPES.forEach((t) => typeSel.append(h('option', { value: t.id, text: t.label })));
   /* The pill SHOWS the type and its Alt+digit; the real <select> sits

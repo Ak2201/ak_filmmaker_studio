@@ -72,7 +72,7 @@ function readinessList() {
   /* One A4 page for the producer. The code that draws it is fetched on
      the press, not with the page (src/lib/ready-pdf.js). */
   wrap.append(h('div.pp-act.pp-ready-act', {}, [
-    button({ label: 'DOWNLOAD ONE-PAGE PDF', icon: 'picture_as_pdf', action: 'ready-pdf', class: 'pp-pdf' }),
+    button({ label: 'Download one-page PDF', icon: 'picture_as_pdf', action: 'ready-pdf', class: 'pp-pdf' }),
     h('span.pp-check-hint', { text: 'Checks, shoot days, budget and open permissions, on one A4 page.' })
   ]));
   return wrap;

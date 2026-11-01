@@ -42,7 +42,7 @@ import Store from '../lib/store.js';
 import { listScenes } from '../lib/scenes.js';
 import { loadScript, pageCount } from '../lib/script.js';
 import { activityEntries } from '../lib/hub-activity.js';
-import { isSampleProject } from '../lib/samples.js';
+import { isSampleProject } from '../lib/sample-project.js';
 import { readDevicePrefs, updateDevicePrefs } from '../lib/chrome-prefs.js';
 import { entitlement } from '../lib/plan-gate.js';
 import T, { askDecision, consentText, distinctDays, validate, preview, statusWord, LIMITS } from '../lib/testimonials.js';
@@ -217,7 +217,7 @@ export async function mountMyTestimonials(host) {
   host.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-tp-revoke]');
     if (!b || !host.contains(b)) return;
-    const ok = await ask({ title: 'Take this testimonial back?', body: 'It will not be used again, and the studio is told straight away so that it takes the words off its website. This cannot be undone; you can always write a new one.', confirm: 'TAKE IT BACK', danger: true });
+    const ok = await ask({ title: 'Take this testimonial back?', body: 'It will not be used again, and the studio is told straight away so that it takes the words off its website. This cannot be undone; you can always write a new one.', confirm: 'Take it back', danger: true });
     if (!ok) return;
     b.disabled = true;
     try {

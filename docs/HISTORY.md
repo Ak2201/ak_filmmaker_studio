@@ -3020,14 +3020,535 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
     - **§64** (`schema-64-pro-blurb.sql`) updates the live Pro blurb. It is an
       owner step, with its checksum in `docs/LIVE-STEPS-2026-10-27.md`.
 
-69. **Navigation, the Blocking studio, AI blocking and focus mode (1 Nov
+69. **The 8B revamp, and its final QA fix pass (28 Oct 2026).** The owner
+    asked for the whole site, public pages and studio, to read as ONE
+    professionally built template product: a consistent grid and type
+    scale, restrained colour, one obvious primary action per screen, plain
+    short copy, features kept but presented simply. One foundation commit,
+    four lanes (public, shell, writing, production) merged into `develop`
+    in that order, then a QA round and this fix pass.
+    - **Palette: the "dark only" rule is REVERSED, on purpose.** The 14 Oct
+      Swiss Precision palette (obsidian ground, dark only) is replaced by
+      the 8B template mix: bare `:root` is the LIGHT work surface (canvas
+      `#f4f3f8`, white cards, near-black inks) and a class-scoped DARK SCOPE
+      (`.sh-rail`, `.sh-bar`, the phone bar and sheets, `[data-surface="dark"]`)
+      restates the same token names for the rail, the band and the public
+      site's dark bands. ONE violet (`#6c3cff`). Still one palette and no
+      toggle: `fms_studio_theme_v1` is read, never written. verify's
+      scripts-off probe now expects the light canvas under both OS
+      preferences; that was changed deliberately in the foundation commit.
+    - **Fonts.** Gabarito (headings) and Onest (interface) self-hosted from
+      `@fontsource`, with the template's metric-matched fallbacks. Courier
+      Prime stays for screenplay text and the Tamil face stays LAST in
+      `--f-script`. JetBrains Mono is now DATA only (eighths, timecodes,
+      DOOD codes, INT/EXT tags, slugs, money columns).
+    - **Tailwind v4 is the public site only** (`src/styles/site.css` via
+      `@tailwindcss/vite`, `source(none)` scanning the public pages, `@theme
+      inline` mapped to the tokens). Studio pages are styled through
+      `tokens.css`, `skins/studio.css`, the kit and page CSS: 41k lines of
+      unlayered CSS would beat layered utilities.
+    - **Motion.** The bundled `motion` package (`motion/mini`): public
+      headings rise in and cards stack on scroll, studio panels and lists
+      move subtly. Every translate is multiplied by `--motion`; nothing
+      moves under `prefers-reduced-motion` or the device's own Reduce
+      motion switch; pages read fully without JS. `motion-app.js` is still
+      inert under `navigator.webdriver`, so motion was checked by hand with
+      it hidden (no page errors; only the sandbox proxy's
+      `ERR_TUNNEL_CONNECTION_FAILED`).
+    - **Templates and licences.** 8B design-studio template (MIT) is the
+      code base; its notice is in `docs/CREDITS.md`. Cruip (GPL-3.0) was
+      LAYOUT INSPIRATION ONLY: no code, markup or class list was copied.
+      The UI UX Pro Max rulebook was used from the scratchpad but is NOT
+      vendored into `.claude/skills`: its `package.json` says MIT and its
+      README says CC-BY-NC-4.0, and a non-commercial licence cannot be
+      checked into a commercial product's repo on a guess. The owner can
+      vendor it once the licence is settled.
+    - **Removed or moved by the lanes.** Dashboard: the closed Project
+      overview, the favourite-film line, the "Project dashboard" chip, the
+      "Boarded shots" figure. Rail flyouts: section rows (sections live in
+      the page's tab strip; `prove:nav` compares exactly that). Band: purpose
+      lines and the "Studio" root crumb. Rail: the 64px icon column became a
+      labelled 224px sidebar. Hub: the "ACTIVE" tag. Story: "Clear synopsis"
+      into a More menu. Library: the "N SHELVES" pill and the ▶ glyph. Plan
+      recce card: 7 answers behind "More details" (still in the DOM and in
+      print). Budget: the who-can-see paragraph into a disclosure. Public
+      home: the facts, exports and four-answers blocks. Public header and
+      footer: Guides and Switching into the Product menu, a 3-column footer.
+      Pricing: 9 FAQ questions cut (21 to 12), the comparison table
+      collapsed. Product pages: the label bar and the duplicate tools block.
+    - **The fix pass (QA findings).** ONE FILL: every selected, active,
+      pressed and progress fill is `--brand`; a phase hue is a mark only
+      (rail dot, 3px rule, icon tile wash), and a selected tab is a tint
+      (`--brand-wash` under `--brand-deep`). About 300 mono-caps LABEL rules
+      moved to Onest, sentence case, normal tracking, by a block-level
+      rewrite that skipped data selectors (slug, tag, eighths, numbers,
+      DOOD, codes, time); the band's "[FEATURE]" is a small badge. The
+      first-run doors are three equal kit cards with one primary. The
+      dashboard: the h1 is the film's title, ONE Continue card (the
+      "Suggested next" row only when it names another stage), and the
+      readiness list, all tools and the title page behind `details.db-more`
+      disclosures; `revealTarget()` in `tabs.js` now opens a closed
+      disclosure around a fragment target, so `dashboard.html#title-page`
+      still lands. The readiness eyebrow no longer runs into its heading.
+      Phones: one navigation entry (the band's rail toggle is hidden under
+      `html.mn-on`; Go to carries the navmodel), the crumb in Onest, a
+      compact stat strip. The save state sits in the band beside the crumb.
+      `fragments.js` moves FOCUS with an in-page jump, so "Skip to content"
+      works for a keyboard. Plan's permission chips take `-deep` inks (they
+      were 2.15–2.54:1). Dialogs carry `aria-describedby`. Dingbats in UI
+      chrome (✓ ✕) are Material Symbols. At most three glossary terms per
+      section. Visualize's shot table and the scene board's Shots table fit
+      their panels again beside the 224px rail. Public: the analytics
+      opt-out is in the footer's legal row; veiled sections are restored for
+      print and after an 8s backstop; the device Reduce-motion switch is
+      honoured (`src/lib/device-motion.js`, read-only, import-free); 44px
+      targets under a coarse pointer; the header reflows at 320px; videos
+      have an accessible name; two h1 tiers (76px display on home and
+      product pages, 60px elsewhere, pricing included); the contact hero
+      leads with "Write to us". `npm run density` had a hard-coded macOS
+      path and now resolves the repo itself.
+    - **Tests changed, each a layout or wording-shape update, none a
+      weakened behaviour check.** `prove-story-path` opens the dashboard's
+      "Project details" before filling the Title page; `prove-schedule`
+      reads the launcher's "days dated" through `textContent` (it sits in a
+      closed disclosure); `prove-budget-money` 19 matches the sentence-case
+      stat labels case-insensitively; `prove-shell-a11y` keeps only the
+      "not mapped to every step" half of the library cover check (the word
+      "craft-book" left with the copy rewrite); `test-region-content` reads
+      the sentence-case setup question; `prove-conversion` uses
+      plan-gate's documented `__fmsKeepWall` hook for the wall's and
+      Settings' own wording and gains two checks that a walled member is
+      SENT to purchase.html and offered the pass there (the "one payment
+      page" commit 0c92506 had made five checks stale before the revamp);
+      `test-marketing` allows the import-free `device-motion.js` and
+      asserts it never writes. `scripts/baseline.json` was re-baselined
+      deliberately: the dashboard lost "go, next, stands, suggested" (its
+      sub line and the duplicate suggestion), no data-key was lost (851).
+
+70. **Round 2: fonts out, one purchase page, auto-pay cancelled at the mandate, a Product menu, the sample for everyone (28–29 Oct 2026).**
+    Lanes `r2/fonts`, `r2/sweep`, `r2/autopay`, `r2/purchase`, `r2/menu`,
+    `r2/sample`, merged on `develop` (5414d8c). Playfair Display, JetBrains
+    Mono, Space Grotesk and Inter are gone (no @font-face, preload or
+    package): Gabarito for headings, Onest for everything else, Courier Prime
+    for screenplay text only. The sweep moved every page to the 8B look
+    (Onest data, sentence-case labels, one button language). Auto-pay is
+    cancelled at the mandate (Razorpay, the mandate e-mail, the bank or UPI
+    app), never in the app: no rail box, no in-app cancel; the wording is
+    `offer-terms.js` and schema §65 restates `quote_subscription` with the new
+    refusal text. The public site's Product menu stays open while the pointer
+    travels to an item. The Dragon sample is open to every user at any time
+    (Home and the account menu), idempotent, and is KEPT ON THIS DEVICE: a
+    sample project pushes no meta or scope and is never pulled over (`cloud.js`;
+    `prove-cloud-delete` (h)). The purchase page was rebuilt: plain "Your
+    plan", Intermediate promoted, one price line a card, signed-out cards,
+    numbered terms in one column.
+
+71. **Round 2b, and the final fix pass (28–29 Oct 2026).** 2b added the glyph
+    fallback faces, the Onest paper variant, sentence-case public eyebrows,
+    Films cards in the kit language and the call sheet print columns, and
+    re-recorded the marketing media on the 8B UI. The final QA pass fixed:
+    `prove:story-path`'s "Add a step" (the new box was focused but late layout
+    left it above the fold; the focus landing re-checks after two frames and
+    400ms and lands again only if the box is off screen); the purchase page's
+    comparison (the signed-out cards linked out to pricing.html and the
+    signed-in table started closed: both now point at `#plCompare` inside the
+    studio and open it, and the signed-out page draws the matrix's own table
+    without a Limits group); the "N more in the comparison" count (ONE rule,
+    `cardMore()` in `plan-matrix.js`, used by the studio cards and by
+    `planFigures()` in vite.config.js: limit rows are caps and never counted,
+    so Intermediate reads 13 on both pages; `test:marketing` asserts it);
+    the call sheet's colours (the selected rows are `--brand-wash`, the pink
+    top rule and teal glance border are gone) and its print (no sliver
+    border, facts top-aligned, page header and stat cards hidden in any print
+    of the page); `Glyph Fallback` now also carries U+2190–21FF, U+2715 and
+    U+22EF from the already-vendored Noto Sans Symbols 2, so arrows, ✕ and ⋯
+    stop depending on the OS; two Tanglish notes lost their stray Tamil and
+    Arabic letters (films.json and three lines of steps.feature.json; library
+    EXPECTED rows name the words that left); library, activity and
+    shoot labels typed in capitals are sentence case; `.pl-more-toggle` and
+    `.dv-tab` take the field radius; the pricing FAQ expands with a chevron;
+    the invoice drops its synthesised italic and says "Payment ID" /
+    "Order ID". `npm run extract` would bring the stray letters back from
+    `legacy/` (it overwrites steps.feature.json); fix them in the extractor's
+    output again if it is ever re-run.
+
+72. **Gaps round (29 Oct 2026): sample flag, sentence case, pills, print fonts, call-sheet media.**
+    Three lanes merged `--no-ff` into develop. (a) **Sample flag**: a sample
+    film is stamped `sample: '<id>'` on its project entry (a field, no new
+    key; only `openSampleProject()` passes it; the backup importer and
+    Duplicate never carry it). `src/lib/sample-project.js` holds
+    `sampleIdOf` / `isSampleProject` / `findSampleProject`: a stamp, or an
+    unstamped film whose title is a sample's AND whose scenes still carry the
+    seed ids. A user's own film called "Dragon" now syncs; the old title test
+    in `samples.js` is gone. `prove-cloud-delete` (h) and `prove-adoption`
+    were widened and mutation-tested. Left alone: `tour.js` still matches by
+    title (cosmetic, ticks "open the sample"). (b) **Sentence case** for the
+    remaining all-caps UI copy (blueprint step JSON, short.js, feature.js,
+    pitch-deck kickers, audience prose); case-only, baseline word sets did not
+    move. `npm run extract` would bring the capitals back from `legacy/`.
+    (c) **Pills**: `.k-seg` and the base `.tabs-tab` take
+    `--sk-field-radius`. **Print fonts**: `exportPDF()` loads each face the
+    staged text needs (`document.fonts.load` per family and weight, 1.5s
+    ceiling, same tick when all are ready) before `print()`;
+    `npm run prove:print-fonts` (not in CI) runs `pdffonts` on the result. The
+    check mark U+2713 is in no fallback face. (d) **Call-sheet marketing
+    media** re-recorded from the open build with the Dragon sample
+    (`ONLY=call-sheets npm run record:marketing`): 8B look, no pink or teal.
+    A PROVE_PORT held by another worktree makes a proof talk to someone
+    else's build: use a unique port per lane.
+
+73. **Remaining all-caps copy to sentence case (29 Oct 2026, lane caps).**
+    Typed-in-capitals labels in `steps.feature.json`, `steps.short.json` and
+    `steps.production.json` (FORMULA, RELATED:, BEFORE MOVING ON, WHY THIS
+    MATTERS, craft-lesson labels, step times, button/field labels inside raw
+    html blocks), `short.js` (stamps, festival tracker, glossary terms and
+    categories), `feature.js` (glossary terms, part marks, step badges now
+    Empty / In progress / Complete), `feature-model.js` (pitch-deck slide
+    kickers, footers, bullet prefixes, relationship-map labels, mirrored in
+    `stage-guide-widgets.js`), `audience-model.js` `resultText` (a kept
+    document's prose heading; `test:audience` changed with it). Case-only: the
+    baseline's word sets are lower-cased, so no EXPECTED row moved and no
+    data-key changed. `npm run extract` WOULD UNDO the three step JSON edits
+    (it regenerates steps.feature.json / steps.short.json from `legacy/`);
+    re-apply the same sentence-casing to its output if it is ever re-run.
+    LEFT AS THEY WERE on purpose: formula equations (`eq`, e.g. SPARK = ...),
+    screenplay conventions (slug placeholders, FADE IN/ROLL CAMERA in prose,
+    script-preview upper-casing), the AI prompts in `audience-model.js`, the
+    email-to-self body and the `# THE FILMMAKER'S BLUEPRINT` Markdown title
+    (exported file conventions, not shown in the UI), and `kit.js` (dev showcase).
+
+74. **The landing page's scroll story (29 Oct 2026).** The owner's spec for
+    `start.html`, made with the bundled `motion` package. (1) The hero's h1
+    is split into `.st-w` word spans by `renderHome()` (text and heading
+    name unchanged) and start.css rises them in one after another, then the
+    line, the one action and the video: CSS only, so it runs with no
+    script. (2) The product video grows from 84% to the content width as
+    its centre reaches the window's, scroll-linked (`scroll()` on a
+    motion/mini animation of the `scale` property, so it composes with the
+    CSS rise and with hover transforms); 900px and up. (3) The four stage
+    cards are a sticky stack at 1100x700 and up (start.css, pure CSS: no
+    nested scroller, the stack ends with its section, `prove:scroll` 0
+    findings); `src/pages/start-motion.js` sinks each card (scale and
+    brightness) as later cards slide over it and fills a progress line in
+    the stack's gutter. The gap between cards is the LATER card's top
+    margin: a sticky box's margin box must stay inside the stack, so a
+    bottom margin pushed the first three off before the fourth arrived. A
+    card a keyboard is inside comes to the front (z-index, and
+    `!important` drops the script's inline scale/filter), so focus is never
+    under another card. (4) Every other section's parts fade and rise in,
+    scroll-linked over the first 160px of their entry (`translate`, not
+    `transform`, so a card's hover lift survives); an element with an id
+    only fades. (5) Buttons in the hero, plans and closing band lift on
+    hover and focus; a focused card is drawn lifted. Stands down under
+    webdriver, prefers-reduced-motion and the device switch (`ma-off`,
+    which also keeps the grid); nothing on screen at run time is veiled;
+    print, and a timeline found stalled at 8s or after a scroll, cancel
+    every animation and put every inline style back. marketing.js's calm
+    motion stands down on this page so one element is never veiled twice.
+    Cost: start.html's JS 48.4 KB -> 59.4 KB raw (20.4 -> 25.0 KB gzip),
+    CSS +3.0 KB raw (+0.7 KB gzip). `test:marketing` holds start-motion.js
+    to motion, motion/mini and device-motion.js.
+
+75. **Explainers open as a pop-up (29 Oct 2026).** Owner: every in-place
+    explainer ("What is a logline?", the format guide, "What is a step
+    outline?", stage-guide "Why it matters", glossary terms, the
+    format-note "Why?") opens over the page instead of expanding in it, so
+    it never pushes the work around. `src/ui/explainer.js` `openExplainer()`
+    is the one door: at 721px and over it is `dialog.js`'s kit modal (the
+    sign-out dialog's frame), at 720px and below the phone's bottom sheet
+    through `mobile-nav.js` `openSheet()`. Content is title, definition,
+    film example, "Why it matters", up to two click-to-load video facades
+    and Close. Escape closes, focus is trapped (`modal-focus.js`) and
+    returns to the trigger; the body is built once on open, and a window
+    crossing 720px moves the same node between frames. `learn()` returns a
+    trigger button. It writes nothing to storage and never uses a native
+    dialog. Proofs: `prove:explainer` (and `-c`). Re-baselined once: bodies
+    now build on open, so a few words left baselined pages; zero data-key
+    movement. Final QA found no defect. Left as is: (1) the sheet query is
+    `(max-width: 720px)` to match chrome.js `MAB_QUERY` and the bottom bar,
+    so the two never disagree at exactly 720px; (2) the video facade already
+    has a scrim, the overlap seen was the external thumbnail's own lettering;
+    (3) the Film terminology shelf is `OFF_BY_DEFAULT` (`glossary`), so its
+    triggers are unreachable until a plan sells it; (4) `keysPanel` and
+    `mountBeatGuide` are only mounted by `write.js`, which `write.html`
+    redirects away from: leave them until the page is wired, then convert
+    them to the explainer.
+
+76. **The launch offer leads the landing, and a press opens the checkout
+    (30 Oct 2026).** Owner: a visitor who needs the studio should be able
+    to buy it from the first screen. Two branches, merged on
+    `integ/launch-offer`. LANDING (`feat/launch-offer-landing`): start.html's
+    hero is a new h1 beside `#offerCard`, whose state comes from the pure
+    `offerFrom()` in `start-model.js`: an open launch pass (its price,
+    length and countdown, button `purchase.html?buy=pass`), else a
+    scheduled rise (Intermediate at today's price, the risen price struck,
+    the per-day figure, founding places LEFT, button `?buy=indie`), else
+    nothing at all, and a fired rise or any missing field is nothing. The
+    countdown runs on the server's `now`; with no `now` it prints the day
+    (IST) instead of ticking. The pass still reaches the page only through
+    `pass-offer.js` (`marketing.js` `passNow()` and `mk:pass`). Signed out,
+    the press stashes `fms_invite_plan` `{plan, buy:true}`, counts `signup`
+    and goes straight to Google. `#offerDock` slides in past the hero card,
+    hides at the closing band and footer, closes for the session (button or
+    Escape); on a phone it is one bottom bar (61px) and the space it needs
+    is `body` padding so the footer clears it. New `#value` stack and a
+    six-question `#faq` (the renewal answer is the `[data-offer-terms]`
+    slot). `#mkPass` left start.html only; the hero video moved into the
+    scroll story. Motion is CSS, every travel × `--motion`, off under
+    `html.st-still` (webdriver, OS reduce, the device switch). CHECKOUT
+    (`feat/launch-offer-checkout`): `purchase-model.js` `buyParam` /
+    `wantsBuy` / `stripBuyFromAddress`; `wantedPlan` reads `plan`, then
+    `buy`, then the stash, and a `?buy=` stash is `buy:<id>` in the existing
+    `fms_purchase_plan` (no new key). `plan-cards.js` presses the LIVE buy
+    button once (the row is rebuilt on every billing event, so an earlier
+    click hit a replaced node) and strips the address so a reload never
+    reopens it; a plan already held, or dollars shown while rupees would be
+    charged, is one status line and no order; a dismissed sheet reads "Try
+    again" and nothing reopens by itself. `purchase.js` `maybeBuyPass()`
+    re-reads the pass fresh and opens `buyPassHere()` once, or says the
+    pass has closed. `invite.js` forwards a signed-in pass intent to
+    `purchase.html?buy=pass`. Proofs: `prove:offer` (new, CI) 98,
+    `prove:billing` (buy) block, 490 in all. Integration gate: test:all
+    green (test:schema 1734 on a local PostgreSQL 16), verify all pages,
+    prove:growth 197, scroll 0 findings, nav, shell-a11y 45, legal 80,
+    test:site 415, conversion 120, gate 243 on a gated build; no
+    re-baseline. Open for the owner: the countdown text "Founding price
+    ends in …" sits against the older "no urgency words" note in
+    `priceRiseBand()`; the dollar-checkout-off refusal is inferred and not
+    exercised by the fake server.
+
+    **Review pass (30 Oct 2026, same day).** Eight findings, seven fixed,
+    one in part. NOTHING MOVES WHEN THE ANSWER ARRIVES: while start.js has
+    not decided (no `html[data-offer-ready]`, under `@media (scripting:
+    enabled)`), `.st-hero-in::after` reserves the card's drawn height (a
+    pseudo-element, because `[hidden]` is `display:none !important`), the
+    desk grid is already two columns and top-aligned, and the plain "Get
+    started" keeps its place invisibly (shown by CSS after 6s if the script
+    never runs; start.js decides with what it has after 5s). Gabarito 800,
+    the public DISPLAY h1, is preloaded on the public pages only
+    (`vite.config.js`), since its late arrival re-wrapped the headline.
+    Measured with both replies 1.2s late: layout shift 0.11 → 0 at 1440 and
+    0.21 → 0 at 390. ON A PHONE THE PRESS IS ON THE FIRST SCREEN: below
+    720px `.st-hero-text` is `display: contents`, the card follows the h1,
+    and inside it the button follows the price and its terms (Pay bottom at
+    508px at both 390x844 and 390x700; was ~970). The glow turns twice on a
+    desk (≥1100px) and stands still elsewhere. While an offer shows, the
+    header's "Get started" is a secondary (outline) button. The pass reply
+    is parsed only in `pass-offer.js`: new `serverNowOf()` and
+    `offerFlags()`, exposed through marketing.js's share closures;
+    `start-model.js` `serverClock()` is gone and `test:marketing` fails a
+    `.trial`/`purchase_required`/`trial_enabled`/`.pass.now` read in
+    start.js. THE FOUNDING PRICE HAS NO TICKING CLOCK: the rise also fires
+    on `price_rises_after_buyers`, so it reads "Founding price until <day>
+    (IST) or while the founding places last" (copy `untilSeats`;
+    `foundingEnds` removed); the pass keeps its countdown. Signed out, the
+    slide-in's button is named with "continue with Google" and a desk shows
+    "Continues with a Google sign-in" under it. A `?buy=` that cannot be
+    honoured because payments are off or the account is disabled now says
+    so ("… Nothing was charged.") in `purchase.js` and `plan-cards.js`.
+    NOT DONE: a no-sign-in "Open the sample" link: none exists for a
+    signed-out visitor (the site gate admits only a demo-code pass), so the
+    hero keeps "See it on the sample feature". `prove:offer` 116 (a late
+    reply block: shift ≤ 0.05, h1 box unchanged, Pay on the first phone
+    screen); `prove:shell-a11y` now waits for the hub's own data-go
+    navigation before its goto (it aborted on "interrupted by another
+    navigation", on the base commit too).
+
+77. **The 31 Oct round: six lanes built in parallel, integrated on
+    `integ/oct31` (31 Oct 2026).** The owner's 31 Oct brief had four items
+    (sign-in, the first tour, "What is …?" pills, the Beat Sheet) plus
+    drive-only storage, built as six branches from develop `3111c26` and
+    merged in this order: `feat/drive-server`, `feat/drive-client`,
+    `feat/google-signin`, `feat/first-tour`, `feat/what-is-pills`,
+    `feat/beat-views`.
+
+    (a) SIGN-IN (`feat/google-signin`). One way in: "Continue with
+    Google" on every public CTA and in the studio (`kGoogleBtn`,
+    `src/lib/google-button.js` in startlib, import-free). The G is
+    `public/google-g.svg` alone; on a violet button it sits on a white chip.
+    `login` / `signup` / `getStarted` left `marketing-site.json`; every
+    generated page was regenerated by `make:marketing`. The baseline was
+    recaptured on that branch (the pill word "sign" left 19 pages; no
+    data-key moved) and is the one this integration runs against.
+
+    (b) THE FIRST TOUR (`feat/first-tour`). After the gate opens,
+    `cloud.js` asks `tour_status()` and, on an explicit "never started",
+    `mark_tour_started()`; only "this call was first" starts it, on the
+    Dragon sample (`index.html?sample=1&tour=1`). `src/lib/account-tour.js`
+    fails closed. 21 steps in navigation order (the console step for
+    admins only); Pause / Skip / Finish; the account menu has Take / Resume.
+    `fms_tour_asked` is a per-tab sessionStorage marker, no new key.
+
+    (c) THE PILL (`feat/what-is-pills`). Every explainer trigger is
+    `button.learn.learn-pill`; topics may carry their own `text`, a short
+    `pill` label and `exempt`; `learn-places.js` puts pills under listed
+    subtitles. Four exempt labels (Why?, Why this matters, Who can see this
+    budget?, Tanglish, example, video).
+
+    (e) + (f) DRIVE-ONLY STORAGE (`feat/drive-server`, `feat/drive-client`).
+    Schema §66 (`schema-66-drive-storage.sql`, 67 checks), the
+    `google-token` edge function, the console switch; and the client behind
+    `storage_mode`, which defaults to `'supabase'`, so nothing changes until
+    the owner flips it. `docs/DRIVE-STORAGE.md` now carries both halves.
+
+    WHAT THE INTEGRATION CHANGED. (1) The client named its own pass setter,
+    `admin_set_screening_file(p_id, p_drive_file_id)`; §66 ships
+    `screening_set_drive_file(p_pass, p_file_id, p_title, p_format)`, so
+    `drive-project-sync.js` `attachScreening()` calls that (passing the
+    film's title and format) and `prove:drive-only`'s fake answers it.
+    `admin_create_invite` already accepts a pass with no project and §66
+    relaxed `invite_codes_target_check`, so nothing else was needed. (2) The
+    Google grant had two revoke paths (cloud.js's own `googleTokenCall
+    ('revoke')` for sign-out and a `revokeGoogleFor` the console called in
+    drive mode, beside `gate.js` `deleteUser` and `admin-customer.js`
+    calling `google-token.js`). One remains: `revokeGoogleGrant()`; the
+    console's extra call would have revoked twice. cloud.js keeps
+    `googleTokenCall` for `store` and `mint`, which the drive branch uses.
+    (3) `prove:tour` faked the UX spec's `{started}` / `{started, first}`;
+    it now fakes §66's real shapes (`{started_at, finished_at}`, a bare
+    boolean, 42501 for anon), so the proof exercises the contract the
+    database returns. (4) `test:learn` failed on the three topics that carry
+    their own text (sides, one-liner, budget-visibility): it required every
+    topic to name a glossary term. It now requires such a topic to carry a
+    real definition of its own (60+ characters), still checks its step and
+    video pointers, and refuses one that must resolve to a video; a topic
+    that names a glossary term gets every check it had. The pills lane had
+    not run `test:all`. (5) package.json `test:all`, gate.yml and
+    section-icons.json took every lane's entries; CLAUDE.md's three lane
+    rows became row 77.
+
+    (6) A REAL BUG THE MERGE MADE: `prove:schedule` failed "…opens at that
+    day's sheet" (the sheet's top at 2906px). Shoot Day's "View call sheet"
+    goes to `contacts.html?sheet=<id>#call-sheets`; contacts.js scrolls to
+    the sheet two frames after render, but `fragments.js` was still
+    settling `#call-sheets`, and the pill `learn-places.js` inserts under
+    that section's subtitle (after a dynamic import) is a late mutation, so
+    the resolver re-landed the section and the reader was put back at the
+    top of the list. Neither lane alone could see it. `fragments.js` now
+    exports `standDown()` (the resolver and its guard stop, as they do for
+    the reader's own input) and contacts.js calls it before its own,
+    more precise landing.
+
+    GATE, on the merged tree. `test:all` 103 suites, all pass, including
+    `test:schema` on a local PostgreSQL 16 (1802 checks), `test:story` 361,
+    `test:google-token` 50, `test:drive-store` 81, `test:account-tour` 20,
+    `test:marketing` 4665. `build:open` + `verify`: all pages pass,
+    budgets inside, zero stale allowances; NOT re-baselined (the sign-in
+    lane's capture already holds the new words, the pills lane's four
+    `EXPECTED` rows still fire, no data-key moved). Verify job on the open
+    dist: adoption 48, story-path, dialogs, script, replace, cards,
+    schedule, presence, budget-privacy, budget-money, ai-desk 155, notes 56,
+    beat-sync 47, beat-views 83, story-coedit 53, visual, board-frames 119,
+    stage-guide, tamil, account-r3 4, walk: all pass. Gated build:
+    `test:ai-lazy` 50, `prove:gate` 247, `prove:billing` 490,
+    `prove:cloud-delete`, `prove:sw` 33, `prove:extension` 30; `prove:storage`
+    (5) and `prove:drive` (6) fail ONLY "no page errors", every one the
+    sandbox being unable to reach `site_announcement_now` on the real host
+    (logged request by request), as on develop. `build:verify` with
+    `PROVE_DIST=dist-verify`: growth 198, ai-coverage, conversion 120, nav
+    (108 loads, 21 pages), scroll (58 pages x 3 widths, 0 findings), legal
+    80, shell-a11y 45, explainer, offer 116, why-popup, explainer-c,
+    drive-only 51, tour 102, pills, `test:site` 499. A first `prove:tour`
+    run, made while two other proof sets loaded the machine, failed "settings
+    rings a real anchor" once and passed 102 on each rerun: its anchor wait
+    is 6s, so it is load-sensitive, not broken.
+
+    BY HAND, Chromium with `navigator.webdriver` deleted (motion-app on):
+    the landing at 1440 and 390 (one header button, the modal's
+    `#mkGoogle`), the first sign-in tour on the sample at 1440 and 390 (it
+    started by itself on the dashboard, "Step 2 of 20", Next went to Story),
+    the pills on Story, Budget and the Stripboard (each opens its pop-up),
+    and the Beat Sheet in Lanes and Spine at 1440 and 390 (no sideways
+    overflow). No page errors.
+
+    (d) **The Beat Sheet in two views: Lanes and Spine.** Owner
+    item 4 of the 31 Oct brief: design B "Beat lanes" and design C "Spine
+    flowchart", switchable at runtime, every step feature kept, the data
+    unchanged. `src/pages/story.js` `renderOutline()` now draws
+    `renderLanes()` (one equal-height column per beat, `clamp(22rem, 62vh,
+    40rem)`, an act ribbon and an act-coloured top rule, a long beat
+    scrolling inside its own `[data-drop-beat]` list; below 720px 85%-wide
+    lanes with mandatory snap, Previous / Next beat and "Beat N of 16") or
+    `renderSpine()` (numbered stations zig-zagging either side of one line
+    at 900px and over, on the left edge below it; act breaks as labelled
+    stops; "+N more" past three steps, memory only, auto-open for the
+    open, focused or new card; a collapsed station opens after 500ms of a
+    drag hovering it). The Unassigned bin is the last lane / station.
+    `src/styles/beat-views.css` holds both; story.css lost the old card grid.
+
+    DECISIONS. (1) The step's editor stays IN the card in both views (the
+    owner allowed "in place or in a side/bottom editor"): the spec's lanes
+    side panel would have been a second copy of the text field, and the
+    caret / arrival guarantees `prove:beat-sync` and `prove:story-coedit`
+    encode are about THAT field. The card is compact closed (text clamped
+    to three lines, controls not drawn) and open shows every old control
+    plus Move left / Move right (or previous / next beat). (2) Opening is
+    the edit button or the caret in the text; one card is open at a time;
+    Escape closes it and leaves the keyboard on the card. (3) The view
+    switch sits on the coverage line, right of it, not inside the picker's
+    box, so a short film (no picker) has it too. (4) Acts come from the
+    framework's own `act` (`outlineByBeat` already derived it). (5) The
+    Dragon sample's Fun and Games holds 13 steps, not 6: the proof reads
+    the counts from the data.
+
+    THE CONTRACT KEPT. No key and no data-key changed; `beatView` is one
+    field in the existing device blob. `[data-step-row]`, `#stStep_<id>`,
+    `.st-ol-n`, the colour strip's `::before`, every `data-st` the proofs
+    and the handlers read, `[data-beat-card]` with its three direct
+    children, `.st-unplaced`, the More craft boxes, the AI pills and the
+    picker are where they were. `Story.moveStep()` (pure, `test:story`) is
+    the one move a drag, Alt+arrows and the arrow buttons call; the lanes'
+    and each list's scroll position is kept across a redraw (a colour
+    pressed in the tenth lane no longer jumps the board to the first).
+    Three proofs that pressed a control on a card nobody had opened now
+    put the caret in the step first, as a writer would (`prove:story-path`
+    one line, `prove:notes` one line, `prove:story-coedit` a helper); and
+    `refocusStep()` opens a closed card before focusing one of its
+    controls, which the notes proof's "focus after Remove" check caught.
+    `prove:beat-views` 83 (verify job): both views, the pref as the only
+    write, idle zero, equal lanes, inside scroll, alternate stations, +N
+    more, edit/colour/move saving only text/colour/stamp, Alt+arrows with
+    the live region, the buttons, drag across lanes and on the spine
+    matching the buttons, Escape with no write, locked, reduced motion,
+    1440/1100/390 overflow and AA, no page errors.
+
+78. **No change notices: What's new hidden, policies undated (1 Nov 2026).**
+    Owner: the site is launching and nobody has bought anything (every
+    purchase so far is a test), so nothing should announce a change.
+    What's new is hidden until an entry exists: `src/data/changelog.json`
+    has `entries: []`, and the avatar-menu row (`shell.js`), the dashboard
+    button and its New badge (`dashboard.js`) render only when the list
+    holds at least one entry. The drawer (`src/ui/changelog.js`) and the
+    `whatsNewSeen` field in `fms_studio_prefs_v1` are untouched, so the
+    owner posting one entry brings every entry point back with no rebuild
+    of the feature. privacy.html, terms.html and refund.html lost their
+    date line, their "What changed" section and its contents links, and
+    every sentence framed as a change; each rule those sentences carried
+    is still stated in the body in the present tense (refund of that
+    payment's year, refund currency and conversion fees, the upgrade
+    credit, the auto-pay mandate, California and outside-India sections,
+    the launch pass). announcements.json lost its dated items; guides and
+    comparisons print no "Updated" line (the `updated` field still feeds
+    JSON-LD). The guard was turned round rather than deleted:
+    `test:marketing` used to fail a legal page with a STALE date and now
+    fails one with ANY date or change wording (`legal-date`, "Last
+    updated", "What changed", "Changes since", "Effective", "new policy",
+    `D Month YYYY`). `prove:conversion` asserts the list is empty and the
+    drawer unreachable, then injects one entry and checks the drawer opens
+    and the New badge clears. verify carries three `EXPECTED.dashboard`
+    rows (awesome, new, what’s) for the hidden button; no data-key moved.
+
+79. **Navigation, the Blocking studio, AI blocking and focus mode (1 Nov
     2026).** Four lanes in worktrees, merged in order (focus, nav, blocking,
     blocking-ai) by one integrator.
     - **Two-level flyout.** The Pre-Production flyout shows one row per
       group (Breakdown, Visualise, Plan & Schedule, Budget, People) with a
       count and a chevron; the group opens its rows in a panel beside it, or
       in place when there is no room. Hover, click, focus, ArrowRight/Enter
-      open it; ArrowLeft/Escape go back. "Budget & People" split into
+      open it; ArrowLeft/Escape go back. On the merge with develop the
+      panels list MODULES only (develop's 28 Oct decision: a module's
+      sections are the page's tab strip), so `prove:nav` keeps develop's
+      no-section-rows check beside this branch's group-panel check. "Budget & People" split into
       Budget and People (labels only, no module moved). plan-gate hides an
       empty group and keeps its count right. `prove:nav` opens every panel.
     - **Screen Time and Cast Matrix live on `breakdown.html`** (same ids,
@@ -3055,11 +3576,28 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       AI Desk no longer leave a dark slab beside the page (`prove:scroll`
       checks the page is centred at 1440/1100/390 with each open), and the
       focus strip is opaque.
-    - **Integration fix.** contacts.html's `?sheet=` landing now goes through
-      `resolveFragment()`: a bare scrollIntoView raced the `#call-sheets`
-      re-landing and lost once the rail grew (`prove:schedule` 13).
-    - **Re-baselined** (Screen Time / Cast Matrix words moved from Reports to
-      Breakdown; group counts and the chevron icon name on every shell
-      page; "walk" and "180" on Visualize). The breakdown and visualize
-      budget rows were raised by hand to 110% of what loads now; no other
-      row moved.
+    - **Integration fix.** contacts.html's `?sheet=` landing raced the
+      `#call-sheets` re-landing and lost once the rail grew (`prove:schedule`
+      13). develop had met the same race (item 77) and answered it with
+      `standDown()` plus one instant scroll; after the merge that still
+      lost (the card sat at 2,906px), so the landing is
+      `resolveFragment('#sheet-<id>')`, which stops the section's landing
+      and keeps the card under the band until the page holds still;
+      `standDown()` stays as the fallback for a card with no id.
+    - **Merge with develop (1 Nov 2026).** Screen Time and Cast Matrix
+      kept develop's 8B type pass (body face, quiet table heads) in
+      `script-reports.css`; Blocking's new map labels and the flyout count
+      take the body face too. `tour.json` moved the Reports step after the
+      Stripboard, because Reports' first module in navigation.json is now
+      Sides (`prove:tour` checks the order), and its card no longer
+      promises screen time and the cast matrix.
+    - **Re-baselined after the merge** (zero data-keys moved on any of the
+      26 pages). Lost words: Reports' 28 Screen Time / Cast Matrix words
+      (they are on Breakdown now), plus the rows develop had allowed in
+      `EXPECTED` (breakdown `difference`, budget `do/owns/together`,
+      dashboard `awesome/new/what’s`, settings `two-minute`), which the
+      recapture absorbed, so those rows were emptied. Gained: the group
+      counts and chevron on shell pages, "walk"/"180"/"beat" on
+      Visualize, and develop's own new words (tour, lanes/spine).
+      `budget.json` is develop's unchanged: every page loads under it
+      (breakdown 1254.7 KB of 1273, visualize 1123.3 of 1148).

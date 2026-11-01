@@ -25,7 +25,7 @@
 <!-- mk:header -->
 <a class="mk-skip" href="#main">Skip to content</a>
 <div class="mk-sentinel" id="mkSentinel" aria-hidden="true"></div>
-<header class="mk-top" id="mkTop">
+<header class="mk-top" id="mkTop" data-surface="dark">
   <div class="mk-top-in">
     <a class="mk-brand" href="start.html"><span class="mk-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
     <nav class="mk-nav" id="mkNav" aria-label="Main">
@@ -63,16 +63,20 @@
               <li><a href="product-call-sheets.html"><span class="sym" aria-hidden="true" translate="no">assignment</span><span>Call sheets</span></a></li>
             </ul>
           </div>
+          <div class="mk-mega-col mk-mega-col--more">
+            <p class="mk-mega-h">Learn</p>
+            <ul>
+              <li><a href="guides.html"><span class="sym" aria-hidden="true" translate="no">menu_book</span><span>Guides</span></a></li>
+              <li><a href="guides.html#compare"><span class="sym" aria-hidden="true" translate="no">swap_horiz</span><span>Switching</span></a></li>
+              <li><a href="trust.html"><span class="sym" aria-hidden="true" translate="no">lock</span><span>Your work stays yours</span></a></li>
+            </ul>
+          </div>
         </div>
       </div>
       <a class="mk-nav-link mk-nav-pricing" href="pricing.html">Pricing</a>
-      <a class="mk-nav-link" href="guides.html">Guides</a>
-      <a class="mk-nav-link" href="guides.html#compare">Switching</a>
-      <a class="mk-nav-link mk-nav-login" href="invite.html" data-start-auth="google">Sign in</a>
     </nav>
     <div class="mk-top-end">
-      <a class="mk-nav-link mk-end-login" href="invite.html" data-start-auth="google">Sign in</a>
-      <a class="mk-btn mk-btn--outline mk-btn--sm" href="invite.html" data-open-signup>Sign up</a>
+      <a class="gbtn mk-btn mk-btn--primary mk-btn--sm mk-top-google" href="invite.html" data-open-signup><img class="gbtn-g" src="/google-g.svg" width="18" height="18" alt="" aria-hidden="true"><span class="gbtn-l">Continue with Google</span></a>
       <a class="mk-burger" id="mkBurger" href="#mkFoot" aria-controls="mkNav" aria-expanded="false" aria-label="Menu"><span class="sym" aria-hidden="true" translate="no">menu</span></a>
     </div>
   </div>
@@ -83,7 +87,6 @@
 <nav class="legal-toc" aria-label="On this page">
   <p class="legal-toc-h">On this page</p>
   <ol>
-      <li><a href="#changes-h">What changed on 28 October 2026</a></li>
       <li><a href="#who-sells-the-plans-and-what-this-policy">1. Who sells the plans, and what this policy covers</a></li>
       <li><a href="#cancellation">2. Cancellation</a></li>
       <li><a href="#purchases-are-final">3. Purchases are final</a></li>
@@ -98,7 +101,6 @@
 <details class="legal-toc-m">
   <summary>On this page</summary>
   <ol>
-      <li><a href="#changes-h">What changed on 28 October 2026</a></li>
       <li><a href="#who-sells-the-plans-and-what-this-policy">1. Who sells the plans, and what this policy covers</a></li>
       <li><a href="#cancellation">2. Cancellation</a></li>
       <li><a href="#purchases-are-final">3. Purchases are final</a></li>
@@ -116,7 +118,6 @@
 
 <h1>Refund &amp; Cancellation Policy</h1>
 <p class="legal-sub">Plans are bought a year at a time. Purchases are final, with the exceptions below, and cancelling an auto-pay stops the charges to come.</p>
-<p class="legal-date">Last updated 28 October 2026</p>
 
 <div class="legal-key">
   <p><strong>A plan is one year at a time.</strong> A plan or a launch pass is sold either as
@@ -132,29 +133,6 @@
   year.</p>
 </div>
 
-<section class="legal-changes" id="changes" aria-labelledby="changes-h">
-  <h2 id="changes-h">What changed on 28 October 2026</h2>
-  <ul>
-    <li>The launch pass. While a launch offer runs, the studio can be tried with a paid launch
-    pass. A pass is covered by the same three exceptions and by nothing else (section 4); a
-    refunded pass gives no free trial, and does not touch a yearly plan that has replaced it
-    (section 7).</li>
-    <li>Auto-renew. A plan or a launch pass may be sold on auto-renew, and which one is shown
-    before you pay. The three exceptions apply to each charge on its own, a charge taken after
-    you cancelled is refunded in full (section 4), and cancelling stops the charges still to
-    come without refunding the current period (section 2).</li>
-    <li>On 21 October 2026: a plan became a year. Bought one-time, nothing renews; you renew by
-    buying the plan again. The three exceptions were unchanged.</li>
-    <li>On 21 October 2026, section 6: a refund is made in the currency you paid in, Indian Rupees or US dollars,
-    and a conversion fee your bank or card issuer charged is between you and them.</li>
-    <li>On 21 October 2026, section 7: a refund takes off the year that payment bought; other years you paid for
-    stay on your plan.</li>
-    <li>On 19 October 2026: the free trial became how the studio is tried before buying,
-    section 5 added the refund request form and where to find your payment ID, and section 6
-    said we e-mail you when a refund is processed or fails.</li>
-  </ul>
-</section>
-
 <h2 id="who-sells-the-plans-and-what-this-policy">1. Who sells the plans, and what this policy covers</h2>
 <p>{{brand:name}} is provided from India by a sole proprietor; it is a trading name, not a registered company. This policy applies to
 paid plans and launch passes bought on {{brand:name}} and paid through Razorpay. It forms part of our
@@ -165,9 +143,8 @@ paid plans and launch passes bought on {{brand:name}} and paid through Razorpay.
   <li><strong>Bought one-time.</strong> A plan or a pass bought one-time is a single payment
   for its period and does not renew, so there is no recurring charge to cancel. If you do not
   want another period, do nothing: it ends on the date your plan page shows.</li>
-  <li><strong>On auto-renew.</strong> You can cancel anytime in Settings &rarr; Plan &amp;
-  purchases &rarr; Cancel auto-pay, or by revoking the mandate in your UPI app or with your
-  bank. Cancelling stops every charge still to come. It does not refund the current period:
+  <li><strong>On auto-renew.</strong> You can cancel anytime from the mandate itself: use the link in
+  the Razorpay mandate e-mail, or cancel it in your bank or UPI app. The app does not cancel it. Cancelling stops every charge still to come. It does not refund the current period:
   your access continues to the end of the period already paid for, and then ends. Your work
   is kept either way.</li>
   <li>If you start a payment and close the checkout before it completes, nothing is
@@ -177,7 +154,7 @@ paid plans and launch passes bought on {{brand:name}} and paid through Razorpay.
 </ul>
 
 <h2 id="purchases-are-final">3. Purchases are final</h2>
-<!-- The launch pass and auto-renew, finalised 28 Oct 2026 from the
+<!-- The launch pass and auto-renew, from the
      contract: schema section 61 (quote_pass: once per person, INR only,
      refused while a yearly plan runs, closed after pass_ends_at or once
      pass_cap passes are sold; the pass opens billing_settings.pass_plan;
@@ -264,36 +241,25 @@ without affecting any right you have as a consumer.</p>
 </main>
 </div>
 <!-- mk:footer -->
-<footer class="mk-foot" id="mkFoot">
+<footer class="mk-foot" id="mkFoot" data-surface="dark">
   <div class="mk-wrap">
     <div class="mk-foot-grid">
-      <div class="mk-foot-col hue-library">
-        <p class="mk-foot-h">Writing</p>
+      <div class="mk-foot-brand">
+        <a class="mk-brand" href="start.html"><span class="mk-logo" aria-hidden="true">&#9654;</span>{{brand:name}}</a>
+        <p class="mk-foot-note">Your work is saved in your browser first. Syncing to the cloud is optional.</p>
+      </div>
+      <div class="mk-foot-col mk-foot-col--tools">
+        <p class="mk-foot-h">Product</p>
         <ul>
           <li><a href="product-writing.html">Writing</a></li>
-        </ul>
-      </div>
-      <div class="mk-foot-col hue-feature">
-        <p class="mk-foot-h">Story development</p>
-        <ul>
           <li><a href="product-story.html">Story</a></li>
           <li><a href="product-storyboard.html">Storyboard</a></li>
-        </ul>
-      </div>
-      <div class="mk-foot-col hue-plan">
-        <p class="mk-foot-h">Pre-production</p>
-        <ul>
           <li><a href="product-breakdown.html">Breakdown</a></li>
           <li><a href="product-catalog.html">Elements</a></li>
           <li><a href="product-shot-list.html">Shot list</a></li>
           <li><a href="product-schedule.html">Schedule</a></li>
           <li><a href="product-cast-crew.html">Cast and crew</a></li>
           <li><a href="product-sides.html">Sides</a></li>
-        </ul>
-      </div>
-      <div class="mk-foot-col hue-shoot">
-        <p class="mk-foot-h">Production</p>
-        <ul>
           <li><a href="product-budget.html">Budget</a></li>
           <li><a href="product-call-sheets.html">Call sheets</a></li>
         </ul>
@@ -303,20 +269,26 @@ without affecting any right you have as a consumer.</p>
         <ul>
           <li><a href="pricing.html">Pricing</a></li>
           <li><a href="about.html">About us</a></li>
-          <li><a href="trust.html">Your work stays yours</a></li>
-          <li><a href="guides.html">Guides</a></li>
-          <li><a href="guides.html#compare">Switching to the studio</a></li>
           <li><a href="contact.html">Contact us</a></li>
-          <li><a href="privacy.html">Privacy</a></li>
-          <li><a href="terms.html">Terms</a></li>
-          <li><a href="refund.html">Refunds</a></li>
+          <li><a href="trust.html">Your work stays yours</a></li>
+        </ul>
+      </div>
+      <div class="mk-foot-col">
+        <p class="mk-foot-h">Learn</p>
+        <ul>
+          <li><a href="guides.html">Guides</a></li>
+          <li><a href="guides.html#compare">Switching guides</a></li>
           <li><a href="mailto:{{brand:email}}">Support</a></li>
         </ul>
       </div>
     </div>
     <div class="mk-foot-base">
-      <p class="mk-foot-note">Your work is saved in your browser first. Syncing to the cloud is optional.</p>
       <p class="mk-foot-copy">© {{brand:name}}</p>
+      <ul class="mk-foot-legal">
+        <li><a href="privacy.html">Privacy</a></li>
+        <li><a href="terms.html">Terms</a></li>
+        <li><a href="refund.html">Refunds</a></li>
+      </ul>
     </div>
   </div>
 </footer>

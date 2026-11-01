@@ -251,12 +251,20 @@ document.addEventListener('sm:scrollable', (e) => {
  *  tick of a load, rather than this module guessing at which links
  *  exist. No hash is written: the caller owns the address. */
 export function revealTarget(id) {
-  if (typeof document === 'undefined' || !id || !TABBED.has(page())) return false;
+  if (typeof document === 'undefined' || !id) return false;
   const el = document.getElementById(id);
   if (!el) return false;
+  /* A target inside a CLOSED disclosure is opened first (28 Oct 2026:
+     the dashboard keeps its tools and title page one click away, and
+     dashboard.html#title-page must still land on the title page). */
+  let opened = false;
+  for (let d = el.parentElement && el.parentElement.closest('details:not([open])'); d; d = d.parentElement && d.parentElement.closest('details:not([open])')) {
+    d.open = true; opened = true;
+  }
+  if (!TABBED.has(page())) return opened;
   const { sections } = findTabs();
   const owner = sections.find((s) => s === el || s.contains(el));
-  if (!owner || (!owner.hidden && owner.id === active)) return false;
+  if (!owner || (!owner.hidden && owner.id === active)) return opened;
   show(sections, owner.id, { setHash: false });
   return true;
 }

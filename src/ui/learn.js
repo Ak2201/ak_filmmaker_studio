@@ -1,12 +1,17 @@
 /* ============================================================
-   LEARN IN PLACE — a closed <details> that explains one craft term
+   LEARN — a quiet "What is …?" that explains one craft term
    ------------------------------------------------------------
-   learn(topicId, { film }) → HTMLElement | null
+   learn(topicId, { film }) → HTMLButtonElement | null
 
    Drop the result where a beginner might stop and ask "what is
-   this?". It is ONE quiet line while closed. The body is built on
-   the first open, so a page with thirty of them pays for thirty
-   <details> and nothing else.
+   this?". It is the kit PILL (learn-pill.js), the same on every page:
+   a help icon and the question. A topic may carry `text` (its own
+   words, no glossary term) and `pill` (the label). Pressing it opens the
+   explainer (src/ui/explainer.js) OVER the page — the kit modal on a
+   desk, the bottom sheet on a phone — and never expands in place, so
+   the work under it does not move (owner, 29 Oct 2026; it was a
+   <details> until then). The body is built on each open, so a page
+   with thirty of them pays for thirty buttons and nothing else.
 
    POINTERS, NOT COPIES. src/data/learn.json names a glossary term,
    some blueprint steps and some video keys; the words come from
@@ -19,12 +24,14 @@
    Every one of those is loaded with a dynamic import() on first
    open (glossary 40 KB, videos 28 KB, studies 100 KB, the step
    JSON), because each is its own chunk and none belongs in the
-   first paint of a page that merely hosts a closed box.
+   first paint of a page that merely hosts a closed box. The explainer
+   itself is a dynamic import too.
 
    It writes NOTHING: no storage, no keys. The film comes from
    favouriteSlug() when lib/studies.js has one, else the selected
-   demo (currentSlug()); `film` overrides either. An open box
-   follows onDemoChange() so its example tracks the picker.
+   demo (currentSlug()); `film` overrides either. An open explainer
+   follows onDemoChange() so its example tracks the picker, and stops
+   listening when it closes.
 
    Returns null for an unknown id, so callers can filter before
    append — Element.append(null) prints the text "null".
@@ -32,7 +39,7 @@
 import TOPICS from '../data/learn.json';
 import { h } from '../lib/dom.js';
 import { termId } from '../lib/library-search.js';
-import '../styles/learn.css';
+import { pillEl } from './learn-pill.js';
 
 const LIST = Array.isArray(TOPICS && TOPICS.topics) ? TOPICS.topics : [];
 const BY_ID = new Map(LIST.map((t) => [t.id, t]));
@@ -43,6 +50,7 @@ const WHY_MAX = 260;
 export function topic(id) { return BY_ID.get(id) || null; }
 
 function summaryText(t) {
+  if (t.pill) return t.pill;
   if (t.question) return t.question;
   const w = String(t.term || t.id);
   return 'What is ' + (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w + '?';
@@ -143,8 +151,7 @@ function linkFor(t) {
   return { href: 'library.html#glossary', text: 'Go deeper: film terminology' };
 }
 
-async function fill(box, t, opts) {
-  const body = box.querySelector('.learn-body');
+async function fill(body, t, opts, live) {
   const [glossary, S, why, vids] = await Promise.all([
     loadGlossary(), loadStudies(), whyFor(t).catch(() => null), videosFor(t).catch(() => null)
   ]);
@@ -160,15 +167,17 @@ async function fill(box, t, opts) {
   };
   const slugNow = () => opts.film || favourite(S);
   draw(slugNow());
-  if (S && S.onDemoChange && !opts.film) {
+  if (S && S.onDemoChange && !opts.film && live.open) {
     const off = S.onDemoChange(() => {
-      if (!box.isConnected) { if (typeof off === 'function') off(); return; }
+      if (!live.open) { if (typeof off === 'function') off(); return; }
       draw(slugNow());
     });
+    live.off = off;
   }
 
   const more = linkFor(t);
   const kids = [
+    t.text ? h('div.learn-def', { text: t.text }) : null,
     term ? h('div.learn-def', { text: term.def }) : null,
     term && term.tanglish ? h('div.learn-tn', { lang: 'ta-Latn', text: term.tanglish }) : null,
     slot,
@@ -185,7 +194,6 @@ async function fill(box, t, opts) {
     h('a.learn-more', { href: more.href, text: more.text })
   ].filter(Boolean);
   body.replaceChildren(...kids);
-  body.removeAttribute('aria-busy');
 }
 
 /* ---- the same body for a whole term, for the library ----------
@@ -228,25 +236,28 @@ export async function termBody(term, opts = {}) {
   ].filter(Boolean));
 }
 
-/** @returns {HTMLDetailsElement|null} a closed box, or null for an unknown topic */
+/** @returns {HTMLButtonElement|null} the trigger (the kit pill), or null for an unknown topic.
+    opts.size 'sm' is for field labels and term cards. */
 export function learn(topicId, opts = {}) {
   const t = topic(topicId);
   if (!t) return null;
   const o = opts || {};
-  const box = h('details.learn', { 'data-learn': t.id }, [
-    h('summary', {}, [h('span.learn-q', { text: summaryText(t) })]),
-    h('div.learn-body', { 'aria-busy': 'true' }, [h('div.learn-wait', { text: 'Loading…' })])
-  ]);
-  let built = false;
-  box.addEventListener('toggle', () => {
-    if (!box.open || built) return;
-    built = true;
-    fill(box, t, o).catch(() => {
-      const body = box.querySelector('.learn-body');
-      if (body) body.replaceChildren(h('p', {}, [h('a.learn-more', { href: 'library.html#glossary', text: 'Open film terminology' })]));
-    });
+  const btn = pillEl({ label: summaryText(t), size: o.size, topic: t.id, exempt: !!t.exempt });
+  btn.addEventListener('click', () => {
+    const live = { open: true, off: null };
+    import('./explainer.js').then(({ openExplainer }) => openExplainer({
+      title: t.question || summaryText(t),
+      returnTo: btn,
+      onClose: () => {
+        live.open = false;
+        if (typeof live.off === 'function') { try { live.off(); } catch (e) { /* */ } }
+      },
+      build: (body) => fill(body, t, o, live).catch(() => {
+        body.replaceChildren(h('p', {}, [h('a.learn-more', { href: 'library.html#glossary', text: 'Open film terminology' })]));
+      })
+    })).catch((e) => console.warn('[learn] explainer', e));
   });
-  return box;
+  return btn;
 }
 
 export default { learn, topic, termBody };

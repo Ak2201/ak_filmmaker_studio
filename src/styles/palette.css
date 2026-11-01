@@ -95,10 +95,10 @@
   min-width: 44px;
   margin: 0;
   padding: 0 var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   background: none;
   border: 1px solid var(--rule);
@@ -129,10 +129,10 @@
 .pal-sep {
   list-style: none;
   padding: var(--s2) var(--s3) var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .pal-list {
@@ -199,10 +199,10 @@
   gap: var(--s2);
 }
 .pal-row-group {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 /* PLANNED and PARTIAL are --ink-muted on a wash, not --warn as
@@ -210,9 +210,9 @@
    paid for fourteen times. The wash carries the warning; the
    letters stay at a readable contrast. */
 .pal-row-status {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
   background: var(--warn-wash);
   border-radius: var(--sk-btn-radius);
@@ -235,10 +235,10 @@
   padding: var(--s2) var(--s4);
   border-top: 1px solid var(--rule-hair);
   background: var(--paper-sunk);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 

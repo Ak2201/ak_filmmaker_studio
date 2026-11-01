@@ -7,7 +7,7 @@
    phone's Go to / Tools sheets use — a bottom drawer on a phone,
    centred at a reading width from 720px). No second overlay.
 
-   "SEEN" lives in the EXISTING device prefs blob fms_studio_prefs_v1,
+   "Seen" lives in the EXISTING device prefs blob fms_studio_prefs_v1,
    as `whatsNewSeen`: the id of the newest entry the reader has opened.
    No new key. It is written ONLY when the drawer is opened (a click),
    never on load — verify's four idle seconds assert that. unseen() is
@@ -23,6 +23,9 @@ import '../styles/changelog.css';
 
 const ENTRIES = (data.entries || []).filter((e) => e && e.id && e.title);
 const latest = () => (ENTRIES[0] ? ENTRIES[0].id : '');
+
+/** Every entry point asks this first: an empty list shows nothing. */
+export const hasEntries = () => ENTRIES.length > 0;
 
 /** True when there is an entry newer than the last one opened here. */
 export function unseen() {
@@ -59,4 +62,4 @@ export function openChangelog(returnTo) {
   return sheet({ title: 'What’s new', body: body(), kind: 'changelog', returnTo });
 }
 
-export default { openChangelog, unseen };
+export default { openChangelog, unseen, hasEntries };

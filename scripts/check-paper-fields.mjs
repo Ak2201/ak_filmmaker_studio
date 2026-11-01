@@ -98,6 +98,19 @@ if (!/border-color:\s*var\(--paper-page-ink\)/.test(focusRule)) bad.push('paper-
 if (!/\.scene-block input\.slug\.paper-field[^{]*\{\s*font-weight:\s*700/.test(cssCode)) bad.push('paper-field.css: the slug line must stay bold on paper');
 if (!/\.dialogue-block[^{]*\.paper-field[^{]*\{\s*font-size:\s*var\(--t-small\)/.test(cssCode)) bad.push('paper-field.css: the screenplay fields must keep --t-small on paper');
 
+/* The Onest variant: a rule in the sheet that reads the body token, and
+   the three note / clipping fields asking for it. Screenplay surfaces
+   never do. */
+if (!/\.paper-field\.paper-sans[^{]*\{\s*font-family:\s*var\(--f-body\)/.test(cssCode)) bad.push('paper-field.css: the .paper-sans variant must set font-family: var(--f-body)');
+for (const rel of ['src/ui/idea-vault.js', 'src/ui/note-card.js']) {
+  const t = blankComments(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+  if (!/script:\s*false/.test(t)) bad.push(rel + ': the clipping / note fields are not screenplay text — paperField(el, { script: false })');
+}
+for (const rel of ['src/pages/screenplay.js', 'src/ui/script-editor/editor.js']) {
+  const f = path.join(ROOT, rel);
+  if (fs.existsSync(f) && /script:\s*false/.test(blankComments(fs.readFileSync(f, 'utf8')))) bad.push(rel + ': screenplay surfaces keep var(--f-script)');
+}
+
 const stepsSrc = blankComments(fs.readFileSync(path.join(ROOT, 'src/ui/steps.js'), 'utf8'));
 if (!/paperRawInputs\(section\)/.test(stepsSrc)) bad.push('steps.js: renderStep must paper the raw blocks\' one-line answers (paperRawInputs)');
 const rx = (name) => { const m = stepsSrc.match(new RegExp('const ' + name + ' = (/.*/[a-z]*);')); return m ? (0, eval)(m[1]) : null; };

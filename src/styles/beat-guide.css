@@ -22,10 +22,10 @@ html[data-beat-guide="off"] #wr-page .bb-marker { display: none; }
   min-width: 0;
 }
 .bg-ctl-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   white-space: nowrap;
 }
@@ -115,10 +115,10 @@ html[data-beat-guide="panel"][data-bg-shift] .tabs {
 }
 .bg-panel:not([open]) > .bg-summary::after { content: '▸'; }
 .bg-eyebrow {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--accent-deep);
 }
 .bg-beat {
@@ -148,10 +148,10 @@ html[data-beat-guide="panel"][data-bg-shift] .tabs {
 .bg-pages strong { color: var(--ink); }
 .bg-sub {
   margin: var(--s1) 0 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .bg-steps {
@@ -170,10 +170,10 @@ html[data-beat-guide="panel"][data-bg-shift] .tabs {
   color: var(--ink-body);
 }
 .bg-next-lab {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 

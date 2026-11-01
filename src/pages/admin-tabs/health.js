@@ -219,7 +219,7 @@ function probeCard(ctx) {
   }
   return h('section.ad-card.ad-hc', { 'aria-label': 'Payment functions' }, [
     h('div.ad-hc-h', {}, [h('h3.ad-card-h', { text: 'Payment functions' }),
-      h('button.btn', { type: 'button', 'data-action': 'health-probe', disabled: P.phase === 'running' ? '' : null, text: P.phase === 'running' ? 'PROBING…' : 'RE-PROBE' })]),
+      h('button.btn', { type: 'button', 'data-action': 'health-probe', disabled: P.phase === 'running' ? '' : null, text: P.phase === 'running' ? 'Probing…' : 'Re-probe' })]),
     h('p.ad-meta', { text: 'An unauthenticated POST to each function. 401, 400 and 503 are answers from a deployed function; 404 is a missing one.' }),
     list,
     P.at ? h('p.ad-meta', {}, ['Probed ', h('time', { datetime: new Date(P.at).toISOString(), title: absTime(P.at), text: relTime(P.at) }), '.']) : null,
@@ -251,7 +251,7 @@ function receiptsCard() {
       { key: 'buyer_email', label: 'Buyer' },
       { key: 'amount_paise', label: 'Amount', align: 'end', render: (r) => fmtMinor(r.amount_paise, r.currency === 'USD' ? 'USD' : 'INR') },
       { key: 'issued_at', label: 'Issued', render: (r) => h('time', { datetime: r.issued_at, title: absTime(r.issued_at), text: relTime(r.issued_at) }) },
-      { key: 'id', label: '', render: (r) => h('button.btn', { type: 'button', 'data-action': 'receipt-resend', 'data-id': r.id, 'aria-label': 'Resend the receipt for ' + r.number, text: 'RESEND' }) }
+      { key: 'id', label: '', render: (r) => h('button.btn', { type: 'button', 'data-action': 'receipt-resend', 'data-id': r.id, 'aria-label': 'Resend the receipt for ' + r.number, text: 'Resend' }) }
     ],
     rows: rows.slice(0, 25)
   }));
@@ -302,7 +302,7 @@ function switchBlock() {
     box.append(previewBlock());
     const blocked = W.phase === 'ok' && W.data && W.data.can_throw === false;
     box.append(h('div.ad-actions', {}, [
-      h('button.btn.primary.ad-danger', { type: 'button', 'data-action': 'switch-throw', disabled: SW.busy || blocked || W.phase !== 'ok' ? '' : null, text: SW.busy ? 'WORKING…' : 'REQUIRE PURCHASES' }),
+      h('button.btn.primary.ad-danger', { type: 'button', 'data-action': 'switch-throw', disabled: SW.busy || blocked || W.phase !== 'ok' ? '' : null, text: SW.busy ? 'Working…' : 'Require purchases' }),
       h('span.ad-meta', { text: 'You will be asked to type REQUIRE. The server refuses the switch while it would wall a grandfathered member.' })
     ]));
   } else {
@@ -312,8 +312,8 @@ function switchBlock() {
     else if (left > 0) box.append(h('p.ad-meta', {}, ['Turned on ', h('time', { datetime: new Date(T.at).toISOString(), title: absTime(T.at), text: relTime(T.at) }), `. One-click rollback stays here for ${duration(left / 1000)} more.`]));
     else box.append(h('p.ad-meta', {}, ['Turned on ', h('time', { datetime: new Date(T.at).toISOString(), title: absTime(T.at), text: relTime(T.at) }), '. The 24-hour rollback window has passed; it can still be turned off from Purchases.']));
     box.append(h('div.ad-actions', {}, [
-      offer ? h('button.btn.ad-danger', { type: 'button', 'data-action': 'switch-rollback', disabled: SW.busy ? '' : null, text: SW.busy ? 'WORKING…' : 'ROLL BACK: PURCHASES NOT REQUIRED' })
-        : h('a.btn', { href: '#purchases', text: 'OPEN PURCHASES' })
+      offer ? h('button.btn.ad-danger', { type: 'button', 'data-action': 'switch-rollback', disabled: SW.busy ? '' : null, text: SW.busy ? 'Working…' : 'Roll back: purchases not required' })
+        : h('a.btn', { href: '#purchases', text: 'Open purchases' })
     ]));
   }
   if (SW.msg) box.append(h('p' + (SW.msg.tone === 'danger' ? '.ad-unk' : '.ad-meta'), { role: SW.msg.tone === 'danger' ? 'alert' : 'status', text: SW.msg.text }));
@@ -342,7 +342,7 @@ export function render(ctx) {
   const root = h('div.ad-health', {});
   root.append(h('div.ad-hbar', {}, [
     h('span.ad-meta', {}, H.phase === 'ok' && !H.busy ? ['Read ', h('time', { datetime: new Date(H.at).toISOString(), title: absTime(H.at), text: relTime(H.at) }), ' from the live project.'] : [H.phase === 'loading' || H.busy ? 'Reading the live project…' : '']),
-    h('button.btn', { type: 'button', 'data-action': 'health-refresh', disabled: H.phase === 'loading' || H.busy ? '' : null, text: 'REFRESH' })
+    h('button.btn', { type: 'button', 'data-action': 'health-refresh', disabled: H.phase === 'loading' || H.busy ? '' : null, text: 'Refresh' })
   ]));
 
   if (H.phase === 'idle' || H.phase === 'loading') { root.append(skeleton({ kind: 'kpi', count: 3 }), skeleton({ kind: 'block', count: 2 })); }

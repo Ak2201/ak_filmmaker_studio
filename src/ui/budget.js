@@ -22,6 +22,7 @@
    is a migration, not a rename.
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
+import { learnInline } from './learn-pill.js';
 import { parseAmount, fmtMoney, fmtINR } from '../lib/money.js';
 import {
   PRESET_ITEMS, readCalcData, saveCalcData, clearCalcData, maxRowIndex, rescuedCustomNames,
@@ -484,14 +485,10 @@ function renderCalculator() {
          'feature' / 'short' scopes, which a screening pass does open,
          so the sentence says they are not covered. Said here because a budget is the one module people assume is
          private and is not. */
-      h('p.hint.bud-who', {
-        text: 'Once it syncs, anyone you share this project with can see the budget, '
-            + 'a view-only link included, and only an edit link lets them change it, '
-            + 'unless you keep the budget private: then only you and people with an '
-            + 'edit link can see it. A screening pass does not show it. Figures typed '
-            + 'into the blueprint\u2019s budget questions are not part of this page '
-            + 'and stay visible to anyone you share the film with, a screening pass included.'
-      }),
+      /* A pop-up since 29 Oct 2026 (it was a disclosure that pushed the
+         rows below it down): the question stays on the page as a quiet
+         button, the answer opens over it. The words are unchanged. */
+      whoCanSee(),
       currencyNote(),
       // Column captions for the desk layout. Each field carries its
       // own <label> too, so this strip is decoration to a screen
@@ -512,7 +509,7 @@ function renderCalculator() {
       ])
     ]),
     h('div.calc-grand', {}, [
-      h('span.lab', { text: 'ESTIMATE TOTAL' }),
+      h('span.lab', { text: 'Estimate total' }),
       h('span#calcTotal.total', { 'aria-live': 'polite' }, [
         money(0) + ' ', h('span', { text: 'across 0 line items' })
       ])
@@ -530,6 +527,19 @@ function renderCalculator() {
    ------------------------------------------------------------ */
 
 /** The estimator and the schedule link, as one block. */
+const WHO_TEXT = 'Once it syncs, anyone you share this project with can see the budget, '
+  + 'a view-only link included, and only an edit link lets them change it, '
+  + 'unless you keep the budget private: then only you and people with an '
+  + 'edit link can see it. A screening pass does not show it. Figures typed '
+  + 'into the blueprint\u2019s budget questions are not part of this page '
+  + 'and stay visible to anyone you share the film with, a screening pass included.';
+function whoCanSee() {
+  return h('div.bud-who', {}, [learnInline({
+    label: 'Who can see this budget?', size: 'md', exempt: true, topic: 'budget-visibility',
+    eyebrow: 'Budget', text: WHO_TEXT
+  })]);
+}
+
 export function renderBudget() {
   cur = budgetCurrency();
   const frag = document.createDocumentFragment();
@@ -578,7 +588,7 @@ export const BUDGET_ACTIONS = {
        would be worse than no link at all. Rows that were set by hand
        are reported as left alone rather than quietly skipped. */
     /* ...and only on LINES. The page opens with five blank rows, and
-       filling those turned "USE 18 DAYS" into five nameless lines at
+       filling those turned "Use 18 days" into five nameless lines at
        18 days that the toast then counted as lines set. A row is a
        line once it names an item or carries a rate; a blank one is
        left blank, and counted as nothing. */

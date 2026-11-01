@@ -328,7 +328,13 @@ export function createGate(getClient) {
      *  person, their sign-in, synced films, payments, team, tickets, grant
      *  and lead row. Owner only; the e-mail is typed back; invoices stay
      *  with the buyer's name, e-mail and GSTIN removed. */
-    deleteUser: (userId, email) => rpc('admin_delete_user', { p_user: userId, p_confirm_email: email }),
+    /* §66: their stored Google Drive grant is revoked at Google first
+       (best effort, lazily loaded: google-token.js is not CORE); the
+       cascade from auth.users drops the row whatever Google answers. */
+    deleteUser: async (userId, email) => {
+      try { const { revokeGoogleGrant } = await import('./google-token.js'); await revokeGoogleGrant(userId); } catch (e) { /* never blocks the delete */ }
+      return rpc('admin_delete_user', { p_user: userId, p_confirm_email: email });
+    },
     /** owner | finance | support, or null. Resolves 'owner' where §45 has
      *  not run (every admin was one before roles existed). */
     studioRole: () => rpc('studio_role').then((r) => r || null)
@@ -345,7 +351,10 @@ export function createGate(getClient) {
       const r = one(await rpc('screening_open', { p_code: normaliseCode(code), p_viewer_email: viewerEmail || null }));
       if (!r) throw new GateError(INVALID_PASS, 'invalid');
       return { projectId: r.project_id, title: r.title, format: r.format, accessId: r.access_id,
-               expiresAt: r.expires_at, scopes: r.scopes || {} };
+               expiresAt: r.expires_at, scopes: r.scopes || {},
+               /* Drive-only storage (§66): the pass carries no content, only
+                  the id of the owner's link-shared export. */
+               driveFileId: r.drive_file_id || null };
     } catch (e) {
       if (isMissing(e)) throw new GateError('Screening passes are not available yet.', 'notdeployed');
       throw e;

@@ -41,10 +41,10 @@
   padding: var(--s1) 0;
   background: none;
   border: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   cursor: pointer;
 }
@@ -102,10 +102,10 @@
 
 .ai-field { display: grid; gap: var(--s1); min-width: 0; }
 .ai-flabel {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .ai-key-input,
@@ -116,7 +116,7 @@
   background: var(--paper-sunk);
   border: var(--sk-card-line-w) solid var(--rule);
   border-radius: var(--sk-radius);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-small);
   color: var(--ink-body);
 }
@@ -171,9 +171,9 @@
 .ai-test.is-warn { color: var(--warn-deep); }
 .ai-test.is-bad  { color: var(--danger); }   /* what the rest of the app uses for error text */
 .ai-keystate {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
 }
 /* The provider picker and the model picker are the same object —
@@ -196,7 +196,7 @@
   background: transparent;
   border: var(--sk-card-line-w) solid var(--rule);
   border-radius: var(--sk-radius);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   color: var(--ink-body);
 }
@@ -230,10 +230,10 @@
 .ai-disclose strong {
   display: block;
   margin-bottom: var(--s1);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-body);
 }
 .ai-disclose p {
@@ -245,10 +245,10 @@
 }
 
 .ai-peek summary {
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   cursor: pointer;
 }
@@ -259,7 +259,7 @@
   padding: var(--s3);
   background: var(--paper-sunk);
   border-radius: var(--sk-radius);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-tiny);
   line-height: var(--lh-snug);
   color: var(--ink-body);
@@ -281,10 +281,10 @@
 .ai-mark {
   display: inline-block;
   padding: var(--s1) var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
   color: var(--warn-deep);
   background: var(--warn-wash);
@@ -297,10 +297,10 @@
   background: none;
   border: var(--sk-card-line-w) solid var(--rule);
   border-radius: var(--sk-btn-radius);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
   cursor: pointer;
 }
@@ -317,9 +317,9 @@
 }
 .ai-result-meta {
   min-width: 0;
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--ink-muted);
   overflow-wrap: anywhere;
 }
@@ -363,9 +363,9 @@
   color: var(--ink-muted);
 }
 .ai-try-label {
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   color: var(--accent-deep);
 }
 
@@ -392,10 +392,10 @@
 
 .ai-col-label {
   margin: 0 0 var(--s2);
-  font-family: var(--f-mono);
+  font-family: var(--f-body);
   font-size: var(--t-micro);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .ai-speech {
@@ -459,10 +459,10 @@
   align-items: center;
   gap: var(--s2);
   padding: var(--s2) var(--s3);
-  font-family: var(--f-mono);
+  font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0;
   line-height: 1.2;
   text-decoration: none;
   cursor: pointer;

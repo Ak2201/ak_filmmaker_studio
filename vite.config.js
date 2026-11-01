@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { VitePWA } from 'vite-plugin-pwa';
+import tailwindcss from '@tailwindcss/vite';
 import { sampleFigures } from './src/lib/sample-figures.js';
 import { PLAN_ORDER, planName, LIST_PRICE, EDU_PRICE, inr, perDay } from './src/lib/plans.js';
 import { loadMatrixModule } from './scripts/make-plan-features-sql.mjs';
@@ -104,21 +105,20 @@ function materialSymbols() {
 }
 
 /* ============================================================
-   FONT PRELOADS — the three faces every page paints above the fold
+   FONT PRELOADS — the two faces every page paints above the fold
    ------------------------------------------------------------
    src/styles/fonts.css declares the faces; a declared face is only
    fetched once layout finds text in it, which is AFTER the CSS has
-   downloaded and parsed. For the three that every page paints at once —
-   Inter (body), Space Grotesk (headings), JetBrains Mono (labels and
-   figures), latin subset — that is a visible swap on every load, so
-   they are preloaded. Nothing else is: Courier Prime, Playfair italic
+   downloaded and parsed. For the two that every page paints at once —
+   Onest 400 (body and figures) and Gabarito 700 (headings), latin
+   subset — that is a visible swap on every load, so they are preloaded. Nothing else is: Courier Prime
    and the Tamil subsets stay on demand.
 
    The URLs are hashed, so this reads them out of the bundle at the end
    of the build rather than naming them. Dev serves the CSS unhashed
    and gets no preload, which is fine.
    ============================================================ */
-const PRELOAD_FACES = ['inter-latin-wght-normal', 'space-grotesk-latin-wght-normal', 'jetbrains-mono-latin-wght-normal'];
+const PRELOAD_FACES = ['onest-latin-400-normal', 'gabarito-latin-700-normal'];   // + Gabarito 800 on the public pages (below)
 function fontPreloads() {
   return {
     name: 'fms-font-preloads',
@@ -130,7 +130,12 @@ function fontPreloads() {
         if (/panel\.html$/.test(where)) return;
         if (!html.includes('id="app"') && !/(^|\/)(start|pricing|contact|about|product-[a-z-]+|guides|guide-[a-z-]+|compare-[a-z-]+|trust)\.html$/.test(where)) return;
         const tags = [];
-        for (const face of PRELOAD_FACES) {
+        /* the public pages' DISPLAY h1 is Gabarito 800 (two h1 tiers,
+           marketing.css): preloaded there too, or the hero headline
+           re-wraps when it arrives (a layout shift of ~0.1 at 390, 30 Oct
+           2026). The studio pages never paint 800 above the fold. */
+        const faces = html.includes('id="app"') ? PRELOAD_FACES : [...PRELOAD_FACES, 'gabarito-latin-800-normal'];
+        for (const face of faces) {
           const a = Object.values(ctx.bundle).find((f) => f.type === 'asset' && /\.woff2$/.test(f.fileName)
             && [...(f.originalFileNames || []), f.name || ''].some((n) => n.includes(face)));
           if (!a) throw new Error('fms-font-preloads: no bundled asset for ' + face + ' — did fonts.css stop declaring it?');
@@ -231,7 +236,7 @@ async function planFigures(values, cls, fail) {
     const shown = pick.length ? pick : adds.slice(0, 6);
     values['tier.list.' + id] = (i === 0 ? '' : '<li class="' + cls + '-inc-all">Everything in ' + esc(planName(PAID[i - 1])) + '</li>')
       + shown.map((t) => '<li>' + esc(t) + '</li>').join('')
-      + (adds.length > shown.length ? '<li class="' + cls + '-inc-more">' + (adds.length - shown.length) + ' more in the comparison</li>' : '');
+      + (M.cardMore(id) > 0 ? '<li class="' + cls + '-inc-more">' + M.cardMore(id) + ' more in the comparison</li>' : '');
   }
   const cell = (yes) => yes ? '<td class="' + cls + '-yes"><span aria-hidden="true">\u2713</span><span class="' + cls + '-vh">Included</span></td>'
                             : '<td class="' + cls + '-no"><span aria-hidden="true">\u2014</span><span class="' + cls + '-vh">Not included</span></td>';
@@ -730,6 +735,12 @@ export default defineConfig({
      plugin to generate or inject.
      ------------------------------------------------------------ */
   plugins: [
+    /* Tailwind v4 for the PUBLIC SITE ONLY: it compiles the one sheet
+       that imports it (src/styles/site.css), whose @source list names
+       the public pages alone. No studio page imports site.css — the
+       studio is styled through tokens.css, the skin and the kit, and
+       ~41k lines of unlayered CSS would beat layered utilities anyway. */
+    tailwindcss(),
     materialSymbols(),
     fontPreloads(),
     themeColor(),
@@ -749,7 +760,7 @@ export default defineConfig({
       injectManifest: {
         // The app shell, all four pages, the manifest and the icons.
         globPatterns: ['**/*.{html,js,css,svg,png,ico,webmanifest,woff,woff2}'],
-        // Recorded media (public/media/**) is fetched on demand, never precached.
+        // Recorded media (public/media/** video thumbnails, public/marketing/**) is fetched on demand, never precached.
         globIgnores: ['media/**', 'marketing/**'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024
       }
@@ -927,7 +938,7 @@ export default defineConfig({
              page and the Library went over scripts/budget.json. CORE calls
              nothing from region-core, so in a chunk of its own it is
              fetched only by the pages that use it. */
-          if (/\/src\/lib\/(funnel|invite-code|auth-scope|attribution|pass-offer|offer-terms|motion|trial-time|prefs|ports)\.js$/.test(id)) return 'startlib';
+          if (/\/src\/lib\/(funnel|invite-code|auth-scope|attribution|pass-offer|offer-terms|motion|trial-time|prefs|ports|google-button)\.js$/.test(id)) return 'startlib';
           if (/\/src\/lib\/region-core\.js$/.test(id)) return 'region';
           const CORE_LIB = /\/src\/lib\/(store|overflow|sitegate|gate|plan-gate|billing|navmodel|usage|dom|pwa|skin|drive-sync|drive|backup|cloud|extension-bridge|account|cloud-api)\.js$/;
           /* kit/ (14 Oct 2026): the component builders are pure and small, and

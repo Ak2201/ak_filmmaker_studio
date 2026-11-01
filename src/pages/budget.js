@@ -45,7 +45,7 @@ function render() {
      budget's words are exactly what they were. */
   const usd = budgetCurrency() === 'USD';
 
-  /* THE HEAD is the kit's page header (eyebrow, Space Grotesk title,
+  /* THE HEAD is the kit's page header (eyebrow, Gabarito title,
      deck, standing actions on the right) wearing `bd-head` as well:
      that class is the module column every page shares AND the host the
      blueprint pill looks for (blueprint-drawer.js), which lands after

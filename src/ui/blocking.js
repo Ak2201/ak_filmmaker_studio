@@ -15,5 +15,5 @@
 
    This file stays the import path visualize.js has always used.
    ============================================================ */
-export { renderBlocking, highlightCamera, drawReadOnly as drawBlock } from './blocking/editor.js';
+export { renderBlocking, highlightCamera, showShotBlocking, drawReadOnly as drawBlock } from './blocking/editor.js';
 export { renderSceneBoard } from './blocking/board.js';

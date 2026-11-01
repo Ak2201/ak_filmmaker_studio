@@ -39,11 +39,15 @@ export const MARK_KINDS = Object.freeze(['actor', 'camera', 'track', 'light', 'm
 /** shots.js SET_KINDS (the shared blocking contract), in the same order. */
 export const SET_KINDS = Object.freeze(['wall', 'door', 'window', 'table', 'chair', 'sofa', 'bed', 'counter', 'car', 'stairs', 'prop']);
 export const OP_TYPES = Object.freeze(['add-mark', 'update-mark', 'remove-mark', 'add-set', 'set-axis']);
+/** On a shot's diagram the set and the line are the floor's, so these two
+    operations are not offered (and are dropped if a reply sends them). */
+export const SHOT_OP_TYPES = Object.freeze(['add-mark', 'update-mark', 'remove-mark']);
 
 export const MAX_MARKS = 12;      // a draft's marks; and the most an enhance may add
 export const MAX_SET = 24;        // a draft's set pieces
 export const MAX_BEATS = 6;       // path beats after the first leg
 export const MAX_OPS = 12;        // enhance suggestions
+export const MAX_SHOTS = 40;      // shot diagrams in one draft
 export const WIDTH_MAX_M = 500;   // shots.js BLOCK_WIDTH_MAX_M
 
 const malformed = (msg) => { const e = new Error(msg); e.kind = 'malformed'; return e; };
@@ -104,6 +108,16 @@ export const DRAFT_SYSTEM = [
   '  the listed shots and their lenses need them: a wide lens close, a long lens',
   '  further back. Reuse a setup name from the shot list for the matching camera',
   '  label when there is one.',
+  '',
+  'ONE FLOOR, ONE DIAGRAM PER SHOT. `floor` is the scene\'s floor plan, shared',
+  'by every shot: the set, the 180° line and the floor width, drawn once.',
+  '`actors` are where the people start on that floor. `shots` holds one entry',
+  'per listed shot you can stage: shotId is the id given for that shot (never',
+  'invent one; leave a shot out rather than guess), and its `marks` are THAT',
+  'shot\'s diagram only — exactly ONE camera, the camera for that shot, plus',
+  'where the actors are and how they move during it (a dolly track or a light',
+  'when the shot needs one). Never put two cameras in one shot, and never put',
+  'set pieces or the line in a shot: they live on the floor.',
   '· Keep it shootable: few marks, no rail you cannot lay, no light you cannot rig.',
   '· Block the scene you were given. Do not invent action or characters.',
   '',
@@ -123,6 +137,12 @@ export const ENHANCE_SYSTEM = [
   'do not meet; a set piece the action needs and the plan lacks. Do not change',
   'what already works, and suggest nothing for the sake of it — an empty list is',
   'an honest answer.',
+  '',
+  'A diagram is either the scene\'s FLOOR PLAN (the set, the 180° line, the',
+  'width) or ONE SHOT\'s diagram (that shot\'s single camera and the actors',
+  'during it, drawn over the floor). On a shot\'s diagram the floor is shown',
+  'for reference only: do not add set pieces or move the line there, and keep',
+  'it to one camera.',
   '',
   'Operations: add-mark (fill `mark`), update-mark (markId = the id given, and',
   '`mark` = the mark as it should be after the change), remove-mark (markId),',
@@ -190,22 +210,43 @@ function axisSchema() {
   };
 }
 
-export function draftSchema(charIds = []) {
+/* The draft is ONE floor and ONE diagram PER SHOT (1 Nov 2026). The old
+   shape — one map holding every camera — is what made a shot list of six
+   come back as six cameras on one setup, which no crew can tape out. */
+export function draftSchema(charIds = [], shotIds = []) {
   return {
     type: 'object', additionalProperties: false,
-    required: ['name', 'note', 'widthM', 'set', 'marks', 'axis'],
+    required: ['floor', 'actors', 'shots'],
     properties: {
-      name: { type: 'string', description: 'the setup name, e.g. "Master — kitchen"' },
-      note: { type: 'string', description: 'one or two lines on the staging and coverage' },
-      widthM: { type: 'number' },
-      set: { type: 'array', items: pieceSchema() },
-      marks: { type: 'array', items: markSchema(charIds) },
-      axis: axisSchema()
+      floor: {
+        type: 'object', additionalProperties: false,
+        required: ['name', 'note', 'widthM', 'set', 'axis'],
+        properties: {
+          name: { type: 'string', description: 'the floor plan\'s name, e.g. "Kitchen"' },
+          note: { type: 'string', description: 'one or two lines on the staging and coverage' },
+          widthM: { type: 'number' },
+          set: { type: 'array', items: pieceSchema() },
+          axis: axisSchema()
+        }
+      },
+      actors: { type: 'array', items: markSchema(charIds), description: 'where the people start on the floor' },
+      shots: {
+        type: 'array',
+        items: {
+          type: 'object', additionalProperties: false, required: ['shotId', 'number', 'note', 'marks'],
+          properties: {
+            shotId: shotIds.length ? { type: 'string', enum: shotIds.slice() } : { type: 'string', description: 'no shots are listed: send no shots' },
+            number: { type: 'string' },
+            note: { type: 'string', description: 'one line on this shot\'s staging' },
+            marks: { type: 'array', items: markSchema(charIds), description: 'exactly one camera, plus the actors during this shot' }
+          }
+        }
+      }
     }
   };
 }
 
-export function enhanceSchema(charIds = [], markIds = []) {
+export function enhanceSchema(charIds = [], markIds = [], { shot = false } = {}) {
   return {
     type: 'object', additionalProperties: false, required: ['suggestions', 'note'],
     properties: {
@@ -216,7 +257,7 @@ export function enhanceSchema(charIds = [], markIds = []) {
           type: 'object', additionalProperties: false,
           required: ['type', 'text', 'why', 'markId', 'mark', 'piece', 'axis'],
           properties: {
-            type: { type: 'string', enum: OP_TYPES.slice() },
+            type: { type: 'string', enum: shot ? SHOT_OP_TYPES.slice() : OP_TYPES.slice() },
             text: { type: 'string', description: 'the change, in one short line' },
             why: { type: 'string', description: 'the reason, in one line' },
             markId: markIds.length ? { type: 'string', enum: [''].concat(markIds) } : { type: 'string' },
@@ -244,13 +285,13 @@ function sceneLines(job) {
   if (shots.length) {
     out.push('', 'the shot list for this scene:');
     for (const s of shots) {
-      out.push('  ' + [s.number ? '#' + s.number : '', s.size, s.angle, s.movement, s.lens,
+      out.push('  ' + [s.id ? 'id ' + s.id + ' —' : '', s.number ? '#' + s.number : '', s.size, s.angle, s.movement, s.lens,
         s.setup ? 'setup ' + s.setup : '', s.description ? '— ' + s.description : ''].filter(Boolean).join(' '));
     }
   } else out.push('', '(no shots listed yet — plan the coverage the scene needs)');
   const setups = Array.isArray(job.setups) ? job.setups : [];
   if (setups.length) {
-    out.push('', 'setups already drawn for this scene:');
+    out.push('', 'diagrams already drawn for this scene:');
     for (const s of setups) out.push('  ' + s);
   }
   if (job.script) out.push('', 'script:', job.script);
@@ -271,7 +312,7 @@ export function buildDraftPrompt(job = {}) { return withUser(job, () => draftPro
 export function buildEnhancePrompt(job = {}) { return withUser(job, () => enhancePromptBody(job)); }
 
 function draftPromptBody(job) {
-  const parts = ['Block the following scene on the floor plan: the set, the actors and their moves, the cameras and the 180° line.', ''];
+  const parts = ['Block the following scene: one floor plan (the set, the 180° line, where the actors start) and one diagram per listed shot (its one camera, the actors and their moves during it).', ''];
   parts.push(...sceneLines(job));
   if (str(job.prompt, 2000)) parts.push('', 'What the director asked for:', str(job.prompt, 2000));
   if (str(job.refine, 8000)) parts.push('', str(job.refine, 8000));
@@ -308,7 +349,10 @@ export function describeBlock(block) {
 function enhancePromptBody(job) {
   const parts = ['Review this blocking diagram and suggest specific changes, one operation each.', ''];
   parts.push(...sceneLines(job));
-  parts.push('', 'THE DIAGRAM:', describeBlock(job.block));
+  if (isObj(job.floor)) {
+    parts.push('', 'THE FLOOR this shot is staged on (shared by every shot; reference only — do not change it here):', describeBlock(job.floor));
+    parts.push('', 'THE DIAGRAM of ' + (str(job.block && job.block.name, 80) || 'this shot') + ' (one camera):', describeBlock(job.block));
+  } else parts.push('', 'THE DIAGRAM:', describeBlock(job.block));
   if (str(job.prompt, 2000)) parts.push('', 'What the director asked for:', str(job.prompt, 2000));
   if (str(job.refine, 8000)) parts.push('', str(job.refine, 8000));
   return parts.join('\n');
@@ -376,37 +420,61 @@ export function cleanWidth(v) {
  * A draft reply, checked.
  *   parsed   the model's JSON
  *   charIds  the character ids the prompt offered
- * → { name, note, widthM, set, marks, axis, dropped }
- * Throws (kind 'malformed') when it is not a draft at all, or holds no mark.
+ *   shotIds  the shot ids the prompt offered (a shot naming any other id,
+ *            or one already given, is dropped: it would have nowhere to go)
+ * → { floor: { name, note, widthM, set, axis }, actors, shots: [{ shotId,
+ *     number, note, marks }], dropped }
+ * Each shot keeps exactly ONE camera — the first; a second is dropped and
+ * counted, and a shot with none is dropped (a shot diagram is its camera).
+ * Throws (kind 'malformed') when it is not a draft at all, or holds nothing.
  */
-export function cleanDraft(parsed, { charIds = [] } = {}) {
-  if (!isObj(parsed) || !Array.isArray(parsed.marks)) {
+export function cleanDraft(parsed, { charIds = [], shotIds = [] } = {}) {
+  if (!isObj(parsed) || !Array.isArray(parsed.shots)) {
     throw malformed('The reply was not the blocking we asked for, so nothing was added.');
   }
   let dropped = 0;
-  const marks = [];
-  for (const m of parsed.marks) {
-    const c = cleanAIMark(m, { charIds });
-    if (!c) { dropped++; continue; }
-    if (marks.length >= MAX_MARKS) { dropped++; continue; }
-    marks.push(c);
-  }
+  const fl = isObj(parsed.floor) ? parsed.floor : {};
   const set = [];
-  for (const p of Array.isArray(parsed.set) ? parsed.set : []) {
+  for (const p of Array.isArray(fl.set) ? fl.set : []) {
     const c = cleanAIPiece(p);
     if (!c) { dropped++; continue; }
     if (set.length >= MAX_SET) { dropped++; continue; }
     set.push(c);
   }
-  if (!marks.length) throw malformed('The model came back with no actors or cameras, so nothing was added.');
-  return {
-    name: str(parsed.name, 80),
-    note: str(parsed.note, 600),
-    widthM: cleanWidth(parsed.widthM),
-    set, marks,
-    axis: cleanAIAxis(parsed.axis),
-    dropped
-  };
+  /* The floor's people: actors and tape marks. A camera here has no shot
+     to belong to, so it is dropped rather than guessed onto one. */
+  const actors = [];
+  for (const m of Array.isArray(parsed.actors) ? parsed.actors : []) {
+    const c = cleanAIMark(m, { charIds });
+    if (!c || c.kind === 'camera') { dropped++; continue; }
+    if (actors.length >= MAX_MARKS) { dropped++; continue; }
+    actors.push(c);
+  }
+  const offered = new Set([].concat(shotIds || []).map(String));
+  const seen = new Set();
+  const shots = [];
+  for (const sh of parsed.shots) {
+    const id = isObj(sh) ? String(sh.shotId ?? '') : '';
+    if (!id || !offered.has(id) || seen.has(id) || shots.length >= MAX_SHOTS) { dropped++; continue; }
+    const marks = [];
+    let cams = 0;
+    for (const m of Array.isArray(sh.marks) ? sh.marks : []) {
+      const c = cleanAIMark(m, { charIds });
+      if (!c) { dropped++; continue; }
+      if (c.kind === 'camera' && cams) { dropped++; continue; }   // ONE camera per shot
+      if (marks.length >= MAX_MARKS) { dropped++; continue; }
+      if (c.kind === 'camera') cams++;
+      marks.push(c);
+    }
+    if (!cams) { dropped++; continue; }
+    seen.add(id);
+    shots.push({ shotId: id, number: str(sh.number, 20), note: str(sh.note, 300), marks });
+  }
+  const floor = { name: str(fl.name, 80), note: str(fl.note, 600), widthM: cleanWidth(fl.widthM), set, axis: cleanAIAxis(fl.axis) };
+  if (!shots.length && !actors.length && !set.length && !floor.axis) {
+    throw malformed('The model came back with no floor plan and no shots, so nothing was added.');
+  }
+  return { floor, actors, shots, dropped };
 }
 
 /** What changed between a mark and the reply's version of it, as a patch; {} when nothing did. */
@@ -433,7 +501,7 @@ const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
  *   { type: 'remove-mark', id } · { type: 'add-set', piece }
  *   { type: 'set-axis', axis }   (axis null removes the line)
  */
-export function cleanEnhance(parsed, { block, charIds = [] } = {}) {
+export function cleanEnhance(parsed, { block, charIds = [], shot = false } = {}) {
   if (!isObj(parsed) || !Array.isArray(parsed.suggestions)) {
     throw malformed('The reply was not the list of suggestions we asked for, so nothing was changed.');
   }
@@ -443,7 +511,7 @@ export function cleanEnhance(parsed, { block, charIds = [] } = {}) {
   let dropped = 0;
   for (const s of parsed.suggestions) {
     if (items.length >= MAX_OPS) { dropped++; continue; }
-    if (!isObj(s) || !OP_TYPES.includes(s.type)) { dropped++; continue; }
+    if (!isObj(s) || !(shot ? SHOT_OP_TYPES : OP_TYPES).includes(s.type)) { dropped++; continue; }
     const text = str(s.text, 200);
     const why = str(s.why, 300);
     let op = null;
@@ -493,29 +561,39 @@ export function opText(op, marks = new Map()) {
 
 /* ---- the Desk's list of a draft ------------------------------- */
 
-/** A draft as Desk items: one per mark, per set piece, and the line. */
-export function draftItems(draft, { charName = () => '' } = {}) {
+const KIND_WORD = { actor: 'Actor', camera: 'Camera', track: 'Dolly track', light: 'Light', mark: 'Mark' };
+const markLine = (m, charName) => {
+  const who = m.charId ? charName(m.charId) : '';
+  return (KIND_WORD[m.kind] || 'Mark') + ' ' + (m.label || who || m.kind) + ' at ' + pointText(m.x, m.y)
+    + (m.kind !== 'track' && m.toX != null ? ' → ' + pointText(m.toX, m.toY) : '');
+};
+
+/** A draft as Desk items: the FLOOR (one item: set, line, width, where the
+    people start) and one item PER SHOT (its camera and actors). Each is
+    ticked whole: a shot diagram half-kept is a diagram nobody drew. */
+export function draftItems(draft, { charName = () => '', shotLabel = () => '' } = {}) {
   const items = [];
-  draft.marks.forEach((m, i) => {
-    const who = m.charId ? charName(m.charId) : '';
-    const moves = m.toX != null ? 1 + m.path.length : 0;
+  const f = draft.floor || {};
+  const set = f.set || [], actors = draft.actors || [];
+  if (set.length || actors.length || f.axis || f.widthM) {
     items.push({
-      id: 'm' + i, part: 'mark', index: i,
-      text: (m.kind === 'actor' ? 'Actor' : m.kind === 'camera' ? 'Camera' : m.kind === 'track' ? 'Dolly track' : m.kind === 'light' ? 'Light' : 'Mark')
-        + ' · ' + (m.label || who || m.kind) + ' at ' + pointText(m.x, m.y),
-      detail: [who && who !== m.label ? who : '', 'facing ' + m.rot + '°',
-        m.kind === 'track' ? 'to ' + pointText(m.toX, m.toY) : moves ? plural(moves, 'move', 'moves') : '',
-        ...m.path.map((p) => p.beat).filter(Boolean)].filter(Boolean).join(' · ')
+      id: 'floor', part: 'floor',
+      text: 'Floor plan' + (f.name ? ' “' + f.name + '”' : '') + ': ' + [
+        set.length ? plural(set.length, 'set piece', 'set pieces') : '',
+        actors.length ? plural(actors.length, 'actor', 'actors') : '',
+        f.axis ? 'the 180° line' : '', f.widthM ? f.widthM + ' m wide' : ''
+      ].filter(Boolean).join(', '),
+      detail: [...set.map((p) => p.kind + (p.label ? ' “' + p.label + '”' : '')), ...actors.map((m) => markLine(m, charName))].join(' · ')
     });
-  });
-  draft.set.forEach((p, i) => items.push({
-    id: 's' + i, part: 'set', index: i,
-    text: 'Set · ' + p.kind + (p.label ? ' “' + p.label + '”' : '') + ' at ' + pointText(p.x, p.y),
-    detail: p.w + ' × ' + p.h + (p.rot ? ' · turned ' + p.rot + '°' : '')
-  }));
-  if (draft.axis) {
-    const a = draft.axis;
-    items.push({ id: 'axis', part: 'axis', text: '180° line ' + pointText(a.x1, a.y1) + ' — ' + pointText(a.x2, a.y2), detail: 'Keep the coverage on one side of it' });
+  }
+  for (const sh of draft.shots || []) {
+    const cam = sh.marks.find((m) => m.kind === 'camera');
+    items.push({
+      id: 'shot:' + sh.shotId, part: 'shot', shotId: sh.shotId,
+      text: 'Shot ' + (shotLabel(sh.shotId) || (sh.number ? '#' + sh.number : sh.shotId)) + ': '
+        + (cam ? (cam.label || 'camera') + ' at ' + pointText(cam.x, cam.y) + ', facing ' + cam.rot + '°' : 'no camera'),
+      detail: [sh.note, ...sh.marks.filter((m) => m !== cam).map((m) => markLine(m, charName))].filter(Boolean).join(' · ')
+    });
   }
   return items;
 }
@@ -523,10 +601,75 @@ export function draftItems(draft, { charName = () => '' } = {}) {
 export function pickDraft(draft, selected) {
   const want = new Set([].concat(selected || []).map((it) => String(it && it.id)));
   return {
-    marks: draft.marks.filter((m, i) => want.has('m' + i)),
-    set: draft.set.filter((p, i) => want.has('s' + i)),
-    axis: want.has('axis') ? draft.axis : null
+    floor: want.has('floor') ? { ...draft.floor, actors: draft.actors || [] } : null,
+    shots: (draft.shots || []).filter((sh) => want.has('shot:' + sh.shotId))
   };
+}
+
+/**
+ * What an Accept writes, planned without writing (shots.js writeBlocking()
+ * does the one write, and undoBlocking() takes it back). FILL, NEVER
+ * OVERWRITE:
+ *   floor   none yet → a new floor block. One already → a copy that gains
+ *           the AI's set pieces (a piece of the same kind within 3 units of
+ *           one already there is the same piece, and is not added again),
+ *           and the width, note, line and actors ONLY where blank. Nothing
+ *           on it is deleted or moved. Unchanged → not written at all.
+ *   shots   none yet → a new diagram. An EMPTY one → filled in place. One
+ *           that already has marks → SKIPPED and reported: a person drew it.
+ *   cams    each new diagram's camera id, for the shot's `cam` — and
+ *           writeBlocking() fills it only where the shot names none.
+ * `make.block/mark/piece` give ids (shots.js blankBlock/blankMark/
+ * blankSetPiece); `shotOf(id)` is the shot record; `blockOfShot(id)` its
+ * diagram. → { blocks, cams, skipped: [shotId], floorAdded, shotsMade }
+ */
+export function planDraftApply(pick, {
+  sceneId, floor = null, blockOfShot = () => null, shotOf = () => null, floorName = '',
+  make = {}
+} = {}) {
+  const mkBlock = make.block || ((p) => ({ id: localId('bk'), shotId: '', marks: [], set: [], axis: null, ...p }));
+  const mkMark = make.mark || ((p) => ({ id: localId('mk'), ...p }));
+  const mkPiece = make.piece || ((p) => ({ id: localId('st'), ...p }));
+  const out = { blocks: [], cams: [], skipped: [], floorAdded: 0, shotsMade: 0 };
+  const f = pick && pick.floor;
+  if (f) {
+    const actors = (f.actors || []).map((m) => mkMark({ ...m }));
+    if (!floor) {
+      out.blocks.push(mkBlock({ sceneId, shotId: '', name: f.name || floorName, note: f.note || '', widthM: f.widthM || '',
+        set: (f.set || []).map((p) => mkPiece({ ...p })), axis: f.axis ? { ...f.axis } : null, marks: actors }));
+      out.floorAdded = (f.set || []).length + actors.length + (f.axis ? 1 : 0);
+    } else {
+      const next = JSON.parse(JSON.stringify(floor));
+      next.set = Array.isArray(next.set) ? next.set : [];
+      next.marks = Array.isArray(next.marks) ? next.marks : [];
+      let n = 0;
+      const had = next.set.slice();   // compare with what the person had, not with this pass's own adds
+      for (const p of f.set || []) {
+        if (had.some((q) => q.kind === p.kind && Math.hypot(q.x - p.x, q.y - p.y) <= 3)) continue;
+        next.set.push(mkPiece({ ...p })); n++;
+      }
+      if (!String(next.widthM || '').trim() && f.widthM) { next.widthM = f.widthM; n++; }
+      if (!String(next.note || '').trim() && f.note) { next.note = f.note; n++; }
+      if (!next.axis && f.axis) { next.axis = { ...f.axis }; n++; }
+      if (!next.marks.some((m) => m.kind === 'actor') && actors.length) { next.marks.push(...actors); n += actors.length; }
+      if (n) { out.blocks.push(next); out.floorAdded = n; }
+    }
+  }
+  for (const sh of (pick && pick.shots) || []) {
+    const shot = shotOf(sh.shotId);
+    if (!shot) { out.skipped.push(sh.shotId); continue; }
+    const have = blockOfShot(sh.shotId);
+    if (have && Array.isArray(have.marks) && have.marks.length) { out.skipped.push(sh.shotId); continue; }
+    const marks = sh.marks.map((m) => mkMark({ ...m }));
+    const row = have
+      ? { ...JSON.parse(JSON.stringify(have)), marks, note: String(have.note || '').trim() ? have.note : (sh.note || '') }
+      : mkBlock({ sceneId, shotId: sh.shotId, name: 'Shot ' + (String(shot.number || '').trim() || sh.number || '?'), note: sh.note || '', marks });
+    out.blocks.push(row);
+    const cam = marks.find((m) => m.kind === 'camera');
+    if (cam && !String(shot.cam || '')) out.cams.push({ id: sh.shotId, cam: cam.id });
+    out.shotsMade++;
+  }
+  return out;
 }
 
 /* ---- applying ops ----------------------------------------------- */
@@ -616,6 +759,7 @@ export function undoBlockOps(before, after, current) {
 
 export default {
   BLOCK_W, BLOCK_H, MARK_KINDS, SET_KINDS, OP_TYPES, MAX_MARKS, MAX_SET, MAX_BEATS, MAX_OPS,
+  SHOT_OP_TYPES, MAX_SHOTS,
   DRAFT_SYSTEM, ENHANCE_SYSTEM, draftSchema, enhanceSchema, buildDraftPrompt, buildEnhancePrompt, describeBlock,
-  cleanAIMark, cleanAIPiece, cleanAIAxis, cleanWidth, cleanDraft, cleanEnhance, opText, draftItems, pickDraft, applyBlockOps, undoBlockOps
+  cleanAIMark, cleanAIPiece, cleanAIAxis, cleanWidth, cleanDraft, cleanEnhance, opText, draftItems, pickDraft, planDraftApply, applyBlockOps, undoBlockOps
 };

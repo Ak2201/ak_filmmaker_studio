@@ -721,8 +721,12 @@ export async function draftShotDivision(jobs, { onStatus, signal } = {}) {
 
      job { sceneId, number, slug, synopsis, script,
            characters: [{ id, name }], shots: [{ number, size, angle,
-           movement, lens, setup, description }], setups: [line…],
-           prompt?, block? (enhance: the block as shots.js holds it) }
+           movement, lens, setup, description, id }], setups: [line…],
+           prompt?, block? (enhance: the diagram shown, as shots.js holds
+           it), floor? (enhance on a SHOT's diagram: the scene's floor,
+           sent as read-only context) }
+     The draft comes back as ONE floor plus ONE diagram per shot, each
+     shot naming one of the ids sent (blocking-ai-model.js cleanDraft).
      opts.refine  a string (the refine block a task already built), or
                   the Desk's { previous, instructions } — either way it
                   rides in the user prompt against the SAME schema.
@@ -742,16 +746,20 @@ function asAIError(e) {
   return e;
 }
 
-/** → { name, note, widthM, set, marks, axis, dropped, truncated, model } */
+const blockingShotIds = (job) => [...new Set((Array.isArray(job && job.shots) ? job.shots : [])
+  .map((s) => String((s && s.id) || '')).filter(Boolean))];
+
+/** → { floor: { name, note, widthM, set, axis }, actors, shots: [{ shotId, number, note, marks }], dropped, truncated, model } */
 export async function draftBlocking(job, { refine, signal, onStatus } = {}) {
   if (!job || !job.sceneId) throw new AIError('Pick a scene to block first.', 'noscenes');
   const charIds = blockingCharIds(job);
+  const shotIds = blockingShotIds(job);
   const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
   say('Sending scene ' + (job.number || '') + ' to ' + getModel() + '…');
   const { parsed, truncated, model } = await callModel({
     system: Blocking.DRAFT_SYSTEM,
     user: Blocking.buildDraftPrompt({ ...job, refine: blockingRefine(refine) }),
-    schema: Blocking.draftSchema(charIds),
+    schema: Blocking.draftSchema(charIds, shotIds),
     maxTokens: 16000, effort: 'medium',
     onStatus, signal,
     progress: (sofar) => {
@@ -760,7 +768,7 @@ export async function draftBlocking(job, { refine, signal, onStatus } = {}) {
     }
   });
   let draft;
-  try { draft = Blocking.cleanDraft(parsed, { charIds }); } catch (e) { throw asAIError(e); }
+  try { draft = Blocking.cleanDraft(parsed, { charIds, shotIds }); } catch (e) { throw asAIError(e); }
   return { ...draft, truncated, model };
 }
 
@@ -774,7 +782,7 @@ export async function enhanceBlocking(job, { refine, signal, onStatus } = {}) {
   const { parsed, truncated, model } = await callModel({
     system: Blocking.ENHANCE_SYSTEM,
     user: Blocking.buildEnhancePrompt({ ...job, refine: blockingRefine(refine) }),
-    schema: Blocking.enhanceSchema(charIds, markIds),
+    schema: Blocking.enhanceSchema(charIds, markIds, { shot: !!job.block.shotId }),
     maxTokens: 12000, effort: 'medium',
     onStatus, signal,
     progress: (sofar) => {
@@ -783,7 +791,7 @@ export async function enhanceBlocking(job, { refine, signal, onStatus } = {}) {
     }
   });
   let res;
-  try { res = Blocking.cleanEnhance(parsed, { block: job.block, charIds }); } catch (e) { throw asAIError(e); }
+  try { res = Blocking.cleanEnhance(parsed, { block: job.block, charIds, shot: !!job.block.shotId }); } catch (e) { throw asAIError(e); }
   return { ...res, truncated, model };
 }
 

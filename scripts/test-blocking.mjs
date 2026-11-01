@@ -331,5 +331,92 @@ reset();
   eq(S.axisSides({ marks: blk.marks }).crossed, false, 'no line, no warning');
 }
 
+/* ---- per-shot blocking: one floor, one diagram per shot (1 Nov 2026) -- */
+{
+  reset();
+  mem.set('fms_shots_v1', JSON.stringify({ shots: [], frames: [], boards: [], blocks: [], newerTop: [1, 2] }));
+  eq(S.blankBlock().shotId, '', 'a block is the floor (shotId "") by default');
+  eq(S.cleanBlock({ id: 'x', shotId: 7 }).shotId, '', 'a non-string shotId reads back as the floor');
+  const sA = S.addShot('scS', { setup: 'Cam B' });
+  const sB = S.addShot('scS', {});
+  const sC = S.addShot('scS', {});
+  eq([S.floorOf('scS'), S.blockOfShot(sA.id)], [null, null], 'no floor and no diagram until something is drawn');
+  const writesBefore = mem.get('fms_shots_v1');
+  S.floorOf('scS'); S.blockOfShot(sA.id); S.sceneAxisSides('scS'); S.planSplit(null, S.listShots(), S.listBlocks());
+  eq(mem.get('fms_shots_v1'), writesBefore, 'the readers never write (the idle-write check)');
+
+  // A legacy COMBINED setup: three cameras, one rail, two actors.
+  const legacy = S.addBlock('scS', { name: 'Setup 1' });
+  const a1 = S.addMark(legacy.id, 'actor', { label: 'Meena', x: 30, y: 30, charId: 'ch1', futureField: 'keep' });
+  const a2 = S.addMark(legacy.id, 'actor', { label: 'Ravi', x: 70, y: 30 });
+  const cA = S.addMark(legacy.id, 'camera', { label: 'Cam A', x: 50, y: 60 });
+  const cB = S.addMark(legacy.id, 'camera', { label: 'Cam B', x: 20, y: 60 });
+  const cC = S.addMark(legacy.id, 'camera', { label: 'Cam C', x: 80, y: 10 });
+  const rail = S.addMark(legacy.id, 'track', { x: 40, y: 60, toX: 60, toY: 60 });
+  S.setAxis(legacy.id, { x1: 0, y1: 40, x2: 100, y2: 40 });
+  S.updateShot(sB.id, { cam: cA.id });   // linked by id
+  // sA matches Cam B by its setup name; Cam C matches nothing.
+  eq(S.floorOf('scS').id, legacy.id, 'an older setup with no shotId IS the floor');
+  ok(S.sceneAxisSides('scS').crossed, 'the scene-wide 180° check sees Cam C across the line');
+
+  const snap = S.splitBlock(legacy.id);
+  eq([snap.matched, snap.unmatched], [2, 1], 'split: two cameras found their shots, one did not');
+  const floor = S.floorOf('scS');
+  eq(floor.id, legacy.id, 'split: the original block stays, as the floor');
+  eq(floor.marks.map((m) => m.label).sort(), ['Cam C', 'Meena', 'Ravi'], 'split: matched cameras and their rail left the floor; actors and the unmatched camera stayed');
+  ok(!!floor.axis, 'split: the line stays on the floor');
+  const dB = S.blockOfShot(sB.id), dA = S.blockOfShot(sA.id);
+  eq([dB.name, dB.shotId, dB.sceneId], ['Shot 2', sB.id, 'scS'], 'split: a diagram per matched shot, named for it');
+  eq(dB.marks.filter((m) => m.kind === 'camera').map((m) => m.id), [cA.id], 'split: shot 2 got Cam A, moved with its id');
+  ok(dB.marks.some((m) => m.id === rail.id), 'split: the rail Cam A rides went with it');
+  eq(dA.marks.filter((m) => m.kind === 'camera').map((m) => m.id), [cB.id], 'split: shot 1 got Cam B by setup name');
+  const copies = dA.marks.filter((m) => m.kind === 'actor');
+  eq(copies.map((m) => m.label), ['Meena', 'Ravi'], 'split: actors are COPIED into each shot diagram');
+  ok(copies.every((m) => m.id !== a1.id && m.id !== a2.id), 'split: the copies have new ids');
+  eq(copies[0].futureField, 'keep', 'split: an unknown field on a mark rides through');
+  eq(S.listShots().find((s) => s.id === sA.id).cam, cB.id, 'split: shot 1 is now linked to Cam B (it was blank)');
+  eq(S.listShots().find((s) => s.id === sB.id).cam, cA.id, 'split: shot 2 keeps its link');
+  eq(S.blockOfShot(sC.id), null, 'split: an unmatched shot gets nothing');
+  eq(JSON.parse(mem.get('fms_shots_v1')).newerTop, [1, 2], 'split: an unknown top-level field rides through');
+  eq(S.sceneCameras('scS').length, 3, 'sceneCameras reads the floor and every shot diagram');
+  eq(S.camOf(S.listShots().find((s) => s.id === sA.id)).blockId, dA.id, 'camOf finds a camera on a shot diagram');
+  eq(S.shotsOfCamera(cA.id).map((s) => s.id), [sB.id], 'shotsOfCamera still works by id');
+  ok(S.sceneAxisSides('scS').crossed, 'the 180° check still sees across the shot diagrams after the split');
+  eq(S.splitBlock(legacy.id), null, 'split again: one camera left, nothing to split (idempotent)');
+  eq(S.splitBlock(dA.id), null, 'a shot diagram is never split');
+
+  // Undo puts it all back.
+  const r = S.undoBlocking(snap);
+  eq([r.reverted, r.kept], [4, 0], 'undo split: the floor, two diagrams and one link reverted');
+  eq(S.blocksOfScene('scS').length, 1, 'undo split: only the original setup is left');
+  eq(S.getBlock(legacy.id).marks.length, 6, 'undo split: every mark is back on it');
+  eq(S.listShots().find((s) => s.id === sA.id).cam, '', 'undo split: the filled link is blank again');
+  eq(S.listShots().find((s) => s.id === sB.id).cam, cA.id, 'undo split: a link the person made stays');
+
+  // Undo keeps an edit made since.
+  const snap2 = S.splitBlock(legacy.id);
+  S.updateBlock(S.blockOfShot(sA.id).id, { note: 'typed after' });
+  const r2 = S.undoBlocking(snap2);
+  ok(r2.kept >= 1 && S.blockOfShot(sA.id).note === 'typed after', 'undo split: a diagram edited since is kept');
+
+  // ensureShotBlock: only on a press, idempotent, never for a missing shot.
+  const made = S.ensureShotBlock(sC.id);
+  eq([made.shotId, made.name, made.marks.length], [sC.id, 'Shot 3', 0], 'ensureShotBlock makes an empty diagram named for the shot');
+  eq(S.ensureShotBlock(sC.id).id, made.id, 'ensureShotBlock again returns the same diagram');
+  eq(S.ensureShotBlock('nope'), null, 'ensureShotBlock of a missing shot is null');
+
+  // Deleting a shot leaves its diagram, as an orphan the floor view lists.
+  S.removeShot(sC.id);
+  ok(!!S.getBlock(made.id), 'removeShot leaves the shot\'s diagram (drawn work is never a side effect)');
+  ok(S.isOrphanBlock(S.getBlock(made.id)), 'and it reads as an orphan');
+  ok(!S.isOrphanBlock(S.floorOf('scS')), 'the floor is never an orphan');
+
+  // writeBlocking fills cam only where blank.
+  const s4 = S.addShot('scS', { cam: 'typed' });
+  const w = S.writeBlocking({ cams: [{ id: s4.id, cam: 'ai-cam' }] });
+  eq([w.cams.length, S.listShots().find((s) => s.id === s4.id).cam], [0, 'typed'], 'writeBlocking never overwrites a shot\'s camera');
+  reset();
+}
+
 console.log(`test:blocking — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

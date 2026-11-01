@@ -48,9 +48,10 @@
      audience-test    audience-store.js, one document in the script blob's
                       documents (a partial run's checkpoint as it lands,
                       the kept run on Accept), through the page's save
-     blocking-draft   shots.js replaceBlock (one new setup on the scene's
-                      blocking map, only the ticked marks / set pieces /
-                      line); undo = removeBlock of exactly that id
+     blocking-draft   shots.js writeBlocking (the scene's floor plan,
+                      filled not overwritten, and one diagram per ticked
+                      shot, each with ONE camera; shot.cam filled only
+                      where blank), one write; undo = undoBlocking
      blocking-enhance shots.js replaceBlock (the ticked ops applied to the
                       setup, blocking-ai-model.js applyBlockOps); undo =
                       replaceBlock of the snapshot taken before Accept
@@ -1935,6 +1936,15 @@ const audienceAskTask = {
    ------------------------------------------------------------
    'blocking-draft'    ctx { sceneId, prompt?, after?(blockId|null), say? }
    'blocking-enhance'  ctx { sceneId, blockId, prompt?, after?(blockId|null), say? }
+                       blockId is the diagram SHOWN: the floor plan or one
+                       shot's diagram (a shot's carries the floor as
+                       read-only context, and may not touch the set).
+
+   ONE FLOOR, ONE DIAGRAM PER SHOT (1 Nov 2026). The draft used to come
+   back as one setup holding every shot's camera — six shots, six cameras
+   on one map, which is not a diagram anybody tapes out. It now comes back
+   as the scene's floor (set, 180° line, width, where people start) and a
+   diagram per shot, each naming one of the shot ids the job sent.
 
    The job is the scene as the model needs it to stage it: number,
    heading, synopsis, the script text matched by matchScenes() (the
@@ -1950,9 +1960,12 @@ const audienceAskTask = {
    the same schema.
 
    WRITES go through shots.js only, ONE write per Accept:
-     draft    a new block built from blankBlock/blankMark/blankSetPiece
-              holding only the ticked parts, written with replaceBlock
-              (which inserts it); Undo removes exactly that id.
+     draft    blocking-ai-model.js planDraftApply() decides (pure, Node-
+              tested): the floor gains only what it lacks, a shot already
+              drawn by a person is SKIPPED and said so, shot.cam is filled
+              only where blank; shots.js writeBlocking() writes it all at
+              once; Undo is undoBlocking(), which reverts only rows still
+              exactly as written.
      enhance  the ticked ops applied to a copy of the CURRENT block
               (applyBlockOps — an op naming a mark deleted since the run
               is skipped), written with replaceBlock; Undo writes back
@@ -1989,7 +2002,8 @@ function sceneCharacters(scene, slice) {
 function setupLine(b) {
   const count = (k) => (b.marks || []).filter((m) => m.kind === k).length;
   const cams = (b.marks || []).filter((m) => m.kind === 'camera').map((m) => m.label).filter(Boolean);
-  return (b.name || 'Setup') + ': ' + plural(count('actor'), 'actor', 'actors') + ', '
+  return (b.shotId ? 'diagram of shot id ' + b.shotId + ' “' + (b.name || 'Shot') + '”' : 'floor “' + (b.name || 'Setup') + '”') + ': '
+    + plural(count('actor'), 'actor', 'actors') + ', '
     + plural(count('camera'), 'camera', 'cameras') + (cams.length ? ' (' + cams.join(', ') + ')' : '')
     + (Array.isArray(b.set) && b.set.length ? ', ' + plural(b.set.length, 'set piece', 'set pieces') : '');
 }
@@ -2005,7 +2019,7 @@ function blockingJob(c, { withBlock = false } = {}) {
   const slice = pair ? pair.slice : null;
   const cams = ShotsM.sceneCameras(scene.id);
   const shots = ShotsM.listShots().filter((s) => s.sceneId === scene.id).map((s) => ({
-    number: s.number, size: s.size, angle: s.angle, movement: s.movement, lens: s.lens,
+    id: s.id, number: s.number, size: s.size, angle: s.angle, movement: s.movement, lens: s.lens,
     setup: ShotsM.setupOf(s, cams), description: s.description
   }));
   const blocks = ShotsM.blocksOfScene(scene.id);
@@ -2020,6 +2034,12 @@ function blockingJob(c, { withBlock = false } = {}) {
     const block = findBlock(c.blockId);
     if (!block || block.sceneId !== scene.id) fail('That setup is no longer on this scene. Pick one to review.');
     job.block = block;
+    /* A shot's diagram is reviewed over its floor: the model sees the set
+       and the line, and is told they are not its to change. */
+    if (block.shotId) {
+      const floor = ShotsM.floorOf(scene.id, blocks);
+      if (floor) job.floor = floor;
+    }
   }
   return job;
 }
@@ -2047,10 +2067,14 @@ const blockingDraftTask = {
     const job = blockingJob(resolve(ctx));
     const user = String(input ?? '').trim() ? String(input) : '';
     const res = await AI.draftBlocking({ ...job, user }, { onStatus, signal, refine: refineText(refine) });
-    const items = BlockAI.draftItems(res, { charName: charNamer(job) });
+    const byId = new Map(job.shots.map((s) => [s.id, s]));
+    const shotLabel = (id) => { const s = byId.get(id); return s ? '#' + (s.number || '?') + (s.size ? ' ' + s.size : '') + (s.lens ? ' ' + s.lens : '') : ''; };
+    const items = BlockAI.draftItems(res, { charName: charNamer(job), shotLabel });
     if (!items.length) fail('The model came back with nothing to place. Nothing was added.');
+    const f = res.floor || {};
     const note = [
-      'Setup “' + (res.name || 'Untitled') + '”' + (res.widthM ? ', floor ' + res.widthM + ' m wide' : '') + (res.note ? ': ' + res.note : '.'),
+      'Floor “' + (f.name || 'Untitled') + '”' + (f.widthM ? ', ' + f.widthM + ' m wide' : '') + (f.note ? ': ' + f.note : '.'),
+      plural(res.shots.length, 'shot diagram', 'shot diagrams') + ', one camera each.',
       res.dropped ? plural(res.dropped, 'piece was', 'pieces were') + ' not usable and left out.' : '',
       res.truncated ? 'The reply was cut short, so some pieces may be missing.' : ''
     ].filter(Boolean).join(' ');
@@ -2060,37 +2084,43 @@ const blockingDraftTask = {
     const c = resolve(ctx);
     const mem = recall('blocking-draft', result);
     if (!mem) fail('There is no blocking to keep. Run it first.');
-    if (typeof ShotsM.replaceBlock !== 'function') fail('This build cannot write a setup yet. Nothing was changed.');
+    if (typeof ShotsM.writeBlocking !== 'function') fail('This build cannot write a setup yet. Nothing was changed.');
     const pick = BlockAI.pickDraft(mem.draft, selected);
-    if (!pick.marks.length && !pick.set.length && !pick.axis) return null;
-    const d = mem.draft;
-    const name = d.name || ShotsM.nextBlockName(ShotsM.blocksOfScene(mem.sceneId));
-    const makePiece = typeof ShotsM.blankSetPiece === 'function' ? ShotsM.blankSetPiece : (p) => p;
-    const block = ShotsM.blankBlock({
-      sceneId: mem.sceneId, name, note: d.note, widthM: d.widthM,
-      marks: pick.marks.map((m) => ShotsM.blankMark({ ...m })),
-      set: pick.set.map((p) => makePiece({ ...p })),
-      axis: pick.axis ? { ...pick.axis } : null
+    if (!pick.floor && !pick.shots.length) return null;
+    const blocks = ShotsM.listBlocks();
+    const shots = ShotsM.listShots();
+    const plan = BlockAI.planDraftApply(pick, {
+      sceneId: mem.sceneId,
+      floor: ShotsM.floorOf(mem.sceneId, blocks),
+      blockOfShot: (id) => ShotsM.blockOfShot(id, blocks),
+      shotOf: (id) => shots.find((s) => s.id === id && s.sceneId === mem.sceneId) || null,
+      floorName: 'Floor plan',
+      make: { block: ShotsM.blankBlock, mark: ShotsM.blankMark, piece: ShotsM.blankSetPiece }
     });
-    const saved = ShotsM.replaceBlock(block);
-    const id = (saved && saved.id) || block.id;
-    const wrote = JSON.parse(JSON.stringify(saved || block));
-    call(c.say, 'Added the setup “' + name + '”.');
-    call(c.after, id);
-    /* Undo takes away only what this wrote: the whole setup while it is
-       still exactly that, else just the written pieces still as written
-       (anything added or edited since stays). */
+    const skipped = plan.skipped.length
+      ? plural(plan.skipped.length, 'shot already has', 'shots already have') + ' a diagram you drew, so ' + (plan.skipped.length === 1 ? 'it was' : 'they were') + ' left as ' + (plan.skipped.length === 1 ? 'it is.' : 'they are.')
+      : '';
+    if (!plan.blocks.length) {
+      call(c.say, ['Nothing was added.', skipped || 'The floor plan already has all of it.'].join(' '));
+      return null;
+    }
+    const snap = ShotsM.writeBlocking({ blocks: plan.blocks, cams: plan.cams });
+    call(c.say, [
+      plan.floorAdded ? 'Floor plan: ' + plural(plan.floorAdded, 'thing', 'things') + ' added.' : '',
+      plan.shotsMade ? plural(plan.shotsMade, 'shot diagram', 'shot diagrams') + ' added.' : '',
+      snap.cams.length ? plural(snap.cams.length, 'shot is', 'shots are') + ' now linked to its camera.' : '',
+      skipped
+    ].filter(Boolean).join(' '));
+    const firstShot = plan.blocks.find((b) => b.shotId);
+    call(c.after, firstShot ? firstShot.id : plan.blocks[0].id);
+    /* Undo takes away only what this wrote, and only while it is still
+       exactly as written (shots.js undoBlocking): a diagram edited since,
+       or a shot whose camera was re-picked, stays as the person left it. */
     return () => {
-      const now = findBlock(id);
-      if (!now) { call(c.say, 'That setup has already been deleted. Nothing to undo.'); return; }
-      const { block: left, reverted, kept } = BlockAI.undoBlockOps({ marks: [], set: [], axis: null }, wrote, now);
-      if (!kept && !left.marks.length && !left.set.length && now.name === wrote.name && (now.note || '') === (wrote.note || '')) {
-        ShotsM.removeBlock(id); call(c.after, null); return;
-      }
-      if (reverted) { call(c.before, id); ShotsM.replaceBlock(left); }
-      call(c.say, 'Kept the setup “' + (now.name || name) + '”: it has changed since. '
-        + (reverted ? 'Took out what the AI added and you had not changed.' : 'Nothing the AI added was left unchanged.'));
-      call(c.after, id);
+      const { reverted, kept } = ShotsM.undoBlocking(snap);
+      if (kept) call(c.say, plural(kept, 'diagram has', 'diagrams have') + ' changed since and ' + (kept === 1 ? 'was' : 'were') + ' left as ' + (kept === 1 ? 'it is.' : 'they are.'));
+      else if (!reverted) call(c.say, 'Nothing to undo: it has all changed since.');
+      call(c.after, null);
     };
   }
 };

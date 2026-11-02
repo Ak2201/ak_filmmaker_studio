@@ -57,6 +57,7 @@ import { pageEntry } from '../lib/navmodel.js';
 import { buildSectionMenu } from '../ui/section-menu.js';   // Write | Script analysis
 import { mountBeats, deriveBeats } from '../ui/beats-panel.js';
 import { caretPosition, formatCaretPage, sceneTotal, lockedSceneNumber } from '../lib/caret-position.js';
+import { autoContdOn } from '../lib/chrome-prefs.js';   // the automatic (CONT'D), a device pref (Settings)
 import Scenes from '../lib/scenes.js';
 import { installLeavePrompt } from '../ui/leave-prompt.js';
 import { latestDraft } from '../lib/drafts.js';
@@ -425,6 +426,8 @@ const say = (m) => { try { StudioUI.toast(m, { type: 'info' }); } catch (e) { /*
 let presence = null;        // src/ui/presence.js, mounted at boot; redrawn after a page render
 let curId = null;           // the line the caret is in
 let Typeset = null;         // the typesetter, once loaded (page breaks)
+let pagedNow = null;        // { index, labels } of the last page pass, for the caret strip (applyBreaks)
+let breaksIdle = 0;         // the idle slot the next page pass waits for
 
 const editor = mountEditor(document, {
   getDoc: () => doc,
@@ -1071,7 +1074,7 @@ function scheduleDerived() {
   derivedTimer = setTimeout(() => {
     derivedTimer = 0;
     editor.refreshCueOffers();
-    applyBreaks();
+    applyBreaksIdle();
     refreshStats();
     refreshPos(true);
   }, 400);
@@ -1116,7 +1119,7 @@ function putPos(k, text, show = !!text) {
   if (n.hidden === show) n.hidden = !show;
 }
 function refreshPos(deep) {
-  const p = curId ? caretPosition(doc.elements, curId) : null;
+  const p = curId ? caretPosition(doc.elements, curId, pagedNow) : null;
   const total = p ? p.sceneCount : sceneTotal(doc.elements);
   putPos('scene', scenePosText(p, total, p ? lockedSceneNumber(doc.elements, doc.numbering, p.sceneElId) : ''), true);
   putPos('page', p ? formatCaretPage(p) : '');
@@ -1232,16 +1235,60 @@ delegate(document, 'click', '[data-action="sc-runtime"]', (e, btn) => {
   if (open) loadTarget().then(paintRuntime);
 });
 
+/* ---- LIVE PAGES ---------------------------------------------------
+   The rows stay the writing surface; the paginator the PDF is built
+   from (paginateDoc, src/lib/paginate.js) says where its pages fall,
+   and this pass DECORATES the rows with the answer:
+
+     · a rule with the page number where each page starts;
+     · where a speech breaks inside itself, (MORE) above that rule and
+       "NAME (CONT'D)" under it, as the print sets them;
+     · the scene number in both margins of a heading;
+     · the automatic (CONT'D) on a returning speaker's cue (Settings,
+       `autoContd`, on by default) — beside the cue, never in it.
+
+   Every decoration is aria-hidden, takes no pointer and no selection,
+   and paints its words from a data attribute through CSS `content`, so
+   none of them is text: a copy of the page copies the script, and a
+   screen reader reads the lines. Nothing here is stored — the element
+   text is never touched, the next pass redraws from the model.
+
+   COST. paginate() is a few milliseconds on a 120-page script, but it
+   is never run per keystroke: scheduleDerived() waits for a 400ms pause
+   and this then waits for an idle slot. A caret move reads the last
+   pass's page index (pagedNow) and costs a Map lookup. */
+function applyBreaksIdle() {
+  if (breaksIdle) return;
+  const run = () => { breaksIdle = 0; applyBreaks(); };
+  breaksIdle = typeof requestIdleCallback === 'function'
+    ? requestIdleCallback(run, { timeout: 1000 })
+    : setTimeout(run, 0);
+}
 async function applyBreaksSoon() {
   if (!Typeset) {
     try { Typeset = await typesetter(); } catch (e) { return; }
   }
   applyBreaks();
 }
+/** Set or clear one data attribute, writing only on a change. */
+function setData(node, key, value) {
+  if (value) { if (node.dataset[key] !== value) node.dataset[key] = value; }
+  else if (key in node.dataset) delete node.dataset[key];
+}
+/** The row's own decoration of a kind, made on first need. */
+function deco(row, cls, make) {
+  let n = null;
+  for (const c of row.children) if (c.classList && c.classList.contains(cls)) { n = c; break; }
+  if (!n && make) {
+    n = h('span.' + cls + '.sc-deco', { 'aria-hidden': 'true' });
+    row.append(n);
+  }
+  return n;
+}
 function applyBreaks() {
   const page = document.getElementById('wr-page');
   if (!page || !Typeset) return;
-  const pages = Typeset.paginateDoc(doc);
+  const pages = Typeset.paginateDoc(doc, { autoContd: autoContdOn() });
   const anchors = pageAnchors(pages);
   // Locked pages print 12A or 12-13; the page view says the same.
   const labels = Typeset.pageNumbersDoc(doc, pages);
@@ -1256,16 +1303,56 @@ function applyBreaks() {
     const target = row.closest('.wr-dual') || row;
     const key = a.id + (a.split ? '|split' : '');
     const label = a.split ? 'Page ' + labels[p] + ' · continues' : 'Page ' + labels[p];
-    const placed = node && node.dataset.anchor === key && node.textContent === label
-      && (a.split ? node.previousElementSibling === target : node.nextElementSibling === target);
-    if (placed) continue;
-    if (!node) node = h('div.wr-pbreak', { role: 'separator', 'data-page': String(p) });
+    /* A speech that broke: the paginator wrote a (MORE) at the foot of
+       the page before and a "NAME (CONT'D)" cue at the top of this one. */
+    const cue = a.split ? pages[p].find((r) => r.contd === true) : null;
+    const contd = cue ? cue.lines.join(' ') : '';
+    if (!node) {
+      node = h('div.wr-pbreak', { 'aria-hidden': 'true', 'data-page': String(p) }, [
+        h('span.wr-pb-more'), h('span.wr-pb-rule'), h('span.wr-pb-contd')
+      ]);
+    }
     node.dataset.anchor = key;
     node.classList.toggle('is-split', a.split);
-    if (node.textContent !== label) node.textContent = label;
-    if (a.split) target.after(node); else target.before(node);
+    setData(node, 'label', label);
+    setData(node.children[0], 'text', contd ? '(MORE)' : '');
+    setData(node.children[1], 'text', label);
+    setData(node.children[2], 'text', contd);
+    const placed = a.split ? node.previousElementSibling === target : node.nextElementSibling === target;
+    if (!placed) { if (a.split) target.after(node); else target.before(node); }
   }
   existing.forEach((n) => n.remove());
+
+  /* The margins and the cues. One walk of the pages for the answers,
+     one walk of the rows for the paint; attribute writes only on a
+     change, so an idle pass over an unchanged script writes nothing. */
+  const sceneNo = new Map();
+  const auto = new Set();
+  for (const rows of pages) {
+    for (const r of rows) {
+      if (r.type === 'scene' && r.id && r.sceneNo && !r.cont) sceneNo.set(r.id, r.sceneNo);
+      if (r.autoContd && r.id) auto.add(r.id);
+    }
+  }
+  for (const row of editor.allRows()) {
+    const id = row.dataset.el;
+    const n = row.classList.contains('t-scene') ? sceneNo.get(id) || '' : '';
+    const sno = deco(row, 'sc-sno', !!n);
+    if (sno) setData(sno, 'text', n);
+    const isAuto = row.classList.contains('t-character') && auto.has(id);
+    const ac = deco(row, 'sc-autocontd', isAuto);
+    if (ac) {
+      setData(ac, 'text', isAuto ? "(CONT'D)" : '');
+      const ta = row.querySelector('.wr-text');
+      const len = isAuto && ta ? String(ta.value || '').trim().length : 0;
+      const ch = String(len);
+      if (ac.style.getPropertyValue('--cue-ch') !== ch) ac.style.setProperty('--cue-ch', ch);
+    }
+  }
+
+  pagedNow = { index: Typeset.pageIndex(pages), labels };
+  page.dataset.pages = String(pages.length);
+  refreshPos(false);
 }
 
 /* ---- the line menu: a ⋯ on the focused line, and right-click ---- */
@@ -1484,7 +1571,8 @@ async function exportPDF() {
     subtitle: pdfSubtitle(doc),
     before: () => {
       node = T.buildDocument(doc, {
-        title: Script.projectTitle(), revision: '', subtitle: iso.slice(0, 10), date: iso.slice(0, 10), sceneNumbers: false
+        title: Script.projectTitle(), revision: '', subtitle: iso.slice(0, 10), date: iso.slice(0, 10), sceneNumbers: false,
+        autoContd: autoContdOn()
       });
       main.append(node);
     },

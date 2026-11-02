@@ -349,20 +349,93 @@
   .sc-sheet .wr-el.t-shot:focus-within::before       { content: 'Shot'; }
 }
 
-/* Page edges: a dashed rule and a mono label on the right. */
+/* Page edges: a dashed rule and a small label on the right, and where
+   a speech breaks, the (MORE) above the rule and "NAME (CONT'D)" under
+   it at the cue's indent. Decoration only (screenplay.js applyBreaks):
+   every word comes from a data attribute through `content`, so none of
+   it is selectable or copied, and the node is aria-hidden. The sheet's
+   left margin is 9em and its right 6em; the break bleeds across both
+   (--pb-l / --pb-r), and narrower sheets restate the two below. */
 .sc-sheet .wr-page.is-pageview .wr-pbreak {
-  margin-block: 2em;
-  margin-inline: -9em -6em;
-  padding-top: 0.5em;
-  padding-right: 10em;
+  --pb-l: 9em;
+  --pb-r: 6em;
+  --pb-cue: 22ch;
+  display: block;
+  /* The sheet's own face and size (write.css sets the break small and
+     sans): the em and ch lengths here are the page's. */
+  font-family: var(--f-script);
+  font-size: 1em;
+  margin-block: 1.2em;
+  margin-inline: calc(-1 * var(--pb-l)) calc(-1 * var(--pb-r));
+  padding: 0;
+  border: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+  text-transform: none;
+  color: var(--ink-muted);
+}
+.sc-sheet .wr-pbreak > span { display: block; }
+.sc-sheet .wr-pbreak > span::before { content: attr(data-text); }
+.sc-sheet .wr-pbreak > span:not([data-text]) { display: none; }
+/* The rule keeps the sheet's font size, so --pb-r means the same length
+   here as on the break; only its label is set small. */
+.sc-sheet .wr-pbreak .wr-pb-rule {
+  padding-top: 0.3em;
+  padding-right: var(--pb-r);
   border-top: 1px dashed var(--rule);
+  line-height: 1;
+  text-align: right;
+}
+.sc-sheet .wr-pbreak .wr-pb-rule::before {
   font-family: var(--f-body);
   font-size: 0.6em;
   letter-spacing: 0;
+}
+.sc-sheet .wr-pbreak :is(.wr-pb-more, .wr-pb-contd) {
+  padding-left: calc(var(--pb-l) + var(--pb-cue));
+  text-align: left;                 /* write.css centres a split break */
+  font-family: var(--f-script);
+  line-height: 1;
+  white-space: pre;
+}
+.sc-sheet .wr-pbreak .wr-pb-more { margin-bottom: 1em; }
+.sc-sheet .wr-pbreak .wr-pb-contd { margin-top: 1em; }
+
+/* The scene number in both margins of a heading, and the automatic
+   (CONT'D) beside a returning speaker's cue: spans the page pass puts
+   in the row (aria-hidden, words from data-text, never in the textarea
+   and never stored). The number gives way to the focused line's own
+   label and toolbar in the margin; the (CONT'D) gives way while the cue
+   is being typed, since it sits where the next letter goes. */
+.sc-sheet .sc-deco {
+  position: absolute;
+  top: 0;
+  font-family: var(--f-script);
+  line-height: 1;
+  white-space: pre;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
   text-transform: none;
-  text-align: right;
+}
+.sc-sheet .sc-deco::before,
+.sc-sheet .sc-sno::after { content: attr(data-text); }
+.sc-sheet .sc-deco:not([data-text]) { display: none; }
+.sc-sheet .wr-el:not(.t-scene) > .sc-sno,
+.sc-sheet .wr-el:not(.t-character) > .sc-autocontd { display: none; }
+.sc-sheet .sc-sno { inset-inline: -5em -3.5em; display: flex; justify-content: space-between; font-weight: 700; color: var(--ink); }
+.sc-sheet .sc-autocontd {
+  left: calc(var(--wr-indent, 0ch) + (var(--cue-ch, 0) + 1) * 1ch);
   color: var(--ink-muted);
 }
+.sc-sheet .wr-el:is(:hover, :focus-within) > .sc-sno,
+.sc-sheet .wr-el:focus-within > .sc-autocontd { visibility: hidden; }
+@media (max-width: 719px) {
+  /* A phone's margins are a few pixels: no scene numbers in them. */
+  .sc-sheet .sc-sno { display: none; }
+}
+@media print { .sc-sheet .sc-deco { display: none; } }
 
 /* ============================================================
    THE FOCUSED LINE — its small toolbar, and the right-click menu
@@ -994,8 +1067,9 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   .sc-sheet .wr-el.t-transition { --wr-indent: 0%;  --wr-measure: 100%; }
   .sc-sheet .wr-el.t-transition .wr-text { text-align: right; }
   .sc-sheet .wr-page.is-pageview .wr-pbreak {
-    margin-inline: calc(-1 * var(--s3));
-    padding-right: var(--s3);
+    --pb-l: var(--s3);
+    --pb-r: var(--s3);
+    --pb-cue: 24%;
   }
 
   /* The beats: a bottom sheet over the page, above the bottom bar and

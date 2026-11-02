@@ -402,9 +402,10 @@ ok((await page.$$eval('#wr-page .wr-text', (ts) => ts.map((t) => t.value))).incl
   });
   await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
   await page.waitForTimeout(1500);
-  const breaks = await page.$$eval('#wr-page .wr-pbreak', (ns) => ns.map((n) => n.textContent));
+  // A break is decoration: its words are in data-label (painted by CSS), never text.
+  const breaks = await page.$$eval('#wr-page .wr-pbreak', (ns) => ns.map((n) => n.dataset.label || ''));
   ok(breaks.some((t) => /^Page 2A/.test(t)), '18 the page view shows 2A after page 2 grows', breaks);
-  const p3 = await page.$$eval('#wr-page .wr-pbreak', (ns) => { const n = ns.find((x) => x.textContent === 'Page 3'); return n ? (n.nextElementSibling && n.nextElementSibling.dataset.el) : null; });
+  const p3 = await page.$$eval('#wr-page .wr-pbreak', (ns) => { const n = ns.find((x) => x.dataset.label === 'Page 3'); return n ? (n.nextElementSibling && n.nextElementSibling.dataset.el) : null; });
   ok(p3 === startP3, '18 and page 3 still begins on the same line', { p3, startP3 });
   await page.goto(url('drafts.html#numbering'), { waitUntil: 'networkidle' });
   await page.waitForTimeout(800);

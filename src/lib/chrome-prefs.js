@@ -95,7 +95,17 @@ export function readBeatView() {
 }
 export const saveBeatView = (view) => updateDevicePrefs({ beatView: BEAT_VIEWS.includes(view) ? view : undefined });
 
+/* ---- automatic (CONT'D) in the Screenplay Writer ------------------
+   `autoContd` inside the same device blob. Final Draft marks a speaker
+   who speaks again after only action, in the same scene, with (CONT'D)
+   — on the page and in the print, never in what the writer typed. ON
+   unless turned off, so the blob holds `autoContd: false` and nothing
+   else: absent is the default, and a write happens only on a click. */
+export const autoContdOn = () => readDevicePrefs().autoContd !== false;
+export const saveAutoContd = (on) => updateDevicePrefs({ autoContd: on ? undefined : false });
+
 export default {
+  autoContdOn, saveAutoContd,
   readDevicePrefs, updateDevicePrefs, motionReduced, saveMotionPref, brandingPrefOff, saveBrandingOff, touchThemePref, tourActive, tourResumable,
   readShotView, saveShotView, readBeatView, saveBeatView
 };

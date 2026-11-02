@@ -930,6 +930,10 @@ delegate(document, 'click', '[data-plan-action="buy"]', async (e, el) => {
 /* The box's own state: a details element is rebuilt on every rerender,
    so whether it is open is remembered here rather than read back. */
 delegate(document, 'toggle', '[data-plan-promo]', (e, el) => { promo.open = el.open; }, true);
+/* The input is rebuilt on every rerender too (a late price, offer or matrix
+   reply), and its value comes from promo.typed: keep that in step with
+   each keystroke, or a code half typed when a reply lands is wiped. */
+delegate(document, 'input', '#plPromoCode', (e, el) => { promo.typed = el.value; });
 
 delegate(document, 'submit', '[data-plan-form="promo"]', async (e, form) => {
   e.preventDefault();

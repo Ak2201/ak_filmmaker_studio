@@ -280,6 +280,18 @@ ok(ph.need <= ph.have, '8  the search placeholder fits its box', ph);
      the runner's speed (Gate run 383). */
   await q.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   await q.focus('[data-scene="sc2"] .bd-sl-grip');
+  /* …and focus() scrolls the grip into view under that same smooth
+     behaviour, so top0 read at once was mid-animation (973px in a 900px
+     window, QA r1). Wait until scrollY holds for a few frames. */
+  await q.evaluate(() => new Promise((done) => {
+    let last = -1, same = 0, n = 0;
+    const tick = () => {
+      const y = window.scrollY;
+      same = y === last ? same + 1 : 0; last = y;
+      if (same >= 5 || ++n > 180) done(); else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }));
   const top0 = await q.$eval('[data-scene="sc2"] .bd-sl-grip', (g) => g.getBoundingClientRect().top);
   await q.keyboard.press('ArrowDown');
   await q.waitForTimeout(250);

@@ -49,7 +49,6 @@ import { createSmartType } from '../ui/smarttype.js';
 import WriteKeys from '../ui/write-shortcuts.js';
 import { mountTypewriter } from '../ui/script-editor/typewriter.js';
 import { readTypewriter, saveTypewriter, readMacrosPref, readFitPage, saveFitPage } from '../lib/chrome-prefs.js';
-import { mountReadAloud, readAloudSupported } from '../ui/read-aloud.js';
 import { dictationSupported } from '../lib/dictation-model.js';
 import '../styles/smarttype.css';
 import { mountEditor, elFocus } from '../ui/script-editor/editor.js';
@@ -513,14 +512,27 @@ const replaceBar = mountReplaceBar({
 delegate(document, 'click', '[data-action="sc-find"]', () => { editor.foldAll(false); replaceBar.open(curId); });
 
 /* ---- read aloud and Check names (wave 2, L5) -------------------- */
-const readAloud = mountReadAloud({
-  getDoc: () => doc,
-  editor,
-  currentId: () => curId,
-  host: () => document.getElementById('scTop'),
-  say
+/* Read aloud is LOADED ON FIRST USE (src/ui/read-aloud.js): its panel
+   and its voice logic are ~8 KB the editor's first paint does not need.
+   The support check is restated here for the same reason, and must stay
+   identical to readAloudSupported() there: the menu item is left out
+   where the browser has no synthesis. */
+const readAloudSupported = () => 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function';
+let readAloud = null;
+delegate(document, 'click', '[data-action="sc-read"]', async () => {
+  if (!readAloud) {
+    let M;
+    try { M = await import('../ui/read-aloud.js'); } catch (err) { say('Read aloud could not be loaded. Check the connection and try again.'); return; }
+    readAloud = readAloud || M.mountReadAloud({
+      getDoc: () => doc,
+      editor,
+      currentId: () => curId,
+      host: () => document.getElementById('scTop'),
+      say
+    });
+  }
+  if (readAloud) readAloud.open();
 });
-delegate(document, 'click', '[data-action="sc-read"]', () => { if (readAloud) readAloud.open(); });
 delegate(document, 'click', '[data-action="sc-names"]', async (e, btn) => {
   try {
     const M = await import('../ui/name-check.js');

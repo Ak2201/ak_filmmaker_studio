@@ -102,6 +102,12 @@ jobs:
       # No native confirm/alert/prompt: the in-app dialog appears, Cancel keeps data.
       - run: npm run prove:dialogs
       - run: npm run prove:script
+      # Screenplay Writer wave 2 (2 Nov 2026): macros, Check names, read aloud
+      # and dictation (faked speech); reorder/fold/split/statistics; revision
+      # marks, fit to page and reports.
+      - run: npm run prove:helpers
+      - run: npm run prove:script-structure
+      - run: npm run prove:production
       - run: npm run prove:replace
       - run: npm run prove:cards
       - run: npm run prove:schedule

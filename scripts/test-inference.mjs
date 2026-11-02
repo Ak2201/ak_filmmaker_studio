@@ -25,7 +25,10 @@ for (const t of ['FADE OUT.', 'FADE IN:', 'SMASH CUT:', 'CUT TO BLACK.', 'FADE T
 for (const t of ['THE END', 'BLACK.', 'THE END.']) eq(cr(t, 'action'), null, t + ' stays action, never a cue (QA r4)');
 eq(cr('FADE', 'action')?.type, 'character', 'a cue that merely starts like one is still a cue');
 eq(cr('>Fade out', 'action'), { type: 'transition', text: 'Fade out' }, '> transition');
-eq(cr('>THE END<', 'action'), null, 'centered');
+eq(cr('>THE END<', 'action'), { type: 'centered', text: 'THE END' }, '>x< is centered');
+eq(ci('~la la la', 'action'), { type: 'lyrics', text: 'la la la' }, '~ forces lyrics');
+for (const t of ['ACT ONE', 'ACT II', 'END OF ACT TWO', 'ACT 3', 'NEW ACT']) eq(cr(t, 'action')?.type, 'act', t + ' is an act break');
+for (const t of ['ACT', 'Act one begins.']) eq(cr(t, 'action')?.type === 'act', false, t + ' is not an act break');
 eq(cr('RAVI', 'dialogue'), null, 'only action');
 eq(cr('INT. HOUSE', 'action'), null, 'scene prefix not a cue');
 

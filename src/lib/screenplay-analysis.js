@@ -284,14 +284,16 @@ export function estimateSlice(slice) {
   let dialogueWords = 0, actionWords = 0, seconds = HEADING_SECONDS, speeches = 0;
   for (const el of slice.elements) {
     const t = String(el.text || '');
-    if (el.type === 'dialogue') dialogueWords += words(t);
+    /* Lyrics are sung speech: they take dialogue's pace. An act break
+       carries no time of its own; a centered line is on screen like action. */
+    if (el.type === 'dialogue' || el.type === 'lyrics') dialogueWords += words(t);
     else if (el.type === 'character') speeches++;
     /* A shot is an image on screen like an action line, so it takes the
        same rhythm. It is NOT a heading: sliceScript() above cuts only at
        `scene`, so a shot stays inside the scene it belongs to. It is kept
        out of the auto-tagger below, which reads capitals as cast
        introductions and a shot is all capitals. */
-    else if (el.type === 'action' || el.type === 'shot') {
+    else if (el.type === 'action' || el.type === 'shot' || el.type === 'centered') {
       const sentences = t.split(/(?<=[.!?…])\s+|\n+/).filter((x) => x.trim());
       for (const sn of sentences) {
         const w = words(sn);

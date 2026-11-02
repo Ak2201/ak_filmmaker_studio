@@ -38,6 +38,7 @@
    counts, which are the format itself.
    ============================================================ */
 import { h } from './dom.js';
+import { isActEndText } from './act-line.js';
 import { ELEMENT_TYPE_IDS, dualPairs, hasTitlePage, CONTD_RE, sceneNumbers } from './script.js';
 
 /* ------------------------------------------------------------
@@ -57,6 +58,7 @@ import { ELEMENT_TYPE_IDS, dualPairs, hasTitlePage, CONTD_RE, sceneNumbers } fro
      parenthetical       3.1in       16ch,  28ch
      dialogue            2.5in       10ch,  35ch
      transition          right-aligned in the 60ch block
+   centered, act       centred in the 60ch block; lyrics at dialogue's indent
 
    These are the same numbers styles/pdf.css paints, deliberately:
    a paginator that wraps at a different measure than the renderer
@@ -78,8 +80,20 @@ export const GEOMETRY = {
   /* A shot sits where a slug line sits, in capitals, but it is not a
      heading: not bold, one blank line above it rather than two, and no
      scene number in either margin. */
-  shot:       { indent: 0,  width: 60, upper: true,  blankBefore: 1, align: 'left' }
+  shot:       { indent: 0,  width: 60, upper: true,  blankBefore: 1, align: 'left' },
+  /* L3: the three elements Final Draft has and this editor lacked.
+     Centered is a line of action set on the middle of the 60ch block
+     (a title card, a sign). Lyrics sit where dialogue sits, in italics.
+     An act break is centred capitals, underlined; a NEW act starts a
+     page (see isActStart) and "END OF ACT" closes the one before. */
+  centered:   { indent: 0,  width: 60, upper: false, blankBefore: 1, align: 'center' },
+  lyrics:     { indent: 10, width: 35, upper: false, blankBefore: 1, align: 'left', italic: true },
+  act:        { indent: 0,  width: 60, upper: true,  blankBefore: 2, align: 'center', underline: true }
 };
+/** "END OF ACT ONE" closes an act; any other act line ("ACT TWO",
+    "NEW ACT") opens one, and an opening act starts a new page. */
+export const isActEnd = isActEndText;
+export const isActStart = (el) => !!el && el.type === 'act' && !isActEnd(el.text);
 export const geometryOf = (type) => GEOMETRY[type] || GEOMETRY.action;
 
 /* ------------------------------------------------------------
@@ -335,6 +349,9 @@ export function paginate(elements, opts = {}) {
     const text = printedText(el);
     if (!text) continue;                 // a blank element is a gap, not a beat
     const geom = GEOMETRY[type];
+    /* A new act starts a page — flushed here, before the cost is
+       counted, so the gap above it is 0 on the fresh page. */
+    if (isActStart(el) && page.length && !page.every((r) => r.omitted === true)) { flush(); speaker = ''; }
     const lines = wrapText(text, geom.width);
     const id = el && el.id;
     const extra = type === 'scene'
@@ -343,7 +360,8 @@ export function paginate(elements, opts = {}) {
     if (type === 'scene') sceneNo++;
 
     if (type === 'character') speaker = text;
-    if (type === 'scene' || type === 'transition' || type === 'action' || type === 'shot') speaker = '';
+    if (type === 'scene' || type === 'transition' || type === 'action' || type === 'shot'
+      || type === 'centered' || type === 'act') speaker = '';
 
     const gap = page.length ? geom.blankBefore : 0;
     const need = gap + lines.length;
@@ -642,6 +660,9 @@ const PRINT_CLASS = {
   dialogue: 'wr-pr-dialogue',
   transition: 'wr-pr-transition',
   shot: 'wr-pr-shot',
+  centered: 'wr-pr-centered',
+  lyrics: 'wr-pr-lyrics',
+  act: 'wr-pr-act',
   more: 'wr-pr-more'
 };
 
@@ -849,6 +870,7 @@ function textRow(row) {
   const geom = row.type === 'more' ? GEOMETRY.paren : geometryOf(row.type);
   return row.lines.map((line) => {
     if (geom.align === 'right') return pad(Math.max(0, TEXT_WIDTH - line.length)) + line;
+    if (geom.align === 'center') return pad(Math.floor(Math.max(0, TEXT_WIDTH - line.length) / 2)) + line;
     return pad(geom.indent) + line;
   });
 }

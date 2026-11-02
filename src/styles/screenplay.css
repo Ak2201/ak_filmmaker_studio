@@ -279,7 +279,8 @@
   position: relative;
   margin-top: 1em;
 }
-.sc-sheet .wr-el.t-scene { margin-top: 2em; }
+.sc-sheet .wr-el.t-scene,
+.sc-sheet .wr-el.t-act { margin-top: 2em; }
 .sc-sheet .wr-el.t-paren,
 .sc-sheet .wr-el.t-dialogue { margin-top: 0; }
 .sc-sheet .wr-chunk:first-child > .wr-el:first-child { margin-top: 0; }
@@ -307,7 +308,10 @@
   .sc-sheet .wr-el.t-scene,
   .sc-sheet .wr-el.t-action,
   .sc-sheet .wr-el.t-shot,
-  .sc-sheet .wr-el.t-transition { --wr-indent: 0ch;  --wr-measure: 60ch; }
+  .sc-sheet .wr-el.t-transition,
+  .sc-sheet .wr-el.t-centered,
+  .sc-sheet .wr-el.t-act { --wr-indent: 0ch;  --wr-measure: 60ch; }
+  .sc-sheet .wr-el.t-lyrics { --wr-indent: 10ch; --wr-measure: 35ch; }
   .sc-sheet .wr-el.t-character  { --wr-indent: 22ch; --wr-measure: 38ch; }
   .sc-sheet .wr-el.t-paren      { --wr-indent: 16ch; --wr-measure: 28ch; }
   .sc-sheet .wr-el.t-dialogue   { --wr-indent: 10ch; --wr-measure: 35ch; }
@@ -347,6 +351,9 @@
   .sc-sheet .wr-el.t-dialogue:focus-within::before   { content: 'Dialogue'; }
   .sc-sheet .wr-el.t-transition:focus-within::before { content: 'Transition'; }
   .sc-sheet .wr-el.t-shot:focus-within::before       { content: 'Shot'; }
+  .sc-sheet .wr-el.t-centered:focus-within::before   { content: 'Centered'; }
+  .sc-sheet .wr-el.t-lyrics:focus-within::before     { content: 'Lyrics'; }
+  .sc-sheet .wr-el.t-act:focus-within::before        { content: 'Act break'; }
 }
 
 /* Page edges: a dashed rule and a mono label on the right. */
@@ -992,6 +999,7 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   .sc-sheet .wr-el.t-paren      { --wr-indent: 14%; --wr-measure: 80%; }
   .sc-sheet .wr-el.t-dialogue   { --wr-indent: 7%;  --wr-measure: 90%; }
   .sc-sheet .wr-el.t-transition { --wr-indent: 0%;  --wr-measure: 100%; }
+  .sc-sheet .wr-el.t-lyrics     { --wr-indent: 7%;  --wr-measure: 90%; }
   .sc-sheet .wr-el.t-transition .wr-text { text-align: right; }
   .sc-sheet .wr-page.is-pageview .wr-pbreak {
     margin-inline: calc(-1 * var(--s3));

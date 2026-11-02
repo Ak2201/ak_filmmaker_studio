@@ -21,7 +21,7 @@
    Pure apart from the typesetter's tables: no DOM, no storage (test:docx).
      toDOCX(doc, meta) → Uint8Array
    ============================================================ */
-import { GEOMETRY, printedText, titlePageOf } from './screenplay-export.js';
+import { GEOMETRY, printedText, titlePageOf, isActStart } from './screenplay-export.js';
 import { zipStore } from './zip-write.js';
 
 const TWIPS_PER_CHAR = 144;          // 10 characters an inch
@@ -29,7 +29,8 @@ const LINE = 240;                    // 12pt, single spaced, in twips
 const STYLE_OF = {
   scene: ['SceneHeading', 'Scene Heading'], action: ['Action', 'Action'], character: ['Character', 'Character'],
   paren: ['Parenthetical', 'Parenthetical'], dialogue: ['Dialogue', 'Dialogue'],
-  transition: ['Transition', 'Transition'], shot: ['Shot', 'Shot']
+  transition: ['Transition', 'Transition'], shot: ['Shot', 'Shot'],
+  centered: ['Centered', 'Centered'], lyrics: ['Lyrics', 'Lyrics'], act: ['NewAct', 'New Act']
 };
 
 /* Every text value — the elements, the title page, the core.xml title —
@@ -58,13 +59,15 @@ function styleXml(type) {
   const left = g.indent * TWIPS_PER_CHAR;
   const right = Math.max(0, (60 - g.indent - g.width) * TWIPS_PER_CHAR);
   const before = g.blankBefore * LINE;
-  const next = { scene: 'Action', action: 'Action', character: 'Dialogue', paren: 'Dialogue', dialogue: 'Action', transition: 'SceneHeading', shot: 'Action' }[type];
+  const next = { scene: 'Action', action: 'Action', character: 'Dialogue', paren: 'Dialogue', dialogue: 'Action', transition: 'SceneHeading', shot: 'Action', centered: 'Action', lyrics: 'Action', act: 'SceneHeading' }[type];
   return '<w:style w:type="paragraph" w:customStyle="1" w:styleId="' + id + '">'
     + '<w:name w:val="' + name + '"/><w:basedOn w:val="Normal"/><w:next w:val="' + next + '"/><w:qFormat/>'
     + '<w:pPr>' + (type === 'scene' || type === 'character' ? '<w:keepNext/>' : '')
     + '<w:spacing w:before="' + before + '" w:after="0" w:line="' + LINE + '" w:lineRule="exact"/>'
     + '<w:ind w:left="' + left + '" w:right="' + right + '"/>'
-    + (g.align === 'right' ? '<w:jc w:val="right"/>' : '') + '</w:pPr>'
+    + (g.align === 'right' ? '<w:jc w:val="right"/>' : g.align === 'center' ? '<w:jc w:val="center"/>' : '') + '</w:pPr>'
+    + (g.italic || g.underline
+      ? '<w:rPr>' + (g.italic ? '<w:i/>' : '') + (g.underline ? '<w:u w:val="single"/>' : '') + '</w:rPr>' : '')
     + '</w:style>';
 }
 
@@ -112,7 +115,8 @@ function documentPart(doc, meta) {
     const text = printedText(el);
     if (!text) continue;
     const type = STYLE_OF[el.type] ? el.type : 'action';
-    body.push(para(STYLE_OF[type][0], text));
+    // A new act starts a page, as the PDF does.
+    body.push(para(STYLE_OF[type][0], text, isActStart(el) ? '<w:pageBreakBefore/>' : ''));
   }
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     + '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'

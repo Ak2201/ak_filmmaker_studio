@@ -43,7 +43,7 @@ import { wantsSplit, planPaste } from '../../lib/script-paste.js';
 
 export { elFocus, PLACEHOLDER, CHUNK, iconBtn, field, setAttr, autosize } from './rows.js';
 
-const ONE_LINE = new Set(['scene', 'character', 'transition']);
+const ONE_LINE = new Set(['scene', 'character', 'transition', 'act']);
 
 export function mountEditor(host, opts) {
   const root = host || document;

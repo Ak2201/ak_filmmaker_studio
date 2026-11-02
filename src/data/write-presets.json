@@ -12,7 +12,9 @@
         "paren",
         "dialogue",
         "transition",
-        "shot"
+        "shot",
+        "lyrics",
+        "centered"
       ]
     },
     {
@@ -26,7 +28,8 @@
         "paren",
         "transition",
         "shot",
-        "general"
+        "general",
+        "lyrics"
       ]
     }
   ],
@@ -41,7 +44,10 @@
     "dialogue": "Dialogue",
     "transition": "Transition",
     "shot": "Shot",
-    "general": "General text"
+    "general": "General text",
+    "centered": "Centered",
+    "lyrics": "Lyrics",
+    "act": "Act Break"
   },
   "returnNext": {
     "scene": "action",
@@ -50,7 +56,10 @@
     "paren": "dialogue",
     "dialogue": "action",
     "transition": "scene",
-    "shot": "action"
+    "shot": "action",
+    "centered": "action",
+    "lyrics": "action",
+    "act": "scene"
   },
   "tab": {
     "empty": {
@@ -67,7 +76,9 @@
     "character": "action",
     "transition": "character",
     "paren": "character",
-    "dialogue": "paren"
+    "dialogue": "paren",
+    "centered": "action",
+    "lyrics": "action"
   },
   "smarttype": {
     "intros": [
@@ -110,7 +121,10 @@
     "dialogue": "What the character says, as they would say it.",
     "transition": "How we leave the scene — CUT TO:, DISSOLVE TO:. Most scripts need very few.",
     "shot": "A specific camera angle, only when the story needs it.",
-    "general": "Free text that is not one of the standard elements."
+    "general": "Free text that is not one of the standard elements.",
+    "centered": "A line set on the middle of the page — a title card, a sign. Not a heading; it opens no scene.",
+    "lyrics": "Words that are sung, set like dialogue in italics. A leading ~ makes one while you type.",
+    "act": "An act break: ACT TWO or END OF ACT ONE. A new act starts a fresh page in the PDF."
   },
   "learnTopics": {
     "_about": "Element type → src/data/learn.json topic id for the hint strip's 'What is…?' box.",

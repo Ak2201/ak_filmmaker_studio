@@ -26,7 +26,10 @@ export const PLACEHOLDER = {
   paren: 'quietly',
   dialogue: 'What they say.',
   transition: 'CUT TO:',
-  shot: 'CLOSE ON —'
+  shot: 'CLOSE ON —',
+  centered: 'Centered text',
+  lyrics: 'Sung words',
+  act: 'END OF ACT ONE'
 };
 
 /** The selector that puts the caret in element `id`'s text. */

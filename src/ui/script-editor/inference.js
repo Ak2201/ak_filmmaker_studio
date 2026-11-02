@@ -12,6 +12,8 @@
    in memory only, and never re-inferred.
    ============================================================ */
 
+import { ACT_LINE } from '../../lib/act-line.js';
+
 const SCENE_PREFIX = /^(?:int\.?\/ext\.?|i\/e\.?|int\.|ext\.)(?=\s|$|[A-Za-z])/i;
 const SUFFIXES = /\s*\((?:V\.O\.|O\.S\.|O\.C\.|CONT['’]D)\)/g;
 
@@ -24,6 +26,8 @@ export function classifyInput(text, type) {
   // ".." and "..." open an ellipsis, not a heading.
   if (t.length >= 2 && t[0] === '.' && t[1] !== '.') return { type: 'scene', text: t.slice(1).replace(/^\s+/, '') };
   if (t.length >= 2 && t[0] === '@') return { type: 'character', text: t.slice(1).replace(/^\s+/, '') };
+  // Fountain's lyric mark. (>centered< needs its closing mark, so it waits for Return.)
+  if (t.length >= 2 && t[0] === '~') return { type: 'lyrics', text: t.slice(1).replace(/^\s+/, '') };
   return null;
 }
 
@@ -40,7 +44,13 @@ export function classifyReturn(text, type) {
     const rest = t.slice(1).trim();
     return rest ? { type: 'transition', text: rest } : null;
   }
-  if (t[0] === '>') return null;                       // >centered<
+  if (t[0] === '>') {                                  // >centered<
+    const inner = t.replace(/^>\s*/, '').replace(/\s*<$/, '');
+    return inner ? { type: 'centered', text: inner } : null;
+  }
+  /* "ACT TWO" / "END OF ACT ONE" typed as action is an act break, not a
+     character cue — the cue rule below would otherwise take it. */
+  if (ACT_LINE.test(t)) return { type: 'act', text: t };
   if (isCapsLine(t.replace(/:$/, '')) && /\bTO:$/.test(t)) return { type: 'transition', text: t };
   /* The standard transitions that do not end in TO: (QA r4: FADE OUT.,
      CUT TO BLACK. and SMASH CUT: became a character cue, or stayed

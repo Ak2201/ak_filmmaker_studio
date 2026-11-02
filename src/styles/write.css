@@ -392,6 +392,21 @@ body.wr-dropping .bd-empty {
 .wr-el.t-shot { --wr-indent: 0%; --wr-measure: 100%; }
 .wr-el.t-shot .wr-text { text-transform: uppercase; }
 
+/* L3: centered, lyrics, act break. Centered is action set on the middle
+   of the measure; lyrics sit like dialogue, in italics; an act break is
+   centred capitals, underlined. */
+.wr-el.t-centered { --wr-indent: 0%;  --wr-measure: 100%; }
+.wr-el.t-centered .wr-text { text-align: center; }
+.wr-el.t-lyrics { --wr-indent: 11%; --wr-measure: 70%; }
+.wr-el.t-lyrics .wr-text { font-style: italic; }
+.wr-el.t-act { --wr-indent: 0%; --wr-measure: 100%; }
+.wr-el.t-act .wr-text {
+  text-align: center;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
 /* ---- a cue's controls: (CONT'D) offered, dual dialogue ---------- */
 .wr-contd {
   align-self: center;
@@ -551,7 +566,10 @@ body.wr-dropping .bd-empty {
   .wr-page.is-pageview .wr-el.t-scene,
   .wr-page.is-pageview .wr-el.t-action,
   .wr-page.is-pageview .wr-el.t-shot,
-  .wr-page.is-pageview .wr-el.t-transition { --wr-indent: 0ch;  --wr-measure: 60ch; }
+  .wr-page.is-pageview .wr-el.t-transition,
+  .wr-page.is-pageview .wr-el.t-centered,
+  .wr-page.is-pageview .wr-el.t-act { --wr-indent: 0ch;  --wr-measure: 60ch; }
+  .wr-page.is-pageview .wr-el.t-lyrics { --wr-indent: 10ch; --wr-measure: 35ch; }
   .wr-page.is-pageview .wr-el.t-character  { --wr-indent: 22ch; --wr-measure: 38ch; }
   .wr-page.is-pageview .wr-el.t-paren      { --wr-indent: 16ch; --wr-measure: 28ch; }
   .wr-page.is-pageview .wr-el.t-dialogue   { --wr-indent: 10ch; --wr-measure: 35ch; }
@@ -886,6 +904,7 @@ body.wr-dropping .bd-empty {
   .wr-el.t-paren      { --wr-indent: 9%;  --wr-measure: 80%; }
   .wr-el.t-dialogue   { --wr-indent: 5%;  --wr-measure: 95%; }
   .wr-el.t-transition { --wr-indent: 25%; --wr-measure: 75%; }
+  .wr-el.t-lyrics     { --wr-indent: 5%;  --wr-measure: 95%; }
 
   .wr-rev { grid-template-columns: auto minmax(0, 1fr); gap: var(--s3); }
   .wr-rev-acts { grid-column: 1 / -1; }
@@ -956,6 +975,15 @@ body.wr-dropping .bd-empty {
   }
 
   /* A shot: where a slug line sits, in capitals, not bold. */
+  body.pdf-screenplay .wr-pr-centered { width: 60ch; text-align: center; }
+  body.pdf-screenplay .wr-pr-lyrics { margin-left: 10ch; width: 35ch; font-style: italic; }
+  body.pdf-screenplay .wr-pr-act {
+    width: 60ch;
+    text-align: center;
+    text-transform: uppercase;
+    text-decoration: underline;
+    break-after: avoid;
+  }
   body.pdf-screenplay .wr-pr-shot {
     width: 60ch;
     text-transform: uppercase;

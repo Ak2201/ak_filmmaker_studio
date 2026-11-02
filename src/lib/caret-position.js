@@ -12,11 +12,21 @@
    "page 18" here is the page the beats panel highlights. Scenes are
    counted the way a person counts them: headings with words in them,
    in order (an ordinal, not the locked scene number).
+
+   REAL PAGES. When the caller has the paginator's answer — the
+   Screenplay Writer's page view computes it at idle — it passes
+   `paged: { index, labels }` (index = paginate.js pageIndex(pages),
+   labels = pageNumbersDoc), and the page and the eighths are the
+   PDF's own: "p. 12A 3/8" is where that line prints. A line typed since
+   the last pagination is not in the index yet; it is placed on the
+   page of the nearest line above it that is, until the next idle
+   pass. Without `paged` the estimate above is used, as before.
    ============================================================ */
 import { elementLines, LINES_PER_PAGE, isNumberingLocked, sceneNumbers } from './script.js';
+import { BODY_LINES } from './paginate.js';
 
 /** The caret's place in the script, or null when it is in no line. */
-export function caretPosition(els, id) {
+export function caretPosition(els, id, paged) {
   const list = els || [];
   let line = 0;
   let scene = 0;
@@ -36,12 +46,24 @@ export function caretPosition(els, id) {
     line += elementLines(e);
   }
   if (at < 0) return null;
-  const page = Math.floor(atLine / LINES_PER_PAGE) + 1;
-  const eighths = Math.floor(((atLine % LINES_PER_PAGE) / LINES_PER_PAGE) * 8);
+  let page = Math.floor(atLine / LINES_PER_PAGE) + 1;
+  let eighths = Math.floor(((atLine % LINES_PER_PAGE) / LINES_PER_PAGE) * 8);
+  let pageLabel = '';
+  const index = paged && paged.index instanceof Map ? paged.index : null;
+  if (index && index.size) {
+    let hit = null;
+    for (let k = at; k >= 0 && !hit; k--) hit = list[k] ? index.get(list[k].id) || null : null;
+    const where = hit || { page: 0, line: 0 };
+    page = where.page + 1;
+    eighths = Math.min(7, Math.floor((where.line / BODY_LINES) * 8));
+    const labels = paged.labels;
+    pageLabel = labels && labels[where.page] ? String(labels[where.page]) : '';
+  }
   return {
     index: at,
     line: atLine + 1,
     page,
+    pageLabel,             // the printed label ("12A") on real pages, else ''
     eighths,
     scene,                 // 0 = above the first heading
     sceneCount,
@@ -54,7 +76,7 @@ export function caretPosition(els, id) {
     production counts in (a whole page reads "p. 18"). */
 export function formatCaretPage(pos) {
   if (!pos) return '';
-  return 'p. ' + pos.page + (pos.eighths ? ' ' + pos.eighths + '/8' : '');
+  return 'p. ' + (pos.pageLabel || pos.page) + (pos.eighths ? ' ' + pos.eighths + '/8' : '');
 }
 
 /** How many scenes have headings, with no caret needed. */

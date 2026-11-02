@@ -128,6 +128,7 @@ import { movedAnchor, plural, formatWhen, fmtQuota, storageReadout, bigTierFigur
 import { CANCEL_AT_MANDATE } from '../lib/offer-terms.js';
 import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
 import { mountMotionChoice } from '../ui/motion-choice.js';
+import { autoContdOn, saveAutoContd } from '../lib/chrome-prefs.js';
 import { renderFilmPicker, onFavChange, hasOpenProject } from '../ui/fav-film.js';
 import { passName } from '../lib/pass-view.js';
 
@@ -1197,6 +1198,23 @@ function renderPrivacySection() {
   return sec;
 }
 
+/* The Screenplay Writer's automatic (CONT'D): a device pref
+   (`autoContd` in fms_studio_prefs_v1, chrome-prefs.js), ON by default.
+   Written on a change only; ON removes the field rather than storing it. */
+function renderScreenplayPrefs() {
+  const on = autoContdOn();
+  const sec = section('screenplay-prefs', 'This device \u00b7 not part of the film', 'Screenplay.',
+    'How the Screenplay Writer marks a speaker on the page and in the PDF. What you typed is never changed.');
+  sec.append(h('p.st-note', {}, [
+    h('label', {}, [
+      h('input', { type: 'checkbox', id: 'autoContdToggle', 'data-action': 'auto-contd-toggle', ...(on ? { checked: '' } : {}) }),
+      " Add (CONT'D) automatically"
+    ]),
+    h('span', { text: " \u2014 when the same character speaks again in a scene with only action between, the cue shows and prints with (CONT'D), as Final Draft does." })
+  ]));
+  return sec;
+}
+
 function renderTourSection() {
   const sec = section('tour', 'Help', 'Take the tour.',
     'A walk through every page of the studio, on the Dragon sample. It starts by itself once, the first time an account signs in; this button takes it again. Pause it any time and resume it from your account menu.');
@@ -1300,7 +1318,7 @@ function render() {
        mandate (Razorpay e-mail, bank / UPI app), never a button here. Id 'purchases', not 'plan' (#plan is an old
        billing anchor that redirects to purchase.html). */
     tabPane('purchases', 'Plan & purchases', 'You', [renderPlanCard(), renderAutopay(), renderPlanContents()], { icon: 'payments', hint: 'Your plan, auto-pay and what the plan opens.' }),
-    tabPane('preferences', 'Preferences', 'This device', [renderRegion(), renderMotion(), renderFavourite(), renderKey(), renderPrivacySection(), renderTourSection()], { icon: 'tune', hint: 'Region, motion, favourite film, your AI key and privacy.' }),
+    tabPane('preferences', 'Preferences', 'This device', [renderRegion(), renderMotion(), renderScreenplayPrefs(), renderFavourite(), renderKey(), renderPrivacySection(), renderTourSection()], { icon: 'tune', hint: 'Region, motion, favourite film, your AI key and privacy.' }),
     tabPane('backup', 'Data & backup', 'This device', [renderStorage(), renderCloudSync(), renderDrive(), renderDanger()], { icon: 'backup', hint: 'Where your work is kept, cloud sync, Drive backup and erase.' }),
     tabPane('team', 'Team', 'Together', [team], { icon: 'groups', hint: 'Who you share films with.' }),
     tabPane('admin', 'Admin', 'Admin', [consolePointer(), renderAdmin()], { icon: 'admin_panel_settings', hint: 'Studio-wide settings for administrators.' })
@@ -1505,6 +1523,11 @@ delegate(document, 'change', '[data-action="usage-count-toggle"]', (e, el) => {
   try {
     setUsageCounting(el.checked);
   } catch (err) { StudioUI.toastError('This browser would not save that choice.'); }
+  render();
+});
+
+delegate(document, 'change', '[data-action="auto-contd-toggle"]', (e, el) => {
+  if (!saveAutoContd(el.checked)) StudioUI.toastError('This browser would not save that choice.');
   render();
 });
 

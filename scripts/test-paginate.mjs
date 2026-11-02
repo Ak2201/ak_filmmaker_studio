@@ -85,24 +85,29 @@ if (process.argv.includes('--capture')) {
 }
 
 /* Taken from the code before the move (65be68a), with autoContd off —
-   which is what every caller that passes no option gets. */
+   which is what every caller that passes no option gets. RECAPTURED on
+   fd/parity (2 Nov 2026), deliberately: keep-with-next (flushCarry in
+   paginate.js) moves a slug line, shot, cue or parenthetical that was
+   left alone at the foot of a page over with what follows it, as Final
+   Draft does. The page labels did not change; section 6 below pins the
+   rule itself. */
 const GOLDEN = {
-  "sample.rows": "6e41682c0526c9541de567c4",
+  "sample.rows": "d58e9294c9d44f864f647c3d",
   "sample.labels": "3dda03f08ae91ecc6fbbddaf",
-  "sample.text": "1a2de14a75fb2e0bde5e0191",
-  "sample.pdf": "cc07a571837643dd90c002cf",
-  "perf.rows": "cc9f9c17530345f62ea6ed99",
+  "sample.text": "efd0c95dc648da8b0b0e7768",
+  "sample.pdf": "bf69b21044a5a895cc00ad9f",
+  "perf.rows": "74a2dfe6504f4c0d93aa8478",
   "perf.labels": "7f3b0d91f607a68c5003fa88",
-  "perf.text": "eac376aa360a9acee5aa384f",
-  "perf.pdf": "f8809165ea85127aa5ae8ba1",
-  "locked.rows": "6e41682c0526c9541de567c4",
+  "perf.text": "843a0024d0a98db85d99d839",
+  "perf.pdf": "f99423aacfba5e340cc8bc46",
+  "locked.rows": "d58e9294c9d44f864f647c3d",
   "locked.labels": "3dda03f08ae91ecc6fbbddaf",
-  "locked.text": "1a2de14a75fb2e0bde5e0191",
-  "locked.pdf": "cc07a571837643dd90c002cf",
-  "grown.rows": "83dd5370144e7c85976cda50",
+  "locked.text": "efd0c95dc648da8b0b0e7768",
+  "locked.pdf": "bf69b21044a5a895cc00ad9f",
+  "grown.rows": "d4a2eb3d716dfdf437525a37",
   "grown.labels": "fe5d8c6b5634687423bea29e",
-  "grown.text": "eb4301133f94e21155ec7fed",
-  "grown.pdf": "7cef77fb87dc2a2a4714ce4e"
+  "grown.text": "42cf83ad3c4fd09b244d5207",
+  "grown.pdf": "57da54398783f8929ef1266c"
 };
 
 {
@@ -245,6 +250,30 @@ const fill = (n) => Array.from({ length: n }, (_, i) => E('action', 'Line of act
   ok(ms < 80, `paginate + pageIndex with automatic (CONT'D) on the 120-page script in ${ms.toFixed(1)}ms (budget 80ms, run at idle)`);
   const pages = X.paginate(perf);
   ok(pages.length >= 110, `the perf fixture is about 120 sheets (got ${pages.length})`);
+}
+
+/* ---- 6. keep with next: no slug line or cue alone at a page foot ---- */
+{
+  const keep = new Set(['scene', 'shot', 'character', 'paren']);
+  const height = (pg) => pg.reduce((n, r, j) => n + (j ? r.blankBefore || 0 : 0) + r.lines.length, 0);
+  for (const [name, els] of [['sample', sample], ['perf', perf]]) {
+    const pages = X.paginate(els);
+    const orphans = pages.slice(0, -1).map((pg, i) => [i + 1, pg[pg.length - 1]]).filter(([, r]) => keep.has(r.type) && !r.omitted);
+    eq(orphans.map(([n, r]) => n + ':' + r.type), [], `${name}: no page ends in a slug line, shot, cue or parenthetical`);
+    const cueless = pages.map((pg, i) => [i + 1, pg[0]]).filter(([, r]) => (r.type === 'dialogue' || r.type === 'paren') && !r.cont);
+    eq(cueless.map(([n]) => n), [], `${name}: no page opens on a speech without its cue`);
+    eq(pages.filter((pg) => height(pg) > X.BODY_LINES).length, 0, `${name}: carrying never overfills a page`);
+  }
+  // The finding's case: a cue on the last free lines, a short speech that cannot split there.
+  const els = [...fill(25), E('character', 'RAGAVAN'), E('dialogue', 'Rendu. Moonu. Naalu. Anju. Aaru. Ezhu. Ettu. Onbadhu. Pathu. Pathinonnu.')];
+  const pages = X.paginate(els);
+  const p2 = pages[1] || [];
+  ok(pages[0][pages[0].length - 1].type === 'action' && p2[0] && p2[0].type === 'character' && p2[0].blankBefore === 0 && p2[1].type === 'dialogue',
+    'a cue whose one-line speech moves goes with it, at the top of the next page');
+  const els2 = [...fill(24), E('scene', 'EXT. COLLEGE - DAY'), E('action', 'Two lines of action that wrap past the sixty character measure of the page.')];
+  const q = X.paginate(els2);
+  ok(q[0][q[0].length - 1].type === 'action' && q[1][0].type === 'scene' && q[1][1].type === 'action',
+    'a slug line whose short action moves goes with it');
 }
 
 console.log(`${fail ? '✗' : '✓'} paginate: ${pass} passed, ${fail} failed`);

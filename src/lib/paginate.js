@@ -321,6 +321,34 @@ export function paginate(elements, opts = {}) {
 
   const flush = () => { if (page.length) { pages.push(page); } page = []; used = 0; };
 
+  /* KEEP WITH NEXT (Final Draft). A slug line, a shot, a cue and a
+     parenthetical belong to what follows them. The one-line `reserve`
+     below only guarantees that the next element's FIRST line fits; an
+     element that then cannot break (a one-line speech, an action under
+     MIN_SPLIT, anything that moves whole) went to the next page and left
+     its heading or cue alone at the foot of this one — 13 such pages on
+     the Dragon sample. So an overflow flush carries those trailing rows
+     over to the new page with the element they introduce. Never the
+     whole page (then the rows move nowhere better and a page could loop),
+     never an OMITTED row or the splitter's own (CONT'D) cue, and only the
+     element's FIRST overflow (the caller's `carried` flag), so it always
+     terminates. A locked break is a plain flush(): it decides the page. */
+  const KEEP_NEXT = new Set(['scene', 'shot', 'character', 'paren']);
+  const flushCarry = (need = 0) => {
+    let k = page.length;
+    while (k > 0) {
+      const r = page[k - 1];
+      if (!KEEP_NEXT.has(r.type) || r.omitted === true || r.contd === true || r.cont === true) break;
+      k--;
+    }
+    // ...and only when the rows and what follows them fit the fresh page.
+    const cost = page.slice(k).reduce((n, r, i) => n + (i ? r.blankBefore : 0) + r.lines.length, 0);
+    if (k === 0 || k === page.length || cost + need > BODY) { flush(); return; }
+    const moved = page.splice(k);
+    flush();
+    moved.forEach((r, i) => place({ ...r, blankBefore: i ? r.blankBefore : 0 }, (i ? r.blankBefore : 0) + r.lines.length));
+  };
+
   const place = (row, cost) => { page.push(row); used += cost; };
 
   /* An omitted scene moves whole, like a slug line, and keeps the one
@@ -358,7 +386,7 @@ export function paginate(elements, opts = {}) {
       const block = dualBlock(els, pair);
       if (block && block.height <= BODY) {
         speaker = '';
-        if (page.length && used + 1 + block.height > BODY) flush();
+        if (page.length && used + 1 + block.height > BODY) flushCarry(1 + block.height);
         const gap = page.length ? 1 : 0;
         place({ type: 'dual', id: els[pair.left[0]].id, ids: block.ids, cols: block.cols,
           lines: block.lines, blankBefore: gap }, gap + block.height);
@@ -421,6 +449,7 @@ export function paginate(elements, opts = {}) {
       let rest = lines;
       let lead = gap;
       let piece = 0;
+      let carried = false;   // keep-with-next carries once per element
       /* Terminates: every turn either places the whole remainder
          and breaks, or places at least MIN_SPLIT lines of it, or
          flushes a page that had something on it. A flushed empty
@@ -435,7 +464,11 @@ export function paginate(elements, opts = {}) {
         // broken speech. Not counting it is how a page comes out
         // one line too tall and the browser adds a blank sheet.
         const room = BODY - used - lead - (speech ? 1 : 0);
-        if (room < MIN_SPLIT || rest.length - room < MIN_SPLIT) { flush(); lead = 0; continue; }
+        if (room < MIN_SPLIT || rest.length - room < MIN_SPLIT) {
+          if (!piece && !carried) { carried = true; flushCarry(geom.blankBefore + Math.min(rest.length, MIN_SPLIT)); } else flush();
+          lead = page.length ? geom.blankBefore : 0;
+          continue;
+        }
 
         place({ type, lines: rest.slice(0, room), blankBefore: lead, id, ...(piece ? { cont: true } : extra) }, lead + room);
         piece++;
@@ -456,12 +489,15 @@ export function paginate(elements, opts = {}) {
       continue;
     }
 
-    flush();
+    flushCarry(geom.blankBefore + lines.length);
     /* A cue that moved to the next page on its own leaves its
        speech behind it — that is fine, the speech follows on the
        same page. What must not happen is the cue carrying a
        (CONT'D) it did not earn. */
-    place({ type, lines, blankBefore: 0, id, ...extra }, lines.length);
+    {
+      const lead = page.length ? gap || geom.blankBefore : 0;
+      place({ type, lines, blankBefore: lead, id, ...extra }, lead + lines.length);
+    }
     if (breakAfter && breakAfter.has(id)) pendingBreak = true;
   }
   omitEnd.forEach(placeOmitted);

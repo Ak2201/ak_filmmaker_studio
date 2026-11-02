@@ -111,12 +111,18 @@ function titleParas(doc, meta) {
 
 function documentPart(doc, meta) {
   const body = titleParas(doc, meta);
+  let first = true;
   for (const el of (doc && doc.elements) || []) {
     const text = printedText(el);
     if (!text) continue;
     const type = STYLE_OF[el.type] ? el.type : 'action';
-    // A new act starts a page, as the PDF does.
-    body.push(para(STYLE_OF[type][0], text, isActStart(el) ? '<w:pageBreakBefore/>' : ''));
+    /* A new act starts a page, as the PDF does — except the first thing
+       printed, which already starts one (after the title page's own
+       break): Word honours both, and a script opening on ACT ONE got a
+       blank page between the title page and the act. paginate() skips
+       the act flush on an empty page for the same reason. */
+    body.push(para(STYLE_OF[type][0], text, isActStart(el) && !first ? '<w:pageBreakBefore/>' : ''));
+    first = false;
   }
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     + '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'

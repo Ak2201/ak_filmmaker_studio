@@ -431,6 +431,7 @@ const say = (m) => { try { StudioUI.toast(m, { type: 'info' }); } catch (e) { /*
 let presence = null;        // src/ui/presence.js, mounted at boot; redrawn after a page render
 let curId = null;           // the line the caret is in
 let Typeset = null;         // the typesetter, once loaded (page breaks)
+let pagedCount = 0;         // pages in the last page pass: the strip's page count (refreshStats)
 let pagedNow = null;        // { index, labels } of the last page pass, for the caret strip (applyBreaks)
 let breaksIdle = 0;         // the idle slot the next page pass waits for
 let split = null;           // src/ui/script-split.js, mounted on first use (view state, memory only)
@@ -1229,7 +1230,12 @@ function refreshStats() {
   const els = doc.elements;
   const { written, pages, words } = scriptStats(els);
   put('words', words);
-  put('pages', formatPages(pages));
+  /* ONE page count, as Final Draft has: once the paginator has run, the
+     strip says the number of pages the page view, Fit to page, Reports
+     and the PDF all show (its 52-line body), not the 55-line estimate,
+     which read 106.5 beside a page view ending on Page 115. The estimate
+     stands in only until the first page pass (applyBreaks). */
+  put('pages', !written ? formatPages(0) : pagedCount ? String(pagedCount) : formatPages(pages));
   if (!written) { put('runtime', '—'); estimateMin = 0; paintRuntime(); return; }
   const estimate = () => {
     const est = estimatedRuntime(Analysis, els, pages);
@@ -1489,6 +1495,7 @@ function applyBreaks() {
 
   pagedNow = { index: Typeset.pageIndex(pages), labels };
   page.dataset.pages = String(pages.length);
+  if (pagedCount !== pages.length) { pagedCount = pages.length; refreshStats(); }
   refreshPos(false);
 }
 
@@ -1602,6 +1609,9 @@ function lineAction(fn) {
 delegate(document, 'click', '[data-action="sc-dual"]', () => lineAction((i) => editor.toggleDual(i)));
 delegate(document, 'click', '[data-action="sc-contd"]', () => lineAction((i, el) => {
   if (el.type !== 'character') { say("CONT'D goes on a character cue — put the caret in one first."); return; }
+  // Its own undo step, as the editor's own CONT'D button has: without one,
+  // Ctrl/Cmd+Z took this back together with the edit before it.
+  editor.checkpoint('contd');
   el.text = withContd(el.text);
   editor.patchRow(el.id);
   persistNow();

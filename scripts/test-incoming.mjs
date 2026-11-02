@@ -100,6 +100,19 @@ ok(I.unionRevisions([{ id: 'x', date: '2' }], [{ id: 'x', date: '2' }, { id: 'y'
   ok(Number(S.loadScript().elements.find((e) => e.id === 'z').u) > 0, 'a genuinely new line is stamped');
 }
 
+// A bookmark is a change: an arrival that differs only by `mark` is not
+// "nothing new", and toggling one stamps the line for the co-edit merge.
+{
+  const marked = { ...mine, elements: mine.elements.map((e, i) => (i === 1 ? { ...e, mark: true } : e)) };
+  ok(I.scriptSignature(mine) !== I.scriptSignature(marked), 'a bookmark changes the arrival signature');
+  ok(I.incomingAction({ mine, fresh: marked, dirty: false }) === 'load', 'a copy that differs only by a bookmark is loaded, not ignored');
+  ok(!I.numberingOnly(mine, { ...marked, numbering: { locked: true } }), 'numberingOnly: a bookmark change is not numbering only');
+  const S = await import('../src/lib/script.js');
+  localStorage.setItem('fms_script_v1', JSON.stringify({ elements: [{ id: 'm', type: 'action', text: 'line', u: 100 }] }));
+  S.saveScript({ elements: [{ id: 'm', type: 'action', text: 'line', u: 100, mark: true }] });
+  ok(Number(S.loadScript().elements.find((e) => e.id === 'm').u) > 9e11, 'toggling a bookmark stamps the line');
+}
+
 // QA r2: a page whose saved lines the other side filed as a side copy is told so.
 {
   const savedEls = [['scene', 'INT. FLAT - NIGHT'], ['action', 'Ravi paces. AAA']];

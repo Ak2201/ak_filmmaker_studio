@@ -372,7 +372,9 @@ function stampChanged(elements) {
   for (const el of elements) {
     if (!el) continue;
     const p = before.get(el.id);
-    const changed = !p || p.type !== el.type || p.text !== el.text || (p.dual === true) !== (el.dual === true);
+    // `mark` (a bookmark) stamps too, so co-editing keeps the newer one.
+    const changed = !p || p.type !== el.type || p.text !== el.text || (p.dual === true) !== (el.dual === true)
+      || (p.mark === true) !== (el.mark === true);
     if (changed && p && (Number(el.u) || 0) < (Number(p.u) || 0)) continue;
     if (changed) { if (!(Number(el.u) >= now - 5000)) el.u = Math.max(Number(el.u) || 0, now); }
     else if (p.u && !el.u) el.u = p.u;

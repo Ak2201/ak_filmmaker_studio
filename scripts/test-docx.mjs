@@ -131,5 +131,12 @@ const dirtyRes = await D.extractDocxParagraphs(dirty.buffer.slice(dirty.byteOffs
 eq((dirtyRes.paras || []).map((p) => p.text), ['abcd\ttef 😀'], 'the illegal characters are dropped; tab and an emoji are kept');
 ok(/<dc:title>Title<\/dc:title>/.test(new TextDecoder().decode(dirty)), 'the core.xml title is cleaned too');
 
+// A script opening on an act: one page break after the title page, not two.
+{
+  const t = new TextDecoder().decode(X.toDOCX({ titlePage: { title: 'X' }, elements: [{ id: 'a1', type: 'act', text: 'ACT ONE' }, { id: 'a2', type: 'scene', text: 'INT. ROOM - DAY' }, { id: 'a3', type: 'act', text: 'ACT TWO' }] }, { title: 'X' }));
+  eq((t.match(/<w:pageBreakBefore\/>/g) || []).length, 1, 'the opening act takes no second page break; a later act still does');
+  ok(/ACT TWO/.test(t.slice(t.lastIndexOf('<w:pageBreakBefore/>'))), 'and the break that stays is before ACT TWO');
+}
+
 console.log((fail ? '✗' : '✓') + ' test-docx: ' + pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

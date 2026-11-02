@@ -1262,6 +1262,81 @@ await page.setViewportSize({ width: 1280, height: 900 });
   ok(saved[6] === 'action:He walks in and sits.' && saved[4] === 'action:Ravi says, see you soon.', '24g undo saved through the normal path', saved);
 }
 
+/* ---- 25 fd/parity review: undo after an import, CONT'D's own undo step,
+   one page count. Each failed before its fix. */
+{
+  const fresh25 = async (els) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(url('index.html'), { waitUntil: 'networkidle' });
+    await page.evaluate((els) => {
+      const S = window.StudioStore;
+      const p = S.createProject({ title: 'Proof 25 ' + Date.now(), format: 'feature' });
+      S.setCurrentProject(p.id);
+      S.rawSet('fms_script_v1__' + p.id, JSON.stringify({ elements: els, revisions: [], documents: [] }));
+    }, els);
+    await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+    await page.waitForTimeout(500);
+  };
+  // This project's script (the shared doc() reads the first project's key).
+  const types = async () => page.evaluate(() => {
+    const id = window.StudioStore.currentProject().id;
+    const d = JSON.parse(window.StudioStore.rawGet('fms_script_v1__' + id) || '{"elements":[]}');
+    return d.elements.map((e) => e.type + ':' + e.text);
+  });
+  const OLD = [
+    { id: 'o1', type: 'scene', text: 'INT. FLAT - NIGHT' }, { id: 'o2', type: 'action', text: 'Ravi paces.' },
+    { id: 'o3', type: 'character', text: 'RAVI' }, { id: 'o4', type: 'dialogue', text: 'Not tonight.' }
+  ];
+  // a) type, import with Replace, Ctrl+Z: the import stays
+  await fresh25(OLD);
+  await page.click('[data-el="o2"] .wr-text');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' He stops.');
+  await settle(1200);
+  await page.evaluate(() => document.querySelector('[data-action="sc-import"]').click());
+  await page.waitForSelector('#scImpPaste');
+  await page.fill('#scImpPaste', 'INT. CAVE - NIGHT\n\nDark water.');
+  await page.click('[data-action="sc-imp-paste"]');
+  await page.waitForSelector('[data-mode="replace"]');
+  await page.click('[data-mode="replace"]');
+  await page.click('[data-action="sc-imp-commit"]');
+  const confirm = page.locator('.k-modal button, dialog button', { hasText: 'Replace' }).last();
+  if (await confirm.isVisible().catch(() => false)) await confirm.click();
+  await page.waitForFunction(() => [...document.querySelectorAll('#wr-page .wr-text')].some((t) => t.value === 'INT. CAVE - NIGHT'), null, { timeout: 5000 }).catch(() => {});
+  await page.waitForTimeout(400);
+  await page.click('#wr-page .wr-text');
+  await page.keyboard.press('Control+z');
+  await settle();
+  let t = await types();
+  ok(t.includes('scene:INT. CAVE - NIGHT') && !t.includes('action:Ravi paces. He stops.'), '25a Ctrl+Z after an import does not bring the old script back', t);
+
+  // b) the line menu's CONT'D is its own undo step
+  await fresh25(OLD);
+  await page.click('[data-el="o2"] .wr-text');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' Sits.');
+  await page.waitForTimeout(1300);                   // the burst ends
+  await page.click('[data-el="o3"] .wr-text');
+  await page.evaluate(() => document.querySelector('#scLineMenu [data-action="sc-contd"]').click());
+  await page.waitForTimeout(200);
+  t = await types();
+  ok(t[2] === "character:RAVI (CONT'D)", "25b the line menu adds CONT'D", t);
+  await page.click('[data-el="o3"] .wr-text');
+  await page.keyboard.press('Control+z');
+  await settle();
+  t = await types();
+  ok(t[2] === 'character:RAVI' && t[1] === 'action:Ravi paces. Sits.', "25b one Ctrl+Z takes back CONT'D only, not the typing before it", t);
+
+  // c) the strip's page count is the page view's
+  const many = [];
+  for (let k = 0; k < 120; k++) many.push({ id: 'm' + k + 'a', type: 'scene', text: 'INT. ROOM ' + k + ' - DAY' }, { id: 'm' + k + 'b', type: 'action', text: 'Rain on the glass, and the long wait for a phone that does not ring. '.repeat(3) }, { id: 'm' + k + 'c', type: 'character', text: 'RAVI' }, { id: 'm' + k + 'd', type: 'dialogue', text: 'Not tonight. Not ever, if I have the choice.' });
+  await fresh25(many);
+  await page.waitForFunction(() => document.getElementById('wr-page')?.dataset.pages, null, { timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(600);
+  const pc = await page.evaluate(() => ({ strip: document.querySelector('[data-sc-stat="pages"]')?.textContent, view: document.getElementById('wr-page')?.dataset.pages }));
+  ok(pc.view && pc.strip === pc.view, '25c the status strip counts the pages the page view shows', pc);
+}
+
 /* ---- 13 overflow -------------------------------------------------------- */
 for (const w of [390, 1280]) {
   for (const p of ['screenplay.html', 'drafts.html', 'breakdown.html#script']) {

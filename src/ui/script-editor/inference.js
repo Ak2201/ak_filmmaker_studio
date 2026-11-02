@@ -29,6 +29,17 @@ const SCENE_PREFIX = /^(?:int\.?\/ext\.?|i\/e\.?|int\.|ext\.)(?=\s|$|[A-Za-z])/i
    in, and with the space after it. EST. is caps-only everywhere: "Est.
    1990" is a perfectly good line of action. */
 const SCENE_PREFIX_CAPS = /^(?:INT\.?\/EXT\.?|I\/E\.?|INT\.|EXT\.|EST\.)\s/;
+/* ...and outside action, not at the space: "EXT. " in a speech may be
+   "EXT. is the code for exterior", and switching on the space turned that
+   sentence into a heading before its next word existed. So a speech, a
+   cue or a transition waits for two characters after the prefix and
+   takes the heading only while none of them is lower case. */
+function capsHeadingTyped(t) {
+  const m = SCENE_PREFIX_CAPS.exec(t);
+  if (!m) return false;
+  const rest = t.slice(m[0].length);
+  return rest.replace(/\s+/g, '').length >= 2 && !/[a-z]/.test(rest);
+}
 const SUFFIXES = /\s*\((?:V\.O\.|O\.S\.|O\.C\.|CONT['’]D)\)/g;
 const SUFFIXES_ANY = /\s*\((?:V\.O\.|O\.S\.|O\.C\.|CONT['’]D)\)/gi;
 
@@ -66,7 +77,7 @@ export function classifyInput(text, type, ctx = {}) {
     if (t.length >= 2 && t[0] === '@') return { type: 'character', text: t.slice(1).replace(/^\s+/, '') };
     // Fountain's lyric mark. (>centered< needs its closing mark, so it waits for Return.)
     if (t.length >= 2 && t[0] === '~') return { type: 'lyrics', text: t.slice(1).replace(/^\s+/, '') };
-  } else if (type !== 'scene' && SCENE_PREFIX_CAPS.test(t)) {
+  } else if (type !== 'scene' && capsHeadingTyped(t)) {
     return { type: 'scene', text };
   }
   if (type !== 'transition' && isTransition(t.trim(), true)) return { type: 'transition', text };

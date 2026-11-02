@@ -79,11 +79,20 @@ export function mountEditor(host, opts) {
      steps would restore the wrong script, so they are dropped. */
   const history = createHistory({ limit: 300, pauseMs: 1000 });
   let historyDoc = o.getDoc();
+  /* The ARRAY is owned too, not only the doc object. An import
+     (commitImportedScript) and a draft restore REASSIGN doc.elements on
+     the same doc, so a doc-only check let Ctrl/Cmd+Z after an import
+     splice the pre-import script back into the new one and save it. The
+     editor itself only ever splices in place, so a new array always
+     means somebody else replaced the script. */
+  let historyEls = historyDoc && historyDoc.elements;
   let grouping = 0;
   let recordedThisTick = false;
   const ownDoc = () => {
     const d = o.getDoc();
-    if (d !== historyDoc) { history.clear(); historyDoc = d; }
+    if (d !== historyDoc || (d && d.elements !== historyEls)) {
+      history.clear(); historyDoc = d; historyEls = d && d.elements;
+    }
   };
   const snap = () => (prev) => snapshotOf(els(), prev);
   function caretNow() {
@@ -911,8 +920,8 @@ export function mountEditor(host, opts) {
     checkpoint: (kind) => checkpoint(kind || 'edit'),
     step,
     clearHistory: () => history.clear(),
-    canUndo: () => history.canUndo(),
-    canRedo: () => history.canRedo(),
+    canUndo: () => { ownDoc(); return history.canUndo(); },
+    canRedo: () => { ownDoc(); return history.canRedo(); },
     refreshCueOffers,
     applyFocus,
     focusEl: (id) => applyFocus(elFocus(id)),

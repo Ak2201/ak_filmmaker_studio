@@ -51,6 +51,11 @@ eq(ci('EST. CHENNAI', 'action')?.type, 'scene', 'EST. in action');
 eq(ci('Est. 1990, the shop', 'action'), null, 'Est. in action is action');
 eq(ci('Int. is short for interior', 'dialogue'), null, 'a speech mentioning Int. stays');
 eq(ci('INT.', 'dialogue'), null, 'no space yet: wait');
+eq(ci('EXT. ', 'dialogue'), null, 'the space alone does not switch a speech');
+eq(ci('EXT. is the code for exterior', 'dialogue'), null, 'a speech opening with EXT. and a sentence stays');
+eq(ci('EXT. I', 'dialogue'), null, 'one capital after the prefix may be the word "I": wait');
+eq(ci('EXT. I t', 'dialogue'), null, 'and lower case after it keeps the speech');
+eq(ci('EXT. RO', 'dialogue')?.type, 'scene', 'two capitals after the prefix: a heading');
 eq(ci('INT. HOUSE', 'scene'), null, 'already a heading');
 // transitions while typing
 eq(ci('CUT TO:', 'action')?.type, 'transition', 'CUT TO: switches as it is typed');

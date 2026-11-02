@@ -114,6 +114,13 @@ export function shopView(currency, notice) {
  *  and, when dollars were wanted, the honest "prices in rupees". */
 export const rupeeView = (wanted) => ({ currency: 'INR', charge: 'INR', fallback: cur(wanted) === 'USD', plans: {} });
 
+/** The currency the switch shows PRESSED: the one the cards print, not
+ *  the one asked for. While dollars load the ask stands (the line says
+ *  "Loading"); once a dollar ask falls back to rupees, INR is pressed, so
+ *  a screen reader is never told USD is selected beside rupee prices
+ *  (QA r1 I-1). Pressing USD again then retries the load. */
+export const pressedCurrency = (want, view, loading) => (loading ? cur(want) : (view ? view.currency : rupeeView(want).currency));
+
 /** The order currency to send to rzp-order: the CHARGE, never the
  *  display. A dollar card on a rupee checkout orders in rupees. */
 export const orderCurrency = (view) => (view && view.charge === 'USD' ? 'USD' : 'INR');

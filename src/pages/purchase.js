@@ -53,7 +53,7 @@ import PlanGate from '../lib/plan-gate.js';
 import { SUPPORT_EMAIL } from '../lib/brand.js';
 import { priceNotice as publicPriceNotice, countPlanViewInApp } from '../lib/funnel.js';
 import { pricingCurrency, readPayCurrency, writePayCurrency, guessVisitorRegion, chosenRegion } from '../lib/region.js';
-import { shopView, rupeeView, orderCurrency, CURRENCY_OPTIONS } from '../lib/price-model.js';
+import { shopView, rupeeView, orderCurrency, pressedCurrency, CURRENCY_OPTIONS } from '../lib/price-model.js';
 import { LIST_PRICE, PLAN_ORDER } from '../lib/plans.js';
 import { segmented } from '../ui/kit/segmented.js';
 import {
@@ -247,7 +247,7 @@ function currencyBlock() {
       h('p.pu-currency-line', { role: 'status', text: shop.loading ? 'Loading the dollar prices…' : currencyLine(view) }),
       t.mode === 'once' ? h('p.pl-row-terms', { 'data-offer-mode': t.mode, text: t.short }) : null
     ].filter(Boolean)),
-    segmented({ label: 'Show prices in', options: CURRENCY_OPTIONS, value: shop.want, name: 'pu-currency', action: 'pu-currency', quiet: true })
+    segmented({ label: 'Show prices in', options: CURRENCY_OPTIONS, value: pressedCurrency(shop.want, shop.view, shop.loading), name: 'pu-currency', action: 'pu-currency', quiet: true })
   ]);
 }
 const currentView = () => (shop.loading ? rupeeView('INR') : shop.view || rupeeView('INR'));
@@ -278,7 +278,8 @@ delegate(document, 'click', '[data-action="pu-start-trial"]', async () => {
 
 delegate(document, 'click', '[data-action="pu-currency"]', (e, btn) => {
   const want = btn.dataset.value;
-  if (want === shop.want || (want !== 'INR' && want !== 'USD')) return;
+  if (want !== 'INR' && want !== 'USD') return;
+  if (want === shop.want && want === pressedCurrency(shop.want, shop.view, shop.loading)) return;   // a fallen-back USD may be pressed again to retry
   writePayCurrency(want);                // the buyer's own pick, on a press only
   shop.want = want;
   refreshShop();

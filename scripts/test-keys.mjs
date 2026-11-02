@@ -79,7 +79,8 @@ eq(K.cycleNext('character', 'finaldraft', SIX), 'paren', 'FD: character → pare
 /* ---- Tab ---------------------------------------------------- */
 const tab = (type, empty, shift) => K.resolveKey(ev({ key: 'Tab', shiftKey: !!shift }), { type, empty, prefs: fd, known: SIX });
 eq(tab('action', true), { kind: 'tab', op: 'change', type: 'character' }, 'Tab: empty action → character');
-eq(tab('action', false), null, 'Tab: filled action is not ours (focus moves on)');
+// Final Draft (owner, 2 Nov 2026): Tab on a written action line starts the speech under it.
+eq(tab('action', false), { kind: 'tab', op: 'insert', type: 'character' }, 'Tab: filled action inserts a Character line below');
 eq(tab('character', false), { kind: 'tab', op: 'insert', type: 'paren' }, 'Tab: character → paren');
 eq(tab('character', true), { kind: 'tab', op: 'change', type: 'transition' }, 'Tab: empty character → transition');
 eq(tab('paren', false), { kind: 'tab', op: 'insert', type: 'dialogue' }, 'Tab: paren → dialogue');
@@ -214,6 +215,20 @@ console.log(`  smarttype on the sample: build ${build.toFixed(1)}ms, a suggestio
 eq(K.joinedText('He walks in', 'and sits.'), { text: 'He walks in and sits.', seam: 11 }, 'join puts back the word gap a split trimmed');
 eq(K.joinedText('He walks', '.'), { text: 'He walks.', seam: 8 }, 'no gap before punctuation');
 eq(K.joinedText('', 'Rain.'), { text: 'Rain.', seam: 0 }, 'an empty first line joins with nothing');
+
+/* ---- undo / redo (the editor's one history) ------------------ */
+const rk = (patch) => K.resolveKey(ev(patch), { type: 'action', empty: false, prefs: fd, known: SIX });
+eq(rk({ key: 'z', code: 'KeyZ', ctrlKey: true }), { kind: 'undo' }, 'Ctrl+Z undoes');
+eq(rk({ key: 'z', code: 'KeyZ', metaKey: true }), { kind: 'undo' }, 'Cmd+Z undoes');
+eq(rk({ key: 'Z', code: 'KeyZ', ctrlKey: true, shiftKey: true }), { kind: 'redo' }, 'Ctrl+Shift+Z redoes');
+eq(rk({ key: 'Z', code: 'KeyZ', metaKey: true, shiftKey: true }), { kind: 'redo' }, 'Cmd+Shift+Z redoes');
+eq(rk({ key: 'y', code: 'KeyY', ctrlKey: true }), { kind: 'redo' }, 'Ctrl+Y redoes');
+eq(rk({ key: 'y', code: 'KeyY', metaKey: true }), null, 'Cmd+Y is not taken (Safari History)');
+eq(rk({ key: 'z', code: 'KeyZ', altKey: true }), null, 'Alt+Z is not undo');
+eq(rk({ key: 'Ω', code: 'KeyZ', ctrlKey: true, altKey: true }), null, 'Ctrl+Alt+Z is not undo (AltGr layouts)');
+eq(rk({ key: 'z', code: 'KeyZ' }), null, 'a plain z is typing');
+ok(K.shortcutRows(fd, SIX, false).rows.some((r) => /^Undo/.test(r.label)), 'the shortcut sheet lists Undo');
+ok(K.tabAction('action', false, false, SIX)?.type === 'character', 'tabAction: filled action → character (data-driven)');
 
 console.log(`test:keys — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

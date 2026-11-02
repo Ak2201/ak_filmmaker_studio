@@ -47,6 +47,7 @@
    on every page, to cycling the theme. Alt+D is.
    ============================================================ */
 import DATA from '../data/write-presets.json';
+import { macroSlotOf } from './macros.js';
 
 export const WRITE_PREFS_KEY = 'fms_write_prefs_v1';
 export const PRESETS = DATA.presets;
@@ -190,7 +191,7 @@ export function saveWritePrefs(patch) {
             { kind: 'return', op, type }  op 'insert' | 'change'
             { kind: 'tab', op, type }
             { kind: 'dual' } { kind: 'note' } { kind: 'navigator' }
-            { kind: 'find' }
+            { kind: 'find' } { kind: 'macro', slot }
             { kind: 'characters' } { kind: 'bookmark' }
             { kind: 'bookmark-next' } { kind: 'bookmark-prev' } */
 export function digitOf(e) {
@@ -212,6 +213,10 @@ export function resolveKey(e, ctx) {
     const t = digitMap(prefs.preset, known)[d];
     return t ? { kind: 'type', type: t } : null;
   }
+  // Alt/Option + Shift + digit: a macro (src/lib/macros.js). The rule above
+  // refuses Shift, so the two never meet.
+  const ms = macroSlotOf(e);
+  if (ms) return { kind: 'macro', slot: ms };
   // Alt/Option + D. e.code, again, because Option+D is '∂' on a Mac.
   if (e.altKey && !mod && !e.shiftKey && (e.code === 'KeyD' || lower === 'd')) return { kind: 'dual' };
   /* Undo / redo, for the WHOLE screenplay (src/lib/edit-history.js), not
@@ -271,6 +276,7 @@ export function shortcutRows(prefs, known, ctrlDigits) {
     { keys: ['Tab'], label: 'Action → Character → Parenthetical → Dialogue; empty Character → Transition' },
     { keys: ['Shift Tab'], label: 'Step the element type back' },
     { keys: ['Esc', 'Tab'], label: 'Leave the screenplay with Tab (Esc first frees it)' },
+    { keys: ['Alt/⌥ Shift 1–9'], label: 'Macro — a saved snippet such as (beat), CONTINUOUS or CUT TO: (edit them in Settings, Preferences)' },
     { keys: ['Alt/⌥ D'], label: 'Dual dialogue on this cue' },
     { keys: ['Ctrl/⌘ Shift K'], label: 'Note on this line' },
     { keys: ['Ctrl/⌘ Shift S'], label: 'Scene navigator — jump to a scene heading' },

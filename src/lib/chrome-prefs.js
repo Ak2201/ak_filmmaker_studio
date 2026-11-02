@@ -110,7 +110,31 @@ export const saveAutoContd = (on) => updateDevicePrefs({ autoContd: on ? undefin
 export const readTypewriter = () => readDevicePrefs().typewriter === true;
 export const saveTypewriter = (on) => updateDevicePrefs({ typewriter: on ? true : undefined });
 
+/* ---- the Screenplay Writer's helpers (wave 2, L5) ----------------
+   All inside the same device blob, written on a click or a change only.
+   `dictation`: { on, noticed } — OFF until the writer switches it on
+   (Chrome sends the audio to Google, and the one-time notice says so);
+   `macros`: the list from src/lib/macros.js, stored only when it differs
+   from the defaults; `readAloud`: the table read's voices and options
+   (src/lib/read-aloud.js cleans it on read). */
+export function readDictation() {
+  const d = readDevicePrefs().dictation;
+  return { on: !!(d && d.on === true), noticed: !!(d && d.noticed === true) };
+}
+export const saveDictation = (patch) => {
+  const cur = readDictation();
+  const next = { ...cur, ...(patch || {}) };
+  return updateDevicePrefs({ dictation: next.on || next.noticed ? { on: !!next.on, noticed: !!next.noticed } : undefined });
+};
+export const readMacrosPref = () => readDevicePrefs().macros;
+/* `undefined` removes the pref (the defaults); an EMPTY list is stored: a
+   writer who cleared every macro must not get the defaults back. */
+export const saveMacrosPref = (list) => updateDevicePrefs({ macros: Array.isArray(list) ? list : undefined });
+export const readReadAloudPref = () => readDevicePrefs().readAloud;
+export const saveReadAloudPref = (obj) => updateDevicePrefs({ readAloud: obj && typeof obj === 'object' ? obj : undefined });
+
 export default {
+  readDictation, saveDictation, readMacrosPref, saveMacrosPref, readReadAloudPref, saveReadAloudPref,
   autoContdOn, saveAutoContd,
   readDevicePrefs, updateDevicePrefs, motionReduced, saveMotionPref, brandingPrefOff, saveBrandingOff, touchThemePref, tourActive, tourResumable,
   readShotView, saveShotView, readBeatView, saveBeatView, readTypewriter, saveTypewriter

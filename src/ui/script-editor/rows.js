@@ -15,6 +15,7 @@
    ============================================================ */
 import { h } from '../../lib/dom.js';
 import { ELEMENT_TYPES, typeLabel, dualPairs, contdOffer } from '../../lib/script.js';
+import { spellcheckFor } from '../../lib/name-spell.js';
 
 /** Rows per run on the screenplay page; see buildPage(). */
 export const CHUNK = 64;
@@ -74,7 +75,10 @@ export function renderElement(el, i, total, elements, rowChrome = true) {
 
   const ta = field('textarea.wr-text', {
     rows: '1',
-    spellcheck: 'true',
+    /* A name line (cue, heading, transition) is not prose: no red waves
+       under every cue. src/lib/name-spell.js says why only the line can be
+       switched, not the word. */
+    spellcheck: String(spellcheckFor(el.type)),
     'data-el-field': 'text',
     placeholder: PLACEHOLDER[el.type] || '',
     'aria-label': typeLabel(el.type) + ', element ' + (i + 1) + (el.mark === true ? ', bookmarked' : '')

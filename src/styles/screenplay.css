@@ -1212,6 +1212,64 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
 .sc-sheet .wr-el.sc-find-row { box-shadow: -6px 0 0 -3px var(--paper-page-rule); }
 .sc-sheet .wr-el.sc-find-cur { box-shadow: -6px 0 0 -2px var(--accent-primary); }
 
+/* ---- read aloud (src/ui/read-aloud.js) ---------------------------
+   A row of #scTop like the find bar, so it pins with the bar. The line
+   being spoken is marked on the page by a rule beside it (a box-shadow,
+   so the line does not move), a little heavier than the find mark. */
+.sc-ra {
+  box-sizing: border-box;
+  flex: 1 1 100%;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  padding: var(--s2) var(--s3);
+  border-top: 1px solid var(--border-hair);
+}
+.sc-ra[hidden], .sc-ra-voices[hidden] { display: none; }
+.sc-ra-acts, .sc-ra-opts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s2); }
+.sc-ra-status { color: var(--ink-muted); min-width: 8em; }
+.sc-ra-voices { flex: 1 1 100%; display: grid; gap: var(--s2); }
+.sc-ra-cast { display: grid; gap: var(--s2); grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); }
+.sc-ra-row { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.sc-ra-name { flex: 0 0 8em; color: var(--ink); overflow-wrap: anywhere; }
+.sc-ra-note { margin: 0; color: var(--ink-muted); }
+.sc-ra-sel {
+  flex: 1 1 10rem;
+  min-width: 0;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface-canvas);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--sk-field-radius, var(--radius-sm));
+  padding: var(--s1) var(--s2);
+}
+.sc-ra-sel:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-primary); outline-offset: 1px; }
+.sc-sheet .wr-el.sc-reading { box-shadow: -8px 0 0 -2px var(--accent-primary); }
+@media (max-width: 719px) {
+  /* #scTop scrolls away on a phone and every line read scrolls to the
+     page: while the panel is open it alone is pinned under the band. */
+  .sc-ra:not([hidden]) {
+    position: fixed;
+    top: var(--sh-chrome-h, 0px);
+    inset-inline: 0;
+    z-index: 6;
+    max-height: 60vh;
+    overflow-y: auto;
+    background: var(--surface-rail);
+    border-bottom: 1px solid var(--border-hair);
+  }
+}
+
+/* ---- Check names (src/ui/name-check.js) ------------------------- */
+.sc-names { display: grid; gap: var(--s3); padding: var(--s3); }
+.sc-names-lede, .sc-names-known, .sc-names-none { margin: 0; color: var(--ink-muted); }
+.sc-names-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.sc-names-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.sc-names-what { flex: 1 1 12rem; color: var(--ink); overflow-wrap: anywhere; }
+.sc-names-n { color: var(--ink-muted); }
+
 /* ---- co-writing presence (src/ui/presence.js) --------------------
    Faces in the draft line, a warning row in the top bar while someone
    else types, and a mark at the right edge of the line each person is

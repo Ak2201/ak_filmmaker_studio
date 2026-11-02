@@ -1117,6 +1117,116 @@ await page.setViewportSize({ width: 1280, height: 900 });
   await page.setViewportSize({ width: 1280, height: 900 });
 }
 
+/* ---- 24 the writing flow and the one undo history (fd/l1-flow) ----------
+   Auto-switch on any line type, each switch ONE Ctrl+Z back to the line as
+   typed (and then left alone); "NAME says …" on Return; Tab on a written
+   action line; typing coalesced per burst; a split undone with its caret;
+   redo; and still no storage write while the page sits idle. */
+{
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('fms_script_v1')) localStorage.removeItem(k); });
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  const rows = () => page.$$eval('#wr-page [data-el]', (rs) => rs.map((r) => {
+    const t = [...r.classList].find((c) => c.startsWith('t-')) || 't-?';
+    return t.slice(2) + ':' + (r.querySelector('.wr-text')?.value ?? '');
+  }));
+  const caret = () => page.evaluate(() => {
+    const a = document.activeElement;
+    return a && a.matches('.wr-text') ? { i: [...document.querySelectorAll('#wr-page .wr-text')].indexOf(a), s: a.selectionStart, v: a.value } : null;
+  });
+  await page.click('#wr-page .wr-text');
+  await page.keyboard.type('INT. FLAT - DAY');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('RAVI');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Hello.');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('CUT TO:');
+  let r = await rows();
+  ok(r[3] === 'transition:CUT TO:', '24a "CUT TO:" becomes a transition as it is typed', r);
+  await page.keyboard.press('Control+z');
+  r = await rows();
+  ok(r[3] === 'action:CUT TO:' && (await caret())?.i === 3, '24a one Ctrl+Z restores the line exactly as typed, caret in it', { r, c: await caret() });
+  await page.keyboard.press('Backspace');
+  await page.keyboard.type(':');
+  r = await rows();
+  ok(r[3] === 'action:CUT TO:', '24a an undone switch is not made again on that line', r);
+  await page.keyboard.press('Control+Shift+z');
+  r = await rows();
+  ok(r[3] === 'action:CUT TO:', '24a redo after a fresh edit does nothing (the edit cleared redo)', r);
+
+  // "NAME says …" on Return, and one undo restores it
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Ravi says, see you soon.');
+  await page.keyboard.press('Enter');
+  r = await rows();
+  ok(r[4] === 'character:RAVI' && r[5] === 'dialogue:See you soon.' && r[6] === 'action:',
+    '24b "Ravi says, see you soon." + Return → RAVI / See you soon. / a new action line', r);
+  await page.keyboard.press('Control+z');
+  r = await rows();
+  ok(r.length === 5 && r[4] === 'action:Ravi says, see you soon.', '24b one Ctrl+Z restores the original line', r);
+  await page.keyboard.press('Control+Shift+z');
+  r = await rows();
+  ok(r[4] === 'character:RAVI' && r[5] === 'dialogue:See you soon.', '24b Ctrl+Shift+Z redoes it', r);
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Enter');
+  r = await rows();
+  ok(r[4] === 'action:Ravi says, see you soon.' && r[5] === 'action:', '24b after an undo, Return on that line is a plain Return', r);
+
+  // typing coalesced per burst; Ctrl+Y redoes
+  await page.keyboard.type('abc');
+  await page.waitForTimeout(1300);
+  await page.keyboard.type('def');
+  await page.keyboard.press('Control+z');
+  r = await rows();
+  ok(r[5] === 'action:abc', '24c a pause ends a burst: undo takes back "def" only', r);
+  await page.keyboard.press('Control+y');
+  r = await rows();
+  ok(r[5] === 'action:abcdef', '24c Ctrl+Y redoes', r);
+
+  // a split, undone with its caret
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('He walks in and sits.');
+  await page.waitForTimeout(1100);
+  await page.keyboard.press('Home');
+  for (let k = 0; k < 11; k++) await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  r = await rows();
+  ok(r[6] === 'action:He walks in' && r[7] === 'action:and sits.', '24d Return mid-line splits', r);
+  await page.keyboard.press('Control+z');
+  r = await rows();
+  const c = await caret();
+  ok(r[6] === 'action:He walks in and sits.' && r.length === 7 && c && c.i === 6 && c.s === 11,
+    '24d one Ctrl+Z joins the split back, caret where Return was pressed', { r, c });
+
+  // Tab on a written action line starts a Character line below
+  await page.keyboard.press('End');
+  await page.keyboard.press('Tab');
+  r = await rows();
+  const c2 = await caret();
+  ok(r[7] === 'character:' && c2 && c2.i === 7, '24e Tab on a filled action line inserts a Character line and focuses it', { r, c2 });
+  // "(" in an empty line after a cue is a parenthetical
+  await page.keyboard.type('RAVI');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('(');
+  r = await rows();
+  ok(r[8] === 'paren:(', '24f "(" opening a dialogue line makes a parenthetical', r);
+  await page.keyboard.press('Control+z');
+  r = await rows();
+  ok(r[8] === 'dialogue:(', '24f and one Ctrl+Z gives the dialogue line back', r);
+
+  // the page writes nothing while it sits there
+  await page.waitForTimeout(1500);
+  const before = await page.evaluate(() => window.__writes.length);
+  await page.waitForTimeout(4000);
+  const after = await page.evaluate(() => window.__writes.length);
+  ok(after === before, '24g no storage write in four idle seconds after all of that', { before, after });
+  await settle();
+  const saved = await types();
+  ok(saved[6] === 'action:He walks in and sits.' && saved[4] === 'action:Ravi says, see you soon.', '24g undo saved through the normal path', saved);
+}
+
 /* ---- 13 overflow -------------------------------------------------------- */
 for (const w of [390, 1280]) {
   for (const p of ['screenplay.html', 'drafts.html', 'breakdown.html#script']) {

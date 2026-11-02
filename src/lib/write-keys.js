@@ -212,7 +212,15 @@ export function resolveKey(e, ctx) {
   }
   // Alt/Option + D. e.code, again, because Option+D is '∂' on a Mac.
   if (e.altKey && !mod && !e.shiftKey && (e.code === 'KeyD' || lower === 'd')) return { kind: 'dual' };
+  /* Undo / redo, for the WHOLE screenplay (src/lib/edit-history.js), not
+     the one textarea the browser would undo inside. Only asked inside a
+     screenplay line, where Ctrl/Cmd+Z already meant "undo my typing", so
+     nothing the browser does elsewhere is taken. Ctrl+Y is Windows'
+     redo; Cmd+Y is left alone (Safari's History). */
+  if (mod && !e.altKey && !e.shiftKey && (e.code === 'KeyZ' || lower === 'z')) return { kind: 'undo' };
+  if (e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.code === 'KeyY' || lower === 'y')) return { kind: 'redo' };
   if (mod && e.shiftKey && !e.altKey) {
+    if (e.code === 'KeyZ' || lower === 'z') return { kind: 'redo' };
     if (e.code === 'KeyK' || lower === 'k') return { kind: 'note' };
     if (e.code === 'KeyS' || lower === 's') return { kind: 'navigator' };
     /* H for replace, as in Word and VS Code; F would be the natural
@@ -247,6 +255,8 @@ export function shortcutRows(prefs, known, ctrlDigits) {
     { keys: ['Return'], label: 'Next element, in the type that follows (see the flow)' },
     { keys: ['Return'], label: 'On an empty element: cycle its type' },
     { keys: ['Shift Return'], label: 'Line break inside the element' },
+    { keys: ['Ctrl/⌘ Z'], label: 'Undo — typing, splits, joins, type changes and auto-formatting alike' },
+    { keys: ['Ctrl/⌘ Shift Z', 'Ctrl Y'], label: 'Redo' },
     { keys: ['Tab'], label: 'Action → Character → Parenthetical → Dialogue; empty Character → Transition' },
     { keys: ['Shift Tab'], label: 'Step the element type back' },
     { keys: ['Esc', 'Tab'], label: 'Leave the screenplay with Tab (Esc first frees it)' },

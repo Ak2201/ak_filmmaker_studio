@@ -1805,7 +1805,8 @@ const editor = mountEditor(document, {
   getPrefs: () => keyPrefs,
   known: knownTypes,
   say: (m) => say(m),
-  toast: (m, o) => StudioUI.toast(m, o)
+  toast: (m, o) => StudioUI.toast(m, o),
+  knownNames: characterNames
 });
 const pageNode = () => editor.pageNode();
 const rowOf = (id) => editor.rowOf(id);

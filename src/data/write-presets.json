@@ -58,6 +58,7 @@
       "character": "transition"
     },
     "filled": {
+      "action": "character",
       "character": "paren",
       "paren": "dialogue",
       "dialogue": "paren"

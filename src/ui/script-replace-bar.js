@@ -136,6 +136,8 @@ export function mountReplaceBar(o) {
   /* ---- writing ------------------------------------------------------ */
   function apply(changes) {
     const list = els();
+    // One step in the editor's undo history: Ctrl+Z in the script undoes a Replace all.
+    if (changes.length && typeof o.editor.checkpoint === 'function') o.editor.checkpoint('replace');
     for (const c of changes) {
       const el = list.find((e) => e.id === c.id);
       if (!el) continue;

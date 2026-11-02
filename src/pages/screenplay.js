@@ -49,6 +49,7 @@ import { createSmartType } from '../ui/smarttype.js';
 import WriteKeys from '../ui/write-shortcuts.js';
 import '../styles/smarttype.css';
 import { mountEditor, elFocus } from '../ui/script-editor/editor.js';
+import { loadCharacters } from '../lib/characters.js';
 import { installLineLanding } from '../ui/script-find.js';
 import { mountReplaceBar } from '../ui/script-replace-bar.js';
 import { mountPresence } from '../ui/presence.js';
@@ -439,6 +440,9 @@ const editor = mountEditor(document, {
   known: knownTypes,
   say,
   toast: (m, o) => StudioUI.toast(m, o),
+  /* Speakers the auto-format knows besides the script's own cues: the
+     Characters page's names and aliases (a read, at Return only). */
+  knownNames: () => loadCharacters().flatMap((c) => [c.name, ...(c.aliases || [])]),
   rowChrome: false
 });
 

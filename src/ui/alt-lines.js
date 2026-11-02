@@ -272,10 +272,18 @@ function withRow(btn, fn) {
   const ta = row && row.querySelector('.wr-text');
   if (!el || !ta) return;
   el.text = ta.value;          // the debounce may not have fired
+  checkpoint();
   fn(el, ta, row);
   markRow(row, el);
   commit(ta);
   showStrip(row);
+}
+
+/* A take swapped in, kept or removed is one step in the screenplay's
+   undo history (src/ui/script-editor/editor.js listens). Asked for
+   BEFORE the change, by event, so this module imports no editor. */
+function checkpoint() {
+  document.dispatchEvent(new CustomEvent('fms:script-checkpoint'));
 }
 
 function setTakes(el, takes) {
@@ -364,6 +372,7 @@ function onClick(e) {
           const r = document.querySelector(`[data-el="${CSS.escape(id)}"]`);
           const field = r && r.querySelector('.wr-text');
           if (!el || !field) return;
+          checkpoint();
           const takes = takesOf(el);
           takes.splice(Math.min(k, takes.length), 0, removed);
           setTakes(el, takes);

@@ -1236,6 +1236,12 @@ function refreshStats() {
      which read 106.5 beside a page view ending on Page 115. The estimate
      stands in only until the first page pass (applyBreaks). */
   put('pages', !written ? formatPages(0) : pagedCount ? String(pagedCount) : formatPages(pages));
+  /* Say which count it is: the Analysis tab and the import preview quote
+     the 55-line estimate, and the two differ by pages on a long script
+     (QA r1 B-2). */
+  const pagesStat = document.querySelector('[data-sc-stat="pages"]')?.parentElement;
+  const basis = written && pagedCount ? 'Printed pages, as the page view and the PDF lay them out' : 'Estimated at 55 lines a page';
+  if (pagesStat && pagesStat.title !== basis) pagesStat.title = basis;
   if (!written) { put('runtime', '—'); estimateMin = 0; paintRuntime(); return; }
   const estimate = () => {
     const est = estimatedRuntime(Analysis, els, pages);

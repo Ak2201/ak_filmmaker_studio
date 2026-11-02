@@ -684,7 +684,7 @@ function importPreview(plan) {
 
   const stats = h('div.wr-imp-stats');
   stats.append(impStat(String(plan.elements.length), plan.elements.length === 1 ? 'element' : 'elements'));
-  stats.append(impStat(formatPages(plan.pages), 'pages'));
+  stats.append(impStat(formatPages(plan.pages), 'pages, est.'));
   stats.append(impStat(String(plan.scenes.length), plan.scenes.length === 1 ? 'scene' : 'scenes'));
   wrap.append(stats);
 

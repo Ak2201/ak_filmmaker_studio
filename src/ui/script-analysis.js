@@ -450,7 +450,11 @@ function pacingPanel(a) {
     eyebrow: ['Pacing', 'scene lengths'],
     meta: 'Median ' + p.medianPages + ' · longest ' + (p.longest ? p.longest.pages : '—'),
     body: [bars, ends,
-      h('p.sa-note', { text: said + ' Pages are counted at 55 lines a page.' }),
+      /* TWO PAGE COUNTS, NAMED (QA r1 B-2). Scene lengths are the 55-lines
+         estimate the breakdown and the schedule quote in eighths; the Pages
+         figure in the band above is the printed count of the page view and
+         the PDF. A producer reading 106 here and 115 there must be told why. */
+      h('p.sa-note', { text: said + ' Pages here are estimated at 55 lines a page, the count scene lengths in eighths use; the Pages figure above the script is the printed count, as the page view and the PDF lay it out.' }),
       p.flags.length ? h('ul.sa-flags', {}, p.flags.map((f) => h('li.sa-flag.is-info', { text: f.text }))) : null,
       h('div.sa-two', {}, [dist, acts])].filter(Boolean)
   });
@@ -476,7 +480,7 @@ function structurePanel(a) {
   const t = table({ label: 'Beats against the pages', columns: cols, rows });
   return panel({
     eyebrow: ['Structure', s.framework.short],
-    meta: s.pages + ' pages' + (s.linked ? ' · ' + plural(s.linked, 'beat') + ' linked to scenes' : ''),
+    meta: s.pages + ' pages, estimated' + (s.linked ? ' · ' + plural(s.linked, 'beat') + ' linked to scenes' : ''),
     body: [t, h('p.pc-note.sa-basis', { text: beatBasisText(s.basis) }), h('p.pc-note', { text: 'Where each beat of ' + s.framework.label + ' conventionally falls, as a page of this script, and the scene that is on that page. Link scenes to beats on the Story page and it also says where each beat really opens.' })]
   });
 }
@@ -561,7 +565,7 @@ export function renderAnalysis(opts = {}) {
       aud ? tensionPanel(a, aud, elements) : null].filter(Boolean));
   }
   const stats = statStrip([
-    { label: 'Scenes', value: a.totals.scenes, note: a.totals.pages + ' pages' },
+    { label: 'Scenes', value: a.totals.scenes, note: a.totals.pages + ' pages, estimated' },
     { label: 'Running time', value: formatDuration(a.totals.seconds), note: 'estimated' },
     { label: 'Characters', value: a.cast.characters.length, note: 'with a cue' },
     { label: 'Mean tension', value: a.tension.mean, note: 'estimated, 1–10' },

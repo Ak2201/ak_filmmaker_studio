@@ -142,7 +142,7 @@ export function shotsSummary(list) {
 /** What a file read as, in one line. */
 export function importReadText(name, plan) {
   return 'Read ' + (name ? '“' + name + '” ' : '') + 'as ' + (plan.formatLabel || plan.format) + ': '
-    + plan.elements.length + (plan.elements.length === 1 ? ' line, ' : ' lines, ') + formatPages(plan.pages) + ' pages, '
+    + plan.elements.length + (plan.elements.length === 1 ? ' line, ' : ' lines, ') + formatPages(plan.pages) + ' pages (est. at 55 lines a page), '
     + plan.scenes.length + (plan.scenes.length === 1 ? ' scene.' : ' scenes.');
 }
 

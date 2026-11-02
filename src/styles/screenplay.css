@@ -1323,3 +1323,26 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
 /* Typewriter scrolling: room under the last line so it can rise to the
    resting height instead of stopping at the page's end. */
 html.sc-typewriter .sc-sheet .wr-page { padding-bottom: 45vh; }
+
+/* ---- folded scenes (src/lib/script-structure.js; view state only) ----
+   A folded scene's body rows carry `hidden`; `.sc-sheet .wr-el` sets
+   display: block, which would beat the UA's [hidden] rule, so the id
+   keeps them gone whatever the sheet order. The heading says how much
+   it stands for, in the margin type's face, under the slug. */
+#wr-page .wr-el[hidden],
+#wr-page .wr-dual[hidden] { display: none; }
+.sc-sheet .wr-el.t-scene.is-folded::after {
+  content: '▸ ' attr(data-folded);
+  display: block;
+  margin-top: 0.4em;
+  font-family: var(--f-body);
+  font-size: var(--t-micro);
+  color: var(--ink-muted);
+}
+@media print {
+  /* A printed page of the editor shows every line (the PDF is made
+     from the model and never sees a fold). */
+  #wr-page .wr-el[hidden],
+  #wr-page .wr-dual[hidden] { display: block; }
+  .sc-sheet .wr-el.t-scene.is-folded::after { display: none; }
+}

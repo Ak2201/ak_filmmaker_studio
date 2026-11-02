@@ -46,6 +46,7 @@ let cmpTo = LIVE;          // a revision id, or LIVE
 let marksSince = '';       // a revision id, '' = the latest
 let marksTint = false;
 let lastResult = null;     // { from, to, groups, stats } for the panel's re-render
+let cmpLayout = 'inline';  // 'inline' | 'side' — how the result is laid out (session only)
 
 const say = (m, type = 'info') => { try { StudioUI.toast(m, { type }); } catch (e) { /* no chrome yet */ } };
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
@@ -106,7 +107,12 @@ function renderCompare(doc) {
         h('select#wr-cmp-from', { 'data-rt': 'cmp-from' }, revOptions(doc, cmpFrom, false))]),
       h('label.wr-field', {}, [h('span', { text: 'To' }),
         h('select#wr-cmp-to', { 'data-rt': 'cmp-to' }, revOptions(doc, cmpTo, true))]),
-      button({ label: 'Compare', variant: 'primary', action: 'rev-compare' })
+      button({ label: 'Compare', variant: 'primary', action: 'rev-compare' }),
+      /* Inline (one list, words marked inside the line) or side by side
+         (the older draft left, the newer right, row for row). A way of
+         looking: memory only, like the rest of this panel. */
+      h('div.wr-cmp-layout', { role: 'group', 'aria-label': 'Layout' }, [['inline', 'Inline'], ['side', 'Side by side']].map(([id, label]) =>
+        h('button.k-btn.k-btn--ghost.k-btn--sm', { type: 'button', 'data-rt-layout': id, 'aria-pressed': String(cmpLayout === id), text: label })))
     ]),
     h('div.wr-cmp-out', { id: 'wr-cmp-out', 'aria-live': 'polite' },
       lastResult && lastResult.from === cmpFrom && lastResult.to === cmpTo ? resultNodes(doc, lastResult) : [])
@@ -258,6 +264,39 @@ function lineNode(o) {
   return li;
 }
 
+/* One side's text of a side-by-side row: on a changed line the older
+   side shows only what was cut, the newer only what was added. */
+function sideText(el, words, keep) {
+  const t = h('span.wr-cmp-text');
+  if (!el) return t;
+  if (words && words.length) {
+    for (const w of words) {
+      if (w.op === 'same') t.append(w.text);
+      else if (w.op === keep) t.append(h(keep === 'add' ? 'ins' : 'del', { text: w.text }));
+    }
+  } else t.textContent = String(el.text || '') || '(blank)';
+  return t;
+}
+const SIDE_WORD = { added: 'Added', removed: 'Cut', changed: 'Changed', moved: 'Moved', replaced: 'Rewritten' };
+function sideNode(res, rows) {
+  const box = h('div.wr-cmp-side', { role: 'table', 'aria-label': res.fromLabel + ' beside ' + res.toLabel });
+  box.append(h('div.wr-cmp-srow.is-head', { role: 'row' }, [
+    h('span', { role: 'columnheader', text: res.fromLabel }),
+    h('span', { role: 'columnheader', text: res.toLabel })
+  ]));
+  for (const r of rows || []) {
+    if (r.op === 'same') continue;
+    const cell = (el, keep) => h('div.wr-cmp-cell' + (el ? '' : '.is-empty'), { role: 'cell' }, el ? [
+      h('span.wr-cmp-type', { text: typeLabel(el.type) }),
+      sideText(el, r.words, keep)
+    ] : []);
+    box.append(h('div.wr-cmp-srow.is-' + r.op, { role: 'row', 'aria-label': SIDE_WORD[r.op] || '' }, [
+      cell(r.a, 'del'), cell(r.b, 'add')
+    ]));
+  }
+  return box;
+}
+
 function resultNodes(doc, res) {
   const out = [];
   const { stats, groups } = res;
@@ -283,9 +322,13 @@ function resultNodes(doc, res) {
       g.headingOp === 'added' ? h('span.wr-cmp-tag', { text: 'new scene' }) : null,
       g.headingOp === 'removed' ? h('span.wr-cmp-tag', { text: 'cut scene' }) : null
     ]);
-    const ul = h('ul.wr-cmp-lines');
-    for (const o of g.ops) if (o.op !== 'same') ul.append(lineNode(o));
-    sec.append(head, ul);
+    if (cmpLayout === 'side' && res.side) {
+      sec.append(head, sideNode(res, res.side[groups.indexOf(g)]));
+    } else {
+      const ul = h('ul.wr-cmp-lines');
+      for (const o of g.ops) if (o.op !== 'same') ul.append(lineNode(o));
+      sec.append(head, ul);
+    }
     out.push(sec);
   }
   if (groups.length > MAX_GROUPS) {
@@ -300,6 +343,13 @@ function resultNodes(doc, res) {
 function wire() {
   delegate(document, 'change', '[data-rt="cmp-from"]', (e, sel) => { cmpFrom = sel.value; });
   delegate(document, 'change', '[data-rt="cmp-to"]', (e, sel) => { cmpTo = sel.value; });
+  delegate(document, 'click', '[data-rt-layout]', (e, btn) => {
+    cmpLayout = btn.dataset.rtLayout === 'side' ? 'side' : 'inline';
+    btn.parentElement.querySelectorAll('[data-rt-layout]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+    const doc = ctx.getDoc();
+    const out = document.getElementById('wr-cmp-out');
+    if (doc && out && lastResult) out.replaceChildren(...resultNodes(doc, lastResult));
+  });
   delegate(document, 'change', '[data-rt="marks-since"]', (e, sel) => { marksSince = sel.value; });
   delegate(document, 'change', '[data-rt="marks-tint"]', (e, box) => { marksTint = !!box.checked; });
 
@@ -317,8 +367,10 @@ function wire() {
     const numbers = cmpTo === LIVE
       ? sceneNumbers(doc.elements, doc.numbering).byId
       : sceneNumbers(B, null).byId;
+    const groups = D.groupByScene(diff);
     lastResult = {
-      from: cmpFrom, to: cmpTo, stats: diff.stats, groups: D.groupByScene(diff), numbers,
+      from: cmpFrom, to: cmpTo, stats: diff.stats, groups, numbers,
+      side: groups.map((g) => D.sideBySide(g.ops)),
       fromLabel: revLabel(doc, cmpFrom), toLabel: revLabel(doc, cmpTo)
     };
     const out = document.getElementById('wr-cmp-out');

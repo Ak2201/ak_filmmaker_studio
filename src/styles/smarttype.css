@@ -173,6 +173,13 @@
 .wk-nav li.is-active { background: var(--brand-wash); color: var(--ink); box-shadow: inset 2px 0 0 var(--accent-primary); }
 .wk-nav li.is-active .wk-n { color: var(--brand-deep); }
 .wk-nav .wk-note { font-size: var(--t-micro); }
+/* Reordering a scene by drag (write-shortcuts.js): the row being
+   dragged dims, and a violet line marks where it will land. A
+   box-shadow, so nothing in the list moves while the pointer does. */
+.wk-nav li.is-dragging { opacity: 0.55; cursor: grabbing; }
+.wk-nav li.is-drop-before { box-shadow: inset 0 2px 0 var(--accent-primary); }
+.wk-nav li.is-drop-after { box-shadow: inset 0 -2px 0 var(--accent-primary); }
+.wk-nav ul { touch-action: pan-y; }
 @media (pointer: coarse) {
   .wk-nav li { min-height: 44px; align-items: center; }
 }

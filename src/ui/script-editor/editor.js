@@ -30,7 +30,7 @@
    ============================================================ */
 import { delegate } from '../../lib/dom.js';
 import { askDanger } from '../dialog.js';
-import { typeLabel, blankElement, canPairDual, withContd, contdOffer, cueSpeaker } from '../../lib/script.js';
+import { typeLabel, blankElement, canPairDual, withContd, contdOffer, cueSpeaker, isHeld } from '../../lib/script.js';
 import { createHistory, snapshotOf, restoreElements } from '../../lib/edit-history.js';
 import Keys from '../../lib/write-keys.js';
 import {
@@ -42,6 +42,7 @@ import { wireKeys, splitAt } from './keys.js';
 import { createInference } from './inference.js';
 import { wantsSplit, planPaste } from '../../lib/script-paste.js';
 import { toggleMark as flipMark, stepMark } from '../../lib/script-index.js';
+import { moveScene as moveSceneIn, foldedIds, pruneFolds, foldedCount, sceneOfElement, sceneBlocks } from '../../lib/script-structure.js';
 
 export { elFocus, PLACEHOLDER, CHUNK, iconBtn, field, setAttr, autosize } from './rows.js';
 
@@ -294,6 +295,15 @@ export function mountEditor(host, opts) {
   function applyFocus(sel) {
     const node = typeof sel === 'string' ? document.querySelector(sel) : sel;
     if (!node) return;
+    /* A jump into a folded scene (the navigator, a bookmark, find, an
+       undo) opens that scene first: the caret never lands in a hidden
+       row (a hidden textarea cannot take focus at all). */
+    const hiddenRow = node.closest && node.closest('[data-el][hidden]');
+    if (hiddenRow) {
+      const sid = sceneOfElement(els(), hiddenRow.dataset.el);
+      if (sid) folded.delete(sid);
+      applyFolds(hiddenRow.dataset.el);
+    }
     /* A row in a run the browser is skipping (off screen, see write.css)
        has a placeholder height, and the page scrolls smoothly — so a
        focus() aimed at it plans its scroll against the placeholders and
@@ -527,6 +537,96 @@ export function mountEditor(host, opts) {
     applyFocus(`[data-el="${CSS.escape(String(id))}"] .wr-text`);
     return id;
   }
+
+  /* ---- scenes as blocks: move and fold (src/lib/script-structure.js)
+     A MOVE is one history step and one save, and reorders the SAME
+     element objects: ids survive, so the scene sync relinks the
+     Breakdown row by its heading instead of adding a second one, and a
+     held lock keeps the locked number with the heading (the change
+     report then lists the scene as moved — docs/SCRIPT-LOCK.md). The
+     page is rebuilt (a block can be hundreds of rows, across runs and
+     dual pairs); the caret stays on the line it was in.
+
+     A FOLD is view state, in this editor's memory only: never in the
+     script blob, never in storage, gone on reload. A folded scene's
+     body rows are `hidden`, so nothing can focus into them; anything
+     that sends the caret there opens the scene first (applyFocus), and
+     the caret's own scene is never folded under it (foldedIds' keepId). */
+  const folded = new Set();
+  function moveScene(headingId, toPos) {
+    const list = els();
+    const next = moveSceneIn(list, headingId, toPos);
+    if (!next) return false;
+    const c = syncActive();
+    checkpoint('move-scene');
+    list.splice(0, list.length, ...next);
+    if (smart && smart.invalidate) smart.invalidate();
+    persistNow();
+    render(c && indexOfEl(c.id) >= 0 ? elFocus(c.id) : null);
+    o.refreshCounters();
+    o.scheduleDerived();
+    if (isHeld(o.getDoc().numbering)) o.say('Scene moved. The script is locked, so it keeps its number, and the change report lists it as moved.');
+    return true;
+  }
+  /** Hide the rows of every folded scene; mark folded headings. Cheap:
+      attribute writes only where something differs. */
+  function applyFolds(keepId) {
+    const page = pageNode();
+    if (!page) return;
+    pruneFolds(els(), folded);
+    const keep = keepId !== undefined ? keepId : (caretNow() || {}).id || null;
+    if (keep && folded.size) {
+      const sid = sceneOfElement(els(), keep);
+      if (sid && sid !== keep && folded.has(sid)) folded.delete(sid);
+    }
+    const hide = foldedIds(els(), folded, keep);
+    const duals = new Set();
+    for (const row of allRows()) {
+      const id = row.dataset.el;
+      const off = hide.has(id);
+      if (row.hidden !== off) row.hidden = off;
+      if (row.parentElement && row.parentElement.classList.contains('wr-dual-col')) duals.add(row.closest('.wr-dual'));
+      if (row.classList.contains('t-scene')) {
+        const on = folded.has(id);
+        if (row.classList.contains('is-folded') !== on) row.classList.toggle('is-folded', on);
+        const n = on ? foldedCount(els(), id) : 0;
+        const label = on ? n + (n === 1 ? ' line folded' : ' lines folded') : '';
+        if ((row.dataset.folded || '') !== label) { if (label) row.dataset.folded = label; else delete row.dataset.folded; }
+      }
+    }
+    for (const d of duals) {
+      if (!d) continue;
+      const all = Array.from(d.querySelectorAll('[data-el]')).every((r) => r.hidden);
+      if (d.hidden !== all) d.hidden = all;
+    }
+  }
+  function toggleFold(headingId) {
+    if (!headingId) return false;
+    if (folded.has(headingId)) folded.delete(headingId); else folded.add(headingId);
+    const on = folded.has(headingId);
+    /* Folding the scene the caret is in: the caret goes to its heading
+       first, or the fold would open again under it. */
+    const c = caretNow();
+    if (on && c && c.id !== headingId && sceneOfElement(els(), c.id) === headingId) {
+      applyFocus(elFocus(headingId));
+    }
+    applyFolds(on && c && sceneOfElement(els(), c.id) === headingId ? headingId : undefined);
+    return on;
+  }
+  function foldAll(on) {
+    folded.clear();
+    if (on) for (const b of sceneBlocks(els())) folded.add(b.id);
+    const c = caretNow();
+    if (on && c) {
+      const sid = sceneOfElement(els(), c.id);
+      if (sid && sid !== c.id) applyFocus(elFocus(sid));
+    }
+    applyFolds(on && c ? sceneOfElement(els(), c.id) || undefined : undefined);
+  }
+  /** Is element `id` in a hidden (folded) row right now? */
+  const isHidden = (id) => { const r = rowOf(id); return !!(r && r.hidden); };
+  /* Find and replace reads every line: it opens every fold. */
+  document.addEventListener('fms:script-find', () => { if (folded.size) foldAll(false); }, { signal });
 
   function toggleDual(i) {
     const list = els();
@@ -767,6 +867,13 @@ export function mountEditor(host, opts) {
     },
     toggleBookmark,
     jumpBookmark,
+    moveScene,
+    toggleFold,
+    foldAll,
+    applyFolds: () => applyFolds(),
+    isFolded: (id) => folded.has(id),
+    hasFolds: () => folded.size > 0,
+    isHidden,
     autosize,
     autosizeAll,
     allRows,

@@ -64,6 +64,7 @@ import { autoContdOn } from '../lib/chrome-prefs.js';   // the automatic (CONT'D
 import Scenes from '../lib/scenes.js';
 import { installLeavePrompt } from '../ui/leave-prompt.js';
 import { latestDraft } from '../lib/drafts.js';
+import { sceneOfElement } from '../lib/script-structure.js';
 /* The page's derivations and sentences: src/lib/screenplay-model.js. */
 import {
   draftLabel as draftLabelOf, isBlankScript, showStartHint, typeKeyHint, typeName, tipKeysLine,
@@ -431,6 +432,7 @@ let curId = null;           // the line the caret is in
 let Typeset = null;         // the typesetter, once loaded (page breaks)
 let pagedNow = null;        // { index, labels } of the last page pass, for the caret strip (applyBreaks)
 let breaksIdle = 0;         // the idle slot the next page pass waits for
+let split = null;           // src/ui/script-split.js, mounted on first use (view state, memory only)
 
 const editor = mountEditor(document, {
   getDoc: () => doc,
@@ -497,7 +499,7 @@ const replaceBar = mountReplaceBar({
   toast: (m, o) => StudioUI.toast(m, o),
   host: () => document.getElementById('scTop')
 });
-delegate(document, 'click', '[data-action="sc-find"]', () => replaceBar.open(curId));
+delegate(document, 'click', '[data-action="sc-find"]', () => { editor.foldAll(false); replaceBar.open(curId); });
 
 /* ---- draft label ------------------------------------------------ */
 const draftLabel = () => draftLabelOf(doc);
@@ -634,12 +636,18 @@ const TOOL_ITEMS = [
   { label: 'Keyboard shortcuts', action: 'sc-keys', hint: '?', icon: 'keyboard' },
   { label: 'Format check', action: 'sc-check', icon: 'spellcheck' },
   { label: 'Notes overview', action: 'sc-notes', hint: 'all notes', icon: 'sticky_note_2' },
+  { label: 'Scene navigator', action: 'sc-scenes', hint: 'Ctrl/⌘ Shift S · drag to reorder', icon: 'list' },
   { label: 'Character navigator', action: 'sc-chars', hint: 'Alt+C', icon: 'groups' },
   { label: 'Bookmark this line', action: 'sc-bookmark', hint: 'Alt+B', icon: 'bookmark' },
   { label: 'Bookmarks', action: 'sc-bookmarks', hint: 'list', icon: 'bookmarks' },
   { label: 'Next bookmark', action: 'sc-mark-next', hint: 'Alt+]', icon: 'arrow_downward' },
   { label: 'Previous bookmark', action: 'sc-mark-prev', hint: 'Alt+[', icon: 'arrow_upward' },
-  { label: 'Typewriter scrolling', action: 'sc-typewriter', hint: 'view', icon: 'vertical_align_center' }
+  { label: 'Typewriter scrolling', action: 'sc-typewriter', hint: 'view', icon: 'vertical_align_center' },
+  { label: 'Fold or unfold this scene', action: 'sc-fold', hint: 'view', icon: 'unfold_less' },
+  { label: 'Fold all scenes', action: 'sc-fold-all', hint: 'headings only', icon: 'unfold_less' },
+  { label: 'Unfold all scenes', action: 'sc-unfold-all', icon: 'unfold_more' },
+  { label: 'Split view', action: 'sc-split', hint: 'view, wide screens', icon: 'view_week' },
+  { label: 'Statistics', action: 'sc-stats', hint: 'pages, scenes, dialogue', icon: 'bar_chart' }
 ];
 const HELP_ITEMS = [
   { label: 'Show or hide hints', action: 'sc-hints', icon: 'lightbulb' },
@@ -914,6 +922,8 @@ function render() {
   editor.autosizeAll();
   requestAnimationFrame(editor.autosizeAll);
   applyBreaksSoon();
+  editor.applyFolds();
+  if (split) split.reattach();
   if (view === 'analysis') refreshAnalysis();
 }
 
@@ -927,9 +937,11 @@ function renderPage(focus) {
   requestAnimationFrame(editor.autosizeAll);
   refreshDerivedUi();
   refreshStats();
+  editor.applyFolds();
   if (focus) editor.applyFocus(focus);
   applyBreaksSoon();
   sceneSyncLater();
+  if (split) split.refresh();
   if (presence) presence.draw();   // the rows are new, so are the marks and carets on them
 }
 
@@ -1053,8 +1065,10 @@ function paintTip(el) {
 const typewriter = mountTypewriter({ signal: new AbortController().signal });
 typewriter.setOn(readTypewriter());
 const openNav = (mode) => WriteKeys.openNavigator({
-  mode, elements: doc.elements, fromId: curId, onJump: (id) => editor.applyFocus(elFocus(id))
+  mode, elements: doc.elements, fromId: curId, onJump: (id) => editor.applyFocus(elFocus(id)),
+  onMoveScene: editor.moveScene, onToggleFold: editor.toggleFold, isFolded: editor.isFolded
 });
+delegate(document, 'click', '[data-action="sc-scenes"]', () => openNav('scenes'));
 delegate(document, 'click', '[data-action="sc-chars"]', () => openNav('characters'));
 delegate(document, 'click', '[data-action="sc-bookmarks"]', () => openNav('bookmarks'));
 delegate(document, 'click', '[data-action="sc-bookmark"]', () => lineAction((i) => editor.toggleBookmark(i)));
@@ -1065,6 +1079,38 @@ delegate(document, 'click', '[data-action="sc-typewriter"]', () => {
   saveTypewriter(on);
   typewriter.setOn(on);
   say(on ? 'Typewriter scrolling on: the line you type stays at one height.' : 'Typewriter scrolling off.');
+});
+/* ---- folds, split view, statistics (L6) -------------------------
+   Folds and the split view are view state in memory (the editor's and
+   script-split.js's); Statistics derives everything when it opens.
+   None of the three writes anything. */
+delegate(document, 'click', '[data-action="sc-fold"]', () => {
+  const sid = curId ? sceneOfElement(doc.elements, curId) : null;
+  if (!sid) { say('Put the caret in a scene first.'); return; }
+  const on = editor.toggleFold(sid);
+  say(on ? 'Scene folded to its heading.' : 'Scene unfolded.');
+});
+delegate(document, 'click', '[data-action="sc-fold-all"]', () => {
+  editor.foldAll(true);
+  say('Every scene folded to its heading. Unfold all from the ⋯ menu; find and replace opens them too.');
+});
+delegate(document, 'click', '[data-action="sc-unfold-all"]', () => { editor.foldAll(false); say('Every scene unfolded.'); });
+delegate(document, 'click', '[data-action="sc-split"]', async () => {
+  if (!split) {
+    try {
+      const M = await import('../ui/script-split.js');
+      split = split || M.mountSplit({ getDoc: () => doc, editor, persist: () => persist(), onEdit: () => { refreshDerivedUi(); scheduleDerived(); }, say });
+    } catch (e) { say('The split view could not be loaded. Check the connection and try again.'); return; }
+  }
+  const was = split.isOn();
+  const on = split.toggle();
+  if (on !== was) say(on ? 'Split view on: the second page scrolls on its own. Esc in it closes it.' : 'Split view off.');
+});
+delegate(document, 'click', '[data-action="sc-stats"]', async (e, btn) => {
+  let M;
+  try { M = await import('../ui/script-stats-panel.js'); } catch (err) { say('Statistics could not be loaded. Check the connection and try again.'); return; }
+  if (!Typeset) { try { Typeset = await typesetter(); } catch (err) { Typeset = null; } }
+  M.openStats({ doc, typeset: Typeset, autoContd: autoContdOn(), returnTo: btn && btn.isConnected ? btn : document.activeElement });
 });
 delegate(document, 'click', '[data-action="sc-hints"]', () => {
   const on = !hintsOn();
@@ -1106,6 +1152,7 @@ function scheduleDerived() {
   derivedTimer = setTimeout(() => {
     derivedTimer = 0;
     editor.refreshCueOffers();
+    if (editor.hasFolds()) editor.applyFolds();   // a row a patch added inside a folded scene
     applyBreaksIdle();
     refreshStats();
     refreshPos(true);

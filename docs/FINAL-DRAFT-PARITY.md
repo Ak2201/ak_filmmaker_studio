@@ -124,12 +124,15 @@ Not built this round, and why, is in the last section. Read it before claiming p
 - **Automatic (CONT'D) inside dual dialogue.** Final Draft applies it there; not built.
 - **Automatic (CONT'D) in the locked page's pass and the .fdx export.** They still paginate without it. It changes line counts only when a cue of 30+ characters wraps once CONT'D is added.
 
+## Changed after review (owner, 2 Nov 2026)
+
+- A line whose type the writer set by hand (type select, Alt+digit, Tab, Return on an empty line) is now auto-switched like any other when its text matches a pattern. One Ctrl+Z restores it, and a line whose switch was undone is then left alone (`suppress()` in `createInference`).
+
 ## Open issues from the lanes (not resolved this round)
 
 - Real speech was never exercised. Read aloud and dictation were proved against fake speech APIs in the sandbox (`prove:helpers`). Check both with real voices and a real microphone.
 - Dictation commands are English only. "new line" in the middle of a sentence is treated as words.
 - The "says" guards (Action only; a manner verb needs a comma, colon, "that" or quotes) are the lane's own choices. The owner may want them changed.
-- The "writer chose the type" rule: a line whose type the writer set is never auto-switched. If the owner wants those switched too, remove the explicit-set check in `createInference`.
 - Typing-time transitions wait for the closing `.` or `:`. Return accepts them without it.
 - Undo does not own changes made by code outside the editor (AI apply, scene sync, lock seeding). If the page is swapped to a new document the history clears. Find-and-replace and alternate-take swaps do ask for a step.
 - Split view rebuilds its second pane after each structural edit. Text edits only in that pane.

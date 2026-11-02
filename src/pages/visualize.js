@@ -77,6 +77,7 @@ import {
   segmented, meter, check, sym
 } from '../ui/kit/index.js';
 import { shootDayOf } from '../lib/locations.js';
+import { aiBadge } from '../ui/ai-badge.js';   // the AI history badge
 
 /* A lazy chunk, for the reason CLAUDE.md gives for Supabase and
    pptxgenjs: it is not needed to look at a shot list. The
@@ -659,9 +660,14 @@ function numberCell(shot, i) {
      so a person can always tell what they wrote from what was
      written for them. It is an ordinary shot in every other
      respect — editable, movable, deletable, exported. */
-  if (shot.ai) {
-    no.append(badge({ label: 'AI draft', tone: 'info', tag: true, class: 'vz-ai-tag',
-      title: 'Drafted by AI — edit or delete it like any other shot' }));
+  /* The stamp's own badge (src/ui/ai-badge.js): "AI", with an accessible
+     label that says which tool and when, and ", changed since" once the
+     words differ from what the run wrote. A legacy `ai: true` shot gets it
+     too. A shot a run only filled (its camera link) carries it as well. */
+  const stamped = aiBadge(shot, 'shot');
+  if (stamped) {
+    stamped.classList.add('vz-ai-tag');
+    no.append(stamped);
   } else if (shot.rules) {
     // The basic breakdown (src/lib/shot-rules.js) — rules, not a model,
     // and marked just as plainly.

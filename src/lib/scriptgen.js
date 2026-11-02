@@ -226,7 +226,7 @@ export async function draftScenes(patch, { onStatus, signal, extra = '' } = {}) 
  * { job, scenes, undo } — undo puts back the scene list and the job
  * exactly as they were.
  */
-export function applyScenes(patch, proposals, { replaceScenes = false, model } = {}) {
+export function applyScenes(patch, proposals, { replaceScenes = false, model, ai = null } = {}) {
   const prevJob = load();
   const prevScenes = Scenes.listScenes();
   const job = { ...prevJob, ...patch };
@@ -249,6 +249,13 @@ export function applyScenes(patch, proposals, { replaceScenes = false, model } =
     createdIds.push(...r.created);
     return r.cast;
   });
+  /* The history stamp (`ai`): a scene row this run wrote, and a character
+     record it made for a name nobody had. Stamped on the final record,
+     so the hash is of what the page will read back. */
+  if (ai && createdIds.length) {
+    const made = new Set(createdIds);
+    for (let i = 0; i < chars.length; i++) if (made.has(chars[i].id)) chars[i] = ai.create('character', chars[i]);
+  }
   if (createdIds.length) Chars.saveCharacters(chars);
   /* The beat each scene serves, in the scene row's own field (the
      write page's Outline tab reads it). scriptgen's vocabulary is Save
@@ -273,7 +280,7 @@ export function applyScenes(patch, proposals, { replaceScenes = false, model } =
     // Cast lands in the breakdown's own vocabulary, so the element
     // index and the day-out-of-days see it without a second pass.
     elements: castOf[i].length ? { cast: castOf[i].slice() } : {}
-  }));
+  })).map((r) => (ai ? ai.create('scene', r) : r));
   Scenes.saveScenes(existing.concat(rows));
 
   job.scenes = rows.map((r, i) => ({
@@ -392,7 +399,7 @@ export async function draftBatch({ onStatus, signal, extra = '' } = {}) {
  * move — so a caller that loops (write.js's bulk run) must stop on
  * `wrote === 0` or it would ask for the same scenes forever.
  */
-export function applyBatch(draft, keep = null) {
+export function applyBatch(draft, keep = null, { ai = null } = {}) {
   const prevJob = load();
   if (prevJob.stage !== 'pages' || prevJob.cursor !== draft.cursor) {
     throw new GenError('That batch is out of date — the draft moved on since it was written. Ask for the next batch again.', 'stale');
@@ -425,7 +432,10 @@ export function applyBatch(draft, keep = null) {
     doc.revisions.push(Script.makeRevision(doc.elements, 'Before generated draft'));
   }
   for (const id of written) {
-    for (const el of draft.byScene[id]) doc.elements.push(Script.blankElement({ type: el.type, text: el.text }));
+    for (const el of draft.byScene[id]) {
+      const made = Script.blankElement({ type: el.type, text: el.text });
+      doc.elements.push(ai ? ai.create('element', made) : made);   // the history stamp (ai is a stamper)
+    }
   }
   Script.saveScript(doc);
 

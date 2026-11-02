@@ -16,6 +16,7 @@
 import { h } from '../../lib/dom.js';
 import { ELEMENT_TYPES, typeLabel, dualPairs, contdOffer } from '../../lib/script.js';
 import { spellcheckFor } from '../../lib/name-spell.js';
+import { aiBadge } from '../ai-badge.js';   // the AI history badge (a line a run wrote)
 
 /** Rows per run on the screenplay page; see buildPage(). */
 export const CHUNK = 64;
@@ -102,6 +103,20 @@ export function renderElement(el, i, total, elements, rowChrome = true) {
         text: 'Undo'
       })
     ]));
+  }
+
+  /* The history badge: a line an AI run wrote or filled says so, OUTSIDE
+     the textarea and only where the row has chrome (the writing-only page
+     is the line and nothing else). It rides the row's `.wr-ai-tag` strip,
+     the one place an AI mark already lives, so the pageview margin rules
+     and the hover reveal are the same. */
+  if (rowChrome) {
+    const stamp = aiBadge(el, 'element');
+    if (stamp) {
+      const strip = row.querySelector(':scope > .wr-ai-tag');
+      if (strip) strip.append(stamp);
+      else row.append(h('div.wr-ai-tag', {}, [stamp]));
+    }
   }
 
   // rowChrome:false is the writing-only page: the line is the whole row;

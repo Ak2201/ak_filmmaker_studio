@@ -149,7 +149,9 @@ installFakeFetch(async (req) => {
   ok(Shots.listShots().length === before, 'shot-draft: nothing written before Accept');
   const undo = tasks['shot-draft'].apply(res.items, ctx);
   const made = Shots.listShots().filter((s) => s.sceneId === 'r1');
-  eq(made.map((s) => [s.size, s.lens, s.rig, s.setup, s.ai]), [['WS', '24mm', 'Key from window, sticks', 'Setup 1', true], ['CU', '85mm', '', 'Setup 2', true]],
+  /* `ai` is the history stamp now (src/lib/ai-stamp.js), not `true`: still truthy
+     wherever the boolean is read, and it names the task. test:ai-history covers the rest. */
+  eq(made.map((s) => [s.size, s.lens, s.rig, s.setup, !!s.ai, s.ai && s.ai.task]), [['WS', '24mm', 'Key from window, sticks', 'Setup 1', true, 'shot-draft'], ['CU', '85mm', '', 'Setup 2', true, 'shot-draft']],
     'shot-draft: size, lens, rig and setup land on the shot, flagged ai');
   ok(!('extra' in made[1]), 'shot-draft: a field the shot model does not have is not written');
   eq(afterIds && afterIds.length, 2, 'shot-draft: the page is told which shots were made');

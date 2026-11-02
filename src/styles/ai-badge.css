@@ -1,0 +1,28 @@
+/* ============================================================
+   THE "AI" BADGE — src/ui/ai-badge.js (a first-paint file: keep it small)
+   ------------------------------------------------------------
+   Tokens only; a fill is never a text colour, so the badge is --brand-deep
+   ink on --brand-wash (the brand as TEXT, measured AA in both palettes).
+   The shape comes from the skin (--sk-field-radius), never a typed radius.
+   ============================================================ */
+.ai-badge {
+  display: inline-block;
+  flex: none;
+  padding: 0 var(--s2);
+  font-family: var(--f-body);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  vertical-align: middle;
+  color: var(--brand-deep);
+  background: var(--brand-wash);
+  border-radius: var(--sk-field-radius, var(--radius));
+}
+.ai-badge.is-edited {
+  color: var(--ink-muted);
+  background: transparent;
+  box-shadow: inset 0 0 0 var(--sk-card-line-w, 1px) var(--border-subtle);
+}

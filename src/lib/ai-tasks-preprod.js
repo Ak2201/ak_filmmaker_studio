@@ -24,6 +24,7 @@
    ============================================================ */
 import { ai, resolve, call, fail, plural, remember, recall, refineText } from './ai-task-kit.js';
 import * as M from './ai-preprod-model.js';
+import Stamp from './ai-stamp.js';   // the history stamp (docs/AI-FAST-HARNESS.md B)
 
 let ScenesM = null, LocM = null, ContactsM = null, BudgetM = null, CostsM = null, LineIds = null,
   ScriptM = null, WA = null, Region = null, RatesIN = null, RatesUS = null;
@@ -88,8 +89,9 @@ const shootOrderTask = {
       res.note, cut(res.dropped, 'scene id'), truncated ? 'The reply was cut short, so some days may be missing.' : '');
     return remember('shoot-order', { items: res.items, note }, {});
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const sm = Stamp.metaOf('shoot-order', meta);
     const { moves, skipped } = M.planPlacements(selected, ScenesM.listScenes());
     const records = [];
     for (const m of moves) {
@@ -98,7 +100,19 @@ const shootOrderTask = {
       const order = LocM.orderedDayScenes(m.day, all).map((s) => s.id);
       if (scene && LocM.shootDayOf(scene) === m.day && order[m.index] === m.sceneId) continue;   // already there
       const rec = LocM.placeScene(m.sceneId, m.day, { index: m.index });
-      if (rec) records.push(rec);
+      if (rec) {
+        records.push(rec);
+        /* The history stamp. A placement that changes the scene's DAY
+           (`shootDay`, a field on the row) is stamped 'replace' — a day
+           also moves the day's order list, so History never undoes it
+           (the toast Undo is exact). One that only reorders the day's
+           ids lives in the locations blob's `order` list, which holds
+           ids, not records: it is NOT stamped (named in test:ai-history). */
+        if (rec.fromDay !== rec.toDay) {
+          const row = ScenesM.listScenes().find((s) => s.id === rec.sceneId);
+          if (row) ScenesM.updateScene(rec.sceneId, { aiFill: Stamp.stampFill('scene', row, sm, ['shootDay'], 'replace').aiFill });
+        }
+      }
     }
     if (!records.length) { call(c.say, sentence('Nothing needed to move.', skipped ? plural(skipped, 'scene was', 'scenes were') + ' skipped (shot, or on a day that has begun shooting).' : '')); return null; }
     call(c.say, sentence(plural(records.length, 'scene', 'scenes') + ' placed.',
@@ -106,7 +120,13 @@ const shootOrderTask = {
     call(c.after);
     return () => {
       let back = 0, stale = 0;
-      for (const r of records.slice().reverse()) { if (LocM.undoIsCurrent(r) && LocM.undoPlace(r)) back += 1; else stale += 1; }
+      for (const r of records.slice().reverse()) {
+        if (LocM.undoIsCurrent(r) && LocM.undoPlace(r)) {
+          back += 1;
+          const row = r.fromDay !== r.toDay ? ScenesM.listScenes().find((s) => s.id === r.sceneId) : null;
+          if (row) ScenesM.updateScene(r.sceneId, { aiFill: Stamp.unstampFill(row, sm.run).aiFill });   // the stamp goes with the move
+        } else stale += 1;
+      }
       call(c.say, sentence(plural(back, 'scene', 'scenes') + ' put back.',
         stale ? plural(stale, 'move', 'moves') + ' left as they are: the board has changed since.' : ''));
       call(c.after);
@@ -146,18 +166,32 @@ const recceTask = {
       cut(res.dropped, 'line'), truncated ? 'The reply was cut short, so some places may be missing.' : '');
     return remember('recce-notes', { items: res.items, note }, {});
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const sm = Stamp.metaOf('recce-notes', meta);
     const { writes, skipped } = M.planRecceWrites(selected, (n) => LocM.getRecce(n));
     if (!writes.length) { call(c.say, skipped ? plural(skipped, 'field was', 'fields were') + ' filled in since the run, so nothing was written.' : 'Nothing to write.'); return null; }
-    for (const w of writes) LocM.setRecce(w.name, w.patch);
+    for (const w of writes) {
+      LocM.setRecce(w.name, w.patch);
+      /* The history stamp: the blank fields this run filled, hashed as
+         they now stand (a second write for the stamp, same Accept). */
+      LocM.setRecce(w.name, { aiFill: Stamp.stampFill('recce', LocM.getRecce(w.name), sm, Object.keys(w.patch), 'fill').aiFill });
+    }
     const n = writes.reduce((a, w) => a + Object.keys(w.patch).length, 0);
     call(c.say, sentence(plural(n, 'recce field', 'recce fields') + ' filled across ' + plural(writes.length, 'place', 'places') + '.',
       skipped ? plural(skipped, 'field was', 'fields were') + ' filled in since the run and left as typed.' : ''));
     call(c.after);
     return () => {
+      /* A card with a field edited since keeps its stamp (it is still
+         partly the run's); a fully reverted one loses it. Read BEFORE
+         the blanking, while the fields still show what is there now. */
+      const intact = new Set(writes.filter((w) => {
+        const now = LocM.getRecce(w.name);
+        return Object.entries(w.patch).every(([k, v]) => String(now[k] || '') === v);
+      }).map((w) => w.name));
       const { blank, kept } = M.planRecceUndo(writes, (name) => LocM.getRecce(name));
       for (const b of blank) LocM.setRecce(b.name, b.patch);
+      for (const w of writes) if (intact.has(w.name)) LocM.setRecce(w.name, { aiFill: Stamp.unstampFill(LocM.getRecce(w.name), sm.run).aiFill });
       call(c.say, kept ? plural(kept, 'field was', 'fields were') + ' edited since and left as typed.' : 'The recce fields are blank again.');
       call(c.after);
     };
@@ -220,6 +254,14 @@ const budgetTask = {
       cut(res.dropped, 'line'), res.note, truncated ? 'The reply was cut short, so some lines may be missing.' : '');
     return remember('budget-estimate', { items: res.items, note }, {});
   },
+  /* NOT STAMPED — the one named exception to the history stamp
+     (docs/AI-FAST-HARNESS.md B3). A budget row is four flat `ci_<n>_*`
+     strings in the estimator's blob, and src/ui/budget.js saveCalc()
+     REBUILDS that blob from the page's data-key inputs on every keystroke,
+     so a fifth key (`ci_<n>_ai`) would be dropped by the first edit. A
+     stamp that vanishes on its own is worse than none. The Desk's own
+     Undo toast still takes the rows out exactly. test:ai-history names
+     this exception. */
   apply(selected, ctx) {
     const c = resolve(ctx);
     const data = safeCalc();
@@ -287,14 +329,19 @@ const callsheetTask = {
       + (res.unitMessage ? 'Unit message to copy (not stored): ' + res.unitMessage : '');
     return remember('callsheet-notes', { original: '', proposed: res.notes, note, unit: res.unitMessage }, { sheetId: c.sheetId, unit: res.unitMessage });
   },
-  apply(selected, ctx, result) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const sm = Stamp.metaOf('callsheet-notes', meta);
     const mem = recall('callsheet-notes', result) || { sheetId: c.sheetId, unit: '' };
     const sheet = sheetNow(mem.sheetId);
     if (!sheet) fail('That call sheet has been deleted. Nothing was changed.');
     const w = M.callsheetWrite(selected, sheet.notes);
     if (!w.write) { call(c.say, w.why === 'filled' ? 'Notes were written on the sheet since the run, so nothing was changed.' : 'Nothing to write.'); return null; }
     ContactsM.updateCallSheet(mem.sheetId, { notes: w.write });
+    {   // the history stamp: the notes box was blank, the run filled it
+      const wrote = sheetNow(mem.sheetId);
+      if (wrote) ContactsM.updateCallSheet(mem.sheetId, { aiFill: Stamp.stampFill('callsheet', wrote, sm, ['notes'], 'fill').aiFill });
+    }
     call(c.say, 'Notes added to the call sheet.');
     if (mem.unit) call(c.offerUnit, mem.unit);
     call(c.after);
@@ -302,7 +349,7 @@ const callsheetTask = {
       const now = sheetNow(mem.sheetId);
       if (!now) { call(c.say, 'That call sheet has been deleted. Nothing to undo.'); return; }
       if (!M.callsheetUndo(w.write, now.notes)) { call(c.say, 'The notes were edited since and are left as they are.'); return; }
-      ContactsM.updateCallSheet(mem.sheetId, { notes: '' });
+      ContactsM.updateCallSheet(mem.sheetId, { notes: '', aiFill: Stamp.unstampFill(now, sm.run).aiFill });
       call(c.say, 'The notes are blank again.');
       call(c.after);
     };

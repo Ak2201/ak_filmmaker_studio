@@ -125,6 +125,18 @@ await Tasks.registerAll((t) => reg.set(t.id, t));
   undo();
   eq([doc.elements[2].text, doc.elements[2].alts], ['The bus is late again, like every single day.', ['Mine, typed.']], 'dialogue: Undo restores the line and removes exactly the added takes');
   ok(!('aiPass' in doc.elements[2]), 'dialogue: Undo removes the pass mark');
+  // Typed into the same speech after Accept: Undo keeps the words (QA r1 K-1).
+  const r2 = await t.run(t.input(ctx), { ctx });
+  const said = [];
+  const ctx2 = { ...ctx, say: (m) => said.push(m) };
+  const undo2 = t.apply(r2.proposed, ctx2, r2);
+  doc.elements[2].text += ' LATER';
+  undo2();
+  eq(doc.elements[2].text, 'The bus is late. LATER', 'dialogue: Undo after a later edit keeps the edited speech');
+  eq(doc.elements[2].alts, ['Mine, typed.'], 'dialogue: Undo after a later edit still removes the added takes');
+  ok(said.length === 1 && /edited since/.test(said[0]), 'dialogue: Undo after a later edit says so', said);
+  doc.elements[2].text = 'The bus is late again, like every single day.';
+  delete doc.elements[2].aiPass;
   undoFetch();
 }
 

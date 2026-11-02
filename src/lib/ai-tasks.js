@@ -466,11 +466,24 @@ const dialogueTask = {
     return () => {
       const now = (d.elements || []).find((e) => String(e.id) === String(mem.elId));
       if (!now) return;
-      if (changed) {
+      /* Undo restores only what Accept wrote (the same rule Accept
+         keeps against Run): if the writer has typed in this speech
+         since, putting `before.text` back would delete those words.
+         The speech is left as it is then; the takes Accept added are
+         still taken out, because removeTakes() removes exactly those. */
+      const edited = changed && String(now.text ?? '') !== String(text);
+      if (changed && !edited) {
         now.text = before.text;
         if (before.aiPass) now.aiPass = before.aiPass; else delete now.aiPass;
       }
       W.removeTakes(now, added);
+      if (edited) {
+        if (!added.length) {
+          call(c.say, 'This speech was edited since the pass, so it is left as it is. Nothing was undone.');
+          return false;
+        }
+        call(c.say, 'This speech was edited since the pass, so its words are left as they are. The alternate takes the pass added are removed.');
+      }
       call(c.save);
       call(c.render, now.id);
     };

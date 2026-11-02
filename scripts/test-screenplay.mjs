@@ -235,6 +235,12 @@ eq(wide.setdressing.map((x) => x.name), ['sofa'], 'set dressing is its own categ
 eq(wide.wardrobe.map((x) => x.name), ['saree'], 'wardrobe is suggested');
 eq(wide.makeup.map((x) => x.name), ['blood'], 'makeup is suggested');
 eq(wide.special.map((x) => x.name), ['drone'], 'special equipment is suggested');
+{
+  const r = A.suggestElements({ elements: {} }, { elements: [el('action', 'Rain. An explosion lights the road.')] });
+  eq(r.sound.map((x) => x.name), [], 'lower-case rain / explosion are not ALSO a sound suggestion (QA r1)');
+  eq(r.sfx.map((x) => x.name).sort(), ['explosion', 'rain'], 'rain and explosion are SFX');
+  eq(A.suggestElements({ elements: {} }, { elements: [el('action', 'An EXPLOSION.')] }).sound.map((x) => x.name), ['explosion'], 'a capitalised EXPLOSION is still a sound cue');
+}
 eq(A.suggestElements({ elements: {} }, { elements: [el('action', 'He wears a scarf and runs a business.')] }).vehicles, [], 'whole words only: scarf is not car, business is not bus');
 eq(A.suggestElements({ elements: {} }, { elements: [el('character', "RAGAVAN'S FATHER")] }).cast.map((x) => x.name), ["Ragavan's Father"], 'a cue with a possessive is title-cased without a capital after the apostrophe');
 {

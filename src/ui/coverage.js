@@ -393,7 +393,9 @@ function commitRow(id, el) {
   if (ta) { el.text = ta.value; ta.dispatchEvent(new Event('input', { bubbles: true })); }
   else save();
 }
-export function addTake(id, text) {
+/* `ai` is a run's stamper (src/lib/ai-stamp.js stamper()), handed in by the
+   voice-check task, so this tab imports no stamp code of its own. */
+export function addTake(id, text, ai) {
   const d = getDoc();
   const el = d && Array.isArray(d.elements) ? d.elements.find((e) => String(e.id) === String(id)) : null;
   if (!el || el.type !== 'dialogue') return 'gone';
@@ -401,10 +403,11 @@ export function addTake(id, text) {
   if (takes.includes(text) || el.text === text) return 'dup';
   takes.push(text);
   el.alts = takes;
+  if (ai) el.aiFill = ai.fill('element', el, ['alts'], 'append').aiFill;   // the take is an APPEND on the line
   commitRow(id, el);
   return 'ok';
 }
-export function removeTake(id, text) {
+export function removeTake(id, text, ai) {
   const d = getDoc();
   const el = d && Array.isArray(d.elements) ? d.elements.find((e) => String(e.id) === String(id)) : null;
   if (!el) return;
@@ -413,6 +416,7 @@ export function removeTake(id, text) {
   if (k < 0) return;
   takes.splice(k, 1);
   if (takes.length) el.alts = takes; else delete el.alts;
+  if (ai) { const n = ai.drop(el); if (n !== el) { if (n.aiFill) el.aiFill = n.aiFill; else delete el.aiFill; } }
   commitRow(id, el);
 }
 

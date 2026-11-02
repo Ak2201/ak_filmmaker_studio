@@ -63,6 +63,7 @@ import {
   loadStory, stepsByScene, stepColor, linkStates, reconcileStepScenes, resolveStepScene, restoreStepScene, resolveBeatKey
 } from '../lib/story.js';
 import '../styles/beat-color.css';   // a beat step's colour on its scene (owner, 24 Oct 2026)
+import { aiBadge } from '../ui/ai-badge.js';   // the AI history badge
 import { renderScreenTime, renderCastMatrix, wireScriptReports } from '../ui/script-reports.js';   // moved from reports.html (1 Nov 2026)
 
 const app = document.getElementById('app');
@@ -382,6 +383,7 @@ function renderScene(scene, i, total) {
         'data-scene-field': 'location', 'aria-label': 'Scene location'
       }),
       h('span.bd-sl-syn', { text: scene.synopsis || 'No synopsis yet' }),
+      aiBadge(scene, 'scene'),   // null for a scene no AI run wrote (h() skips it)
       beatTag(scene),
       sceneSyncNote(scene),
       notesPin({ sceneId: scene.id, label: 'scene ' + (scene.number || i + 1) })
@@ -529,7 +531,7 @@ function renderSceneCard(scene, i) {
     h('p.bd-card-syn' + (scene.synopsis ? '' : '.is-none'), { text: scene.synopsis || 'No synopsis yet' }),
     /* Either may be null, and the NATIVE append prints null as the
        text "null" (h() skips it; Element.append does not). */
-    ...[beatTag(scene), sceneSyncNote(scene)].filter(Boolean),
+    ...[aiBadge(scene, 'scene'), beatTag(scene), sceneSyncNote(scene)].filter(Boolean),
     h('div.bd-card-foot', {}, [
       h('span.bd-card-cast' + (cast ? '' : '.is-none'), { text: cast || 'No cast tagged', title: (scene.elements.cast || []).join(', ') || 'No cast tagged yet' }),
       badge({ label: status.label, tone: STATUS_TONE[status.id], dot: true, class: 'bd-sl-status is-' + status.id })

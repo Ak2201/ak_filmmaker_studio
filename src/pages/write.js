@@ -2498,9 +2498,17 @@ async function breakIntoShots() {
 
     // 4. Append. Nothing a person wrote is touched or renumbered.
     const made = [];
+    /* The history stamp, loaded here (an AI draft is the only caller): one run
+       for the whole division. Not a static import: it is not first paint. */
+    const Stamp = byAI ? await import('../lib/ai-stamp.js') : null;
+    const stampMeta = byAI ? Stamp.aiMeta('shot-draft', result.model) : null;
     for (const [sceneId, list] of result.byScene) {
       for (const draft of list) {
-        made.push(Shots.addShot(sceneId, byAI ? { ...draft, ai: true } : { ...draft, rules: true }).id);
+        if (!byAI) { made.push(Shots.addShot(sceneId, { ...draft, rules: true }).id); continue; }
+        /* The stamp replaces `ai: true`, built on the full shot so its hash
+           is of the fields as the Shot List reads them. */
+        const { sceneId: _s, number: _n, ...stamped } = Stamp.stampAI('shot', Shots.blankShot(draft), stampMeta);
+        made.push(Shots.addShot(sceneId, stamped).id);
       }
     }
     decorateShotCounts();

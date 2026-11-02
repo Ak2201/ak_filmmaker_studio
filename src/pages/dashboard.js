@@ -522,6 +522,37 @@ delegate(document, 'click', '[data-action="db-whatsnew"]', (e, el) => {
    ============================================================ */
 
 
+/* AI IN THIS FILM (docs/AI-FAST-HARNESS.md B6b): the project's one place for
+   what AI drafted, a CLOSED disclosure beside the others, so the dashboard
+   stays one screen and the page gains no first-paint weight. The id renders
+   in every state (with no film, or no AI yet, opening it says so). Its body
+   is built at the first open by a dynamic import of ai-history-view.js,
+   which reads the stamps and writes nothing. */
+function renderAI(project) {
+  const body = h('div.db-ai-body', {}, project ? [] : [h('p.aih-empty', { text: 'Nothing in this film was drafted by AI yet.' })]);
+  const d = h('details.db-more.db-ai', { id: 'ai', 'data-more': 'ai' }, [
+    h('summary.db-more-sum', {}, [h('span', { text: 'AI in this film' }), h('span.sym', { 'aria-hidden': 'true', text: 'expand_more' })]),
+    body
+  ]);
+  /* revealTarget() opens a closed disclosure AROUND a target, not one that
+     is itself the target, so dashboard.html#ai opens its own here. */
+  if (typeof location !== 'undefined' && location.hash === '#ai') d.open = true;
+  let handle = null;
+  d.addEventListener('toggle', () => {
+    if (!d.open || !project) return;
+    if (handle) { handle.refresh(); return; }
+    import('../ui/ai-history-view.js').then((m) => { handle = m.mountHistory(body, { filters: true }); });
+  });
+  return d;
+}
+
+/* …and when the hash BECOMES #ai on a page that is already drawn. */
+window.addEventListener('hashchange', () => {
+  if (location.hash !== '#ai') return;
+  const d = document.getElementById('ai');
+  if (d && d.tagName === 'DETAILS') d.open = true;
+});
+
 const OPEN_MORE = new Set();
 function render() {
   const project = Store.currentProject();
@@ -542,7 +573,8 @@ function render() {
       /* The id, even here: a link into #readiness followed with no
          project open must land on the section that says why it is
          empty, not on nothing. */
-      renderReadiness()
+      renderReadiness(),
+      renderAI(null)
     );
   } else {
     const snap = snapshot(project);
@@ -568,7 +600,7 @@ function render() {
       h('summary.db-more-sum', {}, [h('span', { text: 'Project details and title page' }), h('span.sym', { 'aria-hidden': 'true', text: 'expand_more' })]),
       renderTitlePage(project)
     ]);
-    main.append(hero, ...[renderStats(snap)].filter(Boolean), renderReadiness(), tools, details, ...[renderMemberRow()].filter(Boolean));
+    main.append(hero, ...[renderStats(snap)].filter(Boolean), renderReadiness(), tools, renderAI(project), details, ...[renderMemberRow()].filter(Boolean));
   }
 
   /* A disclosure the reader opened stays open across a re-render (in

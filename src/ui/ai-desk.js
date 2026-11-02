@@ -323,6 +323,7 @@ function publishWidth() {
 /* ---- rendering ------------------------------------------------- */
 function header() {
   return h('header.ai-desk-head', {}, [
+    historyButton(),
     h('div.ai-desk-headtext', {}, [
       h('h2#ai-desk-title.ai-desk-title', { text: task ? task.label : 'AI' }),
       h('p.ai-desk-model', { text: modelText() })
@@ -466,6 +467,7 @@ function refreshAnswer() {
 
 function render() {
   if (!desk) return;
+  if (historyOpen) return showHistory();
   const keepScroll = body.scrollTop;
   foot.replaceChildren();
   if (mode === 'nokey') {
@@ -881,6 +883,7 @@ function wire() {
 
   document.addEventListener('keydown', onDocKey);
   window.addEventListener('resize', onResize);
+  delegate(desk, 'click', '[data-action="ai-desk-history"]', () => toggleHistory());
 }
 
 export async function openDesk(taskId, ctxArg = {}) {
@@ -988,3 +991,41 @@ export function closeDesk() {
 }
 
 export default { registerTask, getTask, listTasks, openDesk, closeDesk };
+
+/* ==== HISTORY TAB (Lane B) ====================================
+   docs/AI-FAST-HARNESS.md B6(a): the project's AI-made items grouped by
+   run, in the Desk. Reads only; opening it writes nothing. The list is
+   src/ui/ai-history-view.js (lazy), drawn into this body. It shows for
+   as long as the task and ctx the Desk was on when it was opened are
+   still the ones on show: pressing a pill (a new task, a new ctx) lands
+   on that task, not on a stale History. */
+import('../styles/ai-history.css');
+let historyOpen = false;
+let histTask = null;
+let histCtx = null;
+
+function historyButton() {
+  return h('button.btn.ai-desk-histbtn', {
+    type: 'button', 'data-action': 'ai-desk-history', 'aria-pressed': String(historyOpen),
+    title: 'What AI has drafted in this film', text: 'History'
+  });
+}
+
+function toggleHistory() {
+  historyOpen = !historyOpen;
+  histTask = task;
+  histCtx = ctx;
+  render();
+  const b = desk && desk.querySelector('.ai-desk-histbtn');
+  if (b) b.focus();
+}
+
+function showHistory() {
+  if (task !== histTask || ctx !== histCtx) { historyOpen = false; render(); return; }
+  const host = h('section.ai-desk-sec.ai-desk-history', { 'aria-label': 'AI history' });
+  body.replaceChildren(header(), host);
+  foot.replaceChildren();
+  import('./ai-history-view.js').then((m) => m.mountHistory(host, { compact: true }));
+}
+
+window.addEventListener('ai-desk:closed', () => { historyOpen = false; });

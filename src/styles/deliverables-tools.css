@@ -70,6 +70,13 @@
   color: var(--accent-deep);
   text-underline-offset: 3px;
 }
+/* base.css floors touch targets at 44px under (pointer: coarse), but
+   only for a.btn and buttons -- a bare link is not on its list. The
+   four longer tool links wrapped to two lines and looked fine at 43px;
+   the one-line "certification" link was 22px. Floor them all here. */
+@media (pointer: coarse) {
+  .dv-tool { display: inline-flex; align-items: center; min-height: 44px; }
+}
 
 /* ---- sources ------------------------------------------------ */
 .dv-src {

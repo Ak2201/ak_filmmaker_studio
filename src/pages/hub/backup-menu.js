@@ -132,7 +132,13 @@ function handleImportAll(e) {
   const r = new FileReader();
   r.onload = async (ev) => {
     try {
-      const all = JSON.parse(ev.target.result);
+      /* A file that is not JSON at all gets the same plain sentence
+         as the other "not a backup" paths, never the parser's own
+         "Expected property name … at position 1", which means nothing
+         to the person holding the file. Nothing has been written yet. */
+      let all;
+      try { all = JSON.parse(ev.target.result); }
+      catch (_) { await tell('That file could not be read as a studio backup. Nothing was imported.'); return; }
       if (!backupShape(all).looksOurs) {
         if (!await ask('This file does not look like a Studio backup. Try anyway?')) return;
       }

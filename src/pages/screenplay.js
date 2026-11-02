@@ -48,7 +48,7 @@ import { writeHintsOn, setWriteHints } from '../lib/write-prefs.js';
 import { createSmartType } from '../ui/smarttype.js';
 import WriteKeys from '../ui/write-shortcuts.js';
 import { mountTypewriter } from '../ui/script-editor/typewriter.js';
-import { readTypewriter, saveTypewriter, readMacrosPref } from '../lib/chrome-prefs.js';
+import { readTypewriter, saveTypewriter, readMacrosPref, readFitPage, saveFitPage } from '../lib/chrome-prefs.js';
 import { mountReadAloud, readAloudSupported } from '../ui/read-aloud.js';
 import { dictationSupported } from '../lib/dictation-model.js';
 import '../styles/smarttype.css';
@@ -435,6 +435,12 @@ let Typeset = null;         // the typesetter, once loaded (page breaks)
 let pagedNow = null;        // { index, labels } of the last page pass, for the caret strip (applyBreaks)
 let breaksIdle = 0;         // the idle slot the next page pass waits for
 let split = null;           // src/ui/script-split.js, mounted on first use (view state, memory only)
+/* REVISION MODE (src/lib/script-production.js): loaded only once the
+   script is held (locked with a baseline draft), so an unlocked script's
+   page never fetches the diff. */
+let Prod = null;
+const prodLib = () => import('../lib/script-production.js');
+const fitLib = () => import('../lib/fit-page.js');
 
 const editor = mountEditor(document, {
   getDoc: () => doc,
@@ -655,6 +661,9 @@ const FILE_ITEMS = [
   { label: 'Lock or review the script', action: 'sc-lock', icon: 'lock' },
   { label: 'Unlock the script…', action: 'sc-unlock', icon: 'lock_open' },
   { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy', icon: 'picture_as_pdf' },
+  { label: 'Export PDF on revision colour', action: 'sc-pdf-tint', hint: 'locked script', icon: 'palette' },
+  { label: 'Fit to page…', action: 'sc-fit', hint: 'cheat margins', icon: 'density_small' },
+  { label: 'Reports', action: 'sc-reports', hint: 'scenes, locations, cast', icon: 'assessment' },
   { label: 'Export Word (.docx)', action: 'sc-docx', hint: 'to edit in Word', icon: 'description' },
   { label: 'Export Final Draft (.fdx)', action: 'sc-fdx', hint: 'US Letter, opens in Final Draft', icon: 'description' },
   { label: 'Export Fountain (.fountain)', action: 'sc-fountain', hint: 'plain text, any app', icon: 'description' },
@@ -1464,9 +1473,41 @@ function applyBreaks() {
     }
   }
 
+  paintRevisionMarks(page);
+
   pagedNow = { index: Typeset.pageIndex(pages), labels };
   page.dataset.pages = String(pages.length);
   refreshPos(false);
+}
+
+/* REVISION MODE ON THE PAGE. While the script is held, every line that
+   differs from the locked draft carries an asterisk in the right margin,
+   in the current revision colour (the swatch is a data attribute;
+   screenplay.css maps it to a token). Derived on the same idle pass as
+   the page breaks, written as attributes only on a change, never stored
+   — the PDF's asterisks come from the same revisionMarks(). A dual
+   block is marked once, on the block, since its two halves share a
+   margin. */
+function paintRevisionMarks(page) {
+  const held = isHeld(doc.numbering);
+  if (held && !Prod) {
+    prodLib().then((m) => { Prod = m; applyBreaksIdle(); }).catch(() => {});
+  }
+  const marks = held && Prod ? Prod.revisionMarks(doc) : null;
+  const ids = marks ? marks.ids : null;
+  const swatch = marks ? marks.colour.swatch : '';
+  setData(page, 'revision', marks && ids.size ? marks.colour.name : '');
+  for (const row of editor.allRows()) {
+    const dual = row.closest('.wr-dual');
+    const on = !!ids && ids.has(row.dataset.el);
+    const star = deco(row, 'sc-revmark', on && !dual);
+    if (star) { setData(star, 'text', on && !dual ? '*' : ''); setData(star, 'swatch', on && !dual ? swatch : ''); }
+    if (dual) {
+      const any = !!ids && [...dual.querySelectorAll('[data-el]')].some((r) => ids.has(r.dataset.el));
+      dual.classList.toggle('sc-dual-rev', any);
+      setData(dual, 'swatch', any ? swatch : '');
+    }
+  }
 }
 
 /* ---- the line menu: a ⋯ on the focused line, and right-click ---- */
@@ -1670,23 +1711,43 @@ delegate(document, 'click', '[data-action="sc-check"]', () => {
   else say('The format check is not available here.');
 });
 
-async function exportPDF() {
+/* The PDF. A LOCKED script is a shooting script: its scene numbers
+   (12A included) print in both margins. A HELD one is in revision mode:
+   every line changed since the locked draft carries its asterisk and
+   each revised page is headed with the colour and the date
+   (script-production.js revisionMarks); `tint` prints those pages on
+   the colour too. `cheat` is the fit-to-page setting (fit-page.js) —
+   the stored one unless a preview passes its own. */
+async function exportPDF(opts = {}) {
   if (isBlankScript(doc.elements)) { say('Nothing to export yet — write a line first.'); return; }
   const main = document.getElementById('main');
   if (!main) return;
-  let T;
-  try { T = await typesetter(); }
+  let T, Fit;
+  try { [T, Fit] = await Promise.all([typesetter(), fitLib()]); }
   catch (e) { say('The typesetter could not be loaded. Check the connection and try again.'); return; }
+  let marks = null;
+  if (isHeld(doc.numbering)) {
+    try {
+      Prod = Prod || await prodLib();
+      const m = Prod.revisionMarks(doc);
+      if (m && m.ids.size) marks = { ids: m.ids, label: m.header, swatch: m.colour.swatch, tint: opts.tint === true };
+    } catch (e) { console.warn('[script] revision marks', e); }
+  }
+  const numbered = isNumberingLocked(doc.numbering);
+  const cheat = Fit.normaliseCheat(opts.cheat !== undefined ? opts.cheat : readFitPage(currentProjectId()));
+  const g = Fit.cheatGeometry(cheat, T.BODY_LINES);
   let node = null;
   const iso = new Date().toISOString();
   PDF.exportPDF({
     scope: 'screenplay',
+    ...(numbered || marks ? { setup: 'screenplay-wide', classes: marks ? ['pdf-sn', 'pdf-revmarks'] : ['pdf-sn'] } : {}),
+    ...(g.lines ? { cheatMm: g.marginMm } : {}),
     title: Script.projectTitle() + ' — Screenplay',
     subtitle: pdfSubtitle(doc),
     before: () => {
       node = T.buildDocument(doc, {
-        title: Script.projectTitle(), revision: '', subtitle: iso.slice(0, 10), date: iso.slice(0, 10), sceneNumbers: false,
-        autoContd: autoContdOn()
+        title: Script.projectTitle(), revision: '', subtitle: iso.slice(0, 10), date: iso.slice(0, 10), sceneNumbers: numbered,
+        autoContd: autoContdOn(), marks, cheat
       });
       main.append(node);
     },
@@ -1694,6 +1755,35 @@ async function exportPDF() {
   });
 }
 delegate(document, 'click', '[data-action="sc-pdf"]', () => { exportPDF(); });
+delegate(document, 'click', '[data-action="sc-pdf-tint"]', () => {
+  if (!isHeld(doc.numbering)) {
+    tell({ eyebrow: 'Revision colours', icon: 'palette', title: 'Lock the script first',
+      body: 'Revision pages print on their colour once the script is locked. Lock the script, and every change after that is marked with an asterisk on a coloured page.' });
+    return;
+  }
+  exportPDF({ tint: true });
+});
+/* Fit to page and the reports: src/ui/script-production-ui.js, loaded at
+   the press. The fit choice is an export setting in the device prefs
+   (chrome-prefs.js fitPage), per project; it never touches the text. */
+const prodUi = () => import('../ui/script-production-ui.js');
+delegate(document, 'click', '[data-action="sc-fit"]', async (e, btn) => {
+  if (isBlankScript(doc.elements)) { say('Nothing to fit yet — write a line first.'); return; }
+  try {
+    (await prodUi()).openFitPage({
+      getDoc: () => doc, returnTo: btn,
+      current: readFitPage(currentProjectId()),
+      save: (n) => { saveFitPage(currentProjectId(), n); },
+      preview: (n) => exportPDF({ cheat: n }),
+      say
+    });
+  } catch (err) { console.warn('[script] fit', err); say('Fit to page could not open. Check the connection and try again.'); }
+});
+delegate(document, 'click', '[data-action="sc-reports"]', async (e, btn) => {
+  if (isBlankScript(doc.elements)) { say('No reports yet — write a scene first.'); return; }
+  try { (await prodUi()).openReports({ getDoc: () => doc, returnTo: btn, autoContd: autoContdOn(), say }); }
+  catch (err) { console.warn('[script] reports', err); say('The reports could not open. Check the connection and try again.'); }
+});
 
 /* Word: a file someone without the studio can open and edit, each
    element in its named screenplay style (src/lib/screenplay-docx.js).

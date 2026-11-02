@@ -442,6 +442,37 @@
   /* A phone's margins are a few pixels: no scene numbers in them. */
   .sc-sheet .sc-sno { display: none; }
 }
+/* REVISION MODE: the asterisk beside a line changed since the locked
+   draft, out past the right-hand scene number, in the current revision
+   colour (data-swatch, set by the page pass; a text-safe -deep token per
+   colour, since a revision's paper colour is a wash and no ink). A dual
+   block is marked once, on the block. */
+.sc-sheet .sc-revmark,
+.sc-sheet .wr-dual.sc-dual-rev::after { right: -5em; font-weight: 700; color: var(--ink); }
+.sc-sheet .wr-dual.sc-dual-rev { position: relative; }
+.sc-sheet .wr-dual.sc-dual-rev::after {
+  content: '*';
+  position: absolute;
+  top: 0;
+  font-family: var(--f-script);
+  line-height: 1;
+  pointer-events: none;
+}
+.sc-sheet :is(.sc-revmark, .sc-dual-rev)[data-swatch="blue"]      { --rev-mark: var(--shorts-deep); }
+.sc-sheet :is(.sc-revmark, .sc-dual-rev)[data-swatch="pink"]      { --rev-mark: var(--shoot-deep); }
+.sc-sheet :is(.sc-revmark, .sc-dual-rev)[data-swatch="yellow"]    { --rev-mark: var(--warn-deep); }
+.sc-sheet :is(.sc-revmark, .sc-dual-rev)[data-swatch="green"]     { --rev-mark: var(--ok-deep); }
+.sc-sheet :is(.sc-revmark, .sc-dual-rev)[data-swatch="goldenrod"] { --rev-mark: var(--library-deep); }
+.sc-sheet :is(.sc-revmark, .sc-dual-rev)[data-swatch="salmon"]    { --rev-mark: var(--feature-deep); }
+.sc-sheet :is(.sc-revmark, .sc-dual-rev)[data-swatch="cherry"]    { --rev-mark: var(--danger-deep); }
+.sc-sheet .sc-revmark,
+.sc-sheet .wr-dual.sc-dual-rev::after { color: var(--rev-mark, var(--ink)); }
+@media (max-width: 719px) {
+  /* A phone's margin is a few pixels: the asterisk sits just inside the
+     page's edge instead of past it. */
+  .sc-sheet .sc-revmark,
+  .sc-sheet .wr-dual.sc-dual-rev::after { right: -0.6em; }
+}
 @media print { .sc-sheet .sc-deco { display: none; } }
 
 /* ============================================================

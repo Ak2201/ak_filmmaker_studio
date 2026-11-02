@@ -133,8 +133,29 @@ export const saveMacrosPref = (list) => updateDevicePrefs({ macros: Array.isArra
 export const readReadAloudPref = () => readDevicePrefs().readAloud;
 export const saveReadAloudPref = (obj) => updateDevicePrefs({ readAloud: obj && typeof obj === 'object' ? obj : undefined });
 
+/* ---- fit to page (the Screenplay Writer's "cheat") ----------------
+   `fitPage: { <projectId>: n }` inside the same device blob: how many
+   extra lines a page the PDF may fit by nudging the margins and the
+   leading (src/lib/fit-page.js, 0..4). An export setting for this
+   device, never part of the script, and written on a click only. Read
+   back clamped; anything odd reads as 0 (no cheat). */
+const FIT_MAX = 4;
+export function readFitPage(pid) {
+  const v = readDevicePrefs().fitPage;
+  const n = v && typeof v === 'object' && !Array.isArray(v) ? Math.floor(Number(v[String(pid || '')])) : 0;
+  return Number.isFinite(n) ? Math.max(0, Math.min(FIT_MAX, n)) : 0;
+}
+export function saveFitPage(pid, lines) {
+  const cur = readDevicePrefs().fitPage;
+  const map = cur && typeof cur === 'object' && !Array.isArray(cur) ? { ...cur } : {};
+  const n = Math.max(0, Math.min(FIT_MAX, Math.floor(Number(lines) || 0)));
+  if (n) map[String(pid || '')] = n; else delete map[String(pid || '')];
+  return updateDevicePrefs({ fitPage: Object.keys(map).length ? map : undefined });
+}
+
 export default {
   readDictation, saveDictation, readMacrosPref, saveMacrosPref, readReadAloudPref, saveReadAloudPref,
+  readFitPage, saveFitPage,
   autoContdOn, saveAutoContd,
   readDevicePrefs, updateDevicePrefs, motionReduced, saveMotionPref, brandingPrefOff, saveBrandingOff, touchThemePref, tourActive, tourResumable,
   readShotView, saveShotView, readBeatView, saveBeatView, readTypewriter, saveTypewriter

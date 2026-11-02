@@ -281,6 +281,14 @@ export function paginate(elements, opts = {}) {
   const els = elements || [];
   const nums = opts && opts.numbers;
   const autoSet = opts && opts.autoContd === true ? autoContdIndices(els) : null;
+  /* `opts.bodyLines`: the lines a page body holds, when a print "cheats"
+     the margins or the spacing to fit (src/lib/fit-page.js). Clamped to
+     a few lines either side of the format, so a bad value can never
+     produce a page that runs off the sheet or a one-line page. Absent:
+     BODY_LINES, exactly as before. */
+  const BODY = Number.isInteger(opts && opts.bodyLines)
+    ? Math.max(BODY_LINES - 4, Math.min(BODY_LINES + 4, opts.bodyLines))
+    : BODY_LINES;
   /* LOCKED PAGES: a page starts before each of these element ids, as it
      did the day the pages were locked (pageNumbersDoc below numbers
      them). Material added since then overflows into A-pages instead of
@@ -321,7 +329,7 @@ export function paginate(elements, opts = {}) {
     speaker = '';
     const row = { type: 'scene', omitted: true, id: null, lines: ['OMITTED'], sceneNo: String(number) };
     const gap = page.length ? GEOMETRY.scene.blankBefore : 0;
-    if (used + gap + 1 + 1 <= BODY_LINES) { place({ ...row, blankBefore: gap }, gap + 1); return; }
+    if (used + gap + 1 + 1 <= BODY) { place({ ...row, blankBefore: gap }, gap + 1); return; }
     flush();
     place({ ...row, blankBefore: 0 }, 1);
   };
@@ -348,9 +356,9 @@ export function paginate(elements, opts = {}) {
     const pair = pairs && pairs.get(idx);
     if (pair) {
       const block = dualBlock(els, pair);
-      if (block && block.height <= BODY_LINES) {
+      if (block && block.height <= BODY) {
         speaker = '';
-        if (page.length && used + 1 + block.height > BODY_LINES) flush();
+        if (page.length && used + 1 + block.height > BODY) flush();
         const gap = page.length ? 1 : 0;
         place({ type: 'dual', id: els[pair.left[0]].id, ids: block.ids, cols: block.cols,
           lines: block.lines, blankBefore: gap }, gap + block.height);
@@ -392,7 +400,7 @@ export function paginate(elements, opts = {}) {
        act, and nothing can overflow. */
     const reserve = (type === 'scene' || type === 'character' || type === 'shot') ? 1 : 0;
 
-    if (used + need + reserve <= BODY_LINES) {
+    if (used + need + reserve <= BODY) {
       place({ type, lines, blankBefore: gap, id, ...extra }, need);
       if (breakAfter && breakAfter.has(id)) pendingBreak = true;
       continue;
@@ -407,7 +415,7 @@ export function paginate(elements, opts = {}) {
        A block longer than a whole page goes through the splitter
        whatever its type, because the alternative is a page that
        silently runs off the bottom of the sheet. */
-    const splittable = type === 'dialogue' || type === 'action' || lines.length > BODY_LINES;
+    const splittable = type === 'dialogue' || type === 'action' || lines.length > BODY;
     if (splittable) {
       const speech = type === 'dialogue';
       let rest = lines;
@@ -419,14 +427,14 @@ export function paginate(elements, opts = {}) {
          page resets `used` to 0, which makes `room` the full body
          and the next turn places. */
       for (;;) {
-        if (used + lead + rest.length <= BODY_LINES) {
+        if (used + lead + rest.length <= BODY) {
           place({ type, lines: rest, blankBefore: lead, id, ...(piece ? { cont: true } : extra) }, lead + rest.length);
           break;
         }
         // One line held back for the (MORE) that goes under a
         // broken speech. Not counting it is how a page comes out
         // one line too tall and the browser adds a blank sheet.
-        const room = BODY_LINES - used - lead - (speech ? 1 : 0);
+        const room = BODY - used - lead - (speech ? 1 : 0);
         if (room < MIN_SPLIT || rest.length - room < MIN_SPLIT) { flush(); lead = 0; continue; }
 
         place({ type, lines: rest.slice(0, room), blankBefore: lead, id, ...(piece ? { cont: true } : extra) }, lead + room);

@@ -968,6 +968,16 @@ body.wr-dropping .bd-empty {
 
   body.pdf-screenplay .wr-pr-gap2 { margin-top: 24pt; }
   body.pdf-screenplay .wr-pr-tight { margin-top: 0; }
+  /* FIT TO PAGE (src/lib/fit-page.js): the paginator was told a page
+     holds a line or more extra; the margins pdf.js shaved make room for
+     up to three, and this leading for the one more. Every vertical step
+     of the format is a multiple of the line, so all of them scale
+     together and a cheated page still adds up exactly. */
+  body.pdf-screenplay .wr-print.wr-cheat { line-height: var(--wr-cheat-lh, 1); }
+  body.pdf-screenplay .wr-cheat .wr-pg-num { line-height: var(--wr-cheat-lh, 1); height: calc(24pt * var(--wr-cheat-lh, 1)); }
+  body.pdf-screenplay .wr-cheat .wr-pr + .wr-pr { margin-top: calc(12pt * var(--wr-cheat-lh, 1)); }
+  body.pdf-screenplay .wr-cheat .wr-pr.wr-pr-gap2 { margin-top: calc(24pt * var(--wr-cheat-lh, 1)); }
+  body.pdf-screenplay .wr-cheat .wr-pr.wr-pr-tight { margin-top: 0; }
   body.pdf-screenplay .wr-pr-more {
     margin-top: 0;
     margin-left: 16ch;

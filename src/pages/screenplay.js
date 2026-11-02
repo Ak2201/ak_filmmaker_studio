@@ -47,6 +47,8 @@ import Keys from '../lib/write-keys.js';
 import { writeHintsOn, setWriteHints } from '../lib/write-prefs.js';
 import { createSmartType } from '../ui/smarttype.js';
 import WriteKeys from '../ui/write-shortcuts.js';
+import { mountTypewriter } from '../ui/script-editor/typewriter.js';
+import { readTypewriter, saveTypewriter } from '../lib/chrome-prefs.js';
 import '../styles/smarttype.css';
 import { mountEditor, elFocus } from '../ui/script-editor/editor.js';
 import { loadCharacters } from '../lib/characters.js';
@@ -631,7 +633,13 @@ const TOOL_ITEMS = [
   { label: 'Find and replace', action: 'sc-find', hint: 'Ctrl/⌘ Shift H', icon: 'find_replace' },
   { label: 'Keyboard shortcuts', action: 'sc-keys', hint: '?', icon: 'keyboard' },
   { label: 'Format check', action: 'sc-check', icon: 'spellcheck' },
-  { label: 'Notes overview', action: 'sc-notes', hint: 'all notes', icon: 'sticky_note_2' }
+  { label: 'Notes overview', action: 'sc-notes', hint: 'all notes', icon: 'sticky_note_2' },
+  { label: 'Character navigator', action: 'sc-chars', hint: 'Alt+C', icon: 'groups' },
+  { label: 'Bookmark this line', action: 'sc-bookmark', hint: 'Alt+B', icon: 'bookmark' },
+  { label: 'Bookmarks', action: 'sc-bookmarks', hint: 'list', icon: 'bookmarks' },
+  { label: 'Next bookmark', action: 'sc-mark-next', hint: 'Alt+]', icon: 'arrow_downward' },
+  { label: 'Previous bookmark', action: 'sc-mark-prev', hint: 'Alt+[', icon: 'arrow_upward' },
+  { label: 'Typewriter scrolling', action: 'sc-typewriter', hint: 'view', icon: 'vertical_align_center' }
 ];
 const HELP_ITEMS = [
   { label: 'Show or hide hints', action: 'sc-hints', icon: 'lightbulb' },
@@ -1038,6 +1046,26 @@ function paintTip(el) {
     box
   ].filter(Boolean));   // append(null) would print "null"
 }
+/* ---- navigators, bookmarks, typewriter ------------------------
+   Derived lists (src/lib/script-index.js); the only stored thing is a
+   bookmark's `mark` field, toggled by the editor. Typewriter is a view
+   preference, written on a click only. */
+const typewriter = mountTypewriter({ signal: new AbortController().signal });
+typewriter.setOn(readTypewriter());
+const openNav = (mode) => WriteKeys.openNavigator({
+  mode, elements: doc.elements, fromId: curId, onJump: (id) => editor.applyFocus(elFocus(id))
+});
+delegate(document, 'click', '[data-action="sc-chars"]', () => openNav('characters'));
+delegate(document, 'click', '[data-action="sc-bookmarks"]', () => openNav('bookmarks'));
+delegate(document, 'click', '[data-action="sc-bookmark"]', () => lineAction((i) => editor.toggleBookmark(i)));
+delegate(document, 'click', '[data-action="sc-mark-next"]', () => editor.jumpBookmark(curId, 1));
+delegate(document, 'click', '[data-action="sc-mark-prev"]', () => editor.jumpBookmark(curId, -1));
+delegate(document, 'click', '[data-action="sc-typewriter"]', () => {
+  const on = !readTypewriter();
+  saveTypewriter(on);
+  typewriter.setOn(on);
+  say(on ? 'Typewriter scrolling on: the line you type stays at one height.' : 'Typewriter scrolling off.');
+});
 delegate(document, 'click', '[data-action="sc-hints"]', () => {
   const on = !hintsOn();
   setHints(on);
@@ -1384,7 +1412,7 @@ function placeLineButton(row) {
 lineBtn.addEventListener('mousedown', (e) => e.preventDefault());
 
 const lineMenu = h('div#scLineMenu.sc-line-menu', { role: 'menu', hidden: true }, [
-  ['sc-dual', 'Dual dialogue', 'swap_horiz'], ['sc-contd', "Add CONT'D", 'add'], ['sc-up', 'Move up', 'arrow_upward'],
+  ['sc-bookmark', 'Bookmark', 'bookmark'], ['sc-dual', 'Dual dialogue', 'swap_horiz'], ['sc-contd', "Add CONT'D", 'add'], ['sc-up', 'Move up', 'arrow_upward'],
   ['sc-down', 'Move down', 'arrow_downward'], ['sc-del', 'Delete', 'delete']
 ].map(([a, label, icon]) => h('button.sc-line-item' + (a === 'sc-del' ? '.is-danger' : ''), {
   type: 'button', role: 'menuitem', 'data-action': a

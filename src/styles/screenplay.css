@@ -1304,3 +1304,22 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
    the body face; the element type it names keeps its capitals. */
 .sc-tip { font-family: var(--f-body); font-size: var(--t-tiny); }
 .sc-tip-keys { font-family: var(--f-body); font-variant-numeric: tabular-nums; }
+
+/* A bookmarked line (script-index.js: `mark` on the element): a small
+   brand tab in the left margin, outside the printed page. Screen only. */
+.sc-sheet .wr-el.is-marked::before {
+  content: "";
+  position: absolute;
+  left: -1.4em;
+  top: 0.25em;
+  width: 0.7em;
+  height: 1.1em;
+  background: var(--brand);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 75%, 0 100%);
+  pointer-events: none;
+}
+@media print { .sc-sheet .wr-el.is-marked::before { display: none; } }
+
+/* Typewriter scrolling: room under the last line so it can rise to the
+   resting height instead of stopping at the page's end. */
+html.sc-typewriter .sc-sheet .wr-page { padding-bottom: 45vh; }

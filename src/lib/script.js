@@ -146,6 +146,9 @@ export function blankElement(patch = {}) {
      element that never had the field gets none, so an old script is
      byte-identical after a load and a save. */
   if ('dual' in el && !(el.dual === true && el.type === 'character')) delete el.dual;
+  /* `mark` is a bookmark (src/lib/script-index.js): true or absent, never
+     a second meaning, and an element that never had one stays byte-identical. */
+  if ('mark' in el && el.mark !== true) delete el.mark;
   return el;
 }
 

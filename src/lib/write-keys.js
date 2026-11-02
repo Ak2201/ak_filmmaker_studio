@@ -190,7 +190,9 @@ export function saveWritePrefs(patch) {
             { kind: 'return', op, type }  op 'insert' | 'change'
             { kind: 'tab', op, type }
             { kind: 'dual' } { kind: 'note' } { kind: 'navigator' }
-            { kind: 'find' } */
+            { kind: 'find' }
+            { kind: 'characters' } { kind: 'bookmark' }
+            { kind: 'bookmark-next' } { kind: 'bookmark-prev' } */
 export function digitOf(e) {
   const m = /^(?:Digit|Numpad)([1-9])$/.exec(e.code || '');
   if (m) return Number(m[1]);
@@ -219,6 +221,15 @@ export function resolveKey(e, ctx) {
      redo; Cmd+Y is left alone (Safari's History). */
   if (mod && !e.altKey && !e.shiftKey && (e.code === 'KeyZ' || lower === 'z')) return { kind: 'undo' };
   if (e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.code === 'KeyY' || lower === 'y')) return { kind: 'redo' };
+  /* The navigators' keys are Alt (Option) + a letter or bracket, matched
+     on e.code like Alt+D, and never Ctrl/Cmd: Ctrl+B/J/[ ] belong to the
+     browser. Alt+C characters, Alt+B bookmark, Alt+] / Alt+[ step. */
+  if (e.altKey && !mod && !e.shiftKey) {
+    if (e.code === 'KeyC') return { kind: 'characters' };
+    if (e.code === 'KeyB') return { kind: 'bookmark' };
+    if (e.code === 'BracketRight') return { kind: 'bookmark-next' };
+    if (e.code === 'BracketLeft') return { kind: 'bookmark-prev' };
+  }
   if (mod && e.shiftKey && !e.altKey) {
     if (e.code === 'KeyZ' || lower === 'z') return { kind: 'redo' };
     if (e.code === 'KeyK' || lower === 'k') return { kind: 'note' };
@@ -263,6 +274,9 @@ export function shortcutRows(prefs, known, ctrlDigits) {
     { keys: ['Alt/⌥ D'], label: 'Dual dialogue on this cue' },
     { keys: ['Ctrl/⌘ Shift K'], label: 'Note on this line' },
     { keys: ['Ctrl/⌘ Shift S'], label: 'Scene navigator — jump to a scene heading' },
+    { keys: ['Alt/⌥ C'], label: 'Character navigator — every character, jump to their next line' },
+    { keys: ['Alt/⌥ B'], label: 'Bookmark this line (or remove it)' },
+    { keys: ['Alt/⌥ ]', 'Alt/⌥ ['], label: 'Next / previous bookmark' },
     { keys: ['Ctrl/⌘ Shift H'], label: 'Find and replace in the screenplay' },
     { keys: ['↑ ↓', 'Tab / Return', 'Esc'], label: 'SmartType: move, accept, dismiss' },
     /* src/ui/tamil-type.js. Alt+T because every other Alt letter the

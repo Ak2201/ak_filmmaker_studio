@@ -41,6 +41,7 @@ import {
 import { wireKeys, splitAt } from './keys.js';
 import { createInference } from './inference.js';
 import { wantsSplit, planPaste } from '../../lib/script-paste.js';
+import { toggleMark as flipMark, stepMark } from '../../lib/script-index.js';
 
 export { elFocus, PLACEHOLDER, CHUNK, iconBtn, field, setAttr, autosize } from './rows.js';
 
@@ -496,6 +497,37 @@ export function mountEditor(host, opts) {
      belongs to — the same path as the ⇄ button on the cue's row, so the
      key and the click cannot disagree about when a pair is allowed or
      how the page redraws it. */
+  /* BOOKMARKS (Alt+B). A field on the element, so the row is touched in
+     place — class and label — and nothing re-renders; a bookmark is the
+     writer's place-holder and moves no text and no page. */
+  const markLabel = (row, on) => {
+    const ta = row && row.querySelector('.wr-text');
+    if (!ta) return;
+    const base = (ta.getAttribute('aria-label') || '').replace(/, bookmarked$/, '');
+    ta.setAttribute('aria-label', on ? base + ', bookmarked' : base);
+  };
+  function toggleBookmark(i) {
+    const el = els()[i];
+    if (!el) return false;
+    /* A step of its own: the history holds copies of the elements, so a
+       bookmark flipped outside it would be dropped (or brought back) by
+       the next Ctrl+Z of an unrelated edit. */
+    checkpoint('mark');
+    const on = flipMark(el);
+    const row = rowOf(el.id);
+    if (row) { row.classList.toggle('is-marked', on); markLabel(row, on); }
+    persistNow();
+    o.say(on ? 'Bookmarked this line.' : 'Bookmark removed.');
+    return on;
+  }
+  /** Step to the next / previous bookmark from the line `fromId`. */
+  function jumpBookmark(fromId, dir) {
+    const id = stepMark(els(), fromId, dir);
+    if (!id) { o.say('No bookmarks yet. Alt+B bookmarks the line you are in.'); return null; }
+    applyFocus(`[data-el="${CSS.escape(String(id))}"] .wr-text`);
+    return id;
+  }
+
   function toggleDual(i) {
     const list = els();
     let c = i;
@@ -733,6 +765,8 @@ export function mountEditor(host, opts) {
       const row = rowOf(id);
       if (row) row.scrollIntoView({ block: 'center', behavior: 'instant' });
     },
+    toggleBookmark,
+    jumpBookmark,
     autosize,
     autosizeAll,
     allRows,

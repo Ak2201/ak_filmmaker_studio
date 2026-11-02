@@ -25,6 +25,7 @@
 import { h, delegate } from '../lib/dom.js';
 import PDF from '../lib/pdf.js';
 import Keys, { PRESETS, TYPE_NAMES } from '../lib/write-keys.js';
+import { characterIndex, nextCueOf, bookmarks } from '../lib/script-index.js';
 
 const name = (t) => TYPE_NAMES[t] || t;
 
@@ -178,51 +179,97 @@ export function printKeysheet() {
   });
 }
 
-/* ---- the scene navigator --------------------------------------
+/* ---- the navigator: scenes, characters, bookmarks --------------
    A modal combobox: the filter field keeps focus, ↑/↓ move the
-   highlighted heading (aria-activedescendant), Return jumps, Esc
-   puts the caret back where it was. */
+   highlighted row (aria-activedescendant), Return jumps, Esc puts the
+   caret back where it was. Three lists, one control: Tab (Shift+Tab)
+   or a click on the tab row swaps the list. Characters and bookmarks
+   are DERIVED from the elements each time it opens (script-index.js).
+   Choosing a character goes to THEIR NEXT CUE after the line the
+   caret was in, wrapping round — so repeated Return walks the part. */
 let nav = null;
-export function openNavigator({ elements, onJump }) {
+const MODES = [
+  ['scenes', 'Scenes', 'Filter scene headings'],
+  ['characters', 'Characters', 'Filter characters'],
+  ['bookmarks', 'Bookmarks', 'Filter bookmarks']
+];
+export function openNavigator({ elements, onJump, mode = 'scenes', fromId = null }) {
   closeNavigator();
-  const scenes = [];
-  elements.forEach((el) => { if (el.type === 'scene') scenes.push({ id: el.id, n: scenes.length + 1, text: el.text.trim() || '(untitled heading)' }); });
+  let cur = Math.max(0, MODES.findIndex((m) => m[0] === mode));
   const back = document.activeElement;
+  const itemsFor = (kind) => {
+    if (kind === 'characters') {
+      return characterIndex(elements).map((c) => ({
+        text: c.name,
+        meta: c.speeches + (c.speeches === 1 ? ' line' : ' lines') + ' · ' + c.sceneCount + (c.sceneCount === 1 ? ' scene' : ' scenes')
+          + ' · first in scene ' + (c.firstScene || '—'),
+        key: c.name,
+        target: () => nextCueOf(elements, c.name, fromId)
+      }));
+    }
+    if (kind === 'bookmarks') {
+      return bookmarks(elements).map((b) => ({
+        text: b.text || '(empty line)', n: b.n, meta: 'scene ' + (b.scene || '—'), key: b.text, target: () => b.id
+      }));
+    }
+    const out = [];
+    elements.forEach((el) => { if (el.type === 'scene') { const n = out.length + 1; out.push({ n, text: el.text.trim() || '(untitled heading)', key: String(n), target: () => el.id }); } });
+    return out;
+  };
   const input = h('input', {
-    type: 'search', placeholder: 'Filter scene headings', autocomplete: 'off',
-    role: 'combobox', 'aria-expanded': 'true', 'aria-controls': 'wk-nav-list',
-    'aria-autocomplete': 'list', 'aria-label': 'Filter scene headings'
+    type: 'search', autocomplete: 'off',
+    role: 'combobox', 'aria-expanded': 'true', 'aria-controls': 'wk-nav-list', 'aria-autocomplete': 'list'
   });
-  const list = h('ul', { id: 'wk-nav-list', role: 'listbox', 'aria-label': 'Scene headings' });
+  const list = h('ul', { id: 'wk-nav-list', role: 'listbox' });
   const note = h('p.wk-note', { 'aria-live': 'polite' });
-  const box = h('div.wk-nav', { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Scene navigator' }, [
-    h('h2', { text: 'Scene navigator' }), input, list, note
-  ]);
+  const tabs = h('div.wk-nav-modes', { role: 'tablist', 'aria-label': 'What to list' }, MODES.map(([id, label], i) =>
+    h('button', { type: 'button', role: 'tab', tabindex: '-1', 'data-wk-mode': String(i), text: label })));
+  const title = h('h2');
+  const box = h('div.wk-nav', { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Navigator' }, [title, tabs, input, list, note]);
   const scrim = h('div.wk-nav-scrim', {}, [box]);
+  let all = [];
   let shown = [];
   let active = 0;
 
   const paint = () => {
+    const kind = MODES[cur][0];
     const q = input.value.trim().toUpperCase();
-    shown = scenes.filter((s) => !q || s.text.toUpperCase().includes(q) || String(s.n) === q);
+    shown = all.filter((s) => !q || s.text.toUpperCase().includes(q) || String(s.n) === q);
     active = Math.min(active, Math.max(0, shown.length - 1));
+    list.setAttribute('aria-label', MODES[cur][1]);
     list.replaceChildren(...shown.map((s, i) => h('li' + (i === active ? '.is-active' : ''), {
       id: 'wk-nav-' + i, role: 'option', 'aria-selected': i === active ? 'true' : 'false', 'data-wk-i': String(i)
-    }, [h('span.wk-n', { text: String(s.n) }), h('span', { text: s.text })])));
+    }, [
+      s.n != null ? h('span.wk-n', { text: String(s.n) }) : null,
+      h('span.wk-t', { text: s.text }),
+      s.meta ? h('span.wk-meta', { text: s.meta }) : null
+    ].filter(Boolean))));
     if (shown.length) {
       input.setAttribute('aria-activedescendant', 'wk-nav-' + active);
       const node = list.children[active];
       if (node && node.scrollIntoView) node.scrollIntoView({ block: 'nearest' });
     } else input.removeAttribute('aria-activedescendant');
-    note.textContent = scenes.length
-      ? shown.length + ' of ' + scenes.length + ' scenes · ↑ ↓ to move, Return to jump, Esc to close'
-      : 'No scene headings yet.';
+    const hint = ' · ↑ ↓ to move, Return to jump, Tab for the next list, Esc to close';
+    const empty = { scenes: 'No scene headings yet.', characters: 'No characters yet.', bookmarks: 'No bookmarks yet. Alt+B bookmarks the line you are in.' }[kind];
+    note.textContent = all.length ? shown.length + ' of ' + all.length + ' ' + MODES[cur][1].toLowerCase() + hint : empty;
+  };
+  const setMode = (i) => {
+    cur = (i + MODES.length) % MODES.length;
+    all = itemsFor(MODES[cur][0]);
+    active = 0;
+    input.value = '';
+    title.textContent = MODES[cur][1] + ' navigator';
+    input.setAttribute('aria-label', MODES[cur][2]);
+    input.placeholder = MODES[cur][2];
+    tabs.querySelectorAll('[role="tab"]').forEach((b, k) => b.setAttribute('aria-selected', k === cur ? 'true' : 'false'));
+    paint();
   };
   const go = (i) => {
     const s = shown[i];
     if (!s) return;
+    const id = s.target();
     closeNavigator(false);
-    onJump(s.id);
+    if (id) onJump(id);
   };
   input.addEventListener('input', () => { active = 0; paint(); });
   input.addEventListener('keydown', (e) => {
@@ -233,7 +280,7 @@ export function openNavigator({ elements, onJump }) {
       paint();
     } else if (e.key === 'Enter') { e.preventDefault(); go(active); }
     else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeNavigator(true); }
-    else if (e.key === 'Tab') { e.preventDefault(); }   // modal: focus stays in the filter
+    else if (e.key === 'Tab') { e.preventDefault(); setMode(cur + (e.shiftKey ? -1 : 1)); }   // modal: focus stays in the filter
   });
   list.addEventListener('pointerdown', (e) => {
     const li = e.target.closest('[data-wk-i]');
@@ -241,10 +288,16 @@ export function openNavigator({ elements, onJump }) {
     e.preventDefault();
     go(Number(li.dataset.wkI));
   });
+  tabs.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('[data-wk-mode]');
+    if (!b) return;
+    e.preventDefault();                       // the filter keeps focus
+    setMode(Number(b.dataset.wkMode));
+  });
   scrim.addEventListener('pointerdown', (e) => { if (e.target === scrim) closeNavigator(true); });
   nav = { scrim, back };
   document.body.append(scrim);
-  paint();
+  setMode(cur);
   input.focus();
 }
 

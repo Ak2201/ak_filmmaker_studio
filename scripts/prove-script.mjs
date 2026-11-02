@@ -150,6 +150,40 @@ await settle();
 const t2 = await types();
 ok(sel === t2[t2.length - 1].split(':')[0] && sel !== 'dialogue', '3  Alt+digit sets the type and the dropdown follows', { sel, last: t2[t2.length - 1] });
 
+/* ---- 3b bookmarks, character navigator, typewriter ---------------------- */
+await page.keyboard.press('Alt+B');
+await settle();
+const marked = await page.evaluate(() => {
+  const s = JSON.parse(localStorage.getItem(Object.keys(localStorage).find((k) => k.startsWith('fms_script_v1'))) || '{}');
+  return (s.elements || []).filter((e) => e.mark === true).length;
+});
+ok(marked === 1 && await page.$$eval('#wr-page .wr-el.is-marked', (r) => r.length) === 1, '3b Alt+B bookmarks the line and saves the mark field', marked);
+await page.keyboard.press('Alt+C');
+await page.waitForSelector('.wk-nav [role="tab"][aria-selected="true"]', { timeout: 3000 }).catch(() => {});
+const chars = await page.$$eval('.wk-nav li .wk-t', (n) => n.map((x) => x.textContent));
+ok(chars.length === 1 && chars[0] === 'ARUN', '3b Alt+C lists the characters', chars);
+await page.keyboard.press('Enter');
+await page.waitForTimeout(200);
+ok(await page.evaluate(() => document.activeElement.value) === 'ARUN', '3b choosing a character jumps to their next cue');
+await page.keyboard.press('Alt+]');
+await page.waitForTimeout(150);
+ok(await page.evaluate(() => document.activeElement.closest('.is-marked') !== null), '3b Alt+] jumps to the bookmark');
+await page.keyboard.press('Alt+B');                       // leave the script as it was
+await settle();
+ok(await page.$$eval('#wr-page .wr-el.is-marked', (r) => r.length) === 0, '3b Alt+B again removes it');
+{
+  const wBefore = await page.evaluate(() => window.__writes.length);
+  const moreBtn = await page.evaluateHandle(() => [...document.querySelectorAll('#scTop .tb-menu')].find((m) => m.querySelector('[data-action="sc-typewriter"]')).querySelector('.tb-menu-btn'));
+  await moreBtn.click();
+  await page.click('#scTop .tb-menu [data-action="sc-typewriter"]', { timeout: 3000 });
+  await page.waitForTimeout(150);
+  const on = await page.evaluate(() => document.documentElement.classList.contains('sc-typewriter'));
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('fms_studio_prefs_v1') || '{}').typewriter === true);
+  ok(on && stored, '3b typewriter scrolling toggles and is stored in the prefs blob on the click', { on, stored });
+  void wBefore;
+  await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('fms_studio_prefs_v1') || '{}'); delete p.typewriter; localStorage.setItem('fms_studio_prefs_v1', JSON.stringify(p)); document.documentElement.classList.remove('sc-typewriter'); });
+}
+
 /* ---- 5 one save per burst; idle writes nothing ------------------------ */
 await page.click('#wr-page .wr-el:nth-child(2) .wr-text').catch(() => {});
 let before = await page.evaluate(() => window.__writes.filter((w) => w.k.startsWith('fms_script_v1')).length);

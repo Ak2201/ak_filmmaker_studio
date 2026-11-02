@@ -198,3 +198,22 @@
   text-transform: none;
   color: var(--ink-muted);
 }
+
+/* The navigator's list switch (scenes / characters / bookmarks) and the
+   second line of a character row. Tokens and --sk-* only. */
+.wk-nav-modes { display: flex; gap: var(--s1); }
+.wk-nav-modes button {
+  flex: 1 1 0;
+  min-height: 2rem;
+  padding: 0 var(--s2);
+  border: 1px solid var(--panel-hair);
+  border-radius: var(--sk-field-radius, var(--radius-sm));
+  background: transparent;
+  color: var(--ink-body);
+  font: inherit;
+  font-size: var(--t-small);
+  cursor: pointer;
+}
+.wk-nav-modes button[aria-selected="true"] { background: var(--brand-wash); border-color: var(--brand); color: var(--ink); }
+.wk-nav li .wk-t { flex: 1 1 auto; min-width: 0; }
+.wk-nav li .wk-meta { flex: 0 0 auto; color: var(--ink-muted); font-family: var(--f-body); font-size: var(--t-micro); align-self: center; }

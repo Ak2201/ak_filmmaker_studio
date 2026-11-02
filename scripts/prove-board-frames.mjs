@@ -265,6 +265,8 @@ for (const width of [1280, 390]) {
     const deskTxt = await page.evaluate(() => document.querySelector('aside.ai-desk').textContent);
     ok(/the Gemini API/.test(deskTxt) && /generativelanguage\.googleapis\.com/.test(deskTxt), 'the Desk says where it goes (Gemini), before Run');
     ok(G.requests.length === 0, 'nothing sent before Run', G.requests.length);
+    /* The prompt sits behind the "Edit prompt" link now (closed by default). */
+    await page.locator('aside.ai-desk details.ai-desk-editprompt summary').click();
     await page.locator('.ai-desk-input').fill(input.replace('Style: Pencil sketch', 'Style: Colour'));
     if (width >= 720) await shot(page, 'board-desk-input-' + width + '.png');
     await page.locator('[data-action="ai-desk-run"]').click();

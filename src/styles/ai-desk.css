@@ -330,6 +330,48 @@ html.ai-desk-open.ai-desk-open .toast-host {
   .ai-desk-item input { width: 24px; height: 24px; margin-top: 0; }
 }
 
+/* ---- one press: Careful, cost, Edit prompt, live cards ---------- */
+.ai-desk-careful {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--t-small);
+  color: var(--ink);
+  cursor: pointer;
+}
+.ai-desk-careful input { flex: none; accent-color: var(--brand); }
+.ai-desk-cost { margin: 0; font-size: var(--t-micro); color: var(--ink-muted); }
+.ai-desk-editprompt { min-width: 0; }
+.ai-desk-editprompt > summary {
+  width: fit-content;
+  font-size: var(--t-small);
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.ai-desk-editprompt > summary:focus-visible { outline: var(--focus); outline-offset: var(--focus-offset); }
+.ai-desk-editprompt[open] > summary { margin-bottom: var(--s2); }
+.ai-desk-progress { font-variant-numeric: tabular-nums; }
+/* A scene's header above its items (tick per scene). */
+.ai-desk-group {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s2);
+  font-size: var(--t-small);
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+}
+.ai-desk-group input { flex: none; accent-color: var(--brand); }
+.ai-desk-ingroup { margin-inline-start: var(--s4); }
+@media (pointer: coarse) {
+  .ai-desk-group input,
+  .ai-desk-careful input { width: 24px; height: 24px; }
+  .ai-desk-editprompt > summary { min-height: 44px; display: inline-flex; align-items: center; }
+}
+
 @media print {
   .ai-desk { display: none !important; }
   html.ai-desk-open main { margin-inline-end: 0; }

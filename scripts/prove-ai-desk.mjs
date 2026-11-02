@@ -113,8 +113,11 @@ const requests = [];
 async function aiRoute(r) {
   const req = r.request();
   const body = JSON.parse(req.postData() || '{}');
-  const user = body.messages ? body.messages[0].content : '';
-  const system = typeof body.system === 'string' ? body.system : JSON.stringify(body.system || '');
+  /* A run-shared prefix (cache_control) makes the content, and the system
+     prompt, arrays of text blocks: one string for the fake either way. */
+  const text = (v) => (Array.isArray(v) ? v.map((b) => (b && b.text) || '').join('\n') : v);
+  const user = body.messages ? text(body.messages[0].content) : '';
+  const system = typeof body.system === 'string' ? body.system : text(body.system) || '';
   const headers = req.headers();
   requests.push({ url: req.url(), user, system, key: headers['x-api-key'] || '' });
   return r.fulfill({ status: 200, contentType: 'text/event-stream', body: anthropicSSE(deskAnswer({ system, user })) });
@@ -646,6 +649,8 @@ const pillLabels = (page, scope) => page.$$eval(scope + ' .ai-pill', (b) => b.ma
 async function runList(page) {
   await page.click('aside.ai-desk [data-action="ai-desk-run"]');
   await page.waitForSelector('aside.ai-desk label.ai-desk-item input[data-tick="item"]', { timeout: 15000 }).catch(() => {});
+  /* a streamed run is finished when Stop is gone */
+  await page.waitForFunction(() => !document.querySelector('aside.ai-desk [data-action="ai-desk-stop"]'), null, { timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(300);
   return page.$$eval('aside.ai-desk label.ai-desk-item', (ls) => ls.map((l) => ({
     id: (l.querySelector('input[data-tick="item"]') || {}).dataset?.id || '',
@@ -744,12 +749,15 @@ async function clickUndo(page) {
   ok(await deskOpen(page), 'the Desk opens on the next batch');
   ok(requests.length === 0, 'nothing was sent before Run', requests.length);
   const items = await runList(page);
-  const BATCH = 4;   // scriptgen.js BATCH_SIZE
-  const batch = jobScenes.slice(0, BATCH);
-  ok(requests.length === 1 && /marked WRITE THIS below/.test((requests[0] || {}).user || ''), 'Run sent one batch request', requests.length);
-  ok(batch.every((s) => ((requests[0] || {}).user || '').includes('sceneId: ' + s.sceneId)) && !((requests[0] || {}).user || '').includes('sceneId: gs5'), 'it asked for the first ' + BATCH + ' scenes only');
-  ok(items.length === BATCH, 'one item per scene in the batch (' + items.length + ')', items.map((x) => x.id + ' ' + x.text.slice(0, 50)));
+  /* ONE PRESS writes the whole rest: PAGE_BATCH (2) scenes a request, so
+     five scenes are three requests, and a card per scene. */
+  const REST = jobScenes.length;
+  const batch = jobScenes;
+  ok(requests.length === Math.ceil(REST / 2) && requests.every((r) => /marked WRITE THIS below/.test(r.user || '')), 'Run sent ' + Math.ceil(REST / 2) + ' small requests', requests.length);
+  ok(batch.every((s) => requests.some((r) => (r.user || '').includes('sceneId: ' + s.sceneId))), 'together they asked for every remaining scene');
+  ok(items.length === REST, 'one item per scene (' + items.length + ')', items.map((x) => x.id + ' ' + x.text.slice(0, 50)));
   ok(items.every((x, i) => x.id === batch[i].sceneId || x.text.includes(batch[i].slug)), 'each item is its scene, in order (id = sceneId, or the heading on it)', items.map((x) => x.id));
+  const BATCH = REST;
 
   /* idle with the Desk open */
   await page.waitForTimeout(500);

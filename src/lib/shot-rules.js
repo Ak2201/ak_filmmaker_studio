@@ -439,7 +439,8 @@ export function basicShotDivisionSync(jobs) {
     const shots = shotsForScene(job);
     if (shots.length) byScene.set(String(job.sceneId), shots);
   }
-  return { byScene, truncated: false, model: BASIC_MODEL };
+  /* Same keys as the AI draft (ai.js draftShotDivision), so a page treats both alike. */
+  return { byScene, truncated: false, model: BASIC_MODEL, failed: [], failures: [], stopped: false };
 }
 
 export default { basicShotDivision, basicShotDivisionSync, basicJobs, jobFor, shotsForScene, capFor, BASIC_MODEL };

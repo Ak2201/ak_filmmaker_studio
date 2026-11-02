@@ -153,10 +153,19 @@ export function saveFitPage(pid, lines) {
   return updateDevicePrefs({ fitPage: Object.keys(map).length ? map : undefined });
 }
 
+/* ---- the AI Desk's Careful switch ----------------------------------
+   `aiCareful: true` inside the same device blob. Structured drafting
+   (shots, scenes, pages) runs at LOW effort by default; Careful raises
+   it (src/lib/ai-effort.js). How this device asks, never part of any
+   film, and written on a click only (verify's idle-write check). */
+export const readAiCareful = () => readDevicePrefs().aiCareful === true;
+export const saveAiCareful = (on) => updateDevicePrefs({ aiCareful: on ? true : undefined });
+
 export default {
   readDictation, saveDictation, readMacrosPref, saveMacrosPref, readReadAloudPref, saveReadAloudPref,
   readFitPage, saveFitPage,
   autoContdOn, saveAutoContd,
   readDevicePrefs, updateDevicePrefs, motionReduced, saveMotionPref, brandingPrefOff, saveBrandingOff, touchThemePref, tourActive, tourResumable,
-  readShotView, saveShotView, readBeatView, saveBeatView, readTypewriter, saveTypewriter
+  readShotView, saveShotView, readBeatView, saveBeatView, readTypewriter, saveTypewriter,
+  readAiCareful, saveAiCareful
 };

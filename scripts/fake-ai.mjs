@@ -78,10 +78,15 @@ export function installFakeFetch(respond, log = []) {
       const e = new Error('aborted'); e.name = 'AbortError'; throw e;
     }
     const body = JSON.parse(init.body || '{}');
+    /* Anthropic bodies carry cache_control blocks: `system` is an array of
+       text blocks and a request with a run-shared prefix has a content
+       array. Joined here, so every test that matches on the prompt text
+       sees one string either way (the blocks themselves stay in `body`). */
+    const text = (v) => (Array.isArray(v) ? v.map((b) => (b && b.text) || '').join('\n') : v);
     const user = provider === 'anthropic'
-      ? body.messages[0].content
+      ? text(body.messages[0].content)
       : body.contents[0].parts[0].text;
-    const system = provider === 'anthropic' ? body.system : body.systemInstruction.parts[0].text;
+    const system = provider === 'anthropic' ? text(body.system) : body.systemInstruction.parts[0].text;
     const req = { provider, url: u, headers: init.headers || {}, body, user, system };
     log.push(req);
     const ans = await respond(req);

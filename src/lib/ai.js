@@ -55,6 +55,9 @@
    into a URL.
    ============================================================ */
 import { bumpUsage } from './usage.js';
+import { runBatches } from './ai-batches.js';
+import { arrayStream } from './ai-stream-json.js';
+import { draftEffort } from './ai-effort.js';
 import { SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS } from './shots.js';
 import { formatEighths, INT_EXT, DAY_NIGHT } from './scenes.js';
 import { GEOMETRY } from './screenplay-export.js';
@@ -337,7 +340,18 @@ async function readStream(res, read, onText) {
    part of what these return and never part of a url.
    ------------------------------------------------------------ */
 
-function anthropicRequest(prov, { model, system, user, schema, maxTokens, effort }) {
+/* PROMPT CACHING (docs/AI-FAST-HARNESS.md §A3). Two breakpoints, never
+   more: the system prompt, and — when the run has one — the `shared`
+   block every batch of the run repeats. A prefix is cached only if it
+   is byte-identical, so a caller keeps timestamps, cursors and batch
+   numbers in `user`, never in `system` or `shared`. A prefix under the
+   model's minimum simply does not cache: no error, nothing to handle. */
+export function anthropicRequest(prov, { model, system, user, shared, schema, maxTokens, effort, cache = true }) {
+  const mark = { type: 'ephemeral' };
+  const sysBlock = cache ? [{ type: 'text', text: system, cache_control: mark }] : system;
+  const content = shared
+    ? [{ type: 'text', text: shared, ...(cache ? { cache_control: mark } : {}) }, { type: 'text', text: user }]
+    : user;
   return {
     url: prov.origin + '/v1/messages',
     authHeader: 'x-api-key',
@@ -356,13 +370,13 @@ function anthropicRequest(prov, { model, system, user, schema, maxTokens, effort
         effort,
         format: { type: 'json_schema', schema }
       },
-      system,
-      messages: [{ role: 'user', content: user }]
+      system: sysBlock,
+      messages: [{ role: 'user', content }]
     }
   };
 }
 
-function geminiRequest(prov, { model, system, user, schema, maxTokens, effort }) {
+export function geminiRequest(prov, { model, system, user, shared, schema, maxTokens, effort }) {
   /* `?alt=sse` is not optional: without it :streamGenerateContent
      answers with a JSON array rather than server-sent events, and
      the reader above would see no frames at all.
@@ -383,7 +397,10 @@ function geminiRequest(prov, { model, system, user, schema, maxTokens, effort })
     headers: { 'content-type': 'application/json' },
     body: {
       systemInstruction: { parts: [{ text: system }] },
-      contents: [{ role: 'user', parts: [{ text: user }] }],
+      /* No explicit cache (the cachedContents API is a stored resource
+         with its own billing); the run's shared text goes FIRST so
+         Gemini's implicit prefix caching can apply across batches. */
+      contents: [{ role: 'user', parts: [{ text: shared ? shared + '\n\n' + user : user }] }],
       generationConfig: {
         responseMimeType: 'application/json',
         responseJsonSchema: schema,
@@ -537,14 +554,14 @@ async function send(prov, req, auth, signal) {
 
 async function callModel({
   system, user, schema, maxTokens = 32000, effort = 'medium',
-  onStatus, signal, progress
+  onStatus, signal, progress, shared, onText, cache = true
 }) {
   const prov = provider();
   const model = getModel();
   const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
 
   const wire = WIRE[prov.id] || WIRE[DEFAULT_PROVIDER];
-  const req = wire.request(prov, { model, system, user, schema, maxTokens, effort });
+  const req = wire.request(prov, { model, system, user, shared, schema, maxTokens, effort, cache });
   /* The saved key under req.authHeader, or the owner's Google login
      (gemini-google.js) as a Bearer header. */
   const auth = credential(prov.id, req.authHeader);
@@ -555,9 +572,11 @@ async function callModel({
 
   let text, stop;
   try {
-    ({ text, stop } = await readStream(res, wire.frame, progress ? (sofar) => {
-      const line = progress(sofar);
-      if (line) say(line);
+    ({ text, stop } = await readStream(res, wire.frame, (progress || onText) ? (sofar) => {
+      /* The raw text first (a caller reading it scene by scene, ai-stream-json.js),
+         then the one-line progress. A throw in either is the UI's, not the request's. */
+      if (onText) { try { onText(sofar); } catch (e) { /* UI */ } }
+      if (progress) { const line = progress(sofar); if (line) say(line); }
     } : null));
   } catch (e) {
     if (e && e.name === 'AbortError') throw new AIError('Stopped. Nothing was changed.', 'aborted');
@@ -658,69 +677,117 @@ export async function generateImage({ prompt, aspectRatio = '16:9', signal } = {
     likely" is not a guarantee a writing tool is built on. */
 const str = (v, max) => String(v ?? '').trim().slice(0, max);
 
+/** Scenes per shot-division request, and how many requests run at once. */
+export const SHOT_BATCH = 3;
+export const SHOT_CONCURRENCY = 3;
+
 /**
  * Draft a shot division.
  *
  *   jobs      [{ sceneId, number, slug, eighths, synopsis, script }]
  *   onStatus  called with a short line of progress; DOM only
  *   signal    an AbortSignal, so Stop actually stops
+ *   onItems   called with [{ sceneId, shots }] the moment a scene is whole
+ *   careful   raise the effort (ai-effort.js); default is the pref
  *
- * Resolves to { byScene: Map<sceneId, shot[]>, truncated, model }.
+ * The scenes go in SHOT_BATCH-sized requests, SHOT_CONCURRENCY at a time
+ * (ai-batches.js). One failed batch loses only its own scenes; Stop keeps
+ * what has arrived and resolves rather than throws.
+ *
+ * Resolves to { byScene: Map<sceneId, shot[]>, truncated, model,
+ *               failed: [sceneId…], failures: [{ sceneIds, kind, message }],
+ *               stopped }.
  * It writes nothing: the caller decides what to keep.
  */
-export async function draftShotDivision(jobs, { onStatus, signal } = {}) {
+export async function draftShotDivision(jobs, { onStatus, signal, onItems, careful } = {}) {
   if (!jobs || !jobs.length) throw new AIError('No scenes selected.', 'noscenes');
   const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
   say('Sending ' + jobs.length + (jobs.length === 1 ? ' scene' : ' scenes')
     + ' to ' + getModel() + '…');
-
-  const { parsed, truncated, model } = await callModel({
-    system: SYSTEM,
-    user: buildPrompt(jobs),
-    schema: schemaFor(),
-    onStatus, signal,
-    progress: (sofar) => {
-      // Cheap progress: count the scene keys that have arrived. It is
-      // a substring count of a partial JSON document on purpose — it
-      // is a progress line, not a parse.
-      const n = (sofar.match(/"sceneId"/g) || []).length;
-      return n ? 'Drafting… ' + n + ' of ' + jobs.length + ' scenes' : 'Drafting…';
-    }
-  });
-
-  if (!Array.isArray(parsed.scenes)) {
-    throw new AIError('The reply was not the shot list we asked for, so nothing was added.', 'malformed');
-  }
+  const effort = draftEffort(careful);          // fixed for the whole run
+  const system = SYSTEM;
+  const schema = schemaFor();
+  let arrived = 0;
+  let failedBatches = 0;
 
   /* Trust nothing about the shape. The schema makes it very likely
      and "very likely" is not a guarantee you build a writing tool
      on — every field is re-checked against the vocabulary the shot
      model actually holds, and an unknown value falls back rather
      than being written. */
-  const wanted = new Set(jobs.map((j) => j.sceneId));
-  const sizes = new Set(SHOT_SIZES.map((s) => s.id));
-  const byScene = new Map();
-  for (const entry of parsed.scenes) {
-    if (!entry || typeof entry !== 'object') continue;
-    const sceneId = String(entry.sceneId ?? '');
-    if (!wanted.has(sceneId)) continue;          // never touch a scene we did not offer
-    const shots = (Array.isArray(entry.shots) ? entry.shots : [])
-      .filter((s) => s && typeof s === 'object')
-      .map((s) => ({
-        size: sizes.has(s.size) ? s.size : 'MS',
-        angle: SHOT_ANGLES.includes(s.angle) ? s.angle : SHOT_ANGLES[0],
-        movement: SHOT_MOVEMENTS.includes(s.movement) ? s.movement : SHOT_MOVEMENTS[0],
-        lens: str(s.lens, 40),
-        rig: str(s.rig, 120),
-        setup: str(s.setup, 60),
-        description: str(s.description, 400)
-      }))
-      .filter((s) => s.description);
-    if (shots.length) byScene.set(sceneId, shots);
-  }
+  const sendBatch = async (batch, { signal: sig, onItems: emit, onStart }) => {
+    const wanted = new Set(batch.map((j) => j.sceneId));
+    const stream = arrayStream('scenes');
+    let started = false;
+    const { parsed, truncated, model } = await callModel({
+      system, user: buildPrompt(batch), schema, maxTokens: 8000, effort, signal: sig,
+      onText: (sofar) => {
+        if (!started) { started = true; if (onStart) onStart(); }
+        const fresh = stream.feed(sofar).map((e) => cleanShotScene(e, wanted)).filter(Boolean);
+        if (fresh.length) emit(fresh);
+      }
+    });
+    if (!Array.isArray(parsed.scenes)) {
+      throw new AIError('The reply was not the shot list we asked for, so nothing was added.', 'malformed');
+    }
+    return reply(parsed.scenes.map((e) => cleanShotScene(e, wanted)).filter(Boolean), truncated, model);
+  };
 
-  return { byScene, truncated, model };
+  const out = await runBatches(jobs, {
+    size: SHOT_BATCH, concurrency: SHOT_CONCURRENCY, run: sendBatch, signal,
+    onItems: (items) => {
+      arrived += items.length;
+      say('Drafting… ' + arrived + ' of ' + jobs.length + ' scenes' + (failedBatches ? ' · ' + failedBatches + ' failed' : ''));
+      if (onItems) onItems(items);
+    },
+    onBatch: ({ failed }) => { failedBatches = failed; }
+  });
+
+  /* A scene may arrive twice (a retried batch, a stream the final parse
+     re-sent): the later entry wins and the job order is kept. */
+  const have = new Map();
+  for (const e of out.items) have.set(e.sceneId, e.shots);
+  const byScene = new Map();
+  for (const j of jobs) if (have.has(j.sceneId)) byScene.set(j.sceneId, have.get(j.sceneId));
+
+  const failures = out.failed.map((f) => ({
+    sceneIds: f.jobs.map((j) => j.sceneId).filter((id) => !byScene.has(id)),
+    kind: (f.error && f.error.kind) || 'unknown',
+    message: (f.error && f.error.message) || ''
+  })).filter((f) => f.sceneIds.length);
+  if (!byScene.size && !out.stopped && out.failed.length) throw out.failed[0].error;
+  const { truncated, stopped } = out;
+  const model = out.model || getModel();
+  const failed = failures.flatMap((f) => f.sceneIds);
+  return { byScene, truncated, model, failed, failures, stopped };
 }
+
+/* One batch's answer, in the shape runBatches wants. */
+const reply = (items, truncated, model) => ({ items, truncated, model });
+
+/* The three shots-per-scene fields a model may get wrong are re-checked
+   against the vocabulary the shot model holds; one place, used for the
+   card shown while the reply is still arriving AND for the final parse. */
+function cleanShotScene(entry, wanted) {
+  if (!entry || typeof entry !== 'object') return null;
+  const sceneId = String(entry.sceneId ?? '');
+  if (!wanted.has(sceneId)) return null;          // never touch a scene we did not offer
+  const sizes = new Set(SHOT_SIZES.map((s) => s.id));
+  const shots = (Array.isArray(entry.shots) ? entry.shots : [])
+    .filter((s) => s && typeof s === 'object')
+    .map((s) => ({
+      size: sizes.has(s.size) ? s.size : 'MS',
+      angle: SHOT_ANGLES.includes(s.angle) ? s.angle : SHOT_ANGLES[0],
+      movement: SHOT_MOVEMENTS.includes(s.movement) ? s.movement : SHOT_MOVEMENTS[0],
+      lens: str(s.lens, 40),
+      rig: str(s.rig, 120),
+      setup: str(s.setup, 60),
+      description: str(s.description, 400)
+    }))
+    .filter((s) => s.description);
+  return shots.length ? { sceneId, shots } : null;
+}
+
 
 /* ============================================================
    AI BLOCKING — a setup drafted on the overhead map, or a drawn one reviewed
@@ -1344,7 +1411,7 @@ function beatSchemaFor(beatIds) {
  * Resolves to { logline, byBeat: Map<beatId, happens>, truncated, model }.
  * Writes nothing.
  */
-export async function draftBeatSheet(job, { onStatus, signal } = {}) {
+export async function draftBeatSheet(job, { onStatus, signal, onItems, careful } = {}) {
   const synopsis = str(job && job.synopsis, 6000);
   if (!synopsis) throw new AIError('Write a synopsis first — a paragraph is enough.', 'nosynopsis');
   const beats = Array.isArray(job.beats) ? job.beats : [];
@@ -1373,14 +1440,27 @@ export async function draftBeatSheet(job, { onStatus, signal } = {}) {
     lines.push('· ' + b.id + '  (' + b.label + ', ' + (b.pages || '') + ') — ' + (b.function || ''));
   }
 
+  const wanted = new Set(ids);
+  const cleanBeat = (b) => {
+    if (!b || typeof b !== 'object') return null;
+    const id = String(b.id ?? '');
+    if (!wanted.has(id)) return null;       // never write a beat we did not offer
+    const happens = str(b.happens, 1200);
+    return happens ? { id, happens } : null;
+  };
+  const stream = arrayStream('beats');
   const { parsed, truncated, model } = await callModel({
     system: SCRIPT_SYSTEM,
     user: lines.join('\n'),
     schema: beatSchemaFor(ids),
     maxTokens: 12000,
-    effort: 'high',
+    effort: careful ? 'high' : 'medium',    // structure work: a cheap win, not the low default
     onStatus,
     signal,
+    onText: onItems ? (sofar) => {
+      const fresh = stream.feed(sofar).map(cleanBeat).filter(Boolean);
+      if (fresh.length) onItems(fresh);
+    } : undefined,
     progress: (sofar) => {
       const n = (sofar.match(/"happens"/g) || []).length;
       return n ? 'Shaping the structure… ' + n + ' of ' + ids.length + ' beats' : 'Shaping the structure…';
@@ -1390,14 +1470,10 @@ export async function draftBeatSheet(job, { onStatus, signal } = {}) {
   if (!Array.isArray(parsed.beats)) {
     throw new AIError('The reply was not a beat sheet, so nothing was saved.', 'malformed');
   }
-  const wanted = new Set(ids);
   const byBeat = new Map();
   for (const b of parsed.beats) {
-    if (!b || typeof b !== 'object') continue;
-    const id = String(b.id ?? '');
-    if (!wanted.has(id)) continue;          // never write a beat we did not offer
-    const happens = str(b.happens, 1200);
-    if (happens) byBeat.set(id, happens);
+    const c = cleanBeat(b);
+    if (c) byBeat.set(c.id, c.happens);
   }
   return { logline: str(parsed.logline, 400), byBeat, truncated, model };
 }
@@ -1445,7 +1521,7 @@ function sceneListSchema(beatIds) {
  *
  * Resolves to { scenes:[…], truncated, model }. Writes nothing.
  */
-export async function draftSceneList(job, { onStatus, signal } = {}) {
+export async function draftSceneList(job, { onStatus, signal, onItems, careful } = {}) {
   const beats = Array.isArray(job.beats) ? job.beats : [];
   if (!beats.length) throw new AIError('Draft the beat sheet first.', 'nobeats');
   const target = Math.max(8, Math.min(120, Number(job.target) || (job.format === 'short' ? 14 : 48)));
@@ -1481,29 +1557,12 @@ export async function draftSceneList(job, { onStatus, signal } = {}) {
     '· Night exteriors and crowds cost money. Earn them.'
   ].join('\n'));
 
-  const { parsed, truncated, model } = await callModel({
-    system: SCRIPT_SYSTEM,
-    user: lines.join('\n'),
-    schema: sceneListSchema(ids),
-    maxTokens: 24000,
-    effort: 'high',
-    onStatus,
-    signal,
-    progress: (sofar) => {
-      const n = (sofar.match(/"location"/g) || []).length;
-      return n ? 'Laying out scenes… ' + n + ' so far' : 'Laying out scenes…';
-    }
-  });
-
-  if (!Array.isArray(parsed.scenes)) {
-    throw new AIError('The reply was not a scene list, so nothing was saved.', 'malformed');
-  }
   const okInt = new Set(INT_EXT);
   const okDay = new Set(DAY_NIGHT);
   const beatSet = new Set(ids);
-  const scenes = parsed.scenes
-    .filter((s) => s && typeof s === 'object')
-    .map((s) => ({
+  const cleanScene = (s) => {
+    if (!s || typeof s !== 'object') return null;
+    const row = {
       intExt: okInt.has(s.intExt) ? s.intExt : 'INT',
       location: str(s.location, 120),
       dayNight: okDay.has(s.dayNight) ? s.dayNight : 'DAY',
@@ -1514,8 +1573,32 @@ export async function draftSceneList(job, { onStatus, signal } = {}) {
       beat: beatSet.has(s.beat) ? s.beat : '',
       cast: (Array.isArray(s.cast) ? s.cast : [])
         .map((c) => str(c, 60)).filter(Boolean).slice(0, 24)
-    }))
-    .filter((s) => s.location);
+    };
+    return row.location ? row : null;
+  };
+  const stream = arrayStream('scenes');
+  const { parsed, truncated, model } = await callModel({
+    system: SCRIPT_SYSTEM,
+    user: lines.join('\n'),
+    schema: sceneListSchema(ids),
+    maxTokens: 24000,
+    effort: careful ? 'high' : 'medium',    // the list needs the whole story at once: structure work
+    onStatus,
+    signal,
+    onText: onItems ? (sofar) => {
+      const fresh = stream.feed(sofar).map(cleanScene).filter(Boolean);
+      if (fresh.length) onItems(fresh);
+    } : undefined,
+    progress: (sofar) => {
+      const n = (sofar.match(/"location"/g) || []).length;
+      return n ? 'Laying out scenes… ' + n + ' so far' : 'Laying out scenes…';
+    }
+  });
+
+  if (!Array.isArray(parsed.scenes)) {
+    throw new AIError('The reply was not a scene list, so nothing was saved.', 'malformed');
+  }
+  const scenes = parsed.scenes.map(cleanScene).filter(Boolean);
   if (!scenes.length) {
     throw new AIError('The reply held no usable scenes, so nothing was saved.', 'malformed');
   }
@@ -1562,6 +1645,45 @@ function pagesSchema(sceneIds) {
   };
 }
 
+const PAGE_RULES = [
+  'Element rules:',
+  '· Start each scene with exactly ONE `scene` element whose text is the',
+  '  heading given above, copied as it stands.',
+  '· `character` holds a name only. The parenthetical goes in `paren`, and',
+  '  `paren` text is written WITHOUT the surrounding brackets.',
+  '· `dialogue` follows the `character` it belongs to. One speech per element.',
+  '· Use `transition` almost never.',
+  '· Hit the length. A scene marked 4/8 is half a page, not two pages.',
+  '· Return one entry per sceneId, keyed by the exact sceneId given.'
+].join('\n');
+
+/**
+ * The part of a pages request EVERY batch of one run repeats (the prompt
+ * cache's `shared` block): logline, the established cast, the language
+ * rules, the element rules and the whole scene list as a map. Built
+ * once per run and byte-identical for every batch — nothing in it names
+ * a cursor, a batch or a time.
+ *
+ *   job { lang, logline, characters:[string], overview:[{ slug, synopsis }] }
+ */
+export function buildPagesShared(job) {
+  const lines = ['LOGLINE: ' + str(job.logline, 400), ''];
+  if (Array.isArray(job.characters) && job.characters.length) {
+    lines.push('CHARACTERS ALREADY ESTABLISHED (keep the spelling exactly): '
+      + job.characters.slice(0, 40).join(', '));
+    lines.push('');
+  }
+  if (Array.isArray(job.overview) && job.overview.length) {
+    lines.push('THE SCENE LIST, for continuity (you write only the scenes marked WRITE THIS in the request):');
+    for (const s of job.overview) lines.push('  ' + s.slug + ' — ' + str(s.synopsis, 300));
+    lines.push('');
+  }
+  lines.push(langRules(job.lang));
+  lines.push('');
+  lines.push(PAGE_RULES);
+  return lines.join('\n');
+}
+
 /**
  * Stage 3. A batch of scenes -> script elements.
  *
@@ -1572,11 +1694,19 @@ function pagesSchema(sceneIds) {
  *     after:  [{ slug, synopsis }],   // the two just after
  *     characters: [string]            // the running cast, for consistency
  *   }
+ *   opts.onItems  [{ sceneId, elements }] the moment a scene is whole
+ *   opts.careful  raise the effort (ai-effort.js)
+ *   opts.runIds   EVERY scene id of the run, so the schema is identical for
+ *                 each batch of it (a cached prefix); default: this batch
+ *   opts.shared   buildPagesShared(job) — when given, the logline, cast,
+ *                 rules and scene map ride in it and are left out of the
+ *                 per-batch text
+ *   opts.onStart  called once the first text has streamed
  *
  * Resolves to { byScene: Map<sceneId, element[]>, truncated, model }.
  * Writes nothing.
  */
-export async function draftScenePages(job, { onStatus, signal } = {}) {
+export async function draftScenePages(job, { onStatus, signal, onItems, careful, runIds, shared, onStart } = {}) {
   const scenes = Array.isArray(job.scenes) ? job.scenes : [];
   if (!scenes.length) throw new AIError('No scenes in this batch.', 'noscenes');
   const ids = scenes.map((s) => String(s.sceneId));
@@ -1586,14 +1716,16 @@ export async function draftScenePages(job, { onStatus, signal } = {}) {
     'Write the full script for the ' + scenes.length
       + (scenes.length === 1 ? ' scene' : ' scenes') + ' marked WRITE THIS below.',
     'About ' + (Math.round(pages * 10) / 10) + ' pages in total across the batch.',
-    '',
-    'LOGLINE: ' + str(job.logline, 400),
     ''
   ];
-  if (Array.isArray(job.characters) && job.characters.length) {
-    lines.push('CHARACTERS ALREADY ESTABLISHED (keep the spelling exactly): '
-      + job.characters.slice(0, 40).join(', '));
+  if (!shared) {
+    lines.push('LOGLINE: ' + str(job.logline, 400));
     lines.push('');
+    if (Array.isArray(job.characters) && job.characters.length) {
+      lines.push('CHARACTERS ALREADY ESTABLISHED (keep the spelling exactly): '
+        + job.characters.slice(0, 40).join(', '));
+      lines.push('');
+    }
   }
   if (Array.isArray(job.before) && job.before.length) {
     lines.push('COMES AFTER (context only — do NOT write these):');
@@ -1616,28 +1748,45 @@ export async function draftScenePages(job, { onStatus, signal } = {}) {
     for (const s of job.after) lines.push('  ' + s.slug + ' — ' + str(s.synopsis, 300));
     lines.push('');
   }
-  lines.push(langRules(job.lang));
-  lines.push('');
-  lines.push([
-    'Element rules:',
-    '· Start each scene with exactly ONE `scene` element whose text is the',
-    '  heading given above, copied as it stands.',
-    '· `character` holds a name only. The parenthetical goes in `paren`, and',
-    '  `paren` text is written WITHOUT the surrounding brackets.',
-    '· `dialogue` follows the `character` it belongs to. One speech per element.',
-    '· Use `transition` almost never.',
-    '· Hit the length. A scene marked 4/8 is half a page, not two pages.',
-    '· Return one entry per sceneId, keyed by the exact sceneId given.'
-  ].join('\n'));
+  if (!shared) {
+    lines.push(langRules(job.lang));
+    lines.push('');
+    lines.push(PAGE_RULES);
+  }
 
+  const wanted = new Set(ids);
+  const okTypes = new Set(PAGE_ELEMENT_TYPES);
+  const cleanPages = (entry) => {
+    if (!entry || typeof entry !== 'object') return null;
+    const sceneId = String(entry.sceneId ?? '');
+    if (!wanted.has(sceneId)) return null;
+    const els = (Array.isArray(entry.elements) ? entry.elements : [])
+      .filter((e) => e && typeof e === 'object')
+      .map((e) => ({
+        type: okTypes.has(e.type) ? e.type : 'action',
+        // A scene's worth of text, not a novel. The cap is per element.
+        text: str(e.text, 4000)
+      }))
+      .filter((e) => e.text);
+    return els.length ? { sceneId, elements: els } : null;
+  };
+  const stream = arrayStream('scenes');
+  let started = false;
   const { parsed, truncated, model } = await callModel({
     system: SCRIPT_SYSTEM,
     user: lines.join('\n'),
-    schema: pagesSchema(ids),
+    shared: shared || undefined,
+    schema: pagesSchema(Array.isArray(runIds) && runIds.length ? runIds.map(String) : ids),
     maxTokens: 32000,
-    effort: 'high',
+    effort: draftEffort(careful),
     onStatus,
     signal,
+    onText: (sofar) => {
+      if (!started) { started = true; if (onStart) onStart(); }
+      if (!onItems) return;
+      const fresh = stream.feed(sofar).map(cleanPages).filter(Boolean);
+      if (fresh.length) onItems(fresh);
+    },
     progress: (sofar) => {
       const n = (sofar.match(/"sceneId"/g) || []).length;
       return n ? 'Writing… scene ' + n + ' of ' + scenes.length : 'Writing…';
@@ -1647,22 +1796,10 @@ export async function draftScenePages(job, { onStatus, signal } = {}) {
   if (!Array.isArray(parsed.scenes)) {
     throw new AIError('The reply was not script pages, so nothing was added.', 'malformed');
   }
-  const wanted = new Set(ids);
-  const okTypes = new Set(PAGE_ELEMENT_TYPES);
   const byScene = new Map();
   for (const entry of parsed.scenes) {
-    if (!entry || typeof entry !== 'object') continue;
-    const sceneId = String(entry.sceneId ?? '');
-    if (!wanted.has(sceneId)) continue;
-    const els = (Array.isArray(entry.elements) ? entry.elements : [])
-      .filter((e) => e && typeof e === 'object')
-      .map((e) => ({
-        type: okTypes.has(e.type) ? e.type : 'action',
-        // A scene's worth of text, not a novel. The cap is per element.
-        text: str(e.text, 4000)
-      }))
-      .filter((e) => e.text);
-    if (els.length) byScene.set(sceneId, els);
+    const c = cleanPages(entry);
+    if (c) byScene.set(c.sceneId, c.elements);
   }
   if (!byScene.size) {
     throw new AIError('The reply held no usable pages, so nothing was added.', 'malformed');

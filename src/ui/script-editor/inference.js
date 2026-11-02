@@ -244,6 +244,17 @@ export function createInference(ed) {
       });
       return true;
     },
+    /** Would Return on line i, holding `text`, be reformatted (a speech
+     *  written as prose, a cue, a transition)? Asks, changes nothing: the
+     *  dictation uses it to end a line at a spoken pause only when the
+     *  auto-format has something to do with it. */
+    wouldFormat(i, text) {
+      const el = ed.getElements()[i];
+      if (!el || explicit.has(el.id) || !String(text || '').trim()) return false;
+      const known = names();
+      if (el.type === 'action' && parseSaysLine(text, known)) return true;
+      return !!classifyReturn(text, el.type, { names: known });
+    },
     /** Return at the end of a line. Returns { type, at } — the type the
      *  last line became and its index, already applied — or null to let
      *  the flow table decide. The caller adds the next line INSIDE the

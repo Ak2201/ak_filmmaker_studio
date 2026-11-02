@@ -48,7 +48,9 @@ import { writeHintsOn, setWriteHints } from '../lib/write-prefs.js';
 import { createSmartType } from '../ui/smarttype.js';
 import WriteKeys from '../ui/write-shortcuts.js';
 import { mountTypewriter } from '../ui/script-editor/typewriter.js';
-import { readTypewriter, saveTypewriter } from '../lib/chrome-prefs.js';
+import { readTypewriter, saveTypewriter, readMacrosPref } from '../lib/chrome-prefs.js';
+import { mountReadAloud, readAloudSupported } from '../ui/read-aloud.js';
+import { dictationSupported } from '../lib/dictation-model.js';
 import '../styles/smarttype.css';
 import { mountEditor, elFocus } from '../ui/script-editor/editor.js';
 import { loadCharacters } from '../lib/characters.js';
@@ -445,6 +447,9 @@ const editor = mountEditor(document, {
   known: knownTypes,
   say,
   toast: (m, o) => StudioUI.toast(m, o),
+  /* Alt+Shift+digit macros (src/lib/macros.js): read at the press, so a
+     change made in Settings is live without a reload. */
+  getMacros: () => readMacrosPref(),
   /* Speakers the auto-format knows besides the script's own cues: the
      Characters page's names and aliases (a read, at Return only). */
   knownNames: () => loadCharacters().flatMap((c) => [c.name, ...(c.aliases || [])]),
@@ -498,6 +503,33 @@ const replaceBar = mountReplaceBar({
   host: () => document.getElementById('scTop')
 });
 delegate(document, 'click', '[data-action="sc-find"]', () => replaceBar.open(curId));
+
+/* ---- read aloud and Check names (wave 2, L5) -------------------- */
+const readAloud = mountReadAloud({
+  getDoc: () => doc,
+  editor,
+  currentId: () => curId,
+  host: () => document.getElementById('scTop'),
+  say
+});
+delegate(document, 'click', '[data-action="sc-read"]', () => { if (readAloud) readAloud.open(); });
+delegate(document, 'click', '[data-action="sc-names"]', async (e, btn) => {
+  try {
+    const M = await import('../ui/name-check.js');
+    M.openNameCheck({
+      getDoc: () => doc,
+      editor,
+      persistNow: () => persistNow(),
+      afterChange: () => { refreshDerivedUi(); scheduleDerived(); },
+      extraNames: () => loadCharacters().flatMap((c) => [c.name, ...(c.aliases || [])]),
+      say,
+      returnTo: btn
+    });
+  } catch (err) {
+    console.warn('[script] names', err);
+    say('Check names could not open. Check the connection and try again.');
+  }
+});
 
 /* ---- draft label ------------------------------------------------ */
 const draftLabel = () => draftLabelOf(doc);
@@ -629,7 +661,10 @@ const FILE_ITEMS = [
 ];
 const TOOL_ITEMS = [
   { label: 'Tamil typing', action: 'sc-tamil', hint: 'Alt+T', icon: 'translate' },
-  { label: 'Dictation', action: 'sc-dictate', icon: 'mic' },
+  /* Hidden where the browser has no speech: a control that cannot work is worse than none. */
+  dictationSupported() ? { label: 'Dictation', action: 'sc-dictate', hint: 'Chrome', icon: 'mic' } : null,
+  readAloudSupported() ? { label: 'Read aloud', action: 'sc-read', hint: 'table read', icon: 'record_voice_over' } : null,
+  { label: 'Check names', action: 'sc-names', hint: 'spelling', icon: 'spellcheck' },
   { label: 'Find and replace', action: 'sc-find', hint: 'Ctrl/⌘ Shift H', icon: 'find_replace' },
   { label: 'Keyboard shortcuts', action: 'sc-keys', hint: '?', icon: 'keyboard' },
   { label: 'Format check', action: 'sc-check', icon: 'spellcheck' },
@@ -640,7 +675,7 @@ const TOOL_ITEMS = [
   { label: 'Next bookmark', action: 'sc-mark-next', hint: 'Alt+]', icon: 'arrow_downward' },
   { label: 'Previous bookmark', action: 'sc-mark-prev', hint: 'Alt+[', icon: 'arrow_upward' },
   { label: 'Typewriter scrolling', action: 'sc-typewriter', hint: 'view', icon: 'vertical_align_center' }
-];
+].filter(Boolean);
 const HELP_ITEMS = [
   { label: 'Show or hide hints', action: 'sc-hints', icon: 'lightbulb' },
   { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI', icon: 'auto_awesome' }

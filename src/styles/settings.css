@@ -775,3 +775,25 @@ main.k-page > .st-body { max-width: none; margin-inline: 0; padding-inline: 0; }
   border-top: 1px solid var(--border-hair);
 }
 .st-pc-next > * { margin: 0; }
+
+/* ---- Screenplay macros (renderMacros in settings.js) ------------
+   One row per Alt+Shift+digit slot: the key, a name, the snippet, where
+   it goes. A row wraps on a phone rather than scrolling sideways. */
+.st-macros { display: grid; gap: var(--s2); margin-top: var(--s3); }
+.st-macro-row { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1.4fr); gap: var(--s2); align-items: center; }
+.st-macro-key { color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.st-macro-row input, .st-macro-row select {
+  min-width: 0;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface-canvas);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--sk-field-radius, var(--radius-sm));
+  padding: var(--s1) var(--s2);
+}
+.st-macro-row input:focus-visible, .st-macro-row select:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-primary); outline-offset: 1px; }
+@media (max-width: 719px) {
+  .st-macro-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .st-macro-key { grid-column: 1 / -1; }
+  .st-macro-row input:nth-of-type(2), .st-macro-row select { grid-column: 1 / -1; }
+}

@@ -42,6 +42,8 @@ import { wireKeys, splitAt } from './keys.js';
 import { createInference } from './inference.js';
 import { wantsSplit, planPaste } from '../../lib/script-paste.js';
 import { toggleMark as flipMark, stepMark } from '../../lib/script-index.js';
+import { parseMacros, macroForSlot, planMacro } from '../../lib/macros.js';
+import { spellcheckFor } from '../../lib/name-spell.js';
 
 export { elFocus, PLACEHOLDER, CHUNK, iconBtn, field, setAttr, autosize } from './rows.js';
 
@@ -480,6 +482,7 @@ export function mountEditor(host, opts) {
       if (ta) {
         ta.placeholder = PLACEHOLDER[type] || '';
         ta.setAttribute('aria-label', typeLabel(type) + ', element ' + (i + 1));
+        ta.spellcheck = spellcheckFor(type);
         autosize(ta);
       }
       // The buttons depend on the type: ◇ on a speech, ⇄ and CONT'D on a cue.
@@ -736,8 +739,60 @@ export function mountEditor(host, opts) {
     if (ta) applyFocus(ta);
   });
 
+  /* MACROS (Alt+Shift+digit; src/lib/macros.js). The plan is pure; this
+     performs it inside ONE history step, so a macro that makes an
+     element and fills it is one Ctrl+Z. An 'edit' writes the model and
+     the field together without an input event: that event would open a
+     second step and run the auto-format over text the writer did not type. */
+  function macro(i, slot) {
+    const el = els()[i];
+    const m = macroForSlot(parseMacros(typeof o.getMacros === 'function' ? o.getMacros() : null), slot);
+    if (!el || !m) return false;
+    const ta = rowOf(el.id)?.querySelector('.wr-text');
+    if (ta && ta.value !== el.text) el.text = ta.value;
+    let caret = null;
+    try { if (ta) caret = { start: ta.selectionStart, end: ta.selectionEnd }; } catch (e) { /* not a text field */ }
+    const plan = planMacro(m, el, caret);
+    if (!plan) return false;
+    step('macro', () => {
+      if (plan.op === 'new' && !plan.convert) { addElement(i, plan.type, plan.text); return; }
+      if (plan.op === 'new' && el.type !== plan.type) setElementType(i, plan.type);
+      el.text = plan.text;
+      if (ta) {
+        ta.value = plan.text;
+        autosize(ta);
+        try { ta.setSelectionRange(plan.caret ?? plan.text.length, plan.caret ?? plan.text.length); } catch (e) { /* select */ }
+      }
+      if (smart && smart.invalidate) smart.invalidate();
+      persistNow();
+      o.refreshCounters();
+      o.scheduleDerived();
+    });
+    o.say('Macro: ' + m.label + '.');
+    return true;
+  }
+
+  /* DICTATION (src/ui/dictation.js). Spoken text has already been put at
+     the caret as an ordinary `input`, so the model, the auto-format and
+     the history saw it exactly as typing. What it asks here is whether
+     the LINE ENDS: a spoken "new line" always does; a pause does only
+     when the auto-format has something to do with the line (inference
+     .wouldFormat), so a breath inside a speech does not cut it. The end
+     is a real Return key event through keys.js — one path for "Preethi
+     says hello" becoming a cue and a speech however it was entered. */
+  document.addEventListener('fms:dictation-commit', (e) => {
+    const d = e.detail || {};
+    const ta = d.field;
+    if (!ta || !ta.isConnected || !ta.value.trim()) return;
+    const i = indexOfEl(idOf(ta, 'el'));
+    if (i < 0) return;
+    if (!d.newLine && !inference.wouldFormat(i, ta.value)) return;
+    ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
+  }, { signal });
+
   const api = {
     getElements: els,
+    macro,
     indexOf: indexOfEl,
     renderPage,
     rerender: render,

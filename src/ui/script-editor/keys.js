@@ -111,6 +111,7 @@ export function wireKeys(root, ed, o) {
         if (act.op === 'change') o.setElementTypeAt(i, act.type);
         else ed.addElement(i, act.type);
         break;
+      case 'macro': ed.macro(i, act.slot); break;
       case 'dual': ed.toggleDual(i); break;
       case 'note': openNote(i, ta); break;
       case 'navigator': openNavigator(); break;

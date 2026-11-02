@@ -3662,3 +3662,44 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       row's note; draft and certification points are always sticky notes.
       The Desk's read panel keeps develop's Copy beside "Keep as notes".
       `test:ai-apply` (58) runs all three through faked replies.
+81. **Screenplay Writer: Final Draft parity (2 Nov 2026).** Seven lanes, merged
+    into `fd/parity` and written up in `docs/FINAL-DRAFT-PARITY.md` (the
+    table: Feature, Before, Now, Notes, by group, with what is not built).
+    - **Flow (L1).** One undo/redo history (`src/lib/edit-history.js`), each
+      step a copy of the element list with unchanged lines shared. Auto-format
+      now switches any line type, one undo step per switch, and never a line
+      the writer typed the type of. "NAME says, ..." on Return (`parseSaysLine`),
+      and Tab on a filled Action line adds a Character line.
+    - **Pages (L2).** Live page breaks in the editor from `src/lib/paginate.js`
+      (moved out of screenplay-export.js with byte-identical output, proved by
+      SHA-256 fixtures), MORE and automatic CONT'D as decoration, scene numbers
+      in both margins, and the caret strip on the real page.
+    - **Elements (L3).** `centered`, `lyrics` and `act` appended last in the
+      type list, so old scripts read back unchanged; `act-line.js` is the one
+      act pattern for importer, Fountain and inference.
+    - **Navigation (L4).** Character navigator and bookmarks in the existing
+      Ctrl+Shift+S navigator, bookmarks as `mark: true` on the element, and
+      typewriter scrolling behind a `typewriter` preference.
+    - **Helpers (L5).** Read aloud, dictation made opt-in with a first-use
+      notice, nine macros, and name-aware spelling with a Check names sheet
+      that fixes through one checkpoint.
+    - **Structure (L6).** Scene reorder and fold (`script-structure.js`), split
+      view at 1100px and wider, side-by-side draft compare, and a statistics
+      panel (`script-stats.js`).
+    - **Production (L7).** Revision asterisks and a revision header in the PDF,
+      fit to page (`fit-page.js`, up to 4 lines of cheat, margins only), and
+      scene, location and character reports. A-pages were already built and
+      are now tested.
+    - **Checks.** Node: paginate, keys, inference, history, elements,
+      production, screenplay, import, fdx, script-lock, undef. Browser against
+      `build:open`: prove:script, prove:script-lock, prove:helpers,
+      prove:production, prove:script-structure. All green. No new storage key,
+      no renamed key or data-key; the new preferences are `autoContd`,
+      `fitPage`, `typewriter`, `readAloud`, `dictation` and `macros` inside
+      `fms_studio_prefs_v1`.
+    - **Not built.** TV format templates (not chosen this round), real-time
+      co-editing (needs a server), a spell-check dictionary beyond the
+      browser's, a dedicated act shortcut, and automatic CONT'D inside dual
+      dialogue. Each is listed with its reason in the parity doc.
+    - **Not pushed.** Lane branches `fd/l1-flow` to `fd/l7-production` are
+      merged into `fd/parity`.

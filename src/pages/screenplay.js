@@ -47,8 +47,12 @@ import Keys from '../lib/write-keys.js';
 import { writeHintsOn, setWriteHints } from '../lib/write-prefs.js';
 import { createSmartType } from '../ui/smarttype.js';
 import WriteKeys from '../ui/write-shortcuts.js';
+import { mountTypewriter } from '../ui/script-editor/typewriter.js';
+import { readTypewriter, saveTypewriter, readMacrosPref, readFitPage, saveFitPage } from '../lib/chrome-prefs.js';
+import { dictationSupported } from '../lib/dictation-model.js';
 import '../styles/smarttype.css';
 import { mountEditor, elFocus } from '../ui/script-editor/editor.js';
+import { loadCharacters } from '../lib/characters.js';
 import { installLineLanding } from '../ui/script-find.js';
 import { mountReplaceBar } from '../ui/script-replace-bar.js';
 import { mountPresence } from '../ui/presence.js';
@@ -57,9 +61,11 @@ import { pageEntry } from '../lib/navmodel.js';
 import { buildSectionMenu } from '../ui/section-menu.js';   // Write | Script analysis
 import { mountBeats, deriveBeats } from '../ui/beats-panel.js';
 import { caretPosition, formatCaretPage, sceneTotal, lockedSceneNumber } from '../lib/caret-position.js';
+import { autoContdOn } from '../lib/chrome-prefs.js';   // the automatic (CONT'D), a device pref (Settings)
 import Scenes from '../lib/scenes.js';
 import { installLeavePrompt } from '../ui/leave-prompt.js';
 import { latestDraft } from '../lib/drafts.js';
+import { sceneOfElement } from '../lib/script-structure.js';
 /* The page's derivations and sentences: src/lib/screenplay-model.js. */
 import {
   draftLabel as draftLabelOf, isBlankScript, showStartHint, typeKeyHint, typeName, tipKeysLine,
@@ -425,6 +431,16 @@ const say = (m) => { try { StudioUI.toast(m, { type: 'info' }); } catch (e) { /*
 let presence = null;        // src/ui/presence.js, mounted at boot; redrawn after a page render
 let curId = null;           // the line the caret is in
 let Typeset = null;         // the typesetter, once loaded (page breaks)
+let pagedCount = 0;         // pages in the last page pass: the strip's page count (refreshStats)
+let pagedNow = null;        // { index, labels } of the last page pass, for the caret strip (applyBreaks)
+let breaksIdle = 0;         // the idle slot the next page pass waits for
+let split = null;           // src/ui/script-split.js, mounted on first use (view state, memory only)
+/* REVISION MODE (src/lib/script-production.js): loaded only once the
+   script is held (locked with a baseline draft), so an unlocked script's
+   page never fetches the diff. */
+let Prod = null;
+const prodLib = () => import('../lib/script-production.js');
+const fitLib = () => import('../lib/fit-page.js');
 
 const editor = mountEditor(document, {
   getDoc: () => doc,
@@ -439,6 +455,12 @@ const editor = mountEditor(document, {
   known: knownTypes,
   say,
   toast: (m, o) => StudioUI.toast(m, o),
+  /* Alt+Shift+digit macros (src/lib/macros.js): read at the press, so a
+     change made in Settings is live without a reload. */
+  getMacros: () => readMacrosPref(),
+  /* Speakers the auto-format knows besides the script's own cues: the
+     Characters page's names and aliases (a read, at Return only). */
+  knownNames: () => loadCharacters().flatMap((c) => [c.name, ...(c.aliases || [])]),
   rowChrome: false
 });
 
@@ -488,7 +510,47 @@ const replaceBar = mountReplaceBar({
   toast: (m, o) => StudioUI.toast(m, o),
   host: () => document.getElementById('scTop')
 });
-delegate(document, 'click', '[data-action="sc-find"]', () => replaceBar.open(curId));
+delegate(document, 'click', '[data-action="sc-find"]', () => { editor.foldAll(false); replaceBar.open(curId); });
+
+/* ---- read aloud and Check names (wave 2, L5) -------------------- */
+/* Read aloud is LOADED ON FIRST USE (src/ui/read-aloud.js): its panel
+   and its voice logic are ~8 KB the editor's first paint does not need.
+   The support check is restated here for the same reason, and must stay
+   identical to readAloudSupported() there: the menu item is left out
+   where the browser has no synthesis. */
+const readAloudSupported = () => 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function';
+let readAloud = null;
+delegate(document, 'click', '[data-action="sc-read"]', async () => {
+  if (!readAloud) {
+    let M;
+    try { M = await import('../ui/read-aloud.js'); } catch (err) { say('Read aloud could not be loaded. Check the connection and try again.'); return; }
+    readAloud = readAloud || M.mountReadAloud({
+      getDoc: () => doc,
+      editor,
+      currentId: () => curId,
+      host: () => document.getElementById('scTop'),
+      say
+    });
+  }
+  if (readAloud) readAloud.open();
+});
+delegate(document, 'click', '[data-action="sc-names"]', async (e, btn) => {
+  try {
+    const M = await import('../ui/name-check.js');
+    M.openNameCheck({
+      getDoc: () => doc,
+      editor,
+      persistNow: () => persistNow(),
+      afterChange: () => { refreshDerivedUi(); scheduleDerived(); },
+      extraNames: () => loadCharacters().flatMap((c) => [c.name, ...(c.aliases || [])]),
+      say,
+      returnTo: btn
+    });
+  } catch (err) {
+    console.warn('[script] names', err);
+    say('Check names could not open. Check the connection and try again.');
+  }
+});
 
 /* ---- draft label ------------------------------------------------ */
 const draftLabel = () => draftLabelOf(doc);
@@ -612,6 +674,9 @@ const FILE_ITEMS = [
   { label: 'Lock or review the script', action: 'sc-lock', icon: 'lock' },
   { label: 'Unlock the script…', action: 'sc-unlock', icon: 'lock_open' },
   { label: 'Export PDF', action: 'sc-pdf', hint: 'working copy', icon: 'picture_as_pdf' },
+  { label: 'Export PDF on revision colour', action: 'sc-pdf-tint', hint: 'locked script', icon: 'palette' },
+  { label: 'Fit to page…', action: 'sc-fit', hint: 'cheat margins', icon: 'density_small' },
+  { label: 'Reports', action: 'sc-reports', hint: 'scenes, locations, cast', icon: 'assessment' },
   { label: 'Export Word (.docx)', action: 'sc-docx', hint: 'to edit in Word', icon: 'description' },
   { label: 'Export Final Draft (.fdx)', action: 'sc-fdx', hint: 'US Letter, opens in Final Draft', icon: 'description' },
   { label: 'Export Fountain (.fountain)', action: 'sc-fountain', hint: 'plain text, any app', icon: 'description' },
@@ -620,12 +685,27 @@ const FILE_ITEMS = [
 ];
 const TOOL_ITEMS = [
   { label: 'Tamil typing', action: 'sc-tamil', hint: 'Alt+T', icon: 'translate' },
-  { label: 'Dictation', action: 'sc-dictate', icon: 'mic' },
+  /* Hidden where the browser has no speech: a control that cannot work is worse than none. */
+  dictationSupported() ? { label: 'Dictation', action: 'sc-dictate', hint: 'Chrome', icon: 'mic' } : null,
+  readAloudSupported() ? { label: 'Read aloud', action: 'sc-read', hint: 'table read', icon: 'record_voice_over' } : null,
+  { label: 'Check names', action: 'sc-names', hint: 'spelling', icon: 'spellcheck' },
   { label: 'Find and replace', action: 'sc-find', hint: 'Ctrl/⌘ Shift H', icon: 'find_replace' },
   { label: 'Keyboard shortcuts', action: 'sc-keys', hint: '?', icon: 'keyboard' },
   { label: 'Format check', action: 'sc-check', icon: 'spellcheck' },
-  { label: 'Notes overview', action: 'sc-notes', hint: 'all notes', icon: 'sticky_note_2' }
-];
+  { label: 'Notes overview', action: 'sc-notes', hint: 'all notes', icon: 'sticky_note_2' },
+  { label: 'Scene navigator', action: 'sc-scenes', hint: 'Ctrl/⌘ Shift S · drag to reorder', icon: 'list' },
+  { label: 'Character navigator', action: 'sc-chars', hint: 'Alt+C', icon: 'groups' },
+  { label: 'Bookmark this line', action: 'sc-bookmark', hint: 'Alt+B', icon: 'bookmark' },
+  { label: 'Bookmarks', action: 'sc-bookmarks', hint: 'list', icon: 'bookmarks' },
+  { label: 'Next bookmark', action: 'sc-mark-next', hint: 'Alt+]', icon: 'arrow_downward' },
+  { label: 'Previous bookmark', action: 'sc-mark-prev', hint: 'Alt+[', icon: 'arrow_upward' },
+  { label: 'Typewriter scrolling', action: 'sc-typewriter', hint: 'view', icon: 'vertical_align_center' },
+  { label: 'Fold or unfold this scene', action: 'sc-fold', hint: 'view', icon: 'unfold_less' },
+  { label: 'Fold all scenes', action: 'sc-fold-all', hint: 'headings only', icon: 'unfold_less' },
+  { label: 'Unfold all scenes', action: 'sc-unfold-all', icon: 'unfold_more' },
+  { label: 'Split view', action: 'sc-split', hint: 'view, wide screens', icon: 'view_week' },
+  { label: 'Statistics', action: 'sc-stats', hint: 'pages, scenes, dialogue', icon: 'bar_chart' }
+].filter(Boolean);
 const HELP_ITEMS = [
   { label: 'Show or hide hints', action: 'sc-hints', icon: 'lightbulb' },
   { label: 'Write from a synopsis', action: 'sc-generate', hint: 'AI', icon: 'auto_awesome' }
@@ -899,6 +979,8 @@ function render() {
   editor.autosizeAll();
   requestAnimationFrame(editor.autosizeAll);
   applyBreaksSoon();
+  editor.applyFolds();
+  if (split) split.reattach();
   if (view === 'analysis') refreshAnalysis();
 }
 
@@ -912,9 +994,11 @@ function renderPage(focus) {
   requestAnimationFrame(editor.autosizeAll);
   refreshDerivedUi();
   refreshStats();
+  editor.applyFolds();
   if (focus) editor.applyFocus(focus);
   applyBreaksSoon();
   sceneSyncLater();
+  if (split) split.refresh();
   if (presence) presence.draw();   // the rows are new, so are the marks and carets on them
 }
 
@@ -1031,6 +1115,60 @@ function paintTip(el) {
     box
   ].filter(Boolean));   // append(null) would print "null"
 }
+/* ---- navigators, bookmarks, typewriter ------------------------
+   Derived lists (src/lib/script-index.js); the only stored thing is a
+   bookmark's `mark` field, toggled by the editor. Typewriter is a view
+   preference, written on a click only. */
+const typewriter = mountTypewriter({ signal: new AbortController().signal });
+typewriter.setOn(readTypewriter());
+const openNav = (mode) => WriteKeys.openNavigator({
+  mode, elements: doc.elements, fromId: curId, onJump: (id) => editor.applyFocus(elFocus(id)),
+  onMoveScene: editor.moveScene, onToggleFold: editor.toggleFold, isFolded: editor.isFolded
+});
+delegate(document, 'click', '[data-action="sc-scenes"]', () => openNav('scenes'));
+delegate(document, 'click', '[data-action="sc-chars"]', () => openNav('characters'));
+delegate(document, 'click', '[data-action="sc-bookmarks"]', () => openNav('bookmarks'));
+delegate(document, 'click', '[data-action="sc-bookmark"]', () => lineAction((i) => editor.toggleBookmark(i)));
+delegate(document, 'click', '[data-action="sc-mark-next"]', () => editor.jumpBookmark(curId, 1));
+delegate(document, 'click', '[data-action="sc-mark-prev"]', () => editor.jumpBookmark(curId, -1));
+delegate(document, 'click', '[data-action="sc-typewriter"]', () => {
+  const on = !readTypewriter();
+  saveTypewriter(on);
+  typewriter.setOn(on);
+  say(on ? 'Typewriter scrolling on: the line you type stays at one height.' : 'Typewriter scrolling off.');
+});
+/* ---- folds, split view, statistics (L6) -------------------------
+   Folds and the split view are view state in memory (the editor's and
+   script-split.js's); Statistics derives everything when it opens.
+   None of the three writes anything. */
+delegate(document, 'click', '[data-action="sc-fold"]', () => {
+  const sid = curId ? sceneOfElement(doc.elements, curId) : null;
+  if (!sid) { say('Put the caret in a scene first.'); return; }
+  const on = editor.toggleFold(sid);
+  say(on ? 'Scene folded to its heading.' : 'Scene unfolded.');
+});
+delegate(document, 'click', '[data-action="sc-fold-all"]', () => {
+  editor.foldAll(true);
+  say('Every scene folded to its heading. Unfold all from the ⋯ menu; find and replace opens them too.');
+});
+delegate(document, 'click', '[data-action="sc-unfold-all"]', () => { editor.foldAll(false); say('Every scene unfolded.'); });
+delegate(document, 'click', '[data-action="sc-split"]', async () => {
+  if (!split) {
+    try {
+      const M = await import('../ui/script-split.js');
+      split = split || M.mountSplit({ getDoc: () => doc, editor, persist: () => persist(), onEdit: () => { refreshDerivedUi(); scheduleDerived(); }, say });
+    } catch (e) { say('The split view could not be loaded. Check the connection and try again.'); return; }
+  }
+  const was = split.isOn();
+  const on = split.toggle();
+  if (on !== was) say(on ? 'Split view on: the second page scrolls on its own. Esc in it closes it.' : 'Split view off.');
+});
+delegate(document, 'click', '[data-action="sc-stats"]', async (e, btn) => {
+  let M;
+  try { M = await import('../ui/script-stats-panel.js'); } catch (err) { say('Statistics could not be loaded. Check the connection and try again.'); return; }
+  if (!Typeset) { try { Typeset = await typesetter(); } catch (err) { Typeset = null; } }
+  M.openStats({ doc, typeset: Typeset, autoContd: autoContdOn(), returnTo: btn && btn.isConnected ? btn : document.activeElement });
+});
 delegate(document, 'click', '[data-action="sc-hints"]', () => {
   const on = !hintsOn();
   setHints(on);
@@ -1071,7 +1209,8 @@ function scheduleDerived() {
   derivedTimer = setTimeout(() => {
     derivedTimer = 0;
     editor.refreshCueOffers();
-    applyBreaks();
+    if (editor.hasFolds()) editor.applyFolds();   // a row a patch added inside a folded scene
+    applyBreaksIdle();
     refreshStats();
     refreshPos(true);
   }, 400);
@@ -1091,7 +1230,12 @@ function refreshStats() {
   const els = doc.elements;
   const { written, pages, words } = scriptStats(els);
   put('words', words);
-  put('pages', formatPages(pages));
+  /* ONE page count, as Final Draft has: once the paginator has run, the
+     strip says the number of pages the page view, Fit to page, Reports
+     and the PDF all show (its 52-line body), not the 55-line estimate,
+     which read 106.5 beside a page view ending on Page 115. The estimate
+     stands in only until the first page pass (applyBreaks). */
+  put('pages', !written ? formatPages(0) : pagedCount ? String(pagedCount) : formatPages(pages));
   if (!written) { put('runtime', '—'); estimateMin = 0; paintRuntime(); return; }
   const estimate = () => {
     const est = estimatedRuntime(Analysis, els, pages);
@@ -1116,7 +1260,7 @@ function putPos(k, text, show = !!text) {
   if (n.hidden === show) n.hidden = !show;
 }
 function refreshPos(deep) {
-  const p = curId ? caretPosition(doc.elements, curId) : null;
+  const p = curId ? caretPosition(doc.elements, curId, pagedNow) : null;
   const total = p ? p.sceneCount : sceneTotal(doc.elements);
   putPos('scene', scenePosText(p, total, p ? lockedSceneNumber(doc.elements, doc.numbering, p.sceneElId) : ''), true);
   putPos('page', p ? formatCaretPage(p) : '');
@@ -1232,16 +1376,60 @@ delegate(document, 'click', '[data-action="sc-runtime"]', (e, btn) => {
   if (open) loadTarget().then(paintRuntime);
 });
 
+/* ---- LIVE PAGES ---------------------------------------------------
+   The rows stay the writing surface; the paginator the PDF is built
+   from (paginateDoc, src/lib/paginate.js) says where its pages fall,
+   and this pass DECORATES the rows with the answer:
+
+     · a rule with the page number where each page starts;
+     · where a speech breaks inside itself, (MORE) above that rule and
+       "NAME (CONT'D)" under it, as the print sets them;
+     · the scene number in both margins of a heading;
+     · the automatic (CONT'D) on a returning speaker's cue (Settings,
+       `autoContd`, on by default) — beside the cue, never in it.
+
+   Every decoration is aria-hidden, takes no pointer and no selection,
+   and paints its words from a data attribute through CSS `content`, so
+   none of them is text: a copy of the page copies the script, and a
+   screen reader reads the lines. Nothing here is stored — the element
+   text is never touched, the next pass redraws from the model.
+
+   COST. paginate() is a few milliseconds on a 120-page script, but it
+   is never run per keystroke: scheduleDerived() waits for a 400ms pause
+   and this then waits for an idle slot. A caret move reads the last
+   pass's page index (pagedNow) and costs a Map lookup. */
+function applyBreaksIdle() {
+  if (breaksIdle) return;
+  const run = () => { breaksIdle = 0; applyBreaks(); };
+  breaksIdle = typeof requestIdleCallback === 'function'
+    ? requestIdleCallback(run, { timeout: 1000 })
+    : setTimeout(run, 0);
+}
 async function applyBreaksSoon() {
   if (!Typeset) {
     try { Typeset = await typesetter(); } catch (e) { return; }
   }
   applyBreaks();
 }
+/** Set or clear one data attribute, writing only on a change. */
+function setData(node, key, value) {
+  if (value) { if (node.dataset[key] !== value) node.dataset[key] = value; }
+  else if (key in node.dataset) delete node.dataset[key];
+}
+/** The row's own decoration of a kind, made on first need. */
+function deco(row, cls, make) {
+  let n = null;
+  for (const c of row.children) if (c.classList && c.classList.contains(cls)) { n = c; break; }
+  if (!n && make) {
+    n = h('span.' + cls + '.sc-deco', { 'aria-hidden': 'true' });
+    row.append(n);
+  }
+  return n;
+}
 function applyBreaks() {
   const page = document.getElementById('wr-page');
   if (!page || !Typeset) return;
-  const pages = Typeset.paginateDoc(doc);
+  const pages = Typeset.paginateDoc(doc, { autoContd: autoContdOn() });
   const anchors = pageAnchors(pages);
   // Locked pages print 12A or 12-13; the page view says the same.
   const labels = Typeset.pageNumbersDoc(doc, pages);
@@ -1256,16 +1444,89 @@ function applyBreaks() {
     const target = row.closest('.wr-dual') || row;
     const key = a.id + (a.split ? '|split' : '');
     const label = a.split ? 'Page ' + labels[p] + ' · continues' : 'Page ' + labels[p];
-    const placed = node && node.dataset.anchor === key && node.textContent === label
-      && (a.split ? node.previousElementSibling === target : node.nextElementSibling === target);
-    if (placed) continue;
-    if (!node) node = h('div.wr-pbreak', { role: 'separator', 'data-page': String(p) });
+    /* A speech that broke: the paginator wrote a (MORE) at the foot of
+       the page before and a "NAME (CONT'D)" cue at the top of this one. */
+    const cue = a.split ? pages[p].find((r) => r.contd === true) : null;
+    const contd = cue ? cue.lines.join(' ') : '';
+    if (!node) {
+      node = h('div.wr-pbreak', { 'aria-hidden': 'true', 'data-page': String(p) }, [
+        h('span.wr-pb-more'), h('span.wr-pb-rule'), h('span.wr-pb-contd')
+      ]);
+    }
     node.dataset.anchor = key;
     node.classList.toggle('is-split', a.split);
-    if (node.textContent !== label) node.textContent = label;
-    if (a.split) target.after(node); else target.before(node);
+    setData(node, 'label', label);
+    setData(node.children[0], 'text', contd ? '(MORE)' : '');
+    setData(node.children[1], 'text', label);
+    setData(node.children[2], 'text', contd);
+    const placed = a.split ? node.previousElementSibling === target : node.nextElementSibling === target;
+    if (!placed) { if (a.split) target.after(node); else target.before(node); }
   }
   existing.forEach((n) => n.remove());
+
+  /* The margins and the cues. One walk of the pages for the answers,
+     one walk of the rows for the paint; attribute writes only on a
+     change, so an idle pass over an unchanged script writes nothing. */
+  const sceneNo = new Map();
+  const auto = new Set();
+  for (const rows of pages) {
+    for (const r of rows) {
+      if (r.type === 'scene' && r.id && r.sceneNo && !r.cont) sceneNo.set(r.id, r.sceneNo);
+      if (r.autoContd && r.id) auto.add(r.id);
+    }
+  }
+  for (const row of editor.allRows()) {
+    const id = row.dataset.el;
+    const n = row.classList.contains('t-scene') ? sceneNo.get(id) || '' : '';
+    const sno = deco(row, 'sc-sno', !!n);
+    if (sno) setData(sno, 'text', n);
+    const isAuto = row.classList.contains('t-character') && auto.has(id);
+    const ac = deco(row, 'sc-autocontd', isAuto);
+    if (ac) {
+      setData(ac, 'text', isAuto ? "(CONT'D)" : '');
+      const ta = row.querySelector('.wr-text');
+      const len = isAuto && ta ? String(ta.value || '').trim().length : 0;
+      const ch = String(len);
+      if (ac.style.getPropertyValue('--cue-ch') !== ch) ac.style.setProperty('--cue-ch', ch);
+    }
+  }
+
+  paintRevisionMarks(page);
+
+  pagedNow = { index: Typeset.pageIndex(pages), labels };
+  page.dataset.pages = String(pages.length);
+  if (pagedCount !== pages.length) { pagedCount = pages.length; refreshStats(); }
+  refreshPos(false);
+}
+
+/* REVISION MODE ON THE PAGE. While the script is held, every line that
+   differs from the locked draft carries an asterisk in the right margin,
+   in the current revision colour (the swatch is a data attribute;
+   screenplay.css maps it to a token). Derived on the same idle pass as
+   the page breaks, written as attributes only on a change, never stored
+   — the PDF's asterisks come from the same revisionMarks(). A dual
+   block is marked once, on the block, since its two halves share a
+   margin. */
+function paintRevisionMarks(page) {
+  const held = isHeld(doc.numbering);
+  if (held && !Prod) {
+    prodLib().then((m) => { Prod = m; applyBreaksIdle(); }).catch(() => {});
+  }
+  const marks = held && Prod ? Prod.revisionMarks(doc) : null;
+  const ids = marks ? marks.ids : null;
+  const swatch = marks ? marks.colour.swatch : '';
+  setData(page, 'revision', marks && ids.size ? marks.colour.name : '');
+  for (const row of editor.allRows()) {
+    const dual = row.closest('.wr-dual');
+    const on = !!ids && ids.has(row.dataset.el);
+    const star = deco(row, 'sc-revmark', on && !dual);
+    if (star) { setData(star, 'text', on && !dual ? '*' : ''); setData(star, 'swatch', on && !dual ? swatch : ''); }
+    if (dual) {
+      const any = !!ids && [...dual.querySelectorAll('[data-el]')].some((r) => ids.has(r.dataset.el));
+      dual.classList.toggle('sc-dual-rev', any);
+      setData(dual, 'swatch', any ? swatch : '');
+    }
+  }
 }
 
 /* ---- the line menu: a ⋯ on the focused line, and right-click ---- */
@@ -1293,7 +1554,7 @@ function placeLineButton(row) {
 lineBtn.addEventListener('mousedown', (e) => e.preventDefault());
 
 const lineMenu = h('div#scLineMenu.sc-line-menu', { role: 'menu', hidden: true }, [
-  ['sc-dual', 'Dual dialogue', 'swap_horiz'], ['sc-contd', "Add CONT'D", 'add'], ['sc-up', 'Move up', 'arrow_upward'],
+  ['sc-bookmark', 'Bookmark', 'bookmark'], ['sc-dual', 'Dual dialogue', 'swap_horiz'], ['sc-contd', "Add CONT'D", 'add'], ['sc-up', 'Move up', 'arrow_upward'],
   ['sc-down', 'Move down', 'arrow_downward'], ['sc-del', 'Delete', 'delete']
 ].map(([a, label, icon]) => h('button.sc-line-item' + (a === 'sc-del' ? '.is-danger' : ''), {
   type: 'button', role: 'menuitem', 'data-action': a
@@ -1348,6 +1609,9 @@ function lineAction(fn) {
 delegate(document, 'click', '[data-action="sc-dual"]', () => lineAction((i) => editor.toggleDual(i)));
 delegate(document, 'click', '[data-action="sc-contd"]', () => lineAction((i, el) => {
   if (el.type !== 'character') { say("CONT'D goes on a character cue — put the caret in one first."); return; }
+  // Its own undo step, as the editor's own CONT'D button has: without one,
+  // Ctrl/Cmd+Z took this back together with the edit before it.
+  editor.checkpoint('contd');
   el.text = withContd(el.text);
   editor.patchRow(el.id);
   persistNow();
@@ -1469,22 +1733,43 @@ delegate(document, 'click', '[data-action="sc-check"]', () => {
   else say('The format check is not available here.');
 });
 
-async function exportPDF() {
+/* The PDF. A LOCKED script is a shooting script: its scene numbers
+   (12A included) print in both margins. A HELD one is in revision mode:
+   every line changed since the locked draft carries its asterisk and
+   each revised page is headed with the colour and the date
+   (script-production.js revisionMarks); `tint` prints those pages on
+   the colour too. `cheat` is the fit-to-page setting (fit-page.js) —
+   the stored one unless a preview passes its own. */
+async function exportPDF(opts = {}) {
   if (isBlankScript(doc.elements)) { say('Nothing to export yet — write a line first.'); return; }
   const main = document.getElementById('main');
   if (!main) return;
-  let T;
-  try { T = await typesetter(); }
+  let T, Fit;
+  try { [T, Fit] = await Promise.all([typesetter(), fitLib()]); }
   catch (e) { say('The typesetter could not be loaded. Check the connection and try again.'); return; }
+  let marks = null;
+  if (isHeld(doc.numbering)) {
+    try {
+      Prod = Prod || await prodLib();
+      const m = Prod.revisionMarks(doc);
+      if (m && m.ids.size) marks = { ids: m.ids, label: m.header, swatch: m.colour.swatch, tint: opts.tint === true };
+    } catch (e) { console.warn('[script] revision marks', e); }
+  }
+  const numbered = isNumberingLocked(doc.numbering);
+  const cheat = Fit.normaliseCheat(opts.cheat !== undefined ? opts.cheat : readFitPage(currentProjectId()));
+  const g = Fit.cheatGeometry(cheat, T.BODY_LINES);
   let node = null;
   const iso = new Date().toISOString();
   PDF.exportPDF({
     scope: 'screenplay',
+    ...(numbered || marks ? { setup: 'screenplay-wide', classes: marks ? ['pdf-sn', 'pdf-revmarks'] : ['pdf-sn'] } : {}),
+    ...(g.lines ? { cheatMm: g.marginMm } : {}),
     title: Script.projectTitle() + ' — Screenplay',
     subtitle: pdfSubtitle(doc),
     before: () => {
       node = T.buildDocument(doc, {
-        title: Script.projectTitle(), revision: '', subtitle: iso.slice(0, 10), date: iso.slice(0, 10), sceneNumbers: false
+        title: Script.projectTitle(), revision: '', subtitle: iso.slice(0, 10), date: iso.slice(0, 10), sceneNumbers: numbered,
+        autoContd: autoContdOn(), marks, cheat
       });
       main.append(node);
     },
@@ -1492,6 +1777,35 @@ async function exportPDF() {
   });
 }
 delegate(document, 'click', '[data-action="sc-pdf"]', () => { exportPDF(); });
+delegate(document, 'click', '[data-action="sc-pdf-tint"]', () => {
+  if (!isHeld(doc.numbering)) {
+    tell({ eyebrow: 'Revision colours', icon: 'palette', title: 'Lock the script first',
+      body: 'Revision pages print on their colour once the script is locked. Lock the script, and every change after that is marked with an asterisk on a coloured page.' });
+    return;
+  }
+  exportPDF({ tint: true });
+});
+/* Fit to page and the reports: src/ui/script-production-ui.js, loaded at
+   the press. The fit choice is an export setting in the device prefs
+   (chrome-prefs.js fitPage), per project; it never touches the text. */
+const prodUi = () => import('../ui/script-production-ui.js');
+delegate(document, 'click', '[data-action="sc-fit"]', async (e, btn) => {
+  if (isBlankScript(doc.elements)) { say('Nothing to fit yet — write a line first.'); return; }
+  try {
+    (await prodUi()).openFitPage({
+      getDoc: () => doc, returnTo: btn,
+      current: readFitPage(currentProjectId()),
+      save: (n) => { saveFitPage(currentProjectId(), n); },
+      preview: (n) => exportPDF({ cheat: n }),
+      say
+    });
+  } catch (err) { console.warn('[script] fit', err); say('Fit to page could not open. Check the connection and try again.'); }
+});
+delegate(document, 'click', '[data-action="sc-reports"]', async (e, btn) => {
+  if (isBlankScript(doc.elements)) { say('No reports yet — write a scene first.'); return; }
+  try { (await prodUi()).openReports({ getDoc: () => doc, returnTo: btn, autoContd: autoContdOn(), say }); }
+  catch (err) { console.warn('[script] reports', err); say('The reports could not open. Check the connection and try again.'); }
+});
 
 /* Word: a file someone without the studio can open and edit, each
    element in its named screenplay style (src/lib/screenplay-docx.js).

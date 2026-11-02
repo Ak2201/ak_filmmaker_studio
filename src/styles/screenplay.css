@@ -279,7 +279,8 @@
   position: relative;
   margin-top: 1em;
 }
-.sc-sheet .wr-el.t-scene { margin-top: 2em; }
+.sc-sheet .wr-el.t-scene,
+.sc-sheet .wr-el.t-act { margin-top: 2em; }
 .sc-sheet .wr-el.t-paren,
 .sc-sheet .wr-el.t-dialogue { margin-top: 0; }
 .sc-sheet .wr-chunk:first-child > .wr-el:first-child { margin-top: 0; }
@@ -307,7 +308,10 @@
   .sc-sheet .wr-el.t-scene,
   .sc-sheet .wr-el.t-action,
   .sc-sheet .wr-el.t-shot,
-  .sc-sheet .wr-el.t-transition { --wr-indent: 0ch;  --wr-measure: 60ch; }
+  .sc-sheet .wr-el.t-transition,
+  .sc-sheet .wr-el.t-centered,
+  .sc-sheet .wr-el.t-act { --wr-indent: 0ch;  --wr-measure: 60ch; }
+  .sc-sheet .wr-el.t-lyrics { --wr-indent: 10ch; --wr-measure: 35ch; }
   .sc-sheet .wr-el.t-character  { --wr-indent: 22ch; --wr-measure: 38ch; }
   .sc-sheet .wr-el.t-paren      { --wr-indent: 16ch; --wr-measure: 28ch; }
   .sc-sheet .wr-el.t-dialogue   { --wr-indent: 10ch; --wr-measure: 35ch; }
@@ -347,22 +351,129 @@
   .sc-sheet .wr-el.t-dialogue:focus-within::before   { content: 'Dialogue'; }
   .sc-sheet .wr-el.t-transition:focus-within::before { content: 'Transition'; }
   .sc-sheet .wr-el.t-shot:focus-within::before       { content: 'Shot'; }
+  .sc-sheet .wr-el.t-centered:focus-within::before   { content: 'Centered'; }
+  .sc-sheet .wr-el.t-lyrics:focus-within::before     { content: 'Lyrics'; }
+  .sc-sheet .wr-el.t-act:focus-within::before        { content: 'Act break'; }
 }
 
-/* Page edges: a dashed rule and a mono label on the right. */
+/* Page edges: a dashed rule and a small label on the right, and where
+   a speech breaks, the (MORE) above the rule and "NAME (CONT'D)" under
+   it at the cue's indent. Decoration only (screenplay.js applyBreaks):
+   every word comes from a data attribute through `content`, so none of
+   it is selectable or copied, and the node is aria-hidden. The sheet's
+   left margin is 9em and its right 6em; the break bleeds across both
+   (--pb-l / --pb-r), and narrower sheets restate the two below. */
 .sc-sheet .wr-page.is-pageview .wr-pbreak {
-  margin-block: 2em;
-  margin-inline: -9em -6em;
-  padding-top: 0.5em;
-  padding-right: 10em;
+  --pb-l: 9em;
+  --pb-r: 6em;
+  --pb-cue: 22ch;
+  display: block;
+  /* The sheet's own face and size (write.css sets the break small and
+     sans): the em and ch lengths here are the page's. */
+  font-family: var(--f-script);
+  font-size: 1em;
+  margin-block: 1.2em;
+  margin-inline: calc(-1 * var(--pb-l)) calc(-1 * var(--pb-r));
+  padding: 0;
+  border: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+  text-transform: none;
+  color: var(--ink-muted);
+}
+.sc-sheet .wr-pbreak > span { display: block; }
+.sc-sheet .wr-pbreak > span::before { content: attr(data-text); }
+.sc-sheet .wr-pbreak > span:not([data-text]) { display: none; }
+/* The rule keeps the sheet's font size, so --pb-r means the same length
+   here as on the break; only its label is set small. */
+.sc-sheet .wr-pbreak .wr-pb-rule {
+  padding-top: 0.3em;
+  padding-right: var(--pb-r);
   border-top: 1px dashed var(--rule);
+  line-height: 1;
+  text-align: right;
+}
+.sc-sheet .wr-pbreak .wr-pb-rule::before {
   font-family: var(--f-body);
   font-size: 0.6em;
   letter-spacing: 0;
+}
+.sc-sheet .wr-pbreak :is(.wr-pb-more, .wr-pb-contd) {
+  padding-left: calc(var(--pb-l) + var(--pb-cue));
+  text-align: left;                 /* write.css centres a split break */
+  font-family: var(--f-script);
+  line-height: 1;
+  white-space: pre;
+}
+.sc-sheet .wr-pbreak .wr-pb-more { margin-bottom: 1em; }
+.sc-sheet .wr-pbreak .wr-pb-contd { margin-top: 1em; }
+
+/* The scene number in both margins of a heading, and the automatic
+   (CONT'D) beside a returning speaker's cue: spans the page pass puts
+   in the row (aria-hidden, words from data-text, never in the textarea
+   and never stored). The number gives way to the focused line's own
+   label and toolbar in the margin; the (CONT'D) gives way while the cue
+   is being typed, since it sits where the next letter goes. */
+.sc-sheet .sc-deco {
+  position: absolute;
+  top: 0;
+  font-family: var(--f-script);
+  line-height: 1;
+  white-space: pre;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
   text-transform: none;
-  text-align: right;
+}
+.sc-sheet .sc-deco::before,
+.sc-sheet .sc-sno::after { content: attr(data-text); }
+.sc-sheet .sc-deco:not([data-text]) { display: none; }
+.sc-sheet .wr-el:not(.t-scene) > .sc-sno,
+.sc-sheet .wr-el:not(.t-character) > .sc-autocontd { display: none; }
+.sc-sheet .sc-sno { inset-inline: -5em -3.5em; display: flex; justify-content: space-between; font-weight: 700; color: var(--ink); }
+.sc-sheet .sc-autocontd {
+  left: calc(var(--wr-indent, 0ch) + (var(--cue-ch, 0) + 1) * 1ch);
   color: var(--ink-muted);
 }
+.sc-sheet .wr-el:is(:hover, :focus-within) > .sc-sno,
+.sc-sheet .wr-el:focus-within > .sc-autocontd { visibility: hidden; }
+@media (max-width: 719px) {
+  /* A phone's margins are a few pixels: no scene numbers in them. */
+  .sc-sheet .sc-sno { display: none; }
+}
+/* REVISION MODE: the asterisk beside a line changed since the locked
+   draft, out past the right-hand scene number, in the current revision
+   colour (data-swatch, set by the page pass; a text-safe -deep token per
+   colour, since a revision's paper colour is a wash and no ink). A dual
+   block is marked once, on the block. */
+.sc-sheet .sc-revmark,
+.sc-sheet .wr-dual.sc-dual-rev::after { right: -5em; font-weight: 700; color: var(--ink); }
+.sc-sheet .wr-dual.sc-dual-rev { position: relative; }
+.sc-sheet .wr-dual.sc-dual-rev::after {
+  content: '*';
+  position: absolute;
+  top: 0;
+  font-family: var(--f-script);
+  line-height: 1;
+  pointer-events: none;
+}
+.sc-sheet :is(.sc-revmark, .sc-dual-rev)[data-swatch="blue"]      { --rev-mark: var(--shorts-deep); }
+.sc-sheet :is(.sc-revmark, .sc-dual-rev)[data-swatch="pink"]      { --rev-mark: var(--shoot-deep); }
+.sc-sheet :is(.sc-revmark, .sc-dual-rev)[data-swatch="yellow"]    { --rev-mark: var(--warn-deep); }
+.sc-sheet :is(.sc-revmark, .sc-dual-rev)[data-swatch="green"]     { --rev-mark: var(--ok-deep); }
+.sc-sheet :is(.sc-revmark, .sc-dual-rev)[data-swatch="goldenrod"] { --rev-mark: var(--library-deep); }
+.sc-sheet :is(.sc-revmark, .sc-dual-rev)[data-swatch="salmon"]    { --rev-mark: var(--feature-deep); }
+.sc-sheet :is(.sc-revmark, .sc-dual-rev)[data-swatch="cherry"]    { --rev-mark: var(--danger-deep); }
+.sc-sheet .sc-revmark,
+.sc-sheet .wr-dual.sc-dual-rev::after { color: var(--rev-mark, var(--ink)); }
+@media (max-width: 719px) {
+  /* A phone's margin is a few pixels: the asterisk sits just inside the
+     page's edge instead of past it. */
+  .sc-sheet .sc-revmark,
+  .sc-sheet .wr-dual.sc-dual-rev::after { right: -0.6em; }
+}
+@media print { .sc-sheet .sc-deco { display: none; } }
 
 /* ============================================================
    THE FOCUSED LINE — its small toolbar, and the right-click menu
@@ -992,10 +1103,12 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   .sc-sheet .wr-el.t-paren      { --wr-indent: 14%; --wr-measure: 80%; }
   .sc-sheet .wr-el.t-dialogue   { --wr-indent: 7%;  --wr-measure: 90%; }
   .sc-sheet .wr-el.t-transition { --wr-indent: 0%;  --wr-measure: 100%; }
+  .sc-sheet .wr-el.t-lyrics     { --wr-indent: 7%;  --wr-measure: 90%; }
   .sc-sheet .wr-el.t-transition .wr-text { text-align: right; }
   .sc-sheet .wr-page.is-pageview .wr-pbreak {
-    margin-inline: calc(-1 * var(--s3));
-    padding-right: var(--s3);
+    --pb-l: var(--s3);
+    --pb-r: var(--s3);
+    --pb-cue: 24%;
   }
 
   /* The beats: a bottom sheet over the page, above the bottom bar and
@@ -1130,6 +1243,64 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
 .sc-sheet .wr-el.sc-find-row { box-shadow: -6px 0 0 -3px var(--paper-page-rule); }
 .sc-sheet .wr-el.sc-find-cur { box-shadow: -6px 0 0 -2px var(--accent-primary); }
 
+/* ---- read aloud (src/ui/read-aloud.js) ---------------------------
+   A row of #scTop like the find bar, so it pins with the bar. The line
+   being spoken is marked on the page by a rule beside it (a box-shadow,
+   so the line does not move), a little heavier than the find mark. */
+.sc-ra {
+  box-sizing: border-box;
+  flex: 1 1 100%;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  padding: var(--s2) var(--s3);
+  border-top: 1px solid var(--border-hair);
+}
+.sc-ra[hidden], .sc-ra-voices[hidden] { display: none; }
+.sc-ra-acts, .sc-ra-opts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s2); }
+.sc-ra-status { color: var(--ink-muted); min-width: 8em; }
+.sc-ra-voices { flex: 1 1 100%; display: grid; gap: var(--s2); }
+.sc-ra-cast { display: grid; gap: var(--s2); grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); }
+.sc-ra-row { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.sc-ra-name { flex: 0 0 8em; color: var(--ink); overflow-wrap: anywhere; }
+.sc-ra-note { margin: 0; color: var(--ink-muted); }
+.sc-ra-sel {
+  flex: 1 1 10rem;
+  min-width: 0;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface-canvas);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--sk-field-radius, var(--radius-sm));
+  padding: var(--s1) var(--s2);
+}
+.sc-ra-sel:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-primary); outline-offset: 1px; }
+.sc-sheet .wr-el.sc-reading { box-shadow: -8px 0 0 -2px var(--accent-primary); }
+@media (max-width: 719px) {
+  /* #scTop scrolls away on a phone and every line read scrolls to the
+     page: while the panel is open it alone is pinned under the band. */
+  .sc-ra:not([hidden]) {
+    position: fixed;
+    top: var(--sh-chrome-h, 0px);
+    inset-inline: 0;
+    z-index: 6;
+    max-height: 60vh;
+    overflow-y: auto;
+    background: var(--surface-rail);
+    border-bottom: 1px solid var(--border-hair);
+  }
+}
+
+/* ---- Check names (src/ui/name-check.js) ------------------------- */
+.sc-names { display: grid; gap: var(--s3); padding: var(--s3); }
+.sc-names-lede, .sc-names-known, .sc-names-none { margin: 0; color: var(--ink-muted); }
+.sc-names-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.sc-names-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.sc-names-what { flex: 1 1 12rem; color: var(--ink); overflow-wrap: anywhere; }
+.sc-names-n { color: var(--ink-muted); }
+
 /* ---- co-writing presence (src/ui/presence.js) --------------------
    Faces in the draft line, a warning row in the top bar while someone
    else types, and a mark at the right edge of the line each person is
@@ -1222,3 +1393,45 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
    the body face; the element type it names keeps its capitals. */
 .sc-tip { font-family: var(--f-body); font-size: var(--t-tiny); }
 .sc-tip-keys { font-family: var(--f-body); font-variant-numeric: tabular-nums; }
+
+/* A bookmarked line (script-index.js: `mark` on the element): a small
+   brand tab in the left margin, outside the printed page. Screen only. */
+.sc-sheet .wr-el.is-marked::before {
+  content: "";
+  position: absolute;
+  left: -1.4em;
+  top: 0.25em;
+  width: 0.7em;
+  height: 1.1em;
+  background: var(--brand);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 75%, 0 100%);
+  pointer-events: none;
+}
+@media print { .sc-sheet .wr-el.is-marked::before { display: none; } }
+
+/* Typewriter scrolling: room under the last line so it can rise to the
+   resting height instead of stopping at the page's end. */
+html.sc-typewriter .sc-sheet .wr-page { padding-bottom: 45vh; }
+
+/* ---- folded scenes (src/lib/script-structure.js; view state only) ----
+   A folded scene's body rows carry `hidden`; `.sc-sheet .wr-el` sets
+   display: block, which would beat the UA's [hidden] rule, so the id
+   keeps them gone whatever the sheet order. The heading says how much
+   it stands for, in the margin type's face, under the slug. */
+#wr-page .wr-el[hidden],
+#wr-page .wr-dual[hidden] { display: none; }
+.sc-sheet .wr-el.t-scene.is-folded::after {
+  content: '▸ ' attr(data-folded);
+  display: block;
+  margin-top: 0.4em;
+  font-family: var(--f-body);
+  font-size: var(--t-micro);
+  color: var(--ink-muted);
+}
+@media print {
+  /* A printed page of the editor shows every line (the PDF is made
+     from the model and never sees a fold). */
+  #wr-page .wr-el[hidden],
+  #wr-page .wr-dual[hidden] { display: block; }
+  .sc-sheet .wr-el.t-scene.is-folded::after { display: none; }
+}

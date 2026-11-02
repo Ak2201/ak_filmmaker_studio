@@ -3,8 +3,8 @@
    ------------------------------------------------------------
    THE APP-KIT FRAME (owner, 28 Oct 2026): the rail is a 224px dark
    sidebar whose items are icon + word in one row (chrome.css, "THE
-   LABELLED RAIL"), its five stage cells open flyouts of their MODULES
-   only (a module's sections are the page's own tab strip), and the
+   LABELLED RAIL"), its five stage cells open flyouts of their modules and
+   those modules' sections (exactly the page's tabs), and the
    band is one slim 56px row — the crumb (stage › page, no purpose
    line), search, the page's tools, the project. It replaced the 64px
    icon column of SWISS PRECISION (14 Oct 2026), which had the same
@@ -683,11 +683,10 @@ function buildFly(p) {
      Production is twenty-odd modules and as many sections, and one flat
      list ran off a laptop screen. Level 1 is one row per group
      (navigation.json `group`, in rail order; a module with no group stays
-     a row of its own); level 2 is that group's MODULE rows — modules only
-     (owner, 28 Oct 2026): a module's sections (Budget's nine, Reports'
-     DPR…) are reached from the page's own tab strip, which takes its
-     labels and order from navigation.json (tabs.js), and prove:nav
-     compares exactly the modules the two share. Built by the SAME
+     a row of its own); level 2 is that group's module rows, each followed
+     by its sections as sub-rows (owner, 2 Nov 2026: the flyout lists
+     exactly the page's tabs; tabs.js takes the same labels and order from
+     navigation.json, and prove:nav compares the two). Built by the SAME
      flyRow, so plan-gate's markLocked()
      hides and flags them exactly as before, and tidyHeadings() hides a
      group whose rows are all off and keeps its count true. A stage
@@ -725,10 +724,21 @@ function buildFly(p) {
   return fly;
 }
 
-/* A module's row. (Its sections are the page's tab strip, not rows
-   here: modules only, owner, 28 Oct 2026.) */
+/* A module's row, then one indented sub-row per section (owner, 2 Nov
+   2026: the flyout lists exactly the page's tabs). A section row carries
+   its module's id, so plan-gate hides and flags it with the module. */
 function appendModule(into, m) {
   into.append(flyRow(m));
+  if (m.status === 'planned' || !m.href) return;
+  const file = m.href.split('#')[0];
+  for (const x of moduleSections(m)) {
+    const row = h('a.sh-fly-mod.is-sub', { href: file + '#' + x.id });
+    row.dataset.moduleId = m.id;
+    row.dataset.sec = x.id;
+    row.append(iconSpan('sh-fly-icon', { sym: x.sym }), h('span.sh-fly-label', { text: x.label }));
+    if (x.purpose) row.title = x.purpose;
+    into.append(row);
+  }
 }
 
 function flyRow(m) {
@@ -1343,9 +1353,9 @@ function gatherTools(bar, tools) {
 
 let current = null;         // the last resolution we displayed
 
-/* The flyout row for where you are: the module's own row (a section of
-   it, reports.html#dpr, lights its module — the flyout lists modules
-   only). Run on every hash change. */
+/* The flyout row for where you are: a section's own sub-row when the hash
+   names one (reports.html#dpr), else its module's row. Run on every hash
+   change. */
 function markFlyHere(loc) {
   const tab = (location.hash || '').replace(/^#/, '').split('?')[0];
   let owner = null;
@@ -1354,7 +1364,8 @@ function markFlyHere(loc) {
   }
   const id = owner || (loc && loc.module && loc.module.id) || null;
   document.querySelectorAll('.sh-fly-mod').forEach((m) => {
-    const here = !!id && m.dataset.moduleId === id;
+    const here = !!id && m.dataset.moduleId === id
+      && (m.dataset.sec ? m.dataset.sec === tab : !owner);
     m.classList.toggle('is-here', here);
     if (here) m.setAttribute('aria-current', 'page'); else m.removeAttribute('aria-current');
   });

@@ -12,7 +12,9 @@
         Shift+Tab walk Character → Parenthetical → Dialogue;
         Alt/Option+number (and Ctrl/Cmd+number where it is free) sets
         the type; Alt+D, Ctrl/Cmd+Shift+K and Ctrl/Cmd+Shift+S are
-        dual dialogue, a note and the navigator.
+        dual dialogue, a note and the navigator; Ctrl/Cmd+Z and
+        Ctrl/Cmd+Shift+Z (or Ctrl+Y) are the editor's ONE undo history
+        (src/lib/edit-history.js), never the single textarea's.
    Shift+Return stays a line break inside the element. Return still
    goes through addElement(), which PATCHES the rows it touches (C2) —
    nothing here renders.
@@ -74,12 +76,24 @@ export function wireKeys(root, ed, o) {
       case 'type':
         if (act.type !== el.type) o.setElementTypeAt(i, act.type);
         break;
-      case 'return':
-        /* ALL CAPS + Return in an action line, or a ">" forced
-           transition: the line was a character or a transition. */
-        if (act.op !== 'change' && o.inference && el.type === 'action' && ta.value.trim() && splitAt(ta) === null) {
-          const became = o.inference.onReturn(i, ta);
-          if (became) { ed.addElement(i, Keys.returnNext(became, prefs, o.known())); break; }
+      case 'undo': ed.undo(); break;
+      case 'redo': ed.redo(); break;
+      case 'return': {
+        /* ALL CAPS + Return in an action line, a known name alone on any
+           line, a ">" forced transition, "PREETHI says hello": the line
+           was a cue, a transition or a speech (inference.js). The switch
+           and the next line are ONE history step, so one Ctrl+Z puts the
+           line back exactly as it was typed. */
+        if (act.op !== 'change' && o.inference && ta.value.trim() && splitAt(ta) === null) {
+          let done = false;
+          ed.step('return', () => {
+            const became = o.inference.onReturn(i, ta);
+            if (became) {
+              ed.addElement(became.at, Keys.returnNext(became.type, prefs, o.known()));
+              done = true;
+            }
+          });
+          if (done) break;
         }
         /* Return with the caret INSIDE the text splits the line there
            (UX audit L26): the text after the caret becomes the next
@@ -92,13 +106,19 @@ export function wireKeys(root, ed, o) {
         if (act.op === 'change') o.setElementTypeAt(i, act.type);
         else ed.addElement(i, act.type);
         break;
+      }
       case 'tab':
         if (act.op === 'change') o.setElementTypeAt(i, act.type);
         else ed.addElement(i, act.type);
         break;
+      case 'macro': ed.macro(i, act.slot); break;
       case 'dual': ed.toggleDual(i); break;
       case 'note': openNote(i, ta); break;
       case 'navigator': openNavigator(); break;
+      case 'characters': openNavigator('characters'); break;
+      case 'bookmark': ed.toggleBookmark(i); break;
+      case 'bookmark-next': ed.jumpBookmark(el.id, 1); break;
+      case 'bookmark-prev': ed.jumpBookmark(el.id, -1); break;
       case 'find': openFind(); break;
       default: break;
     }
@@ -134,10 +154,15 @@ export function wireKeys(root, ed, o) {
     openFind();
   }, { signal });
 
-  function openNavigator() {
+  function openNavigator(mode) {
     WriteKeys.openNavigator({
+      mode: mode || 'scenes',
+      fromId: curLineId(),
       elements: els(),
-      onJump: (id) => ed.applyFocus(elFocus(id))
+      onJump: (id) => ed.applyFocus(elFocus(id)),
+      onMoveScene: ed.moveScene,
+      onToggleFold: ed.toggleFold,
+      isFolded: ed.isFolded
     });
   }
 
@@ -193,6 +218,7 @@ export function wireKeys(root, ed, o) {
         type: 'info', action: 'Undo',
         onAction: () => {
           if (removedRun === run) { removedRun = []; removedToast = null; }
+          ed.checkpoint('restore');            // the toast's Undo is itself undoable
           const list = els();
           for (let k = run.length - 1; k >= 0; k--) {
             const { el, at } = run[k];
@@ -235,7 +261,11 @@ export function wireKeys(root, ed, o) {
     if (i < 0) return;
     const down = e.key === 'ArrowDown';
     if (e.key === 'ArrowUp' || down) {
-      const j = down ? i + 1 : i - 1;
+      /* A folded scene's rows are hidden (script-structure.js): the
+         arrows step over them, the way they step over a closed fold in
+         any outliner, rather than opening the fold under the caret. */
+      let j = down ? i + 1 : i - 1;
+      while (list[j] && ed.isHidden && ed.isHidden(list[j].id)) j += down ? 1 : -1;
       if (!list[j]) return;
       const edge = down ? a === ta.value.length : a === 0;
       if (edge || visualLines(ta) <= 1) {
@@ -263,6 +293,9 @@ export function wireKeys(root, ed, o) {
     const list = els();
     const keep = list[i], gone = list[i + 1];
     if (!keep || !gone) return;
+    ed.step('join', () => joinNow(keep, gone, i));
+  }
+  function joinNow(keep, gone, i) {
     const row = document.querySelector(elFocus(gone.id));
     if (row && row.value !== gone.text) gone.text = row.value;
     const was = keep.text;
@@ -282,6 +315,7 @@ export function wireKeys(root, ed, o) {
         onAction: () => {
           const at = ed.indexOf(keep.id);
           if (at < 0 || ed.indexOf(gone.id) >= 0) return;
+          ed.checkpoint('restore');
           keep.text = was;
           els().splice(at + 1, 0, gone);
           o.persistNow();

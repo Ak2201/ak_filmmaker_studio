@@ -308,7 +308,7 @@ ok(ms < 1200, `120-page parse + tag + estimate in ${ms}ms (budget 1200ms; parse 
   eq(X.sheetCount(sample), 115, 'the sample still prints on 115 sheets');
 
   /* ---- the shot ---- */
-  eq(S.ELEMENT_TYPE_IDS, ['scene', 'action', 'character', 'paren', 'dialogue', 'transition', 'shot'], 'shot is the seventh type, added last');
+  eq(S.ELEMENT_TYPE_IDS, ['scene', 'action', 'character', 'paren', 'dialogue', 'transition', 'shot', 'centered', 'lyrics', 'act'], 'shot is the seventh type; centered, lyrics, act follow');
   eq(S.NEXT_TYPE.shot, 'action', 'Return after a shot gives action');
   const shotScript = [E('scene', 'INT. A - DAY'), E('action', 'He waits.'), E('shot', 'close on the knife'), E('action', 'It shines.'), E('scene', 'EXT. B - NIGHT'), E('action', 'Rain.')];
   const sl = A.sliceScript(shotScript);

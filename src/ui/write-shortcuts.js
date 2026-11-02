@@ -25,6 +25,7 @@
 import { h, delegate } from '../lib/dom.js';
 import PDF from '../lib/pdf.js';
 import Keys, { PRESETS, TYPE_NAMES } from '../lib/write-keys.js';
+import { characterIndex, nextCueOf, bookmarks } from '../lib/script-index.js';
 
 const name = (t) => TYPE_NAMES[t] || t;
 
@@ -178,54 +179,142 @@ export function printKeysheet() {
   });
 }
 
-/* ---- the scene navigator --------------------------------------
+/* ---- the navigator: scenes, characters, bookmarks --------------
    A modal combobox: the filter field keeps focus, ↑/↓ move the
-   highlighted heading (aria-activedescendant), Return jumps, Esc
-   puts the caret back where it was. */
+   highlighted row (aria-activedescendant), Return jumps, Esc puts the
+   caret back where it was. Three lists, one control: Tab (Shift+Tab)
+   or a click on the tab row swaps the list. Characters and bookmarks
+   are DERIVED from the elements each time it opens (script-index.js).
+   Choosing a character goes to THEIR NEXT CUE after the line the
+   caret was in, wrapping round — so repeated Return walks the part. */
 let nav = null;
-export function openNavigator({ elements, onJump }) {
+const MODES = [
+  ['scenes', 'Scenes', 'Filter scene headings'],
+  ['characters', 'Characters', 'Filter characters'],
+  ['bookmarks', 'Bookmarks', 'Filter bookmarks']
+];
+/* The scene list also REORDERS and FOLDS when the page hands in
+   `onMoveScene(headingId, toPos)` (true when it moved) and
+   `onToggleFold(headingId)` / `isFolded(headingId)` — the editor's
+   moveScene / toggleFold (src/lib/script-structure.js). Alt+↑ ↓ moves
+   the active scene one place (Alt, never Ctrl: Ctrl+↑ ↓ is the
+   browser's and the OS's), a drag moves it anywhere, Alt+Return folds
+   it. Both need the unfiltered list: a position in a filtered list is
+   not a position in the script. */
+export function openNavigator({ elements, onJump, mode = 'scenes', fromId = null, onMoveScene = null, onToggleFold = null, isFolded = null }) {
   closeNavigator();
-  const scenes = [];
-  elements.forEach((el) => { if (el.type === 'scene') scenes.push({ id: el.id, n: scenes.length + 1, text: el.text.trim() || '(untitled heading)' }); });
+  let cur = Math.max(0, MODES.findIndex((m) => m[0] === mode));
   const back = document.activeElement;
+  const itemsFor = (kind) => {
+    if (kind === 'characters') {
+      return characterIndex(elements).map((c) => ({
+        text: c.name,
+        meta: c.speeches + (c.speeches === 1 ? ' line' : ' lines') + ' · ' + c.sceneCount + (c.sceneCount === 1 ? ' scene' : ' scenes')
+          + ' · first in scene ' + (c.firstScene || '—'),
+        key: c.name,
+        target: () => nextCueOf(elements, c.name, fromId)
+      }));
+    }
+    if (kind === 'bookmarks') {
+      return bookmarks(elements).map((b) => ({
+        text: b.text || '(empty line)', n: b.n, meta: 'scene ' + (b.scene || '—'), key: b.text, target: () => b.id
+      }));
+    }
+    const out = [];
+    elements.forEach((el) => {
+      if (el.type !== 'scene') return;
+      const n = out.length + 1;
+      out.push({ n, id: el.id, text: el.text.trim() || '(untitled heading)', meta: isFolded && isFolded(el.id) ? 'folded' : '', key: String(n), target: () => el.id });
+    });
+    return out;
+  };
   const input = h('input', {
-    type: 'search', placeholder: 'Filter scene headings', autocomplete: 'off',
-    role: 'combobox', 'aria-expanded': 'true', 'aria-controls': 'wk-nav-list',
-    'aria-autocomplete': 'list', 'aria-label': 'Filter scene headings'
+    type: 'search', autocomplete: 'off',
+    role: 'combobox', 'aria-expanded': 'true', 'aria-controls': 'wk-nav-list', 'aria-autocomplete': 'list'
   });
-  const list = h('ul', { id: 'wk-nav-list', role: 'listbox', 'aria-label': 'Scene headings' });
+  const list = h('ul', { id: 'wk-nav-list', role: 'listbox' });
   const note = h('p.wk-note', { 'aria-live': 'polite' });
-  const box = h('div.wk-nav', { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Scene navigator' }, [
-    h('h2', { text: 'Scene navigator' }), input, list, note
-  ]);
+  const tabs = h('div.wk-nav-modes', { role: 'tablist', 'aria-label': 'What to list' }, MODES.map(([id, label], i) =>
+    h('button', { type: 'button', role: 'tab', tabindex: '-1', 'data-wk-mode': String(i), text: label })));
+  const title = h('h2');
+  const box = h('div.wk-nav', { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Navigator' }, [title, tabs, input, list, note]);
   const scrim = h('div.wk-nav-scrim', {}, [box]);
+  let all = [];
   let shown = [];
   let active = 0;
 
   const paint = () => {
+    const kind = MODES[cur][0];
     const q = input.value.trim().toUpperCase();
-    shown = scenes.filter((s) => !q || s.text.toUpperCase().includes(q) || String(s.n) === q);
+    shown = all.filter((s) => !q || s.text.toUpperCase().includes(q) || String(s.n) === q);
     active = Math.min(active, Math.max(0, shown.length - 1));
+    list.setAttribute('aria-label', MODES[cur][1]);
     list.replaceChildren(...shown.map((s, i) => h('li' + (i === active ? '.is-active' : ''), {
       id: 'wk-nav-' + i, role: 'option', 'aria-selected': i === active ? 'true' : 'false', 'data-wk-i': String(i)
-    }, [h('span.wk-n', { text: String(s.n) }), h('span', { text: s.text })])));
+    }, [
+      s.n != null ? h('span.wk-n', { text: String(s.n) }) : null,
+      h('span.wk-t', { text: s.text }),
+      s.meta ? h('span.wk-meta', { text: s.meta }) : null
+    ].filter(Boolean))));
     if (shown.length) {
       input.setAttribute('aria-activedescendant', 'wk-nav-' + active);
       const node = list.children[active];
       if (node && node.scrollIntoView) node.scrollIntoView({ block: 'nearest' });
     } else input.removeAttribute('aria-activedescendant');
-    note.textContent = scenes.length
-      ? shown.length + ' of ' + scenes.length + ' scenes · ↑ ↓ to move, Return to jump, Esc to close'
-      : 'No scene headings yet.';
+    const hint = ' · ↑ ↓ to move, Return to jump, Tab for the next list, Esc to close'
+      + (kind === 'scenes' && onMoveScene ? ' · Alt+↑ ↓ or drag to reorder a scene' : '')
+      + (kind === 'scenes' && onToggleFold ? ', Alt+Return to fold it' : '');
+    const empty = { scenes: 'No scene headings yet.', characters: 'No characters yet.', bookmarks: 'No bookmarks yet. Alt+B bookmarks the line you are in.' }[kind];
+    note.textContent = all.length ? shown.length + ' of ' + all.length + ' ' + MODES[cur][1].toLowerCase() + hint : empty;
+  };
+  const setMode = (i) => {
+    cur = (i + MODES.length) % MODES.length;
+    all = itemsFor(MODES[cur][0]);
+    active = 0;
+    input.value = '';
+    title.textContent = MODES[cur][1] + ' navigator';
+    input.setAttribute('aria-label', MODES[cur][2]);
+    input.placeholder = MODES[cur][2];
+    tabs.querySelectorAll('[role="tab"]').forEach((b, k) => b.setAttribute('aria-selected', k === cur ? 'true' : 'false'));
+    paint();
   };
   const go = (i) => {
     const s = shown[i];
     if (!s) return;
+    const id = s.target();
     closeNavigator(false);
-    onJump(s.id);
+    if (id) onJump(id);
+  };
+  const scenesHere = () => MODES[cur][0] === 'scenes';
+  /** Move the scene at list position i to position `to`; repaint with
+      it still active, and say where it went. */
+  const moveTo = (i, to) => {
+    const s = shown[i];
+    if (!s || !s.id || to < 0 || to >= all.length || to === i) return;
+    if (input.value.trim()) { note.textContent = 'Clear the filter to reorder scenes.'; return; }
+    if (!onMoveScene(s.id, to)) return;
+    all = itemsFor('scenes');
+    active = to;
+    paint();
+    note.textContent = 'Moved “' + s.text + '” to scene ' + (to + 1) + ' of ' + all.length + '. Ctrl/⌘+Z undoes it.';
   };
   input.addEventListener('input', () => { active = 0; paint(); });
   input.addEventListener('keydown', (e) => {
+    if (e.altKey && !e.ctrlKey && !e.metaKey && scenesHere() && (e.key === 'ArrowDown' || e.key === 'ArrowUp') && onMoveScene) {
+      e.preventDefault();
+      moveTo(active, active + (e.key === 'ArrowDown' ? 1 : -1));
+      return;
+    }
+    if (e.altKey && e.key === 'Enter' && scenesHere() && onToggleFold) {
+      e.preventDefault();
+      const s = shown[active];
+      if (!s || !s.id) return;
+      const on = onToggleFold(s.id);
+      all = itemsFor('scenes');
+      paint();
+      note.textContent = (on ? 'Folded ' : 'Unfolded ') + '“' + s.text + '”.';
+      return;
+    }
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       if (!shown.length) return;
@@ -233,18 +322,66 @@ export function openNavigator({ elements, onJump }) {
       paint();
     } else if (e.key === 'Enter') { e.preventDefault(); go(active); }
     else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeNavigator(true); }
-    else if (e.key === 'Tab') { e.preventDefault(); }   // modal: focus stays in the filter
+    else if (e.key === 'Tab') { e.preventDefault(); setMode(cur + (e.shiftKey ? -1 : 1)); }   // modal: focus stays in the filter
   });
+  /* A press jumps; a press that travels (6px) drags the scene. The drop
+     line is drawn before the row it lands in front of (or after the
+     last). Pointer capture keeps the moves on the row; a cancelled
+     pointer (a scroll gesture taking over) moves nothing. */
   list.addEventListener('pointerdown', (e) => {
     const li = e.target.closest('[data-wk-i]');
     if (!li) return;
     e.preventDefault();
-    go(Number(li.dataset.wkI));
+    const i = Number(li.dataset.wkI);
+    if (!(scenesHere() && onMoveScene && !input.value.trim() && e.button === 0)) { go(i); return; }
+    const y0 = e.clientY;
+    let dragging = false;
+    let to = i;
+    try { li.setPointerCapture(e.pointerId); } catch (err) { /* not capturable */ }
+    const clear = () => list.querySelectorAll('.is-drop-before, .is-drop-after, .is-dragging')
+      .forEach((n) => n.classList.remove('is-drop-before', 'is-drop-after', 'is-dragging'));
+    const move = (ev) => {
+      if (!dragging && Math.abs(ev.clientY - y0) < 6) return;
+      dragging = true;
+      const items = Array.from(list.children);
+      let k = items.length;
+      for (let n = 0; n < items.length; n++) {
+        const r = items[n].getBoundingClientRect();
+        if (ev.clientY < r.top + r.height / 2) { k = n; break; }
+      }
+      to = k > i ? k - 1 : k;
+      clear();
+      li.classList.add('is-dragging');
+      if (k < items.length) items[k].classList.add('is-drop-before');
+      else items[items.length - 1].classList.add('is-drop-after');
+    };
+    const end = (ev, cancel) => {
+      li.removeEventListener('pointermove', move);
+      li.removeEventListener('pointerup', up);
+      li.removeEventListener('pointercancel', cancelled);
+      clear();
+      if (cancel) return;
+      if (!dragging) { go(i); return; }
+      active = i;
+      moveTo(i, Math.max(0, Math.min(all.length - 1, to)));
+      input.focus();
+    };
+    const up = (ev) => end(ev, false);
+    const cancelled = (ev) => end(ev, true);
+    li.addEventListener('pointermove', move);
+    li.addEventListener('pointerup', up);
+    li.addEventListener('pointercancel', cancelled);
+  });
+  tabs.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('[data-wk-mode]');
+    if (!b) return;
+    e.preventDefault();                       // the filter keeps focus
+    setMode(Number(b.dataset.wkMode));
   });
   scrim.addEventListener('pointerdown', (e) => { if (e.target === scrim) closeNavigator(true); });
   nav = { scrim, back };
   document.body.append(scrim);
-  paint();
+  setMode(cur);
   input.focus();
 }
 

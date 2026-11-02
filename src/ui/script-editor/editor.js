@@ -30,7 +30,8 @@
    ============================================================ */
 import { delegate } from '../../lib/dom.js';
 import { askDanger } from '../dialog.js';
-import { typeLabel, blankElement, canPairDual, withContd, contdOffer } from '../../lib/script.js';
+import { typeLabel, blankElement, canPairDual, withContd, contdOffer, cueSpeaker, isHeld } from '../../lib/script.js';
+import { createHistory, snapshotOf, restoreElements } from '../../lib/edit-history.js';
 import Keys from '../../lib/write-keys.js';
 import {
   PLACEHOLDER, elFocus, renderElement, rowActs, buildPage, dualSignature,
@@ -40,10 +41,14 @@ import {
 import { wireKeys, splitAt } from './keys.js';
 import { createInference } from './inference.js';
 import { wantsSplit, planPaste } from '../../lib/script-paste.js';
+import { toggleMark as flipMark, stepMark } from '../../lib/script-index.js';
+import { parseMacros, macroForSlot, planMacro } from '../../lib/macros.js';
+import { spellcheckFor } from '../../lib/name-spell.js';
+import { moveScene as moveSceneIn, foldedIds, pruneFolds, foldedCount, sceneOfElement, sceneBlocks } from '../../lib/script-structure.js';
 
 export { elFocus, PLACEHOLDER, CHUNK, iconBtn, field, setAttr, autosize } from './rows.js';
 
-const ONE_LINE = new Set(['scene', 'character', 'transition']);
+const ONE_LINE = new Set(['scene', 'character', 'transition', 'act']);
 
 export function mountEditor(host, opts) {
   const root = host || document;
@@ -62,11 +67,166 @@ export function mountEditor(host, opts) {
   const smart = o.smart;
   /* false on the writing-only page: no per-row select or icon buttons. */
   const rowChrome = o.rowChrome !== false;
+  /* ---- undo / redo: ONE history for the whole editor -------------
+     src/lib/edit-history.js. Every mutation below opens a step with
+     checkpoint() BEFORE it changes anything; a gesture made of several
+     (a split is a text change plus an insert; Return's auto-format is a
+     type change plus a new line) runs inside step(), so it is one undo.
+     Typing coalesces per burst (beforeinput, below). Memory only: the
+     history never touches storage, and undo saves through the same
+     persistNow() as any other edit. It belongs to ONE document — when the
+     page swaps the doc (a draft opened, a synced copy taken) the old
+     steps would restore the wrong script, so they are dropped. */
+  const history = createHistory({ limit: 300, pauseMs: 1000 });
+  let historyDoc = o.getDoc();
+  /* The ARRAY is owned too, not only the doc object. An import
+     (commitImportedScript) and a draft restore REASSIGN doc.elements on
+     the same doc, so a doc-only check let Ctrl/Cmd+Z after an import
+     splice the pre-import script back into the new one and save it. The
+     editor itself only ever splices in place, so a new array always
+     means somebody else replaced the script. */
+  let historyEls = historyDoc && historyDoc.elements;
+  let grouping = 0;
+  let recordedThisTick = false;
+  const ownDoc = () => {
+    const d = o.getDoc();
+    if (d !== historyDoc || (d && d.elements !== historyEls)) {
+      history.clear(); historyDoc = d; historyEls = d && d.elements;
+    }
+  };
+  const snap = () => (prev) => snapshotOf(els(), prev);
+  function caretNow() {
+    const ta = document.activeElement;
+    if (!ta || !ta.matches || !ta.matches('.wr-text[data-el-field="text"]')) return null;
+    const id = idOf(ta, 'el');
+    if (!id) return null;
+    try { return { id, start: ta.selectionStart, end: ta.selectionEnd }; } catch (e) { return { id, start: null, end: null }; }
+  }
+  function markTick() {
+    if (recordedThisTick) return;
+    recordedThisTick = true;
+    queueMicrotask(() => { recordedThisTick = false; });
+  }
+  /** Open a history step from the document as it is now. Inside a step()
+      it does nothing but (with `meta`) mark the step that is open. */
+  function checkpoint(kind = 'edit', meta = null, extra = {}) {
+    ownDoc();
+    if (grouping) { if (meta) history.amendTop(meta); return; }
+    const caret = extra.caret !== undefined ? extra.caret : caretNow();
+    history.record(snap(), caret, { kind, meta });
+    markTick();
+  }
+  function step(kind, fn, meta = null) {
+    checkpoint(kind, meta);
+    grouping++;
+    try { return fn(); } finally { grouping--; }
+  }
+  function restore(entry) {
+    if (!entry) return false;
+    const list = els();
+    list.splice(0, list.length, ...restoreElements(entry.snap, list));
+    if (entry.meta && entry.meta.auto) inference.suppress(entry.meta.auto);
+    if (smart && smart.invalidate) smart.invalidate();
+    if (smart && smart.close) smart.close();
+    persistNow();
+    const c = entry.caret;
+    const target = c && indexOfEl(c.id) >= 0 ? c.id : null;
+    render(target ? elFocus(target) : null);
+    if (target) {
+      const ta = document.querySelector(elFocus(target));
+      if (ta && typeof ta.setSelectionRange === 'function') {
+        const len = ta.value.length;
+        const a = c.start == null ? len : Math.min(c.start, len);
+        const b = c.end == null ? a : Math.min(c.end, len);
+        if (document.activeElement !== ta) { try { ta.focus({ preventScroll: true }); } catch (e) { /* gone */ } }
+        try { ta.setSelectionRange(a, b); } catch (e) { /* select */ }
+        keepInView(ta);
+      }
+    }
+    o.refreshCounters();
+    o.scheduleDerived();
+    lastTyped = null;
+    return true;
+  }
+  /** The line the caret is in, synced into the model first (the input
+      event has always run by now, but a composition may not have). */
+  function syncActive() {
+    const c = caretNow();
+    if (!c) return c;
+    const i = indexOfEl(c.id);
+    const ta = document.activeElement;
+    if (i >= 0 && els()[i].text !== ta.value) els()[i].text = ta.value;
+    return c;
+  }
+  function undo() {
+    ownDoc();
+    const c = syncActive();
+    const done = restore(history.undo(snap(), c));
+    if (!done) o.say('Nothing to undo.');
+    return done;
+  }
+  function redo() {
+    ownDoc();
+    const c = syncActive();
+    const done = restore(history.redo(snap(), c));
+    if (!done) o.say('Nothing to redo.');
+    return done;
+  }
+  /* Typing, one step per burst: the record is made BEFORE the keystroke
+     lands (beforeinput), from the model, which the input handler keeps in
+     step with every line. The burst ends on a pause, on another line, on
+     a switch between typing and deleting, or when the caret has moved
+     since the last keystroke (an arrow, a click). */
+  let lastTyped = null;          // { id, pos } where the last keystroke left the caret
+  let sawBefore = false;
+  /* A paste or a drop is a step of its own: its class is never the one
+     the next keystroke has, so neither folds into the other. */
+  const inputClass = (t) => (/^insertFrom/.test(t || '') ? 'paste' : /^delete/.test(t || '') ? 'del' : 'ins');
+
+  /** Known speakers for the auto-format: the script's own cues, then the
+      page's extra names (the Characters page). */
+  function knownNames() {
+    const out = [];
+    for (const e of els()) if (e && e.type === 'character') { const n = cueSpeaker(e.text); if (n) out.push(n); }
+    if (typeof o.knownNames === 'function') { try { out.push(...(o.knownNames() || [])); } catch (e) { /* page */ } }
+    return out;
+  }
+
+  /** "PREETHI says hello" → cue (this line, keeping its id, so its note
+      stays), an optional manner parenthetical, and the dialogue. Returns
+      the dialogue's index. */
+  function speak(i, said) {
+    const list = els();
+    const el = list[i];
+    if (!el) return i;
+    checkpoint('auto', { auto: el.id });
+    el.type = 'character';
+    el.text = said.name;
+    delete el.dual;
+    const made = [];
+    if (said.paren) made.push(blankElement({ type: 'paren', text: said.paren }));
+    made.push(blankElement({ type: 'dialogue', text: said.dialogue }));
+    list.splice(i + 1, 0, ...made);
+    if (smart && smart.invalidate) smart.invalidate();
+    persistNow();
+    render(elFocus(made[made.length - 1].id));
+    o.refreshCounters();
+    o.scheduleDerived();
+    return i + made.length;
+  }
+
   // INT./EXT., ALL CAPS + Return and the Fountain marks; see inference.js.
   const inference = createInference({
     getElements: () => els(),
-    setElementType: (i, t) => setElementType(i, t)
+    setElementType: (i, t) => setElementType(i, t),
+    names: knownNames,
+    step,
+    speak
   });
+
+  /* Another module that edits a line in place (alt-lines.js swapping a
+     take in) asks for a step first, without importing the editor. */
+  document.addEventListener('fms:script-checkpoint', () => checkpoint('edit'), { signal });
 
   /* Which dual-dialogue pairs the page was last BUILT with. A patch that
      changes the pairing (a line inserted inside a pair, a flag whose
@@ -146,6 +306,15 @@ export function mountEditor(host, opts) {
   function applyFocus(sel) {
     const node = typeof sel === 'string' ? document.querySelector(sel) : sel;
     if (!node) return;
+    /* A jump into a folded scene (the navigator, a bookmark, find, an
+       undo) opens that scene first: the caret never lands in a hidden
+       row (a hidden textarea cannot take focus at all). */
+    const hiddenRow = node.closest && node.closest('[data-el][hidden]');
+    if (hiddenRow) {
+      const sid = sceneOfElement(els(), hiddenRow.dataset.el);
+      if (sid) folded.delete(sid);
+      applyFolds(hiddenRow.dataset.el);
+    }
     /* A row in a run the browser is skipping (off screen, see write.css)
        has a placeholder height, and the page scrolls smoothly — so a
        focus() aimed at it plans its scroll against the placeholders and
@@ -198,6 +367,7 @@ export function mountEditor(host, opts) {
 
   /* ---- structure ------------------------------------------------ */
   function addElement(after, type, text = '') {
+    checkpoint('insert');
     const list = els();
     const el = blankElement({ type, text });
     const lenBefore = list.length;
@@ -231,6 +401,9 @@ export function mountEditor(host, opts) {
     const at = splitAt(ta);
     const el = els()[i];
     if (!at || !el) return;
+    step('split', () => splitNow(i, ta, flowType, at, el));
+  }
+  function splitNow(i, ta, flowType, at, el) {
     const head = ta.value.slice(0, at.a).replace(/\s+$/, '');
     const tail = ta.value.slice(at.b).replace(/^\s+/, '');
     el.text = head;
@@ -245,6 +418,7 @@ export function mountEditor(host, opts) {
 
   /** Take element `i` out, and put the caret in `neighbourOf(i)`. */
   function removeElement(i, neighbourOf) {
+    checkpoint('remove');
     const list = els();
     const lenBefore = list.length;
     const [gone] = list.splice(i, 1);
@@ -276,6 +450,7 @@ export function mountEditor(host, opts) {
     const i = indexOfEl(id);
     const j = i + delta;
     if (i < 0 || j < 0 || j >= list.length) return;
+    checkpoint('move');
     [list[i], list[j]] = [list[j], list[i]];
     persistNow();
     const len = list.length;
@@ -300,6 +475,7 @@ export function mountEditor(host, opts) {
   function setElementType(i, type) {
     const list = els();
     if (i < 0 || !list[i]) return;
+    checkpoint('type');
     const row = rowOf(list[i].id);
     const el = list[i];
     inference.noteTypeChange(el.id);
@@ -325,6 +501,7 @@ export function mountEditor(host, opts) {
       if (ta) {
         ta.placeholder = PLACEHOLDER[type] || '';
         ta.setAttribute('aria-label', typeLabel(type) + ', element ' + (i + 1));
+        ta.spellcheck = spellcheckFor(type);
         autosize(ta);
       }
       // The buttons depend on the type: ◇ on a speech, ⇄ and CONT'D on a cue.
@@ -342,6 +519,127 @@ export function mountEditor(host, opts) {
      belongs to — the same path as the ⇄ button on the cue's row, so the
      key and the click cannot disagree about when a pair is allowed or
      how the page redraws it. */
+  /* BOOKMARKS (Alt+B). A field on the element, so the row is touched in
+     place — class and label — and nothing re-renders; a bookmark is the
+     writer's place-holder and moves no text and no page. */
+  const markLabel = (row, on) => {
+    const ta = row && row.querySelector('.wr-text');
+    if (!ta) return;
+    const base = (ta.getAttribute('aria-label') || '').replace(/, bookmarked$/, '');
+    ta.setAttribute('aria-label', on ? base + ', bookmarked' : base);
+  };
+  function toggleBookmark(i) {
+    const el = els()[i];
+    if (!el) return false;
+    /* A step of its own: the history holds copies of the elements, so a
+       bookmark flipped outside it would be dropped (or brought back) by
+       the next Ctrl+Z of an unrelated edit. */
+    checkpoint('mark');
+    const on = flipMark(el);
+    const row = rowOf(el.id);
+    if (row) { row.classList.toggle('is-marked', on); markLabel(row, on); }
+    persistNow();
+    o.say(on ? 'Bookmarked this line.' : 'Bookmark removed.');
+    return on;
+  }
+  /** Step to the next / previous bookmark from the line `fromId`. */
+  function jumpBookmark(fromId, dir) {
+    const id = stepMark(els(), fromId, dir);
+    if (!id) { o.say('No bookmarks yet. Alt+B bookmarks the line you are in.'); return null; }
+    applyFocus(`[data-el="${CSS.escape(String(id))}"] .wr-text`);
+    return id;
+  }
+
+  /* ---- scenes as blocks: move and fold (src/lib/script-structure.js)
+     A MOVE is one history step and one save, and reorders the SAME
+     element objects: ids survive, so the scene sync relinks the
+     Breakdown row by its heading instead of adding a second one, and a
+     held lock keeps the locked number with the heading (the change
+     report then lists the scene as moved — docs/SCRIPT-LOCK.md). The
+     page is rebuilt (a block can be hundreds of rows, across runs and
+     dual pairs); the caret stays on the line it was in.
+
+     A FOLD is view state, in this editor's memory only: never in the
+     script blob, never in storage, gone on reload. A folded scene's
+     body rows are `hidden`, so nothing can focus into them; anything
+     that sends the caret there opens the scene first (applyFocus), and
+     the caret's own scene is never folded under it (foldedIds' keepId). */
+  const folded = new Set();
+  function moveScene(headingId, toPos) {
+    const list = els();
+    const next = moveSceneIn(list, headingId, toPos);
+    if (!next) return false;
+    const c = syncActive();
+    checkpoint('move-scene');
+    list.splice(0, list.length, ...next);
+    if (smart && smart.invalidate) smart.invalidate();
+    persistNow();
+    render(c && indexOfEl(c.id) >= 0 ? elFocus(c.id) : null);
+    o.refreshCounters();
+    o.scheduleDerived();
+    if (isHeld(o.getDoc().numbering)) o.say('Scene moved. The script is locked, so it keeps its number, and the change report lists it as moved.');
+    return true;
+  }
+  /** Hide the rows of every folded scene; mark folded headings. Cheap:
+      attribute writes only where something differs. */
+  function applyFolds(keepId) {
+    const page = pageNode();
+    if (!page) return;
+    pruneFolds(els(), folded);
+    const keep = keepId !== undefined ? keepId : (caretNow() || {}).id || null;
+    if (keep && folded.size) {
+      const sid = sceneOfElement(els(), keep);
+      if (sid && sid !== keep && folded.has(sid)) folded.delete(sid);
+    }
+    const hide = foldedIds(els(), folded, keep);
+    const duals = new Set();
+    for (const row of allRows()) {
+      const id = row.dataset.el;
+      const off = hide.has(id);
+      if (row.hidden !== off) row.hidden = off;
+      if (row.parentElement && row.parentElement.classList.contains('wr-dual-col')) duals.add(row.closest('.wr-dual'));
+      if (row.classList.contains('t-scene')) {
+        const on = folded.has(id);
+        if (row.classList.contains('is-folded') !== on) row.classList.toggle('is-folded', on);
+        const n = on ? foldedCount(els(), id) : 0;
+        const label = on ? n + (n === 1 ? ' line folded' : ' lines folded') : '';
+        if ((row.dataset.folded || '') !== label) { if (label) row.dataset.folded = label; else delete row.dataset.folded; }
+      }
+    }
+    for (const d of duals) {
+      if (!d) continue;
+      const all = Array.from(d.querySelectorAll('[data-el]')).every((r) => r.hidden);
+      if (d.hidden !== all) d.hidden = all;
+    }
+  }
+  function toggleFold(headingId) {
+    if (!headingId) return false;
+    if (folded.has(headingId)) folded.delete(headingId); else folded.add(headingId);
+    const on = folded.has(headingId);
+    /* Folding the scene the caret is in: the caret goes to its heading
+       first, or the fold would open again under it. */
+    const c = caretNow();
+    if (on && c && c.id !== headingId && sceneOfElement(els(), c.id) === headingId) {
+      applyFocus(elFocus(headingId));
+    }
+    applyFolds(on && c && sceneOfElement(els(), c.id) === headingId ? headingId : undefined);
+    return on;
+  }
+  function foldAll(on) {
+    folded.clear();
+    if (on) for (const b of sceneBlocks(els())) folded.add(b.id);
+    const c = caretNow();
+    if (on && c) {
+      const sid = sceneOfElement(els(), c.id);
+      if (sid && sid !== c.id) applyFocus(elFocus(sid));
+    }
+    applyFolds(on && c ? sceneOfElement(els(), c.id) || undefined : undefined);
+  }
+  /** Is element `id` in a hidden (folded) row right now? */
+  const isHidden = (id) => { const r = rowOf(id); return !!(r && r.hidden); };
+  /* Find and replace reads every line: it opens every fold. */
+  document.addEventListener('fms:script-find', () => { if (folded.size) foldAll(false); }, { signal });
+
   function toggleDual(i) {
     const list = els();
     let c = i;
@@ -352,6 +650,7 @@ export function mountEditor(host, opts) {
     }
     if (c < 0) { o.say('Dual dialogue goes on a character cue — put the caret in one first.'); return; }
     const cue = list[c];
+    if (cue.dual === true || canPairDual(list, c)) checkpoint('dual');
     if (cue.dual === true) delete cue.dual;
     else {
       if (!canPairDual(list, c)) {
@@ -421,8 +720,17 @@ export function mountEditor(host, opts) {
     const i = indexOfEl(idOf(ta, 'el'));
     if (i < 0) return;
     const el = els()[i];
+    const was = el.text;
+    /* A change no beforeinput announced — SmartType's accept, a take
+       swapped in, Tamil typing committing a word — is a step of its own,
+       taken from the model, which still holds the line as it was. */
+    if (!sawBefore && was !== ta.value && !recordedThisTick) {
+      checkpoint('edit', null, { caret: { id: el.id, start: was.length, end: was.length } });
+    }
+    sawBefore = false;
     el.text = ta.value;
-    inference.onInput(i, ta);
+    inference.onInput(i, ta, was);
+    try { lastTyped = { id: el.id, pos: ta.selectionStart }; } catch (err) { lastTyped = null; }
     autosize(ta);
     keepInView(ta);
     o.refreshCounters();
@@ -432,6 +740,27 @@ export function mountEditor(host, opts) {
     o.scheduleDerived();
   });
   on('focusout', '.wr-text[data-el-field="text"]', () => smart.close());
+  on('beforeinput', '.wr-text[data-el-field="text"]', (e, ta) => {
+    /* The browser's own undo (Edit menu, context menu) would undo inside
+       ONE textarea behind the model's back. It is ours instead. */
+    if (e.inputType === 'historyUndo' || e.inputType === 'historyRedo') {
+      e.preventDefault();
+      if (e.inputType === 'historyUndo') undo(); else redo();
+      return;
+    }
+    const id = idOf(ta, 'el');
+    if (!id) return;
+    let a = 0, b = 0;
+    try { a = ta.selectionStart; b = ta.selectionEnd; } catch (err) { /* not a text field */ }
+    const moved = !lastTyped || lastTyped.id !== id || lastTyped.pos !== a || a !== b || inputClass(e.inputType) === 'paste';
+    ownDoc();
+    if (!grouping) {
+      history.record(snap(), { id, start: a, end: b }, {
+        kind: 'typing', key: id + ':' + inputClass(e.inputType), now: Date.now(), moved
+      });
+    }
+    sawBefore = true;
+  });
 
   /* PASTE. A line is a textarea, so a native paste of several paragraphs
      made ONE element of the lot — a heading holding a whole scene, and a
@@ -455,6 +784,7 @@ export function mountEditor(host, opts) {
         const i = indexOfEl(id);
         if (i < 0) return;
         const plan = planPaste(line, parsed, text);
+        checkpoint('paste', null, { caret: { id, start: line.before.length, end: line.before.length } });
         const el = els()[i];
         if (plan.type !== el.type) { inference.noteTypeChange(el.id); el.type = plan.type; if (plan.type !== 'character') delete el.dual; }
         el.text = plan.text;
@@ -488,6 +818,7 @@ export function mountEditor(host, opts) {
     if (i < 0) return;
     const list = els();
     const el = list[i];
+    if (el.dual === true || canPairDual(list, i)) checkpoint('dual');
     if (el.dual === true) delete el.dual;
     else {
       if (!canPairDual(list, i)) {
@@ -506,6 +837,7 @@ export function mountEditor(host, opts) {
     const i = indexOfEl(id);
     if (i < 0) return;
     const el = els()[i];
+    checkpoint('contd', null, { caret: null });
     el.text = withContd(el.text);
     const ta = rowOf(id)?.querySelector('.wr-text');
     if (ta) { ta.value = el.text; autosize(ta); }
@@ -516,8 +848,60 @@ export function mountEditor(host, opts) {
     if (ta) applyFocus(ta);
   });
 
+  /* MACROS (Alt+Shift+digit; src/lib/macros.js). The plan is pure; this
+     performs it inside ONE history step, so a macro that makes an
+     element and fills it is one Ctrl+Z. An 'edit' writes the model and
+     the field together without an input event: that event would open a
+     second step and run the auto-format over text the writer did not type. */
+  function macro(i, slot) {
+    const el = els()[i];
+    const m = macroForSlot(parseMacros(typeof o.getMacros === 'function' ? o.getMacros() : null), slot);
+    if (!el || !m) return false;
+    const ta = rowOf(el.id)?.querySelector('.wr-text');
+    if (ta && ta.value !== el.text) el.text = ta.value;
+    let caret = null;
+    try { if (ta) caret = { start: ta.selectionStart, end: ta.selectionEnd }; } catch (e) { /* not a text field */ }
+    const plan = planMacro(m, el, caret);
+    if (!plan) return false;
+    step('macro', () => {
+      if (plan.op === 'new' && !plan.convert) { addElement(i, plan.type, plan.text); return; }
+      if (plan.op === 'new' && el.type !== plan.type) setElementType(i, plan.type);
+      el.text = plan.text;
+      if (ta) {
+        ta.value = plan.text;
+        autosize(ta);
+        try { ta.setSelectionRange(plan.caret ?? plan.text.length, plan.caret ?? plan.text.length); } catch (e) { /* select */ }
+      }
+      if (smart && smart.invalidate) smart.invalidate();
+      persistNow();
+      o.refreshCounters();
+      o.scheduleDerived();
+    });
+    o.say('Macro: ' + m.label + '.');
+    return true;
+  }
+
+  /* DICTATION (src/ui/dictation.js). Spoken text has already been put at
+     the caret as an ordinary `input`, so the model, the auto-format and
+     the history saw it exactly as typing. What it asks here is whether
+     the LINE ENDS: a spoken "new line" always does; a pause does only
+     when the auto-format has something to do with the line (inference
+     .wouldFormat), so a breath inside a speech does not cut it. The end
+     is a real Return key event through keys.js — one path for "Preethi
+     says hello" becoming a cue and a speech however it was entered. */
+  document.addEventListener('fms:dictation-commit', (e) => {
+    const d = e.detail || {};
+    const ta = d.field;
+    if (!ta || !ta.isConnected || !ta.value.trim()) return;
+    const i = indexOfEl(idOf(ta, 'el'));
+    if (i < 0) return;
+    if (!d.newLine && !inference.wouldFormat(i, ta.value)) return;
+    ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
+  }, { signal });
+
   const api = {
     getElements: els,
+    macro,
     indexOf: indexOfEl,
     renderPage,
     rerender: render,
@@ -530,6 +914,14 @@ export function mountEditor(host, opts) {
     moveElement,
     toggleDual,
     patchRow,
+    undo,
+    redo,
+    /** Open a history step before an edit made outside the editor. */
+    checkpoint: (kind) => checkpoint(kind || 'edit'),
+    step,
+    clearHistory: () => history.clear(),
+    canUndo: () => { ownDoc(); return history.canUndo(); },
+    canRedo: () => { ownDoc(); return history.canRedo(); },
     refreshCueOffers,
     applyFocus,
     focusEl: (id) => applyFocus(elFocus(id)),
@@ -537,6 +929,15 @@ export function mountEditor(host, opts) {
       const row = rowOf(id);
       if (row) row.scrollIntoView({ block: 'center', behavior: 'instant' });
     },
+    toggleBookmark,
+    jumpBookmark,
+    moveScene,
+    toggleFold,
+    foldAll,
+    applyFolds: () => applyFolds(),
+    isFolded: (id) => folded.has(id),
+    hasFolds: () => folded.size > 0,
+    isHidden,
     autosize,
     autosizeAll,
     allRows,

@@ -128,6 +128,10 @@ import { movedAnchor, plural, formatWhen, fmtQuota, storageReadout, bigTierFigur
 import { CANCEL_AT_MANDATE } from '../lib/offer-terms.js';
 import { inviteSection, wireGateUI } from '../ui/gate-ui.js';
 import { mountMotionChoice } from '../ui/motion-choice.js';
+import { autoContdOn, saveAutoContd, readDictation, saveDictation, readMacrosPref, saveMacrosPref } from '../lib/chrome-prefs.js';
+import { parseMacros, storableMacros, TARGET_TYPES } from '../lib/macros.js';
+import { dictationSupported } from '../lib/dictation-model.js';
+import { TYPE_NAMES } from '../lib/write-keys.js';
 import { renderFilmPicker, onFavChange, hasOpenProject } from '../ui/fav-film.js';
 import { passName } from '../lib/pass-view.js';
 
@@ -1197,6 +1201,66 @@ function renderPrivacySection() {
   return sec;
 }
 
+/* The Screenplay Writer's automatic (CONT'D): a device pref
+   (`autoContd` in fms_studio_prefs_v1, chrome-prefs.js), ON by default.
+   Written on a change only; ON removes the field rather than storing it. */
+function renderScreenplayPrefs() {
+  const on = autoContdOn();
+  const sec = section('screenplay-prefs', 'This device \u00b7 not part of the film', 'Screenplay.',
+    'How the Screenplay Writer marks a speaker on the page and in the PDF. What you typed is never changed.');
+  sec.append(h('p.st-note', {}, [
+    h('label', {}, [
+      h('input', { type: 'checkbox', id: 'autoContdToggle', 'data-action': 'auto-contd-toggle', ...(on ? { checked: '' } : {}) }),
+      " Add (CONT'D) automatically"
+    ]),
+    h('span', { text: " \u2014 when the same character speaks again in a scene with only action between, the cue shows and prints with (CONT'D), as Final Draft does." })
+  ]));
+  /* Dictation is OFF until switched on, and only where the browser has
+     speech recognition (Chrome). The first switch-on shows the notice that
+     Chrome sends the audio to Google (src/ui/dictation.js). */
+  if (dictationSupported()) {
+    sec.append(h('p.st-note', {}, [
+      h('label', {}, [
+        h('input', { type: 'checkbox', id: 'dictationToggle', 'data-action': 'dictation-toggle', ...(readDictation().on ? { checked: '' } : {}) }),
+        ' Dictation'
+      ]),
+      h('span', { text: ' \u2014 speak into the Screenplay Writer from Tools. Chrome sends the audio to Google to turn it into text; nothing is recorded by the studio.' })
+    ]));
+  }
+  sec.append(renderMacros());
+  return sec;
+}
+
+/* Macros: Alt+Shift+1 to 9 in the Screenplay Writer insert a snippet
+   (src/lib/macros.js). A row is a slot; a blank snippet leaves the slot
+   unused. `macros` in fms_studio_prefs_v1, stored only when it differs from
+   the defaults. A field saves on change without redrawing, so Tab goes on
+   to the next one. */
+const WHERE_OPTIONS = [['caret', 'Into this line, at the caret'], ['end', 'On the end of this line'],
+  ...TARGET_TYPES.map((t) => ['new:' + t, 'As a new ' + (TYPE_NAMES[t] || t).toLowerCase()])];
+function renderMacros() {
+  const list = parseMacros(readMacrosPref());
+  const rows = [];
+  for (let n = 1; n <= 9; n++) {
+    const m = list.find((x) => x.slot === n) || { label: '', text: '', where: 'caret', type: '' };
+    const goes = m.where === 'new' ? 'new:' + m.type : m.where;
+    const sel = h('select', { 'data-macro-field': 'goes', 'aria-label': 'Macro ' + n + ' goes' },
+      WHERE_OPTIONS.map(([v, t]) => h('option', { value: v, text: t })));
+    sel.value = goes;
+    rows.push(h('div.st-macro-row', { 'data-macro-row': String(n) }, [
+      h('span.st-macro-key', { text: 'Alt+Shift+' + n }),
+      h('input', { type: 'text', 'data-macro-field': 'label', value: m.label, maxlength: '40', placeholder: 'Name', 'aria-label': 'Macro ' + n + ' name' }),
+      h('input', { type: 'text', 'data-macro-field': 'text', value: m.text, maxlength: '200', placeholder: 'Snippet', 'aria-label': 'Macro ' + n + ' snippet' }),
+      sel
+    ]));
+  }
+  return h('div.st-macros', {}, [
+    h('p.st-note', { text: 'Macros. Alt+Shift (Option+Shift) with 1 to 9 inserts a snippet in the Screenplay Writer, as one undo step. A snippet that starts with a space or a dash joins the end of the line.' }),
+    ...rows,
+    h('p.st-note', {}, [button({ label: 'Reset macros', variant: 'ghost', size: 'sm', action: 'macros-reset' })])
+  ]);
+}
+
 function renderTourSection() {
   const sec = section('tour', 'Help', 'Take the tour.',
     'A walk through every page of the studio, on the Dragon sample. It starts by itself once, the first time an account signs in; this button takes it again. Pause it any time and resume it from your account menu.');
@@ -1300,7 +1364,7 @@ function render() {
        mandate (Razorpay e-mail, bank / UPI app), never a button here. Id 'purchases', not 'plan' (#plan is an old
        billing anchor that redirects to purchase.html). */
     tabPane('purchases', 'Plan & purchases', 'You', [renderPlanCard(), renderAutopay(), renderPlanContents()], { icon: 'payments', hint: 'Your plan, auto-pay and what the plan opens.' }),
-    tabPane('preferences', 'Preferences', 'This device', [renderRegion(), renderMotion(), renderFavourite(), renderKey(), renderPrivacySection(), renderTourSection()], { icon: 'tune', hint: 'Region, motion, favourite film, your AI key and privacy.' }),
+    tabPane('preferences', 'Preferences', 'This device', [renderRegion(), renderMotion(), renderScreenplayPrefs(), renderFavourite(), renderKey(), renderPrivacySection(), renderTourSection()], { icon: 'tune', hint: 'Region, motion, favourite film, your AI key and privacy.' }),
     tabPane('backup', 'Data & backup', 'This device', [renderStorage(), renderCloudSync(), renderDrive(), renderDanger()], { icon: 'backup', hint: 'Where your work is kept, cloud sync, Drive backup and erase.' }),
     tabPane('team', 'Team', 'Together', [team], { icon: 'groups', hint: 'Who you share films with.' }),
     tabPane('admin', 'Admin', 'Admin', [consolePointer(), renderAdmin()], { icon: 'admin_panel_settings', hint: 'Studio-wide settings for administrators.' })
@@ -1505,6 +1569,39 @@ delegate(document, 'change', '[data-action="usage-count-toggle"]', (e, el) => {
   try {
     setUsageCounting(el.checked);
   } catch (err) { StudioUI.toastError('This browser would not save that choice.'); }
+  render();
+});
+
+delegate(document, 'change', '[data-action="auto-contd-toggle"]', (e, el) => {
+  if (!saveAutoContd(el.checked)) StudioUI.toastError('This browser would not save that choice.');
+  render();
+});
+
+delegate(document, 'change', '[data-action="dictation-toggle"]', async (e, el) => {
+  if (el.checked) {
+    const { enableDictation } = await import('../ui/dictation.js');
+    if (!(await enableDictation({ fromSettings: true }))) { render(); return; }
+  } else if (!saveDictation({ on: false })) StudioUI.toastError('This browser would not save that choice.');
+  render();
+});
+
+/* A macro field saves on change, from every row at once; nothing redraws. */
+delegate(document, 'change', '[data-macro-field]', (e, el) => {
+  const raw = [...document.querySelectorAll('[data-macro-row]')].map((row) => {
+    const goes = row.querySelector('[data-macro-field="goes"]').value;
+    const isNew = goes.startsWith('new:');
+    return {
+      slot: Number(row.dataset.macroRow),
+      label: row.querySelector('[data-macro-field="label"]').value,
+      text: row.querySelector('[data-macro-field="text"]').value,
+      where: isNew ? 'new' : goes,
+      type: isNew ? goes.slice(4) : ''
+    };
+  });
+  if (!saveMacrosPref(storableMacros(raw))) StudioUI.toastError('This browser would not save that choice.');
+});
+delegate(document, 'click', '[data-action="macros-reset"]', () => {
+  saveMacrosPref(undefined);
   render();
 });
 

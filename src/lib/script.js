@@ -33,6 +33,7 @@
    ============================================================ */
 import Store from './store.js';
 import { newId } from './record-id.js';
+import { ACT_LINE } from './act-line.js';
 
 export const SCRIPT_KEY = 'fms_script_v1';
 
@@ -56,7 +57,14 @@ export const ELEMENT_TYPES = [
   { id: 'paren',      label: 'Parenthetical',  short: 'PAREN' },
   { id: 'dialogue',   label: 'Dialogue',       short: 'DIALOG' },
   { id: 'transition', label: 'Transition',     short: 'TRANS' },
-  { id: 'shot',       label: 'Shot',           short: 'SHOT' }
+  { id: 'shot',       label: 'Shot',           short: 'SHOT' },
+  /* L3 (fd/parity): the three Final Draft elements the editor lacked.
+     Appended LAST, so the seven ids keep their positions and a script
+     written before they existed reads back exactly as stored. None is
+     a scene: like a shot, they open no scene and take no number. */
+  { id: 'centered',   label: 'Centered',       short: 'CENTER' },
+  { id: 'lyrics',     label: 'Lyrics',         short: 'LYRIC' },
+  { id: 'act',        label: 'Act Break',      short: 'ACT' }
 ];
 export const ELEMENT_TYPE_IDS = ELEMENT_TYPES.map((t) => t.id);
 const typeById = Object.fromEntries(ELEMENT_TYPES.map((t) => [t.id, t]));
@@ -71,7 +79,10 @@ export const NEXT_TYPE = {
   paren: 'dialogue',
   dialogue: 'action',
   transition: 'scene',
-  shot: 'action'
+  shot: 'action',
+  centered: 'action',
+  lyrics: 'action',
+  act: 'scene'
 };
 
 /* ---- the industry revision order ---------------------------
@@ -135,6 +146,9 @@ export function blankElement(patch = {}) {
      element that never had the field gets none, so an old script is
      byte-identical after a load and a save. */
   if ('dual' in el && !(el.dual === true && el.type === 'character')) delete el.dual;
+  /* `mark` is a bookmark (src/lib/script-index.js): true or absent, never
+     a second meaning, and an element that never had one stays byte-identical. */
+  if ('mark' in el && el.mark !== true) delete el.mark;
   return el;
 }
 
@@ -219,7 +233,7 @@ export function contdOffer(elements, i) {
     const el = els[k];
     if (!el) return false;
     const t = String(el.text ?? '').trim();
-    if (el.type === 'action' || el.type === 'shot') { if (t) sawAction = true; continue; }
+    if (el.type === 'action' || el.type === 'shot' || el.type === 'centered') { if (t) sawAction = true; continue; }
     if (!t) continue;                                // a blank line is no line
     if (el.type === 'dialogue' || el.type === 'paren') {
       if (!sawAction) return false;                  // the same speech, not a return to it
@@ -358,7 +372,9 @@ function stampChanged(elements) {
   for (const el of elements) {
     if (!el) continue;
     const p = before.get(el.id);
-    const changed = !p || p.type !== el.type || p.text !== el.text || (p.dual === true) !== (el.dual === true);
+    // `mark` (a bookmark) stamps too, so co-editing keeps the newer one.
+    const changed = !p || p.type !== el.type || p.text !== el.text || (p.dual === true) !== (el.dual === true)
+      || (p.mark === true) !== (el.mark === true);
     if (changed && p && (Number(el.u) || 0) < (Number(p.u) || 0)) continue;
     if (changed) { if (!(Number(el.u) >= now - 5000)) el.u = Math.max(Number(el.u) || 0, now); }
     else if (p.u && !el.u) el.u = p.u;
@@ -724,7 +740,10 @@ const LAYOUT = {
   paren:      { width: 25, before: 0 },
   dialogue:   { width: 35, before: 0 },
   transition: { width: 61, before: 1 },
-  shot:       { width: 61, before: 1 }
+  shot:       { width: 61, before: 1 },
+  centered:   { width: 61, before: 1 },
+  lyrics:     { width: 35, before: 1 },
+  act:        { width: 61, before: 2 }
 };
 
 /* The two half-measure columns of a dual-dialogue block. Same
@@ -850,6 +869,18 @@ function fountainBlock(type, text) {
     case 'transition': {
       const up = t.toUpperCase();
       return [ENDS_IN_TO.test(up) ? up : '> ' + up];
+    }
+    case 'centered':
+      // Fountain's own centering: one >text< per line.
+      return t.split('\n').map((l) => '> ' + l.trim() + ' <');
+    case 'lyrics':
+      return t.split('\n').map((l) => '~' + l.trim());
+    case 'act': {
+      /* No Fountain element for an act break. A line the importer's
+         ACT_RE reads ("ACT TWO", "END OF ACT ONE") goes out plain, in
+         capitals, and comes back an act; anything else is centered. */
+      const up = t.toUpperCase().replace(/\n+/g, ' ');
+      return [ACT_LINE.test(up) ? up : '> ' + up + ' <'];
     }
     case 'shot':
       /* Fountain has no shot element and no forcing character for one.

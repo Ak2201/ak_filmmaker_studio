@@ -20,10 +20,15 @@
 import { makeRevision, revisionColour } from './script.js';
 
 /** What the script holds that the writer would miss, as one string. */
+/* A bookmark (`mark`) counts: it is a field the writer set, and a synced
+   copy that differs only by one must not read as "nothing new", or the
+   next save here writes the bookmark away (last write wins). */
+const elSig = (e) => [e.id, e.type, e.text, e.dual === true, e.mark === true];
+
 export function scriptSignature(doc) {
   const d = doc || {};
   return JSON.stringify([
-    (d.elements || []).map((e) => [e.id, e.type, e.text, e.dual === true]),
+    (d.elements || []).map(elSig),
     (d.revisions || []).map((r) => r.id),
     d.titlePage || null,
     d.numbering || null
@@ -36,7 +41,7 @@ export function scriptSignature(doc) {
 export function numberingOnly(base, fresh) {
   if (!base || !fresh) return false;
   const parts = (d) => JSON.stringify([
-    (d.elements || []).map((e) => [e.id, e.type, e.text, e.dual === true]),
+    (d.elements || []).map(elSig),
     (d.revisions || []).map((r) => r.id),
     d.titlePage || null
   ]);

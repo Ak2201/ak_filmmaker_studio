@@ -15,6 +15,7 @@
    ============================================================ */
 import { h } from '../../lib/dom.js';
 import { ELEMENT_TYPES, typeLabel, dualPairs, contdOffer } from '../../lib/script.js';
+import { spellcheckFor } from '../../lib/name-spell.js';
 
 /** Rows per run on the screenplay page; see buildPage(). */
 export const CHUNK = 64;
@@ -26,7 +27,10 @@ export const PLACEHOLDER = {
   paren: 'quietly',
   dialogue: 'What they say.',
   transition: 'CUT TO:',
-  shot: 'CLOSE ON —'
+  shot: 'CLOSE ON —',
+  centered: 'Centered text',
+  lyrics: 'Sung words',
+  act: 'END OF ACT ONE'
 };
 
 /** The selector that puts the caret in element `id`'s text. */
@@ -57,6 +61,8 @@ export function renderElement(el, i, total, elements, rowChrome = true) {
      (script-find.js lands on it too, for rows not yet drawn). */
   const row = h('article.wr-el.t-' + el.type, { 'data-el': el.id, id: 'line-' + el.id });
 
+  if (el.mark === true) row.classList.add('is-marked');   // a bookmark (script-index.js)
+
   const sel = h('select.wr-type', {
     'data-el-field': 'type',
     'aria-label': 'Element type for element ' + (i + 1)
@@ -69,10 +75,13 @@ export function renderElement(el, i, total, elements, rowChrome = true) {
 
   const ta = field('textarea.wr-text', {
     rows: '1',
-    spellcheck: 'true',
+    /* A name line (cue, heading, transition) is not prose: no red waves
+       under every cue. src/lib/name-spell.js says why only the line can be
+       switched, not the word. */
+    spellcheck: String(spellcheckFor(el.type)),
     'data-el-field': 'text',
     placeholder: PLACEHOLDER[el.type] || '',
-    'aria-label': typeLabel(el.type) + ', element ' + (i + 1)
+    'aria-label': typeLabel(el.type) + ', element ' + (i + 1) + (el.mark === true ? ', bookmarked' : '')
   }, el.text);
 
   /* The mark is built here, not by the lazy AI module, so that a line

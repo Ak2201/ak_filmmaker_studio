@@ -62,22 +62,27 @@
      toFDX(doc, meta) → string
    ============================================================ */
 import { dualPairs, sceneNumbers, isNumberingLocked, cueSpeaker } from './script.js';
-import { GEOMETRY, paginateDoc, pageStarts, pagesLock, titlePageOf } from './screenplay-export.js';
+import { GEOMETRY, paginateDoc, pageStarts, pagesLock, titlePageOf, isActStart, isActEnd } from './screenplay-export.js';
 
 export const FDX_MIME = 'application/xml';
 
 const FDX_TYPE_OUT = {
   scene: 'Scene Heading', action: 'Action', character: 'Character',
-  paren: 'Parenthetical', dialogue: 'Dialogue', transition: 'Transition', shot: 'Shot'
+  paren: 'Parenthetical', dialogue: 'Dialogue', transition: 'Transition', shot: 'Shot',
+  /* Final Draft has no Centered element: it is a General paragraph set
+     Center (see paragraph()). Lyrics, New Act and End of Act are its own
+     names; the act element writes whichever its text says. */
+  centered: 'General', lyrics: 'Lyrics', act: 'New Act'
 };
 /* What Return gives next, in Final Draft's vocabulary — the same table
    as NEXT_TYPE in script.js, so the file behaves the way the editor
    does. */
 const RETURN_KEY = {
   scene: 'action', action: 'action', character: 'dialogue', paren: 'dialogue',
-  dialogue: 'action', transition: 'scene', shot: 'action'
+  dialogue: 'action', transition: 'scene', shot: 'action',
+  centered: 'action', lyrics: 'action', act: 'scene'
 };
-const SHORTCUT = { scene: 1, action: 2, character: 3, paren: 4, dialogue: 5, transition: 6, shot: 7 };
+const SHORTCUT = { scene: 1, action: 2, character: 3, paren: 4, dialogue: 5, transition: 6, shot: 7, lyrics: 8, centered: 9 };
 
 /* XML 1.0 forbids the C0 controls other than tab, LF and CR, U+FFFE,
    U+FFFF and an unpaired surrogate, and ONE of them makes the file not
@@ -105,9 +110,10 @@ function paragraph(el, pad, extra = {}) {
   const text = fdxText(el);
   const rev = extra.revision ? attrs({ RevisionID: extra.revision }) : '';
   return pad + '<Paragraph' + attrs({
-    Type: FDX_TYPE_OUT[el.type] || 'Action',
+    Type: el.type === 'act' && isActEnd(text) ? 'End of Act' : (FDX_TYPE_OUT[el.type] || 'Action'),
+    Alignment: el.type === 'centered' || el.type === 'act' ? 'Center' : '',
     Number: extra.number,
-    StartsNewPage: extra.newPage ? 'Yes' : ''
+    StartsNewPage: extra.newPage || isActStart(el) ? 'Yes' : ''
   }) + '><Text' + rev + '>' + xmlEsc(text) + '</Text></Paragraph>';
 }
 
@@ -123,9 +129,9 @@ function elementSettings() {
     const right = 1.5 + (g.indent + g.width) / 10;
     const name = FDX_TYPE_OUT[type];
     return '  <ElementSettings' + attrs({ Type: name }) + '>\n'
-      + '    <FontSpec' + attrs({ Font: FONT, Size: 12, Style: g.upper ? 'AllCaps' : '' }) + '/>\n'
+      + '    <FontSpec' + attrs({ Font: FONT, Size: 12, Style: [g.upper && 'AllCaps', g.italic && 'Italic', g.underline && 'Underline'].filter(Boolean).join('+') }) + '/>\n'
       + '    <ParagraphSpec' + attrs({
-        Alignment: g.align === 'right' ? 'Right' : 'Left',
+        Alignment: g.align === 'right' ? 'Right' : g.align === 'center' ? 'Center' : 'Left',
         FirstIndent: type === 'paren' ? '-0.10' : '0.00',
         Leading: 'Regular',
         LeftIndent: inch(left),

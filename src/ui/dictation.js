@@ -30,9 +30,27 @@
 
    It stops on Esc, when the line loses focus, after a silence, and
    when the button is pressed again.
+
+   OFF UNTIL SWITCHED ON (L5). Chrome's recogniser sends the audio to
+   Google, which a writer should choose knowingly, so the first start
+   asks (dialog.js, DICTATION_NOTICE) and remembers the answer in
+   `dictation` inside fms_studio_prefs_v1; Settings, Screenplay switches
+   it off again. Nothing is asked, and nothing listens, before that.
+
+   SPOKEN TEXT TAKES THE TYPED ROUTE. A final result goes through
+   dictation-model.js (spoken "new line", "comma", …), is inserted as
+   an `input`, and a part that ends a line asks the editor for a Return
+   with the `fms:dictation-commit` event (editor.js decides: a spoken
+   "new line" always; a pause only when the auto-format has work to do,
+   so "Preethi says hello" becomes a cue and a speech). The Return moves
+   focus to the new line; `moving` keeps that from reading as "the line
+   lost focus", and the dictation follows the caret.
    ============================================================ */
 import { h } from '../lib/dom.js';
 import { indiaContentShown as here } from './india-content.js';
+import { ask } from './dialog.js';
+import { readDictation, saveDictation } from '../lib/chrome-prefs.js';
+import { splitSpoken, DICTATION_NOTICE } from '../lib/dictation-model.js';
 
 const SR = typeof window !== 'undefined'
   ? (window.SpeechRecognition || window.webkitSpeechRecognition || null)
@@ -54,12 +72,13 @@ let target = null;        // the textarea being dictated into
 let lastField = null;     // the last script line that had focus
 let silence = 0;
 let ui = null;
+let moving = false;       // a spoken line break is moving focus to the next line
 
 const isField = (n) => !!(n && n.matches && n.matches('#wr-page .wr-text[data-el-field="text"]'));
 
 document.addEventListener('focusin', (e) => { if (isField(e.target)) lastField = e.target; });
 document.addEventListener('focusout', (e) => {
-  if (rec && e.target === target) stop('Stopped: the line lost focus.');
+  if (rec && e.target === target && !moving) stop('Stopped: the line lost focus.');
 });
 document.addEventListener('keydown', (e) => {
   if (rec && e.key === 'Escape') stop('Stopped.');
@@ -97,6 +116,21 @@ export function insertAtCaret(ta, text) {
   ta.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
+/** One final transcript: its parts, each inserted at the caret, and the
+    line ended after a part that asks for it. */
+function spoken(transcript) {
+  for (const part of splitSpoken(transcript, langNow())) {
+    if (!target || !target.isConnected) return;
+    if (part.text) insertAtCaret(target, part.text);
+    const field = target;
+    moving = true;
+    try {
+      document.dispatchEvent(new CustomEvent('fms:dictation-commit', { detail: { field, newLine: part.newLine } }));
+    } finally { moving = false; }
+    if (isField(document.activeElement) && document.activeElement !== field) target = document.activeElement;
+  }
+}
+
 function armSilence() {
   clearTimeout(silence);
   silence = setTimeout(() => stop('Stopped after a silence.'), SILENCE_MS);
@@ -110,6 +144,32 @@ const ERRORS = {
   'no-speech': 'Nothing was heard. Press Dictation and speak.',
   'language-not-supported': 'This browser cannot recognise that language.'
 };
+
+/** Switched on? The first time, the notice is the question. */
+export async function enableDictation({ fromSettings = false } = {}) {
+  const cur = readDictation();
+  if (cur.on) return true;
+  /* After the first notice the writer's own switch decides: one who turned
+     it off is not re-asked from the Tools menu, they are told where the
+     switch is. `fromSettings` is that switch being turned on. */
+  if (cur.noticed && !fromSettings) return false;
+  if (!cur.noticed) {
+    const yes = await ask({ ...DICTATION_NOTICE });
+    if (!yes) return false;
+  }
+  saveDictation({ on: true, noticed: true });
+  return true;
+}
+
+async function begin() {
+  if (!(await enableDictation())) {
+    say(readDictation().noticed
+      ? 'Dictation is switched off. Turn it on in Settings, under Screenplay.'
+      : 'Dictation is off. Nothing was listened to.', '');
+    return;
+  }
+  start();
+}
 
 function start() {
   const ta = (isField(document.activeElement) && document.activeElement)
@@ -129,7 +189,7 @@ function start() {
     for (let i = ev.resultIndex; i < ev.results.length; i++) {
       const res = ev.results[i];
       const t = res[0] ? res[0].transcript : '';
-      if (res.isFinal) insertAtCaret(target, t);
+      if (res.isFinal) spoken(t);
       else interim += t;
     }
     preview(interim.trim());
@@ -178,7 +238,7 @@ function buildGroup() {
   // Pressing the button must not take focus from the line, or the
   // blur would stop the dictation the press is starting.
   btn.addEventListener('mousedown', (e) => e.preventDefault());
-  btn.addEventListener('click', () => (rec ? stop('Stopped.') : start()));
+  btn.addEventListener('click', () => (rec ? stop('Stopped.') : begin()));
   langSel.addEventListener('change', () => { lang = langSel.value; });
   return { group, btn, lang: langSel, status, preview: prev };
 }
@@ -194,4 +254,4 @@ export function mountDictation(bar) {
 }
 
 export const supported = !!SR;
-export default { mountDictation, insertAtCaret, supported };
+export default { mountDictation, insertAtCaret, supported, enableDictation };

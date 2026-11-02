@@ -150,6 +150,40 @@ await settle();
 const t2 = await types();
 ok(sel === t2[t2.length - 1].split(':')[0] && sel !== 'dialogue', '3  Alt+digit sets the type and the dropdown follows', { sel, last: t2[t2.length - 1] });
 
+/* ---- 3b bookmarks, character navigator, typewriter ---------------------- */
+await page.keyboard.press('Alt+B');
+await settle();
+const marked = await page.evaluate(() => {
+  const s = JSON.parse(localStorage.getItem(Object.keys(localStorage).find((k) => k.startsWith('fms_script_v1'))) || '{}');
+  return (s.elements || []).filter((e) => e.mark === true).length;
+});
+ok(marked === 1 && await page.$$eval('#wr-page .wr-el.is-marked', (r) => r.length) === 1, '3b Alt+B bookmarks the line and saves the mark field', marked);
+await page.keyboard.press('Alt+C');
+await page.waitForSelector('.wk-nav [role="tab"][aria-selected="true"]', { timeout: 3000 }).catch(() => {});
+const chars = await page.$$eval('.wk-nav li .wk-t', (n) => n.map((x) => x.textContent));
+ok(chars.length === 1 && chars[0] === 'ARUN', '3b Alt+C lists the characters', chars);
+await page.keyboard.press('Enter');
+await page.waitForTimeout(200);
+ok(await page.evaluate(() => document.activeElement.value) === 'ARUN', '3b choosing a character jumps to their next cue');
+await page.keyboard.press('Alt+]');
+await page.waitForTimeout(150);
+ok(await page.evaluate(() => document.activeElement.closest('.is-marked') !== null), '3b Alt+] jumps to the bookmark');
+await page.keyboard.press('Alt+B');                       // leave the script as it was
+await settle();
+ok(await page.$$eval('#wr-page .wr-el.is-marked', (r) => r.length) === 0, '3b Alt+B again removes it');
+{
+  const wBefore = await page.evaluate(() => window.__writes.length);
+  const moreBtn = await page.evaluateHandle(() => [...document.querySelectorAll('#scTop .tb-menu')].find((m) => m.querySelector('[data-action="sc-typewriter"]')).querySelector('.tb-menu-btn'));
+  await moreBtn.click();
+  await page.click('#scTop .tb-menu [data-action="sc-typewriter"]', { timeout: 3000 });
+  await page.waitForTimeout(150);
+  const on = await page.evaluate(() => document.documentElement.classList.contains('sc-typewriter'));
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('fms_studio_prefs_v1') || '{}').typewriter === true);
+  ok(on && stored, '3b typewriter scrolling toggles and is stored in the prefs blob on the click', { on, stored });
+  void wBefore;
+  await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('fms_studio_prefs_v1') || '{}'); delete p.typewriter; localStorage.setItem('fms_studio_prefs_v1', JSON.stringify(p)); document.documentElement.classList.remove('sc-typewriter'); });
+}
+
 /* ---- 5 one save per burst; idle writes nothing ------------------------ */
 await page.click('#wr-page .wr-el:nth-child(2) .wr-text').catch(() => {});
 let before = await page.evaluate(() => window.__writes.filter((w) => w.k.startsWith('fms_script_v1')).length);
@@ -402,9 +436,10 @@ ok((await page.$$eval('#wr-page .wr-text', (ts) => ts.map((t) => t.value))).incl
   });
   await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
   await page.waitForTimeout(1500);
-  const breaks = await page.$$eval('#wr-page .wr-pbreak', (ns) => ns.map((n) => n.textContent));
+  // A break is decoration: its words are in data-label (painted by CSS), never text.
+  const breaks = await page.$$eval('#wr-page .wr-pbreak', (ns) => ns.map((n) => n.dataset.label || ''));
   ok(breaks.some((t) => /^Page 2A/.test(t)), '18 the page view shows 2A after page 2 grows', breaks);
-  const p3 = await page.$$eval('#wr-page .wr-pbreak', (ns) => { const n = ns.find((x) => x.textContent === 'Page 3'); return n ? (n.nextElementSibling && n.nextElementSibling.dataset.el) : null; });
+  const p3 = await page.$$eval('#wr-page .wr-pbreak', (ns) => { const n = ns.find((x) => x.dataset.label === 'Page 3'); return n ? (n.nextElementSibling && n.nextElementSibling.dataset.el) : null; });
   ok(p3 === startP3, '18 and page 3 still begins on the same line', { p3, startP3 });
   await page.goto(url('drafts.html#numbering'), { waitUntil: 'networkidle' });
   await page.waitForTimeout(800);
@@ -1115,6 +1150,191 @@ await page.setViewportSize({ width: 1280, height: 900 });
       `23g at ${w}px the guide heading sits on the steps' gutter, with no chip bar over it`, g);
   }
   await page.setViewportSize({ width: 1280, height: 900 });
+}
+
+/* ---- 24 the writing flow and the one undo history (fd/l1-flow) ----------
+   Auto-switch on any line type, each switch ONE Ctrl+Z back to the line as
+   typed (and then left alone); "NAME says …" on Return; Tab on a written
+   action line; typing coalesced per burst; a split undone with its caret;
+   redo; and still no storage write while the page sits idle. */
+{
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('fms_script_v1')) localStorage.removeItem(k); });
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  const rows = () => page.$$eval('#wr-page [data-el]', (rs) => rs.map((r) => {
+    const t = [...r.classList].find((c) => c.startsWith('t-')) || 't-?';
+    return t.slice(2) + ':' + (r.querySelector('.wr-text')?.value ?? '');
+  }));
+  const caret = () => page.evaluate(() => {
+    const a = document.activeElement;
+    return a && a.matches('.wr-text') ? { i: [...document.querySelectorAll('#wr-page .wr-text')].indexOf(a), s: a.selectionStart, v: a.value } : null;
+  });
+  await page.click('#wr-page .wr-text');
+  await page.keyboard.type('INT. FLAT - DAY');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('RAVI');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Hello.');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('CUT TO:');
+  let r = await rows();
+  ok(r[3] === 'transition:CUT TO:', '24a "CUT TO:" becomes a transition as it is typed', r);
+  await page.keyboard.press('Control+z');
+  r = await rows();
+  ok(r[3] === 'action:CUT TO:' && (await caret())?.i === 3, '24a one Ctrl+Z restores the line exactly as typed, caret in it', { r, c: await caret() });
+  await page.keyboard.press('Backspace');
+  await page.keyboard.type(':');
+  r = await rows();
+  ok(r[3] === 'action:CUT TO:', '24a an undone switch is not made again on that line', r);
+  await page.keyboard.press('Control+Shift+z');
+  r = await rows();
+  ok(r[3] === 'action:CUT TO:', '24a redo after a fresh edit does nothing (the edit cleared redo)', r);
+
+  // "NAME says …" on Return, and one undo restores it
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Ravi says, see you soon.');
+  await page.keyboard.press('Enter');
+  r = await rows();
+  ok(r[4] === 'character:RAVI' && r[5] === 'dialogue:See you soon.' && r[6] === 'action:',
+    '24b "Ravi says, see you soon." + Return → RAVI / See you soon. / a new action line', r);
+  await page.keyboard.press('Control+z');
+  r = await rows();
+  ok(r.length === 5 && r[4] === 'action:Ravi says, see you soon.', '24b one Ctrl+Z restores the original line', r);
+  await page.keyboard.press('Control+Shift+z');
+  r = await rows();
+  ok(r[4] === 'character:RAVI' && r[5] === 'dialogue:See you soon.', '24b Ctrl+Shift+Z redoes it', r);
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Enter');
+  r = await rows();
+  ok(r[4] === 'action:Ravi says, see you soon.' && r[5] === 'action:', '24b after an undo, Return on that line is a plain Return', r);
+
+  // typing coalesced per burst; Ctrl+Y redoes
+  await page.keyboard.type('abc');
+  await page.waitForTimeout(1300);
+  await page.keyboard.type('def');
+  await page.keyboard.press('Control+z');
+  r = await rows();
+  ok(r[5] === 'action:abc', '24c a pause ends a burst: undo takes back "def" only', r);
+  await page.keyboard.press('Control+y');
+  r = await rows();
+  ok(r[5] === 'action:abcdef', '24c Ctrl+Y redoes', r);
+
+  // a split, undone with its caret
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('He walks in and sits.');
+  await page.waitForTimeout(1100);
+  await page.keyboard.press('Home');
+  for (let k = 0; k < 11; k++) await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  r = await rows();
+  ok(r[6] === 'action:He walks in' && r[7] === 'action:and sits.', '24d Return mid-line splits', r);
+  await page.keyboard.press('Control+z');
+  r = await rows();
+  const c = await caret();
+  ok(r[6] === 'action:He walks in and sits.' && r.length === 7 && c && c.i === 6 && c.s === 11,
+    '24d one Ctrl+Z joins the split back, caret where Return was pressed', { r, c });
+
+  // Tab on a written action line starts a Character line below
+  await page.keyboard.press('End');
+  await page.keyboard.press('Tab');
+  r = await rows();
+  const c2 = await caret();
+  ok(r[7] === 'character:' && c2 && c2.i === 7, '24e Tab on a filled action line inserts a Character line and focuses it', { r, c2 });
+  // "(" in an empty line after a cue is a parenthetical
+  await page.keyboard.type('RAVI');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('(');
+  r = await rows();
+  ok(r[8] === 'paren:(', '24f "(" opening a dialogue line makes a parenthetical', r);
+  await page.keyboard.press('Control+z');
+  r = await rows();
+  ok(r[8] === 'dialogue:(', '24f and one Ctrl+Z gives the dialogue line back', r);
+
+  // the page writes nothing while it sits there
+  await page.waitForTimeout(1500);
+  const before = await page.evaluate(() => window.__writes.length);
+  await page.waitForTimeout(4000);
+  const after = await page.evaluate(() => window.__writes.length);
+  ok(after === before, '24g no storage write in four idle seconds after all of that', { before, after });
+  await settle();
+  const saved = await types();
+  ok(saved[6] === 'action:He walks in and sits.' && saved[4] === 'action:Ravi says, see you soon.', '24g undo saved through the normal path', saved);
+}
+
+/* ---- 25 fd/parity review: undo after an import, CONT'D's own undo step,
+   one page count. Each failed before its fix. */
+{
+  const fresh25 = async (els) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(url('index.html'), { waitUntil: 'networkidle' });
+    await page.evaluate((els) => {
+      const S = window.StudioStore;
+      const p = S.createProject({ title: 'Proof 25 ' + Date.now(), format: 'feature' });
+      S.setCurrentProject(p.id);
+      S.rawSet('fms_script_v1__' + p.id, JSON.stringify({ elements: els, revisions: [], documents: [] }));
+    }, els);
+    await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+    await page.waitForTimeout(500);
+  };
+  // This project's script (the shared doc() reads the first project's key).
+  const types = async () => page.evaluate(() => {
+    const id = window.StudioStore.currentProject().id;
+    const d = JSON.parse(window.StudioStore.rawGet('fms_script_v1__' + id) || '{"elements":[]}');
+    return d.elements.map((e) => e.type + ':' + e.text);
+  });
+  const OLD = [
+    { id: 'o1', type: 'scene', text: 'INT. FLAT - NIGHT' }, { id: 'o2', type: 'action', text: 'Ravi paces.' },
+    { id: 'o3', type: 'character', text: 'RAVI' }, { id: 'o4', type: 'dialogue', text: 'Not tonight.' }
+  ];
+  // a) type, import with Replace, Ctrl+Z: the import stays
+  await fresh25(OLD);
+  await page.click('[data-el="o2"] .wr-text');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' He stops.');
+  await settle(1200);
+  await page.evaluate(() => document.querySelector('[data-action="sc-import"]').click());
+  await page.waitForSelector('#scImpPaste');
+  await page.fill('#scImpPaste', 'INT. CAVE - NIGHT\n\nDark water.');
+  await page.click('[data-action="sc-imp-paste"]');
+  await page.waitForSelector('[data-mode="replace"]');
+  await page.click('[data-mode="replace"]');
+  await page.click('[data-action="sc-imp-commit"]');
+  const confirm = page.locator('.k-modal button, dialog button', { hasText: 'Replace' }).last();
+  if (await confirm.isVisible().catch(() => false)) await confirm.click();
+  await page.waitForFunction(() => [...document.querySelectorAll('#wr-page .wr-text')].some((t) => t.value === 'INT. CAVE - NIGHT'), null, { timeout: 5000 }).catch(() => {});
+  await page.waitForTimeout(400);
+  await page.click('#wr-page .wr-text');
+  await page.keyboard.press('Control+z');
+  await settle();
+  let t = await types();
+  ok(t.includes('scene:INT. CAVE - NIGHT') && !t.includes('action:Ravi paces. He stops.'), '25a Ctrl+Z after an import does not bring the old script back', t);
+
+  // b) the line menu's CONT'D is its own undo step
+  await fresh25(OLD);
+  await page.click('[data-el="o2"] .wr-text');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' Sits.');
+  await page.waitForTimeout(1300);                   // the burst ends
+  await page.click('[data-el="o3"] .wr-text');
+  await page.evaluate(() => document.querySelector('#scLineMenu [data-action="sc-contd"]').click());
+  await page.waitForTimeout(200);
+  t = await types();
+  ok(t[2] === "character:RAVI (CONT'D)", "25b the line menu adds CONT'D", t);
+  await page.click('[data-el="o3"] .wr-text');
+  await page.keyboard.press('Control+z');
+  await settle();
+  t = await types();
+  ok(t[2] === 'character:RAVI' && t[1] === 'action:Ravi paces. Sits.', "25b one Ctrl+Z takes back CONT'D only, not the typing before it", t);
+
+  // c) the strip's page count is the page view's
+  const many = [];
+  for (let k = 0; k < 120; k++) many.push({ id: 'm' + k + 'a', type: 'scene', text: 'INT. ROOM ' + k + ' - DAY' }, { id: 'm' + k + 'b', type: 'action', text: 'Rain on the glass, and the long wait for a phone that does not ring. '.repeat(3) }, { id: 'm' + k + 'c', type: 'character', text: 'RAVI' }, { id: 'm' + k + 'd', type: 'dialogue', text: 'Not tonight. Not ever, if I have the choice.' });
+  await fresh25(many);
+  await page.waitForFunction(() => document.getElementById('wr-page')?.dataset.pages, null, { timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(600);
+  const pc = await page.evaluate(() => ({ strip: document.querySelector('[data-sc-stat="pages"]')?.textContent, view: document.getElementById('wr-page')?.dataset.pages }));
+  ok(pc.view && pc.strip === pc.view, '25c the status strip counts the pages the page view shows', pc);
 }
 
 /* ---- 13 overflow -------------------------------------------------------- */

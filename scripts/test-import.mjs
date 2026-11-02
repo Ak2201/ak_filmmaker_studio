@@ -642,5 +642,29 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   ok(lone.titlePage === null && lone.warnings.some((w) => /left out of the script as front matter/.test(w)), 'text: a front page with nothing to keep does not claim it was kept');
 }
 
+/* Act breaks and centred lines through the studio's own exports (fd/parity):
+   toText centres "ACT TWO" at column 26, which read back as a character
+   cue; Fountain writes an act line ACT_LINE does not know as > TEXT <. */
+{
+  const S = await import('../src/lib/script.js');
+  const SE = await import('../src/lib/screenplay-export.js');
+  let n = 0;
+  const E = (type, text) => ({ id: 'ac' + (++n), type, text });
+  const shape = (els) => els.map((e) => e.type + ':' + e.text);
+  const acts = [E('scene', 'INT. A - DAY'), E('action', 'Rain.'), E('act', 'END OF ACT ONE'), E('act', 'ACT TWO'),
+    E('scene', 'INT. B - NIGHT'), E('centered', 'THE END'), E('action', 'Black.')];
+  const tx = I.parseScript(SE.toText({ elements: acts }, { title: 'T' }), 'a.txt');
+  eq(shape(tx.elements), shape(acts), 'txt round trip keeps short act lines as acts and a centred line as centred');
+  for (const a of ['ACT ONE', 'ACT 1', 'ACT I', 'NEW ACT']) {
+    const r = I.parseScript(SE.toText({ elements: [E('scene', 'INT. A - DAY'), E('act', a), E('action', 'x.')] }, { title: 'T' }), 'b.txt');
+    eq(shape(r.elements)[1], 'act:' + a, `txt round trip: "${a}" stays an act`);
+  }
+  const cue = I.parseScript(SE.toText({ elements: [E('scene', 'INT. A - DAY'), E('character', 'THE END'), E('dialogue', 'Is near.')] }, { title: 'T' }), 'c.txt');
+  eq(shape(cue.elements).slice(1), ['character:THE END', 'dialogue:Is near.'], 'txt: a cue with its speech under it is still a cue');
+  const storm = [E('scene', 'INT. A - DAY'), E('act', 'ACT 2: THE STORM'), E('centered', 'A title card'), E('action', 'Rain.')];
+  const fo = I.parseScript(S.toFountain({ elements: storm }, { title: 'T', date: '2026-10-06' }), 'd.fountain');
+  eq(shape(fo.elements), shape(storm), 'fountain round trip keeps "ACT 2: THE STORM" an act, a mixed-case centred line centred');
+}
+
 console.log(`${fail ? '✗' : '✓'} script import: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

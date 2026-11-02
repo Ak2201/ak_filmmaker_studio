@@ -40,6 +40,7 @@
    each discard is counted so the total adds up in the preview.
    ============================================================ */
 import { blankElement } from './script.js';
+import { ACT_LINE } from './act-line.js';
 import { INT_EXT, DAY_NIGHT, blankScene } from './scenes.js';
 import { elementLines, totalLines, LINES_PER_PAGE } from './script.js';
 import { sliceScript } from './screenplay-analysis.js';
@@ -117,6 +118,23 @@ const SLUG_RE   = new RegExp(
 /* Case-SENSITIVE on purpose: "Back to the car she runs." and "Cut to the
    chase…" are action. A transition is capitals — see isTransitionLine. */
 const TRANS_RE  = /^(FADE (IN|OUT|TO)|CUT TO|SMASH CUT|MATCH CUT|DISSOLVE TO|WIPE TO|IRIS (IN|OUT)|TIME CUT|INTERCUT|BACK TO|JUMP CUT|FADE TO BLACK)\b/;
+/* An act break on a line of its own: "ACT ONE", "ACT II", "ACT 2",
+   "END OF ACT ONE", "NEW ACT". Capitals only (case-SENSITIVE, like
+   TRANS_RE: "Act one of the play begins." is action), short, and no
+   other words — so a sentence about acts never matches. The editor's
+   typing inference (src/ui/script-editor/inference.js) says the same. */
+const ACT_RE = ACT_LINE;
+const isActLine = (t) => ACT_RE.test(String(t).trim());
+/* Our Fountain export writes an act line ACT_LINE does not know ("ACT 2:
+   THE STORM") as a centred `> TEXT <`, Fountain having no act element. A
+   centred line in capitals that opens with ACT or END OF ACT is read
+   back as the act it was, so the round trip keeps the type. */
+const isCentredAct = (t) => isActLine(t) || /^(?:END OF )?ACT\b[^a-z]*$/.test(String(t).trim());
+/* Plain text centres a line on the 60-character measure (toText's
+   pad(floor((60 - len) / 2))); this is that test, one column either way. */
+const TEXT_MEASURE = 60;
+const centredOnMeasure = (indent, text) => Math.abs(indent - Math.floor((TEXT_MEASURE - text.length) / 2)) <= 1;
+
 /* A shot, recognised by the words it opens with. Neither Fountain nor
    a plain text file has a shot element, so a one-line, flush-left,
    all-capitals line that STARTS with one of these is read as a shot
@@ -279,10 +297,22 @@ function parseFountain(raw) {
     }
     // Every `!` is one line's forcing mark, not just the block's first.
     if (first.startsWith('!')) { push('action', b.map((l) => l.trim().replace(/^!/, '')).join('\n')); continue; }
+    /* `>text<` is CENTERED (Fountain's own word for it), one `>…<` per
+       line; `~text` is a LYRIC, one `~` per line. A block that is all one
+       kind is one element with line breaks kept. */
+    if (first.startsWith('>') && b.every((l) => /^\s*>.*<\s*$/.test(l))) {
+      const body = b.map((l) => l.trim().replace(/^>\s*/, '').replace(/\s*<\s*$/, '')).join('\n');
+      push(b.length === 1 && isCentredAct(body) ? 'act' : 'centered', body);
+      continue;
+    }
+    if (first.startsWith('~') && b.every((l) => l.trim().startsWith('~'))) {
+      push('lyrics', b.map((l) => l.trim().replace(/^~\s*/, '')).join('\n'));
+      continue;
+    }
     if (first.startsWith('>')) {
       const centred = /<\s*$/.test(first);
       const body = first.replace(/^>\s*/, '').replace(/\s*<\s*$/, '');
-      push(centred ? 'action' : 'transition', body);
+      push(centred ? 'centered' : 'transition', body);
       restAsAction(b.slice(1), push, warnings);
       continue;
     }
@@ -297,6 +327,7 @@ function parseFountain(raw) {
       restAsAction(b.slice(1), push, warnings);
       continue;
     }
+    if (b.length === 1 && isActLine(first)) { push('act', first); continue; }
     if (b.length === 1 && isTransitionLine(first)) {
       push('transition', first);
       continue;
@@ -593,14 +624,23 @@ function parseText(raw) {
       + 'The scene headings were taken as the left margin and the other indents read from there.');
   }
 
-  const classify = (row, prev) => {
+  const classify = (row, prev, next) => {
     const { indent, text } = row;
     if (row.forced) return row.forced;                  // a Word style said so
     if (SLUG_RE.test(text)) return 'scene';
+    /* An act line is CENTRED, so a short one sits further in than a cue:
+       toText puts "ACT TWO" at column 26, which the old `indent < 26`
+       cutoff read as a character. Centred on the measure counts too. */
+    if (isActLine(text) && (indent < 6 + 20 || centredOnMeasure(indent, text))) return 'act';
     if (isTransitionLine(text) && indent < 6) return 'transition';
     if (isUpperish(text) && (ENDS_TO.test(text) || indent >= 40)) return 'transition';
     if (indent < 6 && isShotLine(text)) return 'shot';
     if (/^\(.*\)$/.test(text) && indent >= 8) return 'paren';
+    /* A centred line ("THE END", a title card) stands alone: blank lines
+       on both sides. A cue never does — its speech sits right under it —
+       and a cue's column (22) is left of where any short centred line
+       falls, hence the 24. */
+    if (indent >= 24 && prev == null && !next && centredOnMeasure(indent, text)) return 'centered';
     if (indent >= 18 && isUpperish(text)) return 'character';
     if (indent >= 6) {
       // Under a cue or a parenthetical, an indented line is speech.
@@ -650,10 +690,13 @@ function parseText(raw) {
 
   let prevType = null;
   let pendingBreak = false;
-  for (const row of pairDual(rows)) {
+  const paired = pairDual(rows);
+  for (let ri = 0; ri < paired.length; ri++) {
+    const row = paired[ri];
     if (!row) { close(); prevType = null; continue; }
     if (row.pb) { pendingBreak = true; continue; }
-    const type = classify(row, prevType);
+    const after = paired[ri + 1];
+    const type = classify(row, prevType, after && !after.pb ? after : null);
     /* A cue and its parenthetical and its dialogue sit under each
        other with no blank line, so a change of kind ends the
        element even mid-block. Same kind continues it, which is
@@ -811,7 +854,10 @@ const FDX_TYPE = {
   'dialogue': 'dialogue',
   'transition': 'transition',
   'shot': 'shot',
-  'general': 'action'
+  'general': 'action',
+  'lyrics': 'lyrics',
+  'new act': 'act',
+  'end of act': 'act'
 };
 
 /** The locked scene number Final Draft wrote on this paragraph, as
@@ -907,7 +953,10 @@ function parseFDX(raw) {
     const kind = String(p.getAttribute('Type') || '').trim().toLowerCase();
     const text = fdxText(p, skipped);
     if (!text) continue;
-    const type = FDX_TYPE[kind];
+    /* Final Draft has no Centered element: it is a General (or Action)
+       paragraph whose Alignment is Center, which is how it is written. */
+    const centred = (kind === 'general') && String(p.getAttribute('Alignment') || '').toLowerCase() === 'center';
+    const type = centred ? 'centered' : FDX_TYPE[kind];
     if (!type) {
       // Never dropped — it becomes action and is counted.
       skipped.unknown++;
@@ -1371,9 +1420,10 @@ const DOCX_TYPE = {
   character: 'character', charactername: 'character',
   parenthetical: 'paren', parentheticals: 'paren', wryly: 'paren',
   dialogue: 'dialogue', dialog: 'dialogue',
-  transition: 'transition', shot: 'shot'
+  transition: 'transition', shot: 'shot',
+  centered: 'centered', lyrics: 'lyrics', newact: 'act', endofact: 'act', act: 'act'
 };
-const COLUMN = { scene: 0, action: 0, shot: 0, character: 22, paren: 16, dialogue: 10, transition: 45 };
+const COLUMN = { scene: 0, action: 0, shot: 0, character: 22, paren: 16, dialogue: 10, transition: 45, centered: 0, lyrics: 10, act: 0 };
 
 /** The type a paragraph's style names, or ''. */
 export function docxStyleType(style) {

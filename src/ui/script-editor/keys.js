@@ -159,7 +159,10 @@ export function wireKeys(root, ed, o) {
       mode: mode || 'scenes',
       fromId: curLineId(),
       elements: els(),
-      onJump: (id) => ed.applyFocus(elFocus(id))
+      onJump: (id) => ed.applyFocus(elFocus(id)),
+      onMoveScene: ed.moveScene,
+      onToggleFold: ed.toggleFold,
+      isFolded: ed.isFolded
     });
   }
 
@@ -258,7 +261,11 @@ export function wireKeys(root, ed, o) {
     if (i < 0) return;
     const down = e.key === 'ArrowDown';
     if (e.key === 'ArrowUp' || down) {
-      const j = down ? i + 1 : i - 1;
+      /* A folded scene's rows are hidden (script-structure.js): the
+         arrows step over them, the way they step over a closed fold in
+         any outliner, rather than opening the fold under the caret. */
+      let j = down ? i + 1 : i - 1;
+      while (list[j] && ed.isHidden && ed.isHidden(list[j].id)) j += down ? 1 : -1;
       if (!list[j]) return;
       const edge = down ? a === ta.value.length : a === 0;
       if (edge || visualLines(ta) <= 1) {

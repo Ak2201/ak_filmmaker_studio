@@ -193,7 +193,15 @@ const MODES = [
   ['characters', 'Characters', 'Filter characters'],
   ['bookmarks', 'Bookmarks', 'Filter bookmarks']
 ];
-export function openNavigator({ elements, onJump, mode = 'scenes', fromId = null }) {
+/* The scene list also REORDERS and FOLDS when the page hands in
+   `onMoveScene(headingId, toPos)` (true when it moved) and
+   `onToggleFold(headingId)` / `isFolded(headingId)` — the editor's
+   moveScene / toggleFold (src/lib/script-structure.js). Alt+↑ ↓ moves
+   the active scene one place (Alt, never Ctrl: Ctrl+↑ ↓ is the
+   browser's and the OS's), a drag moves it anywhere, Alt+Return folds
+   it. Both need the unfiltered list: a position in a filtered list is
+   not a position in the script. */
+export function openNavigator({ elements, onJump, mode = 'scenes', fromId = null, onMoveScene = null, onToggleFold = null, isFolded = null }) {
   closeNavigator();
   let cur = Math.max(0, MODES.findIndex((m) => m[0] === mode));
   const back = document.activeElement;
@@ -213,7 +221,11 @@ export function openNavigator({ elements, onJump, mode = 'scenes', fromId = null
       }));
     }
     const out = [];
-    elements.forEach((el) => { if (el.type === 'scene') { const n = out.length + 1; out.push({ n, text: el.text.trim() || '(untitled heading)', key: String(n), target: () => el.id }); } });
+    elements.forEach((el) => {
+      if (el.type !== 'scene') return;
+      const n = out.length + 1;
+      out.push({ n, id: el.id, text: el.text.trim() || '(untitled heading)', meta: isFolded && isFolded(el.id) ? 'folded' : '', key: String(n), target: () => el.id });
+    });
     return out;
   };
   const input = h('input', {
@@ -249,7 +261,9 @@ export function openNavigator({ elements, onJump, mode = 'scenes', fromId = null
       const node = list.children[active];
       if (node && node.scrollIntoView) node.scrollIntoView({ block: 'nearest' });
     } else input.removeAttribute('aria-activedescendant');
-    const hint = ' · ↑ ↓ to move, Return to jump, Tab for the next list, Esc to close';
+    const hint = ' · ↑ ↓ to move, Return to jump, Tab for the next list, Esc to close'
+      + (kind === 'scenes' && onMoveScene ? ' · Alt+↑ ↓ or drag to reorder a scene' : '')
+      + (kind === 'scenes' && onToggleFold ? ', Alt+Return to fold it' : '');
     const empty = { scenes: 'No scene headings yet.', characters: 'No characters yet.', bookmarks: 'No bookmarks yet. Alt+B bookmarks the line you are in.' }[kind];
     note.textContent = all.length ? shown.length + ' of ' + all.length + ' ' + MODES[cur][1].toLowerCase() + hint : empty;
   };
@@ -271,8 +285,36 @@ export function openNavigator({ elements, onJump, mode = 'scenes', fromId = null
     closeNavigator(false);
     if (id) onJump(id);
   };
+  const scenesHere = () => MODES[cur][0] === 'scenes';
+  /** Move the scene at list position i to position `to`; repaint with
+      it still active, and say where it went. */
+  const moveTo = (i, to) => {
+    const s = shown[i];
+    if (!s || !s.id || to < 0 || to >= all.length || to === i) return;
+    if (input.value.trim()) { note.textContent = 'Clear the filter to reorder scenes.'; return; }
+    if (!onMoveScene(s.id, to)) return;
+    all = itemsFor('scenes');
+    active = to;
+    paint();
+    note.textContent = 'Moved “' + s.text + '” to scene ' + (to + 1) + ' of ' + all.length + '. Ctrl/⌘+Z undoes it.';
+  };
   input.addEventListener('input', () => { active = 0; paint(); });
   input.addEventListener('keydown', (e) => {
+    if (e.altKey && !e.ctrlKey && !e.metaKey && scenesHere() && (e.key === 'ArrowDown' || e.key === 'ArrowUp') && onMoveScene) {
+      e.preventDefault();
+      moveTo(active, active + (e.key === 'ArrowDown' ? 1 : -1));
+      return;
+    }
+    if (e.altKey && e.key === 'Enter' && scenesHere() && onToggleFold) {
+      e.preventDefault();
+      const s = shown[active];
+      if (!s || !s.id) return;
+      const on = onToggleFold(s.id);
+      all = itemsFor('scenes');
+      paint();
+      note.textContent = (on ? 'Folded ' : 'Unfolded ') + '“' + s.text + '”.';
+      return;
+    }
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       if (!shown.length) return;
@@ -282,11 +324,53 @@ export function openNavigator({ elements, onJump, mode = 'scenes', fromId = null
     else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeNavigator(true); }
     else if (e.key === 'Tab') { e.preventDefault(); setMode(cur + (e.shiftKey ? -1 : 1)); }   // modal: focus stays in the filter
   });
+  /* A press jumps; a press that travels (6px) drags the scene. The drop
+     line is drawn before the row it lands in front of (or after the
+     last). Pointer capture keeps the moves on the row; a cancelled
+     pointer (a scroll gesture taking over) moves nothing. */
   list.addEventListener('pointerdown', (e) => {
     const li = e.target.closest('[data-wk-i]');
     if (!li) return;
     e.preventDefault();
-    go(Number(li.dataset.wkI));
+    const i = Number(li.dataset.wkI);
+    if (!(scenesHere() && onMoveScene && !input.value.trim() && e.button === 0)) { go(i); return; }
+    const y0 = e.clientY;
+    let dragging = false;
+    let to = i;
+    try { li.setPointerCapture(e.pointerId); } catch (err) { /* not capturable */ }
+    const clear = () => list.querySelectorAll('.is-drop-before, .is-drop-after, .is-dragging')
+      .forEach((n) => n.classList.remove('is-drop-before', 'is-drop-after', 'is-dragging'));
+    const move = (ev) => {
+      if (!dragging && Math.abs(ev.clientY - y0) < 6) return;
+      dragging = true;
+      const items = Array.from(list.children);
+      let k = items.length;
+      for (let n = 0; n < items.length; n++) {
+        const r = items[n].getBoundingClientRect();
+        if (ev.clientY < r.top + r.height / 2) { k = n; break; }
+      }
+      to = k > i ? k - 1 : k;
+      clear();
+      li.classList.add('is-dragging');
+      if (k < items.length) items[k].classList.add('is-drop-before');
+      else items[items.length - 1].classList.add('is-drop-after');
+    };
+    const end = (ev, cancel) => {
+      li.removeEventListener('pointermove', move);
+      li.removeEventListener('pointerup', up);
+      li.removeEventListener('pointercancel', cancelled);
+      clear();
+      if (cancel) return;
+      if (!dragging) { go(i); return; }
+      active = i;
+      moveTo(i, Math.max(0, Math.min(all.length - 1, to)));
+      input.focus();
+    };
+    const up = (ev) => end(ev, false);
+    const cancelled = (ev) => end(ev, true);
+    li.addEventListener('pointermove', move);
+    li.addEventListener('pointerup', up);
+    li.addEventListener('pointercancel', cancelled);
   });
   tabs.addEventListener('pointerdown', (e) => {
     const b = e.target.closest('[data-wk-mode]');

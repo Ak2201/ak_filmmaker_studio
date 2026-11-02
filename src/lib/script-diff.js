@@ -343,4 +343,39 @@ export function revisedIds(diff) {
   return out;
 }
 
-export default { diffElements, groupByScene, revisedIds, wordDiff, similarity, isUnchanged };
+/**
+ * The ops as rows for a SIDE-BY-SIDE view: older on the left, newer on
+ * the right, one row per line. A same / changed / moved op is one row
+ * with both sides. A run of removed lines followed straight away by a
+ * run of added ones (a passage rewritten past what pairing calls a
+ * change) is zipped into rows of their own, `op: 'replaced'`, so the
+ * two versions of the passage sit beside each other instead of one
+ * above the other; whatever is left over of the longer run gets rows
+ * with one side empty. Pure, like the rest: a view of `diff.ops`.
+ *   → [{ op, a: element|null, b: element|null, words? }]
+ */
+export function sideBySide(ops) {
+  const list = Array.isArray(ops) ? ops : ((ops && ops.ops) || []);
+  const rows = [];
+  for (let k = 0; k < list.length;) {
+    const o = list[k];
+    if (o.op !== 'removed') {
+      rows.push(o.op === 'added' ? { op: 'added', a: null, b: o.b } : { op: o.op, a: o.a, b: o.b, words: o.words });
+      k++;
+      continue;
+    }
+    const gone = [];
+    while (k < list.length && list[k].op === 'removed') gone.push(list[k++]);
+    const made = [];
+    while (k < list.length && list[k].op === 'added') made.push(list[k++]);
+    const n = Math.max(gone.length, made.length);
+    for (let i = 0; i < n; i++) {
+      const a = gone[i] ? gone[i].a : null;
+      const b = made[i] ? made[i].b : null;
+      rows.push({ op: a && b ? 'replaced' : a ? 'removed' : 'added', a, b });
+    }
+  }
+  return rows;
+}
+
+export default { diffElements, groupByScene, revisedIds, wordDiff, similarity, isUnchanged, sideBySide };

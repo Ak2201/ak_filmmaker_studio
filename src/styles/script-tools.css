@@ -1,0 +1,109 @@
+/* ============================================================
+   SCRIPT TOOLS — the split view's second pane and the Statistics panel
+   ------------------------------------------------------------
+   Loaded with src/ui/script-split.js / src/ui/script-stats-panel.js,
+   which load at a click. Tokens only; shapes from the skin.
+   ============================================================ */
+
+/* ---- split view (desk only, 1100px and over) --------------------
+   The sheet becomes two columns: the editor's page scrolls with the
+   window as always, the second view is a sticky column with its own
+   scroll box under the band and the top bar (both MEASURED, never
+   assumed: --sh-chrome-h and --sc-top-h). Each page sizes its type to
+   its own column: the editor's from the sheet's half, the second
+   view's from its own container. */
+@media (min-width: 1100px) {
+  .sc-sheet.is-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: var(--s4);
+    align-items: start;
+  }
+  .sc-sheet.is-split > :not(.sc-split) { grid-column: 1; }
+  .sc-sheet.is-split > #wr-page { --wr-em: min(12pt, calc(50cqw / 54)); }
+  .sc-split {
+    grid-column: 2;
+    grid-row: 1 / span 4;
+    position: sticky;
+    top: calc(var(--sh-chrome-h, 0px) + var(--sc-top-h, 0px) + var(--s2));
+    max-height: calc(100dvh - var(--sh-chrome-h, 0px) - var(--sc-top-h, 0px) - var(--sc-chips-h, 0px) - var(--s5));
+    overflow: auto;
+    overscroll-behavior: contain;
+    container-type: inline-size;
+    border-radius: var(--sk-radius, var(--radius));
+    outline-offset: 2px;
+  }
+}
+@media (max-width: 1099px) {
+  .sc-split { display: none; }
+}
+.sc-split-cap {
+  margin: 0 0 var(--s2);
+  font-family: var(--f-body);
+  font-size: var(--t-micro);
+  color: var(--ink-muted);
+}
+/* The second view's lines: the editor's page look (.sc-sheet .wr-text)
+   on a field that is deliberately NOT .wr-text (script-split.js says
+   why). Indent and measure come from the row's type, as on the page. */
+.sc-split .sc-split-text {
+  display: block;
+  box-sizing: border-box;
+  width: var(--wr-measure, 100%);
+  max-width: 100%;
+  margin-left: var(--wr-indent, 0);
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--f-script);
+  font-size: 1em;
+  line-height: 1;
+  resize: none;
+  overflow: hidden;
+}
+@supports (field-sizing: content) {
+  .sc-split .sc-split-text { field-sizing: content; }
+}
+.sc-split .t-scene .sc-split-text,
+.sc-split .t-character .sc-split-text,
+.sc-split .t-transition .sc-split-text,
+.sc-split .t-shot .sc-split-text,
+.sc-split .t-act .sc-split-text { text-transform: uppercase; }
+.sc-split .t-scene .sc-split-text,
+.sc-split .t-character .sc-split-text { font-weight: 700; }
+.sc-split .t-transition .sc-split-text { text-align: right; }
+.sc-split .t-centered .sc-split-text,
+.sc-split .t-act .sc-split-text { text-align: center; }
+.sc-split .t-paren .sc-split-text { color: var(--ink-muted); }
+.sc-split .t-lyrics .sc-split-text { font-style: italic; }
+.sc-split .sc-split-text:focus {
+  outline: none;
+  background: var(--sc-line-wash, var(--accent-wash));
+  box-shadow: -6px 0 0 -2px var(--accent-primary);
+}
+
+/* ---- Statistics panel ------------------------------------------ */
+.sst-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--s3);
+  margin: 0 0 var(--s4);
+}
+.sst-facts dt { font-size: var(--t-micro); color: var(--ink-muted); }
+.sst-facts dd { margin: 0; font-size: var(--t-lg); font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.sst-sec { display: grid; gap: var(--s2); margin: 0 0 var(--s4); }
+.sst-h { margin: 0; font-family: var(--f-body); font-size: var(--t-small); font-weight: 600; color: var(--ink); }
+.sst-note { margin: 0 0 var(--s3); font-size: var(--t-micro); color: var(--ink-muted); }
+.sst-table { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
+.sst-table th, .sst-table td { padding: var(--s1) var(--s2); text-align: left; border-bottom: 1px solid var(--border-hair); }
+.sst-table td { font-variant-numeric: tabular-nums; color: var(--ink-body); }
+.sst-table thead th { font-size: var(--t-micro); color: var(--ink-muted); font-weight: 600; }
+.sst-table tbody th { font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.sst-long { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--s1); }
+.sst-long li { display: grid; grid-template-columns: 2.5em minmax(0, 1fr) auto; gap: var(--s2); align-items: baseline; font-size: var(--t-small); }
+.sst-n { color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.sst-slug { overflow-wrap: anywhere; color: var(--ink); }
+.sst-len { color: var(--ink-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }

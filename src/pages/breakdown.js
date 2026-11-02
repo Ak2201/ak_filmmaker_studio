@@ -228,7 +228,7 @@ const BOUND_TITLE = 'Set by the script’s scene heading. Change the heading in 
    in after 12 — and scene-sync.js writes it onto the row; the card says
    so, because "change the heading to renumber it" stops being true. A
    hand-made scene is still the Breakdown's own and stays editable. */
-const LOCKED_TITLE = 'Locked scene number, set in the Screenplay Writer. An inserted scene is lettered and a cut one is OMITTED; unlock the numbers in Write’s Revisions to renumber.';
+const LOCKED_TITLE = 'Locked scene number, set in the Screenplay Writer. An inserted scene is lettered and a cut one is OMITTED; unlock the script in the Screenplay Writer (Unlock the script…) to renumber.';
 let NUM_LOCK = { locked: false, omitted: [] };   // readNumberLock(), src/lib/breakdown-model.js
 /** Mark one number cell: the duplicate flag, and the title that says
  *  either "another scene has this number" or, on a bound scene, that
@@ -1162,7 +1162,7 @@ function render(focus) {
       tagging.append(h('p.bd-lock-note', {
         text: 'Scene numbers are locked in the Screenplay Writer: a scene inserted after 12 is 12A, and a cut scene keeps its number as OMITTED'
           + (NUM_LOCK.omitted.length ? ' (omitted: ' + NUM_LOCK.omitted.join(', ') + ')' : '')
-          + '. Unlock them in Write’s Revisions to renumber.'
+          + '. To renumber, unlock the script in the Screenplay Writer (Unlock the script…).'
       }));
     }
     /* A scene the palette (or a link) points at opens itself. */
@@ -2241,6 +2241,10 @@ document.addEventListener('visibilitychange', () => {
    or the bin redraws this page at once (QA round 2 — the stale field
    was saved over the other window's edit, and the sync carried it on). */
 onWriteElsewhere(['fms_story_v1', 'fms_scenes_v1', 'fms_scene_bin_v1'], catchUp);
+/* …and the lock bar's change report, which writes the scenes and the bin
+   in THIS tab (no storage event): without it a binned scene stayed on the
+   list and an edit typed into it was lost. */
+document.addEventListener('lock:report-applied', catchUp);
 
 syncSteps();   // a step edited on the Story page since the last visit reaches its scene
 render();

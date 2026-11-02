@@ -288,8 +288,10 @@ try {
   check('6. the new heading is numbered 1A', afterEdit.numbering.ids && afterEdit.numbering.ids[cafe.id] && afterEdit.numbering.ids[cafe.id].n, '1A');
 
   /* ---- 7. the change report ---- */
-  b = await barOn('stripboard.html', 'locked');
-  check('7. stripboard bar counts 2 changes', b.open, '2');
+  /* On the Breakdown's Scene List, so 8 can see the list redraw. */
+  b = await barOn('breakdown.html#scenes', 'locked');
+  check('7. breakdown bar counts 2 changes', b.open, '2');
+  check('7. the Scene List shows 3 rows', await page.$$eval('.bd-scene.bd-sl', (r) => r.length), 3);
   check('7. the report sheet opens', await openReport(), true);
   const i1a = await itemInfo('1A');
   const i2 = await itemInfo('2');
@@ -311,6 +313,11 @@ try {
     return r.length === 4 && r.some((x) => String(x.number).toUpperCase() === '1A');
   }), true);
   check('8. the bar reads 0 open', await until(() => document.getElementById('lockBar')?.dataset.open === '0'), true);
+  /* QA r1: the bar's report wrote the scenes behind the page and the list
+     kept its old rows until a reload (a binned row took typed edits and
+     dropped them). */
+  check('8. the Scene List redraws at once: 4 rows, no reload',
+    await until(() => document.querySelectorAll('.bd-scene.bd-sl').length === 4), true);
   const marked = await blob();
   check('8. numbering.reviewed has keys 2 and 1A', Object.keys(marked.numbering.reviewed || {}).sort(), ['1A', '2']);
   await page.keyboard.press('Escape');

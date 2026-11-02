@@ -99,6 +99,10 @@ export function wireKeys(root, ed, o) {
       case 'dual': ed.toggleDual(i); break;
       case 'note': openNote(i, ta); break;
       case 'navigator': openNavigator(); break;
+      case 'characters': openNavigator('characters'); break;
+      case 'bookmark': ed.toggleBookmark(i); break;
+      case 'bookmark-next': ed.jumpBookmark(el.id, 1); break;
+      case 'bookmark-prev': ed.jumpBookmark(el.id, -1); break;
       case 'find': openFind(); break;
       default: break;
     }
@@ -134,8 +138,10 @@ export function wireKeys(root, ed, o) {
     openFind();
   }, { signal });
 
-  function openNavigator() {
+  function openNavigator(mode) {
     WriteKeys.openNavigator({
+      mode: mode || 'scenes',
+      fromId: curLineId(),
       elements: els(),
       onJump: (id) => ed.applyFocus(elFocus(id))
     });

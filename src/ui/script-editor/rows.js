@@ -57,6 +57,8 @@ export function renderElement(el, i, total, elements, rowChrome = true) {
      (script-find.js lands on it too, for rows not yet drawn). */
   const row = h('article.wr-el.t-' + el.type, { 'data-el': el.id, id: 'line-' + el.id });
 
+  if (el.mark === true) row.classList.add('is-marked');   // a bookmark (script-index.js)
+
   const sel = h('select.wr-type', {
     'data-el-field': 'type',
     'aria-label': 'Element type for element ' + (i + 1)
@@ -72,7 +74,7 @@ export function renderElement(el, i, total, elements, rowChrome = true) {
     spellcheck: 'true',
     'data-el-field': 'text',
     placeholder: PLACEHOLDER[el.type] || '',
-    'aria-label': typeLabel(el.type) + ', element ' + (i + 1)
+    'aria-label': typeLabel(el.type) + ', element ' + (i + 1) + (el.mark === true ? ', bookmarked' : '')
   }, el.text);
 
   /* The mark is built here, not by the lazy AI module, so that a line

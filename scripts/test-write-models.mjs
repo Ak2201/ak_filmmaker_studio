@@ -146,4 +146,67 @@ ok('the writer\'s runtime rounds as Script analysis does (QA r4)', () => {
   assert.equal(SA.formatDuration(8196), '2h 16m');
 });
 
+const IX = await import('../src/lib/script-index.js');
+const SC = await import('../src/lib/script.js');
+
+ok('characterIndex: speeches, scenes, first appearance', () => {
+  const E = (type, text, id) => ({ id, type, text });
+  const els = [
+    E('action', 'Cold open.', 'a0'),
+    E('scene', 'INT. KITCHEN - DAY', 's1'),
+    E('character', 'SARAH', 'c1'), E('paren', '(low)', 'p1'), E('dialogue', 'Hi.', 'd1'), E('dialogue', 'Again.', 'd2'),
+    E('character', 'Tom (O.S.)', 'c2'), E('dialogue', 'Yo.', 'd3'),
+    E('action', 'She leaves.', 'a1'), E('dialogue', 'stray', 'dx'),
+    E('scene', '', 's2'),
+    E('character', "SARAH (CONT'D)", 'c3'), E('dialogue', 'Back.', 'd4'),
+    E('character', 'TOM ^', 'c4'), E('dialogue', 'Hey.', 'd5'), E('dialogue', 'You.', 'd6'), E('dialogue', 'Too.', 'd7')
+  ];
+  const ix = IX.characterIndex(els);
+  assert.deepEqual(ix.map((c) => c.name), ['TOM', 'SARAH']);       // 4 lines, then 3
+  const [tom, sarah] = ix;
+  assert.equal(tom.speeches, 4);
+  assert.deepEqual(tom.scenes, [1, 2]);
+  assert.equal(tom.firstId, 'c2');
+  assert.equal(sarah.speeches, 3);
+  assert.equal(sarah.sceneCount, 2);
+  assert.equal(sarah.firstHeading, 'INT. KITCHEN - DAY');
+  assert.equal(IX.characterIndex(null).length, 0);
+  assert.equal(IX.baseName("  Sarah (V.O.) (CONT'D) "), 'SARAH');
+  // next cue walks the part and wraps; an unknown caret starts at the first
+  assert.equal(IX.nextCueOf(els, 'SARAH', 'c1'), 'c3');
+  assert.equal(IX.nextCueOf(els, 'SARAH', 'c3'), 'c1');
+  assert.equal(IX.nextCueOf(els, 'sarah', null), 'c1');
+  assert.equal(IX.nextCueOf(els, 'NOBODY', 'c1'), null);
+});
+
+ok('bookmarks: field pass-through, toggle, stepping', () => {
+  assert.equal(SC.blankElement({ type: 'action', text: 'x', mark: true }).mark, true);
+  assert.equal('mark' in SC.blankElement({ type: 'action', mark: 'yes' }), false);   // never a second meaning
+  assert.equal('mark' in SC.blankElement({ type: 'action' }), false);                // old scripts byte-identical
+  const els = ['a', 'b', 'c', 'd'].map((id) => SC.blankElement({ id, type: id === 'a' ? 'scene' : 'action', text: id }));
+  assert.equal(IX.toggleMark(els[1]), true);
+  assert.equal(IX.toggleMark(els[3]), true);
+  assert.deepEqual(IX.bookmarks(els).map((b) => [b.id, b.n, b.scene]), [['b', 1, 1], ['d', 2, 1]]);
+  assert.equal(IX.stepMark(els, 'a', 1), 'b');
+  assert.equal(IX.stepMark(els, 'b', 1), 'd');
+  assert.equal(IX.stepMark(els, 'd', 1), 'b');          // wraps
+  assert.equal(IX.stepMark(els, 'b', -1), 'd');         // wraps back
+  assert.equal(IX.stepMark(els, 'c', -1), 'b');
+  const round = JSON.parse(JSON.stringify(els)).map((e) => SC.blankElement(e));   // a save and a load keep it
+  assert.equal(round[3].mark, true);
+  assert.equal(IX.toggleMark(els[1]), false);
+  assert.equal('mark' in els[1], false);
+  assert.equal(IX.stepMark([els[0]], 'a', 1), null);
+});
+
+ok('navigator keys: Alt only, never Ctrl', () => {
+  const ctx = { type: 'action', empty: false, prefs: undefined, known: SC.ELEMENT_TYPE_IDS, ctrlDigits: false };
+  const k = (code, extra = {}) => Keys.resolveKey({ key: '', code, altKey: true, ctrlKey: false, metaKey: false, shiftKey: false, ...extra }, ctx);
+  assert.equal(k('KeyC').kind, 'characters');
+  assert.equal(k('KeyB').kind, 'bookmark');
+  assert.equal(k('BracketRight').kind, 'bookmark-next');
+  assert.equal(k('BracketLeft').kind, 'bookmark-prev');
+  assert.equal(k('KeyB', { altKey: false, ctrlKey: true }), null);   // Ctrl+B is the browser's
+});
+
 console.log('✓ write models: ' + n + ' groups');

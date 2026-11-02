@@ -95,7 +95,13 @@ export function readBeatView() {
 }
 export const saveBeatView = (view) => updateDevicePrefs({ beatView: BEAT_VIEWS.includes(view) ? view : undefined });
 
+/* ---- the Screenplay Writer's typewriter scrolling ------------------
+   `typewriter: true` inside the same device blob. A way of looking at
+   the page, never part of the script; written on a click only. */
+export const readTypewriter = () => readDevicePrefs().typewriter === true;
+export const saveTypewriter = (on) => updateDevicePrefs({ typewriter: on ? true : undefined });
+
 export default {
   readDevicePrefs, updateDevicePrefs, motionReduced, saveMotionPref, brandingPrefOff, saveBrandingOff, touchThemePref, tourActive, tourResumable,
-  readShotView, saveShotView, readBeatView, saveBeatView
+  readShotView, saveShotView, readBeatView, saveBeatView, readTypewriter, saveTypewriter
 };

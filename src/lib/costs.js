@@ -917,8 +917,15 @@ export function budgetCSV(report, currency) {
   return toCSV(out);
 }
 
+/* A film made outside India drops the India-only columns (GST, TDS, GSTIN)
+   the same way the screen hides them (film-region.js showIndia(), passed in
+   as `india`). Default true, so an India film's file is byte-identical to
+   before. The drop is by position inside ONE function, so header and rows
+   cannot disagree. */
+const keepCols = (rows, drop) => rows.map((r) => r.filter((_, i) => !drop.includes(i)));
+
 /** Actuals, one row per budget line (unbudgeted spend included). */
-export function actualsCSV(report, currency) {
+export function actualsCSV(report, currency, india = true) {
   const m = moneyHead(currency);
   const out = [['Account', 'Description', ...['Estimate', 'Actual (incl. GST)', 'Actual (excl. GST)', 'GST', 'TDS withheld', 'Variance'].map(m), '% used']];
   for (const d of report.depts) {
@@ -930,17 +937,29 @@ export function actualsCSV(report, currency) {
   const t = report.totals;
   out.push(['', 'CONTINGENCY', t.contingency, '', '', '', '', '', '']);
   out.push(['', 'TOTAL', t.estimateWithContingency, t.actual, t.actualNet, t.gst, t.tds, t.variance, t.pctUsed]);
+  if (!india) {
+    // Columns 3 (excl. GST), 4 (GST) and 5 (TDS) go; "Actual (incl. GST)" is just "Actual".
+    const kept = keepCols(out, [4, 5, 6]);
+    kept[0][3] = kept[0][3].replace(' (incl. GST)', '');
+    return toCSV(kept);
+  }
   return toCSV(out);
 }
 
 /** Every expense, for the accountant. */
-export function expensesCSV(expenses, lineName = (x) => x, nameOf = (x) => x, currency) {
+export function expensesCSV(expenses, lineName = (x) => x, nameOf = (x) => x, currency, india = true) {
   const m = moneyHead(currency);
   const out = [['Date', 'Shoot day', 'Budget line', 'Category', m('Amount (incl. GST)'), 'GST %', m('GST'), 'Vendor', 'GSTIN', 'Paid by', 'Method', 'Note', 'Receipt']];
   for (const e of expenses) {
     const s = gstSplit(e.amount, e.gstPct);
     out.push([e.date, e.shootDay || '', e.line ? lineName(e.line) : '', (categoriesFor(currency).find((c) => c.id === e.category) || {}).label || e.category,
       s.gross, e.gstPct, s.tax, e.vendor, e.gstin, e.paidBy ? nameOf(e.paidBy) : '', (methodsFor(currency).find((m) => m.id === e.method) || {}).label || e.method, e.note, e.receipt]);
+  }
+  if (!india) {
+    // GST %, GST and GSTIN go (5, 6, 8); the amount is then just "Amount".
+    const kept = keepCols(out, [5, 6, 8]);
+    kept[0][4] = kept[0][4].replace(' (incl. GST)', '');
+    return toCSV(kept);
   }
   return toCSV(out);
 }

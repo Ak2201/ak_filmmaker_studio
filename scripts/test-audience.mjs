@@ -754,7 +754,7 @@ restoreFetch();
   const quick = reg.get('audience-quick');
   const askT = reg.get('audience-ask');
   eq([quick.kind, quick.label, askT.kind], ['read', 'Audience test — story', 'read'], 'tasks: quick and ask are reads');
-  ok(typeof quick.apply !== 'function' && typeof askT.apply !== 'function', 'tasks: neither has an apply — they keep nothing');
+  ok(typeof quick.apply === 'function' && typeof askT.apply === 'function', 'tasks: both keep their ticked points as notes on Accept (and nothing before)');
 
   const st = StoryM.blankStory();
   st.source = STORY;
@@ -819,7 +819,108 @@ restoreFetch();
   ok(!qlog[0].user.includes('addressed to'), 'task test: a refine naming nobody adds nothing');
   const aout3 = await askT.run(askT.input({ viewer: 'distributor', getDoc: () => doc }).replace('\n---', 'Trailer?\n---'), { ctx: { viewer: 'distributor', getDoc: () => doc } });
   ok(/Sc 1 — the key/.test(aout3.text), 'task ask: the newest run this visit is the full test, cited by scene');
+
+  /* Keeping a read (lane D): nothing was written by any run above (the
+     mem.size checks); Accept turns the ticked points into notes. */
+  ok(Array.isArray(qout.items) && qout.items.length >= 3 && qout.items.every((it) => !it.scene && it.keep),
+    'task quick: the panel rows are tickable points to keep, none naming a scene (a beat is not a scene)');
+  ok(/Nothing was saved/.test(qout.text), 'task quick: until Accept it still says nothing was saved');
+  eq(aout.items.map((it) => it.id).slice(0, 2), ['answer', 'cite0'], 'task ask: the answer is one point, each cited beat one more');
+  ok(aout.items.slice(1).every((it) => it.scene === null && /^Beat /.test(it.where)), 'task ask: a story run\'s cites are beats, so sticky notes');
+  const cite3 = aout3.items.find((it) => it.id === 'cite0');
+  ok(cite3 && cite3.scene && cite3.scene.n === '1' && cite3.where === 'Sc 1', 'task ask: a screenplay run\'s cite names that scene');
+  const Story = await import('../src/lib/story.js');
+  Story.addToVault({ snippet: 'My own clipping.' });
+  const vaultBefore = Story.listVault().map((x) => x.id);
+  const qundo = quick.apply(qout.items.slice(0, 2), sctx);
+  const v1 = Story.listVault();
+  eq(v1.length, vaultBefore.length + 2, 'task quick: Accept adds one sticky note per ticked point');
+  ok(v1.slice(0, 2).every((n) => n.kind === 'note' && n.from === 'ai' && n.snippet.startsWith('AI (Audience test — story): ')),
+    'task quick: each is a note record marked as from AI');
+  ok(typeof qundo === 'function' && /saved 2 sticky notes on the notes board/.test(qundo.said), 'task quick: after Accept the toast says what was saved: ' + (qundo && qundo.said));
+  qundo();
+  eq(Story.listVault().map((x) => x.id), vaultBefore, 'task quick: Undo removes exactly the notes it added');
+  /* a scene named by a screenplay run but not on the scene list → a sticky note headed with it */
+  const aundo = askT.apply([cite3], { viewer: 'distributor', getDoc: () => doc });
+  ok(Story.listVault()[0].snippet.startsWith('AI (Ask a viewer): Sc 1 — '), 'task ask: a cited scene missing from the scene list is a sticky note that names it');
+  aundo();
+  eq(Story.listVault().map((x) => x.id), vaultBefore, 'task ask: Undo removes it');
   undo();
+}
+
+/* ---- Reads keep notes: beat critique and tension notes (lane D) --
+   A point that names a scene on the scene list is APPENDED to that
+   row's readerNote (what a person typed there stays first); one that
+   names no scene, or a scene the list does not have, is a sticky note.
+   Undo takes out only what Accept added, even after a later edit. */
+{
+  const Scenes = await import('../src/lib/scenes.js');
+  const Story = await import('../src/lib/story.js');
+  const reg = taskReg;
+  const els = [
+    { id: 'n1', type: 'scene', text: 'INT. TEA STALL - DAY' },
+    { id: 'n2', type: 'action', text: 'Meena pours tea at the stall.' },
+    { id: 'n3', type: 'scene', text: 'EXT. BUS STAND - NIGHT' },
+    { id: 'n4', type: 'action', text: 'The last bus leaves without her.' }
+  ];
+  Scenes.saveScenes([
+    Scenes.blankScene({ id: 'rowA', number: '1', intExt: 'INT', location: 'TEA STALL', dayNight: 'DAY', scriptElId: 'n1', readerNote: 'Typed by me.' }),
+    Scenes.blankScene({ id: 'rowB', number: '2', intExt: 'EXT', location: 'BUS STAND', dayNight: 'NIGHT', scriptElId: 'n3' })
+  ]);
+  const note = (id) => Scenes.listScenes().find((s) => s.id === id).readerNote;
+  const flog2 = [];
+  const undoFetch = installFakeFetch(async (req) => {
+    flog2.push(req);
+    if (/--- THE STEP TO CRITIQUE ---/.test(req.user)) {
+      return { verdict: 'Solid.', notes: [
+        { problem: 'The pour is flat.', quote: 'Meena pours tea', tryThis: 'Let her spill it.' },
+        { problem: 'No time pressure.', quote: '', tryThis: '' }] };
+    }
+    if (/SCENES \(number \| heading/.test(req.user)) {
+      return { summary: 'It rises late.', notes: [
+        { kind: 'tension', scene: '2', character: '', note: 'The bus leaving is the first real stake.' },
+        { kind: 'structure', scene: '1', character: '', note: 'The opening sits still.' }] };
+    }
+    throw new Error('fake-ai: unrecognised prompt');
+  });
+  AI.setProvider('anthropic'); AI.setKey(AKEYS.anthropic);
+  const ctx = { elements: () => els, elId: 'n2' };
+
+  /* beat critique, on the scene at the caret */
+  const crit = reg.get('beat-critique');
+  const keys0 = JSON.stringify([...mem.entries()]);
+  const cr = await crit.run(crit.input(ctx), { ctx });
+  eq(JSON.stringify([...mem.entries()]), keys0, 'critique: Run writes nothing');
+  eq(cr.items.map((it) => [it.id, it.where, it.scene && it.scene.n]), [['n0', 'Sc 1', '1'], ['n1', 'Sc 1', '1']], 'critique: each note is a point naming the scene at the caret');
+  ok(/These are notes, not edits/.test(cr.text) && cr.text.includes('The pour is flat.'), 'critique: the prose is still shown');
+  const cundo = crit.apply(cr.items, ctx);
+  eq(note('rowA'), 'Typed by me.\nAI (Beat critique): The pour is flat. “Meena pours tea” Try: Let her spill it.\nAI (Beat critique): No time pressure.',
+    'critique: Accept appends to the scene\'s reader note, after what was typed, marked as AI');
+  ok(/2 notes on the scene list \(Sc 1\)/.test(cundo.said), 'critique: the toast says where: ' + cundo.said);
+  /* the writer edits the note after Accept; Undo keeps that edit */
+  const rows = Scenes.listScenes();
+  rows[0].readerNote = 'Edited first. ' + rows[0].readerNote;
+  Scenes.saveScenes(rows);
+  cundo();
+  eq(note('rowA'), 'Edited first. Typed by me.', 'critique: Undo removes only the appended lines, keeping a later edit');
+
+  /* tension notes, every point naming a scene (via the linked row) */
+  const tens = reg.get('tension-notes');
+  const tr = await tens.run(tens.input(ctx), { ctx });
+  eq(tr.items.map((it) => it.scene.sceneId), ['rowB', 'rowA'], 'tension: each note carries its scene\'s linked row');
+  const vault0 = Story.listVault().map((x) => x.id);
+  const tundo = tens.apply([tr.items[0]], ctx);
+  eq([note('rowA'), note('rowB')], ['Edited first. Typed by me.', 'AI (Tension notes): Tension — The bus leaving is the first real stake.'],
+    'tension: only the ticked note is kept, on its own scene; an empty note is filled');
+  eq(Story.listVault().map((x) => x.id), vault0, 'tension: a point that names a scene makes no sticky note');
+  tundo();
+  eq(note('rowB'), '', 'tension: Undo empties the note it filled');
+
+  /* a refine is still sent the prose, not the item list */
+  flog2.length = 0;
+  await tens.run(tens.input(ctx), { ctx, refine: { previous: tr, instructions: ['shorter'] } });
+  ok(flog2[0].user.includes('It rises late.'), 'tension: a refine carries the previous prose');
+  undoFetch();
 }
 
 /* ---- Accept keeps what was shown, and what is there now --------

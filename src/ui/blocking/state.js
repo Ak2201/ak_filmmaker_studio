@@ -12,6 +12,9 @@ import { BLOCK_W, BLOCK_H } from '../../lib/shots.js';
 
 export const S = {
   pickedScene: '',                 // scene id for both sections
+  /* The Blocking tab's view of that scene: '' = the FLOOR PLAN, else a
+     shot id = that shot's own diagram (one camera, drawn over the floor). */
+  pickedShot: '',
   views: new Map(),                // blockId -> { z, cx, cy }
   /* The selection: marks and set pieces by id (their ids never collide:
      both are UUIDs). `primary` is the one whose handles are drawn and

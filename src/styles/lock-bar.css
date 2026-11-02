@@ -1,0 +1,69 @@
+/* ============================================================
+   THE SOFT-GATE BAR (src/ui/lock-bar.js). Tokens and --sk-* only.
+   ------------------------------------------------------------
+   One row of a FIXED block size: shell.js inserts the empty host
+   synchronously and the module fills it later, so nothing under it
+   may move when it fills (prove:scroll). Static, never sticky:
+   measureChrome() must not count it. The message truncates; the
+   action never shrinks.
+   ============================================================ */
+.lk-bar {
+  grid-column: 1 / -1;
+  position: static;
+  box-sizing: border-box;
+  block-size: var(--s7);
+  min-block-size: var(--s7);
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding-inline: var(--s3);
+  margin-block-end: var(--s3);
+  background: var(--sk-card-bg);
+  border: var(--sk-card-line-w) solid var(--sk-card-line);
+  border-radius: var(--sk-radius, var(--radius));
+  font-size: var(--t-sm);
+  color: var(--ink);
+  overflow: hidden;
+}
+/* Waiting for the blob: the row is reserved, nothing is drawn in it. */
+.lk-bar[data-pending] { visibility: hidden; }
+/* No film open: no row. There is nothing under it to hold still. */
+.lk-bar[data-state="none"] { display: none; }
+.lk-bar[data-state="locked"], .lk-bar[data-state="legacy"] { border-color: var(--ok); }
+.lk-msg {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lk-tag { font-weight: 700; flex: 0 0 auto; }
+.lk-colour, .lk-quiet { overflow: hidden; text-overflow: ellipsis; }
+.lk-quiet { color: var(--ink-muted); }
+.lk-sep { color: var(--ink-muted); flex: 0 0 auto; }
+.lk-swatch { flex: 0 0 auto; margin-top: 0; }
+.lk-go, .lk-act {
+  flex: 0 0 auto;
+  font: inherit;
+  font-weight: 700;
+  color: var(--accent-deep);
+  background: none;
+  border: 0;
+  padding: var(--s1) var(--s2);
+  border-radius: var(--sk-field-radius, var(--radius));
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.lk-go:hover, .lk-act:hover { background: var(--accent-wash, var(--brand-wash)); }
+.lk-go:focus-visible, .lk-act:focus-visible { outline: var(--sk-focus-w, 2px) solid var(--accent-primary); outline-offset: 2px; }
+@media (pointer: coarse) {
+  .lk-go, .lk-act { min-block-size: 44px; display: inline-flex; align-items: center; }
+}
+@media (max-width: 719px) {
+  .lk-bar { padding-inline: var(--s2); gap: var(--s2); }
+}
+@media print { .lk-bar { display: none; } }

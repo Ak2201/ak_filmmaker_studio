@@ -1,0 +1,17 @@
+{
+  "_about": "A short script for scripts/test-lock-extract.mjs (docs/LOCK-EXTRACT.md §4). Invented. Three scenes: a kitchen, a street with a crowd, a bus. Elements are the shape of src/data/sample.dragon.script.json.",
+  "elements": [
+    { "id": "e0", "type": "scene", "text": "INT. KITCHEN - NIGHT" },
+    { "id": "e1", "type": "action", "text": "Maya, 20s, pours tea. A kettle whistles." },
+    { "id": "e2", "type": "character", "text": "MAYA" },
+    { "id": "e3", "type": "dialogue", "text": "Not yet. Sit down." },
+    { "id": "e4", "type": "scene", "text": "EXT. STREET - DAY" },
+    { "id": "e5", "type": "action", "text": "Forty STUDENTS (40) crowd the stop. A bus waits, a red bicycle leans on the pole." },
+    { "id": "e6", "type": "action", "text": "A crowd of fifty watches." },
+    { "id": "e7", "type": "action", "text": "They crowd the door." },
+    { "id": "e8", "type": "scene", "text": "INT. BUS - DAY" },
+    { "id": "e9", "type": "action", "text": "Maya sits by the window with a rucksack." },
+    { "id": "e10", "type": "character", "text": "MAYA" },
+    { "id": "e11", "type": "dialogue", "text": "Is that the stop?" }
+  ]
+}

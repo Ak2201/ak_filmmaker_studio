@@ -79,7 +79,7 @@ export const isEmptyStory = (s) => !String(s.source || '').trim() && !(s.marks |
    at them. They are now KEPT across a sample (the writer's value wins
    wherever it says anything; the sample's fills a blank), so the only
    things a sample replaces are the ones its confirmation names. */
-export const KEPT_ON_SAMPLE = ['conflicts', 'conflictLine', 'genre', 'audience', 'budgetTier', 'comps'];
+export const KEPT_ON_SAMPLE = ['conflicts', 'conflictLine', 'genre', 'audience', 'budgetTier', 'comps', 'tone', 'budgetWhy'];
 const said = (v) => (Array.isArray(v) ? v.length > 0 : String(v == null ? '' : v).trim() !== '');
 
 /** `sample` with the writer's kept fields from `cur` laid over it. */

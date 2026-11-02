@@ -2352,6 +2352,23 @@ export function mountShell() {
     EV.forEach((t) => window.addEventListener(t, go, { capture: true, passive: true }));
     setTimeout(go, 8000);
   }
+  /* THE SOFT-GATE BAR (owner, 1 Nov 2026), on every page whose home stage
+     is Pre-Production — derived from navigation.json, so no page is named
+     here and none was edited. The EMPTY host goes in synchronously, as the
+     first child of <main>: a bar that arrived later, above the reader, is
+     a prove:scroll jump. It has a fixed one-row block size and is static,
+     so lock-bar.js filling it moves nothing and measureChrome() never
+     counts it. The module is a separate chunk (the blob and the lock
+     model are not first paint); a page whose render() replaces <main>
+     is covered by its own observer. Idempotent with the guard above. */
+  if (HOME_STAGE_ID === 'preprod' && GLOBAL_MODE === 'project') {
+    const main = app.querySelector('main');
+    if (main && !document.getElementById('lockBar')) {
+      const host = h('div#lockBar.lk-bar', { 'data-pending': '' });
+      main.insertBefore(host, main.firstChild);
+    }
+    import('./lock-bar.js').then((m) => m.mountLockBar()).catch((e) => console.warn('[shell] lock bar', e));
+  }
   measureBar();
   runSpy();
   requestAnimationFrame(() => {

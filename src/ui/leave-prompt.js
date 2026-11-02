@@ -125,10 +125,16 @@ export function installLeavePrompt({ getDoc, persistNow } = {}) {
       if (res.id === 'new' || res.id === 'update') {
         flush();
         const dd = doc();
-        const made = res.id === 'new' ? saveNewDraft(dd) : updateDraft(dd, last.id);
+        let made = res.id === 'new' ? saveNewDraft(dd) : updateDraft(dd, last.id);
+        /* updateDraft() refuses the locked baseline (the change report
+           compares the script with it): save a new draft and say why. */
+        const kept = res.id === 'update' && !made;
+        if (kept) made = saveNewDraft(dd);
         flush();
         try { document.dispatchEvent(new CustomEvent('fms:drafts-changed', { detail: { draft: made && made.number } })); } catch (e) { /* old engine */ }
-        say((res.id === 'new' ? 'Saved as ' : 'Updated ') + (made ? made.name : 'the draft') + '.');
+        say(kept
+          ? 'The locked script is kept as it is; saved as ' + (made ? made.name : 'a new draft') + '.'
+          : (res.id === 'new' ? 'Saved as ' : 'Updated ') + (made ? made.name : 'the draft') + '.');
         return true;
       }
       return false;

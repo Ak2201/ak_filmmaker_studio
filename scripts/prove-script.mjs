@@ -375,12 +375,15 @@ ok((await page.$$eval('#wr-page .wr-text', (ts) => ts.map((t) => t.value))).incl
       els.push({ id: 'h' + n, type: 'scene', text: 'INT. ROOM ' + n + ' - DAY' });
       for (let j = 0; j < 9; j++) els.push({ id: 'a' + n + '_' + j, type: 'action', text: 'A line of action in scene ' + n + ', long enough to wrap onto a second line of the page, number ' + j + '.' });
     }
-    S.rawSet(k, JSON.stringify({ elements: els, revisions: [], documents: [] }));
+    /* A LEGACY lock (no `base`), seeded into the blob: the lock is taken on the
+       Screenplay Writer's review sheet now (prove:script-lock walks that), and
+       this proof is about locked PAGES, which sit inside any scene lock. */
+    const ids = {};
+    els.forEach((e) => { if (e.type === 'scene') ids[e.id] = { n: String(Object.keys(ids).length + 1), t: e.text }; });
+    S.rawSet(k, JSON.stringify({ elements: els, revisions: [], documents: [], numbering: { locked: true, at: new Date().toISOString(), ids } }));
   });
   await page.goto(url('drafts.html#numbering'), { waitUntil: 'networkidle' });
   await page.waitForTimeout(500);
-  await page.click('[data-action="numbers-lock"]');
-  await page.waitForTimeout(400);
   await page.click('[data-action="pages-lock"]');
   await page.waitForTimeout(800);
   let d = await doc();
@@ -1073,11 +1076,10 @@ await page.setViewportSize({ width: 1280, height: 900 });
   await page.waitForTimeout(600);
   const f2 = await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-dr'));
   ok(f2 === 'restore', '23e after Restore focus is on the Restore button', f2);
-  await page.focus('[data-action="numbers-lock"]');
-  await page.keyboard.press('Enter');
-  await page.waitForTimeout(500);
-  const f3 = await page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-action'));
-  ok(f3 === 'numbers-unlock', '23e after Lock scene numbers focus is on Unlock', f3);
+  /* The numbers panel no longer locks by itself: it links to the ONE lock step. */
+  const lockHref = await page.$eval('#numbering a.k-btn[href$="#lock"]', (a) => a.getAttribute('href')).catch(() => null);
+  ok(lockHref === 'screenplay.html#lock', '23e drafts#numbering links to screenplay.html#lock', lockHref);
+  ok(await page.$('[data-action="numbers-lock"]') === null, '23e and has no second lock button');
 
   /* f) the More menu: ↓ reaches the first VISIBLE item when Tamil typing is hidden */
   await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });

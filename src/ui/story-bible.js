@@ -43,6 +43,7 @@
 import { h, delegate } from '../lib/dom.js';
 import StudioUI from './chrome.js';
 import { paperTextarea } from './paper-field.js';
+import { aiPill } from './ai-pill.js';   // the one way into AI; the Desk and ai.js load at a click
 import { saveOnInput } from '../lib/autosave.js';
 import * as Story from '../lib/story.js';
 import { readFields, writeFields } from '../lib/blueprint-store.js';
@@ -74,8 +75,19 @@ function cardHead(c, film) {
   return [
     h('h3.sb-card-h', { text: c.label }),
     h('p.sb-card-lead', { text: c.lead }),
-    ...learnFor(c.learn, film)
-  ];
+    ...learnFor(c.learn, film),
+    /* The AI Desk's arcs (character-arcs, src/lib/ai-tasks-story.js): a draft
+       to tick, written only on Accept, into arc / arcStart / arcEnd fields
+       that are empty — through the blueprint where a slot holds the field,
+       else this list (cardCtx), which then redraws. */
+    c.id === 'characters'
+      ? h('div.sb-card-ai', {}, [aiPill({
+        label: 'Draft arcs',
+        tasks: ['character-arcs'],
+        ctx: () => ({ ...cardCtx, say: (m) => StudioUI.toast(m, { type: 'info' }) })
+      })])
+      : null
+  ].filter(Boolean);
 }
 
 /* A blueprint field: a textarea that writes its one key. It carries the

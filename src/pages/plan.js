@@ -42,6 +42,7 @@ import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
 import { pageHeader, statStrip, button } from '../ui/kit/index.js';
 import { saveOnInput } from '../lib/autosave.js';
+import { aiPill } from '../ui/ai-pill.js';
 import Scenes, { formatEighths } from '../lib/scenes.js';
 import Locations, { PERMISSIONS } from '../lib/locations.js';
 import Geo from '../lib/recce-geo.js';
@@ -285,6 +286,11 @@ function renderOrphanDays(orphans) {
    2. LOCATIONS
    ============================================================ */
 
+const recceIdeas = (locationName) => aiPill({
+  label: locationName ? 'Recce ideas' : 'Recce ideas for all places', tasks: ['recce-notes'],
+  ctx: () => ({ locationName, say: (m) => StudioUI.toast(m), after: render })
+});
+
 function renderLocations(scenes) {
   const wrap = h('section#locations.pl-locs');
   wrap.append(
@@ -314,6 +320,9 @@ function renderLocations(scenes) {
           + 'yet. Fill in the location field on a scene and its recce card appears here.'
     }));
   } else {
+    /* The AI Desk's recce checklist (recce-notes): every place here, or
+       one card's own pill. It fills BLANK recce fields only, on Accept. */
+    wrap.append(h('div.pl-ai-row', {}, [recceIdeas('')]));
     const grid = h('div.pl-loc-grid');
     locs.forEach((loc) => grid.append(renderLocation(loc)));
     wrap.append(grid);
@@ -363,7 +372,8 @@ function renderLocation(loc) {
     h('span.pl-perm-chip', { text: perm.label }),
     h('span.pl-loc-meta', {
       text: plural(loc.scenes.length, 'scene', 'scenes') + ' · ' + pagesOf(loc.eighths)
-    })
+    }),
+    recceIdeas(loc.name)
   ]));
 
   const dayChips = h('div.pl-chips');

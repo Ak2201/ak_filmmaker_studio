@@ -297,17 +297,25 @@ export function mapSummary(block) {
  *   hues       Map characterId → colour index
  *   snap       draw the finer snapping grid
  *   idPrefix   makes the defs' ids unique when one block is drawn twice
+ *   under      a SHOT's diagram only: the scene's floor block, whose set
+ *              and 180° line are drawn dimmed underneath and never take a
+ *              pointer (they are the floor's to edit, not this shot's);
+ *              its width gives the distances when the shot has none
+ *   sides      the 180° sides to draw with (shots.js sceneAxisSides, so a
+ *              camera on ANOTHER shot's diagram counts); default: this
+ *              block's own
  */
 export function drawBlock(block, opts = {}) {
   const { editable = false, zoomed = false, selected = new Set(), primary = '', linkedCam = '', shots = [], hues = new Map(), snap = false } = opts;
   const vb = opts.viewBox || { x: 0, y: 0, w: BLOCK_W, h: BLOCK_H };
   const uid = (opts.idPrefix || (editable ? 'e' : 'r')) + '-' + block.id;
   const set = block.set || [];
+  const under = opts.under && opts.under !== block ? opts.under : null;
   const root = svg('svg', {
     class: 'vz-map' + (editable ? ' is-editable' : '') + (zoomed ? ' is-zoomed' : '') + (snap ? ' is-snapping' : ''),
     viewBox: `${vb.x} ${vb.y} ${vb.w} ${vb.h}`,
     role: editable ? 'group' : 'img',
-    'aria-label': `Overhead map "${block.name || 'setup'}": ${mapSummary(block)}`
+    'aria-label': `Overhead map "${block.name || 'setup'}": ${mapSummary(block)}` + (under ? ', drawn over the floor plan' : '')
       + (editable ? '. Plus and minus zoom, 0 fits, the arrow keys pan.' : ''),
     'data-block': block.id,
     // The map itself is a focus stop in the editor: the keyboard's way
@@ -341,16 +349,27 @@ export function drawBlock(block, opts = {}) {
   if (snap) root.append(svg('rect', { fill: `url(#vzfine-${uid})`, width: BLOCK_W, height: BLOCK_H }));
   root.append(svg('rect', { fill: `url(#vzgrid-${uid})`, width: BLOCK_W, height: BLOCK_H }));
 
+  // The floor's set, under a shot's own diagram: seen, never grabbed.
+  if (under) {
+    const floorSet = svg('g', { class: 'vz-set vz-under', 'aria-hidden': 'true' });
+    for (const p of under.set || []) {
+      const n = drawPiece(p, {});
+      n.removeAttribute('data-piece');   // not this diagram's: no handler may find it
+      floorSet.append(n);
+    }
+    root.append(floorSet);
+  }
   // The set: furniture under the people.
   const setLayer = svg('g', { class: 'vz-set' });
   for (const p of set) setLayer.append(drawPiece(p, { editable, selected: editable && selected.has(p.id) }));
   root.append(setLayer);
 
   // The 180-degree line, over the set and under everything that moves.
-  const sides = axisSides(block);
-  if (block.axis) {
-    const a = block.axis;
-    const ax = svg('g', { class: 'vz-axis' + (sides.crossed ? ' is-crossed' : '') });
+  const sides = opts.sides || axisSides(block);
+  const axis = block.axis || (under && under.axis) || null;
+  if (axis) {
+    const a = axis;
+    const ax = svg('g', { class: 'vz-axis' + (sides.crossed ? ' is-crossed' : '') + (block.axis ? '' : ' vz-under') });
     ax.append(svg('line', { class: 'vz-axis-line', x1: a.x1, y1: a.y1, x2: a.x2, y2: a.y2 }));
     const tag = svg('text', { class: 'vz-axis-tag', x: a.x1 + (a.x2 - a.x1) * 0.06, y: a.y1 + (a.y2 - a.y1) * 0.06 - 1.4, 'text-anchor': 'middle' });
     tag.textContent = '180°';
@@ -360,7 +379,7 @@ export function drawBlock(block, opts = {}) {
 
   /* Distance callouts, under everything: derived by blockCallouts()
      from the floor width the user typed, and absent without one. */
-  const callouts = blockCallouts(block);
+  const callouts = blockCallouts(under && !String(block.widthM ?? '').trim() ? { ...block, widthM: under.widthM } : block);
   for (const c of callouts) {
     if (c.kind === 'reach') root.append(svg('line', { class: 'vz-map-reach', x1: c.x1, y1: c.y1, x2: c.x2, y2: c.y2 }));
   }

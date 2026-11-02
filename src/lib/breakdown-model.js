@@ -139,6 +139,18 @@ export function suggestionTags(scenes, elements, sceneIds) {
   }
   return tags;
 }
+/** The tags ONE category's "Accept all" would write: confident pairs only
+ *  (as ADD ALL), every suggestion in that category, so a category outside
+ *  BULK_CATS can be taken whole by a person who chose it. */
+export function suggestionTagsForCategory(scenes, elements, cat) {
+  const tags = [];
+  if (!SUGGEST_CATEGORIES.includes(cat)) return tags;
+  for (const r of suggestAll(scenes, elements)) {
+    if (!isConfident(r.how)) continue;
+    for (const sug of r.suggestions[cat] || []) tags.push({ sceneId: r.scene.id, category: cat, name: sug.name });
+  }
+  return tags;
+}
 /** The Auto-Tag count line. ADD ALL's category limit is said here, not
  *  only in a comment, and the line names the categories it leaves to a
  *  chip or a scene at a time. `labelOf` maps a category id to its label. */
@@ -155,6 +167,10 @@ export const scopeSelector = (prefix, sel) => String(sel).split(',').map((x) => 
  *  tags written, so an Undo removes those and nothing else. */
 export function applySuggestions(sceneIds) {
   return Scenes.tagMany(suggestionTags(Scenes.listScenes(), loadScript().elements, sceneIds));
+}
+/** Write one category's suggestions; returns exactly the tags written. */
+export function applyCategory(cat) {
+  return Scenes.tagMany(suggestionTagsForCategory(Scenes.listScenes(), loadScript().elements, cat));
 }
 
 /* ---- the bin ---------------------------------------------------- */

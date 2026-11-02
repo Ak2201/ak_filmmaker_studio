@@ -284,8 +284,8 @@
   border-radius: var(--sk-radius);
   box-shadow: var(--sk-card-shadow);
   color: var(--sk-card-ink);
-  break-inside: avoid;
 }
+.rp-side-bar { break-after: avoid; }
 .rp-side-bar {
   display: flex;
   flex-wrap: wrap;
@@ -329,6 +329,14 @@
   color: var(--ink-body);
 }
 .rp-side-syn.is-empty { color: var(--ink-muted); font-style: italic; }
+/* The scene's own script, as it prints: paper ground, the script face, the
+   indent and measure from GEOMETRY (set per line as --sc-*). */
+.rp-side-script { margin-top: var(--s4); padding: var(--s3); background: var(--paper-page); color: var(--paper-page-ink); border: 1px solid var(--paper-page-rule); border-radius: var(--sk-radius, var(--radius)); font-family: var(--f-script); font-size: var(--t-small); line-height: 1.4; overflow-x: auto; min-width: 0; }
+.rp-side-script-pg { margin: 0 0 var(--s2); color: var(--paper-page-muted); font-size: var(--t-small); }
+.rp-side-script-none { margin: 0; color: var(--paper-page-muted); font-style: italic; }
+.rp-sc-el { margin: var(--s2) 0 0 var(--sc-indent, 0); max-width: var(--sc-width, 60ch); white-space: pre-wrap; overflow-wrap: anywhere; }
+.rp-sc-el[data-align="right"] { margin-left: auto; text-align: right; }
+.rp-sc-scene { font-weight: 700; }
 .rp-side-els { display: grid; gap: var(--s1); margin-top: var(--s4); }
 .rp-side-el {
   display: grid;
@@ -386,6 +394,8 @@
   }
   .rp-card *,
   .rp-side * { color: var(--print-ink) !important; }
+  .rp-side-script { background: var(--print-paper) !important; border: 0 !important; padding: 0 !important; margin-top: 8pt; overflow: visible; }
+  .rp-side-script-pg { margin-bottom: 4pt; }
   .rp-side { border-left: 3px solid var(--print-ink) !important; }
   .rp-side-no {
     background: var(--print-paper) !important;
@@ -402,7 +412,7 @@
   .rp-cards { display: block; }
   .rp-card { margin-bottom: 8pt; }
   .rp-sides-out { display: block; }
-  .rp-side { margin-bottom: 8pt; }
+  .rp-side { margin-bottom: 8pt; break-inside: auto; }
   .rp-caption {
     background: var(--print-wash) !important;
     color: var(--print-ink) !important;

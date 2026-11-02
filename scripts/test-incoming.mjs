@@ -22,6 +22,17 @@ ok(I.incomingAction({ mine, fresh, dirty: true }) === 'keepBoth', 'mid-edit: kee
 ok(I.incomingAction({ mine: { elements: [el('z', '')] }, fresh, dirty: true }) === 'load', 'mid-edit on the one blank line: just load it');
 ok(I.incomingAction({ mine, fresh: { ...mine, numbering: { locked: true, at: 'x', ids: {} } }, dirty: false }) === 'load', 'locked numbering arriving counts as a change');
 
+{
+  const lk = { locked: true, at: 'x', ids: {}, base: 'r1' };
+  ok(I.numberingOnly(mine, { ...mine, numbering: lk }), 'numberingOnly: only the numbering differs');
+  ok(I.numberingOnly({ ...mine, numbering: lk }, { ...mine, numbering: { ...lk, reviewed: { 1: 'a' } } }), 'numberingOnly: a review mark');
+  ok(!I.numberingOnly(mine, JSON.parse(JSON.stringify(mine))), 'numberingOnly: identical copies are not');
+  ok(!I.numberingOnly(mine, { ...fresh, numbering: lk }), 'numberingOnly: a text change is not');
+  ok(!I.numberingOnly(mine, { ...mine, revisions: [], numbering: lk }), 'numberingOnly: a draft change is not');
+  ok(!I.numberingOnly(mine, { ...mine, titlePage: { title: 'X' }, numbering: lk }), 'numberingOnly: a title page change is not');
+  ok(!I.numberingOnly(null, mine), 'numberingOnly: nothing to compare');
+}
+
 const both = I.keepBoth(mine, fresh, 'From another device, 10:42');
 ok(both.elements === mine.elements, 'keepBoth keeps the writer\'s lines on screen');
 ok(both.revisions.map((r) => r.id).slice(0, 2).join() === 'r1,r2', 'and every draft from both sides, once each, in date order');

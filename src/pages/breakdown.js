@@ -40,7 +40,7 @@ import { shootDayOf } from '../lib/locations.js';
 import {
   breakdownFigures, readNumberLock, numberKey, dupNumbers, daySlot, sceneStatus, STATUS_TONE,
   castSummary, searchText, PRESET_KEYS, filterActive as filterOn, describeFilter, presetMatches,
-  rowMatches, filterCountText, applySuggestions, suggestionTags, suggestCountText, scopeSelector, binEntryBits, binTotalsBits, headingInScript,
+  rowMatches, filterCountText, applySuggestions, suggestionTags, suggestionTagsForCategory, applyCategory, suggestCountText, scopeSelector, binEntryBits, binTotalsBits, headingInScript,
   sceneFieldValue, EIGHTHS_MAX, songFieldValue, runSaid, bulkText, restoreEighths
 } from '../lib/breakdown-model.js';
 import '../styles/breakdown-run.css';
@@ -94,7 +94,32 @@ function renderHeader(scenes) {
     ] : null
   });
   head.append(statStrip(kpis(scenes, eighths), { class: 'bd-kpis', label: 'The breakdown in figures' }));
+  const market = renderMarket();
+  if (market) head.append(market);
   return head;
+}
+
+/* Where the film sits in the market: what the Desk's 'Genre and
+   comparables' saved on the story (genre, tone, budget tier and its
+   why, audience, comps). Shown beside the pill that writes it, so an
+   Accept lands somewhere a person can read; drawn only when something
+   is set, so an untouched project's header (and the baseline) is
+   unchanged. Read from story.js on every render, never copied. */
+const TIER_NAMES = { micro: 'Micro', low: 'Low', mid: 'Mid', high: 'High' };
+function renderMarket() {
+  let s;
+  try { s = loadStory(); } catch (e) { return null; }
+  const tier = TIER_NAMES[s.budgetTier] || '';
+  const rows = [
+    ['Genre', s.genre],
+    ['Tone', s.tone],
+    ['Budget tier', tier ? tier + (s.budgetWhy ? ' — ' + s.budgetWhy : '') : ''],
+    ['Plays to', s.audience],
+    ['Comparables', (s.comps || []).map((c) => c.title + (c.year ? ' (' + c.year + ')' : '')).join(', ')]
+  ].filter(([, v]) => String(v || '').trim());
+  if (!rows.length) return null;
+  return h('dl.bd-market', { 'aria-label': 'Where the film sits in the market' },
+    rows.map(([k, v]) => h('div.bd-market-row', {}, [h('dt', { text: k }), h('dd', { text: v })])));
 }
 
 /* Six figures, all derived from the scene model on render. A figure with
@@ -986,7 +1011,9 @@ function renderSuggestions(scenes) {
     h('span.bd-sug-count', { text: suggestCountText({ total, scenes: rows.length, guessed: guessed.length, labelOf: (c) => catById[c].label }) }),
     bulkLeft
       ? button({ label: 'Add all', action: 'sug-all' })
-      : null
+      : null,
+    ...SUGGEST_CATS.filter((cat) => suggestionTagsForCategory(scenes, loadScript().elements, cat).length).map((cat) =>
+      button({ label: 'Accept all ' + catById[cat].label, action: 'sug-cat', size: 'sm', attrs: { 'data-cat': cat } }))
   ]));
   const list = h('ol.bd-sug-list');
   for (const r of rows) {
@@ -1733,6 +1760,12 @@ delegate(document, 'click', '[data-action="sug-all"]', () => {
   render('[data-action="sug-all"], .bd-sug-scene-all');
   toastTagged(added, true);
 });
+delegate(document, 'click', '[data-action="sug-cat"]', (e, el) => {
+  const cat = el.dataset.cat;
+  const added = applyCategory(cat);
+  render('[data-action="sug-all"], .bd-sug-scene-all');
+  toastTagged(added, false);
+});
 /* ---- element index: filter, batch tag, export ---------------- */
 delegate(document, 'click', '[data-action="ex-cat"]', (e, el) => {
   EX.cat = el.dataset.cat || '';
@@ -1904,10 +1937,15 @@ delegate(document, 'change', '[data-scene-field]', (e, el) => {
     }
   }
 });
-function attachElement(el) {
+let _ptrDown = false;
+addEventListener('pointerdown', () => { _ptrDown = true; }, true);
+addEventListener('pointerup', () => { _ptrDown = false; }, true);
+addEventListener('pointercancel', () => { _ptrDown = false; }, true);
+function attachElement(el, quiet) {
   const adder = el.closest('.bd-add-el');
   const name = adder.querySelector('.bd-add-name');
   if (!name.value.trim()) {
+    if (quiet) return;   // a blur with nothing typed is just leaving the field
     name.focus();
     StudioUI.toast('Name the element first, then attach it.', { type: 'info' });
     return;
@@ -1918,9 +1956,22 @@ function attachElement(el) {
      Cast and the next prop typed into the same scene became a cast member. */
   SL.cat.set(id, cat);
   const typed = name.value.trim();
+  /* Emptied BEFORE the render: Enter re-renders, and the field being removed
+     can still raise a blur, which must find nothing left to commit (no
+     double-add). */
+  name.value = '';
   const added = Scenes.tagMany([{ sceneId: id, category: cat, name: typed }]);
   // Back into the same scene's field, for the next element.
-  render(inScene(id, '[data-action-key="el-add"]'));
+  // A blur commit must not pull focus back to the field the reader just left.
+  if (!quiet) render(inScene(id, '[data-action-key="el-add"]'));
+  else if (!_ptrDown) render();
+  else {
+    /* The blur came from a press on some other control. render() replaces
+       <main>, and a click whose mousedown target is gone is never fired, so
+       the press would be swallowed. Redraw after the press ends, one tick
+       later than the click that follows it. */
+    addEventListener('pointerup', () => setTimeout(() => render(), 0), { once: true, capture: true });
+  }
   if (!added.length) {   // the box empties on re-render, so say why nothing changed
     const c = ELEMENT_CATEGORIES.find((x) => x.id === cat);
     StudioUI.toast(typed + ' is already on this scene\u2019s ' + (c ? c.label : cat) + '.', { type: 'info' });
@@ -1930,6 +1981,15 @@ delegate(document, 'keydown', '[data-action-key="el-add"]', (e, el) => {
   if (e.key !== 'Enter') return;
   e.preventDefault();
   attachElement(el);
+});
+/* Commit on blur too: a value typed and clicked away from used to vanish.
+   Skipped when focus moves inside the same adder (the category select, the
+   Attach button) so the element is not committed under the wrong category
+   and the button's own click still lands. */
+delegate(document, 'focusout', '[data-action-key="el-add"]', (e, el) => {
+  const to = e.relatedTarget;
+  if (to && to.closest && to.closest('.bd-add-el') === el.closest('.bd-add-el')) return;
+  attachElement(el, true);
 });
 delegate(document, 'click', '[data-action="el-attach"]', (e, el) => attachElement(el));
 

@@ -526,6 +526,19 @@ export function normaliseNumbering(raw) {
   const out = { locked: true, at: String(raw.at || nowISO()), ids };
   const pages = normalisePagesLock(raw.pages);
   if (pages) out.pages = pages;
+  /* `base` (the revision that IS the locked script) and `reviewed` (the
+     change report's marks, { sceneNumber: signature }) ride inside the
+     lock (docs/SCRIPT-LOCK.md §1). Each is kept only when well formed, so
+     a blob without them reads and saves byte-identical. */
+  if (typeof raw.base === 'string' && raw.base) out.base = raw.base;
+  if (raw.reviewed && typeof raw.reviewed === 'object' && !Array.isArray(raw.reviewed)) {
+    const reviewed = {};
+    for (const [k, v] of Object.entries(raw.reviewed)) {
+      const key = String(k).trim().toUpperCase();
+      if (key && typeof v === 'string') reviewed[key] = v;
+    }
+    if (Object.keys(reviewed).length) out.reviewed = reviewed;
+  }
   return out;
 }
 
@@ -544,6 +557,12 @@ export function normalisePagesLock(raw) {
 }
 
 export const isNumberingLocked = (numbering) => !!(numbering && numbering.locked === true);
+
+/* HELD = locked AND tracking from a baseline revision. Held is what changes
+   behaviour (the scene sync stops adding and binning, the baseline draft is
+   protected); `locked` alone, a lock taken before the baseline existed,
+   keeps today's behaviour exactly. */
+export const isHeld = (n) => isNumberingLocked(n) && typeof n.base === 'string' && !!n.base;
 
 /**
  * Every scene number as the script reads now. PURE.
@@ -679,6 +698,9 @@ export function settleNumbering(elements, numbering) {
   const out = { locked: true, at: numbering.at, ids };
   // The page lock is a record of the day it was taken: a save never moves it.
   if (numbering.pages) out.pages = numbering.pages;
+  // The baseline and the review marks are the writer's record: a save never moves them.
+  if (numbering.base) out.base = numbering.base;
+  if (numbering.reviewed) out.reviewed = numbering.reviewed;
   return out;
 }
 
@@ -954,7 +976,7 @@ export default {
   blankElement, blankDocument, blankScript, loadScript, saveScript,
   makeRevision, restoreElements,
   sceneNumbers, lockNumbering, settleNumbering, normaliseNumbering, normalisePagesLock, compareSceneNumbers,
-  parseSceneNumber, isNumberingLocked,
+  parseSceneNumber, isNumberingLocked, isHeld,
   elementLines, totalLines, pageCount, formatPages, formatRuntime, wordCount,
   dualPairs, canPairDual, contdOffer, withContd, cueSpeaker, CONTD_RE, EXTENSIONS,
   TITLE_FIELDS, normaliseTitlePage, hasTitlePage,

@@ -24,6 +24,7 @@ import Store from './store.js';
 import { binScene } from './scene-bin.js';
 import { formatEighths } from './sample-figures.js';
 import { newId } from './record-id.js';
+import { undoAppend } from './notes-model.js';   // pure
 
 export const SCENES_KEY = 'fms_scenes_v1';
 
@@ -195,6 +196,84 @@ export function updateScene(id, patch) {
   return scenes[i];
 }
 
+/* ---- appending to a scene's reader note ---------------------
+   The AI Desk's read-only tools (beat critique, tension notes, the
+   audience tests) keep a ticked point that names a scene by APPENDING
+   it to that row's `readerNote`, one line each, marked with where it
+   came from. Never a replace: the note may hold what a person typed,
+   and "fill blanks, never overwrite" is the rule. ONE write for the
+   whole Accept (rows re-read first, so a row edited in another tab
+   keeps that edit). scene-notes uses it too, so there is ONE append
+   path for AI notes on a row. An item may carry `fill` ({field: value})
+   for fields set only while blank. Returns one { id, before, after,
+   filled } per row touched (`.same` counts points already there), []
+   for nothing to do, or null when the write was refused. */
+export function appendSceneNotes(list, { from = '' } = {}) {
+  const scenes = listScenes();
+  const byId = new Map(scenes.map((s, i) => [s.id, i]));
+  const changes = new Map();
+  let same = 0;
+  for (const x of list || []) {
+    const t = String((x && x.text) ?? '').trim();
+    const i = x ? byId.get(x.id) : undefined;
+    if (i == null) continue;
+    const row = scenes[i];
+    const c = changes.get(row.id) || { id: row.id, before: String(row.readerNote || ''), filled: {} };
+    let touched = false;
+    const have = String(row.readerNote || '');
+    // A point already in the note word for word is not added twice (the
+    // same Accept run again, or two tools saying the same thing).
+    if (t && !have.includes(t)) {
+      const line = (from ? from + ': ' : '') + t;
+      scenes[i] = { ...scenes[i], readerNote: have.trim() ? have.replace(/\s+$/, '') + '\n' + line : line };
+      touched = true;
+    }
+    // `fill` sets a field only while it is still blank/false (scene-notes'
+    // cutCandidate): a tool may raise a flag, never clear or re-raise one.
+    for (const [k, v] of Object.entries((x && x.fill) || {})) {
+      if (scenes[i][k] || k in c.filled) continue;
+      c.filled[k] = { was: scenes[i][k], now: v };
+      scenes[i] = { ...scenes[i], [k]: v };
+      touched = true;
+    }
+    if (!touched) { same++; continue; }
+    c.after = String(scenes[i].readerNote || '');
+    changes.set(row.id, c);
+  }
+  const out = [...changes.values()];
+  out.same = same;   // how many points were already there (said in the toast)
+  if (!out.length) return out;
+  return saveScenes(scenes) ? out : null;
+}
+
+/* The exact undo of appendSceneNotes(): each row loses ONLY the lines
+   that call added (notes-model undoAppend), so a person's edit made
+   after the Accept survives the Undo. A row whose note no longer holds
+   the appended block exactly once keeps its note and is counted; a
+   filled field goes back only while it still holds what was written.
+   One write. */
+export function undoSceneNotes(changes) {
+  if (!Array.isArray(changes) || !changes.length) return 0;
+  const want = new Map(changes.map((c) => [c.id, c]));
+  let missed = 0;
+  const scenes = listScenes().map((s) => {
+    const c = want.get(s.id);
+    if (!c) return s;
+    let out = s;
+    if (c.after !== c.before) {
+      const back = undoAppend(s.readerNote, c.before, c.after);
+      if (back == null) missed++;
+      else out = { ...out, readerNote: back };
+    }
+    for (const [k, f] of Object.entries(c.filled || {})) {
+      if (out[k] === f.now) out = { ...out, [k]: f.was };
+    }
+    return out;
+  });
+  saveScenes(scenes);
+  return missed;
+}
+
 /* REMOVING A SCENE GOES THROUGH THE BIN. It used to filter the row
    out and nothing else, which left its shots, frames, call-sheet
    places and edit-log notes pointing at an id that no longer existed —
@@ -344,6 +423,6 @@ export function totalEighths(scenes) {
 export default {
   SCENES_KEY, INT_EXT, DAY_NIGHT, ELEMENT_CATEGORIES, SHOT_STATES, shotLabel,
   blankScene, listScenes, saveScenes, addScene, updateScene, removeScene, moveScene, reorderScene,
-  rawScenes, writeRawScenes,
+  rawScenes, writeRawScenes, appendSceneNotes, undoSceneNotes,
   tagElement, untagElement, tagMany, untagMany, elementIndex, formatEighths, totalEighths
 };

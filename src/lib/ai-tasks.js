@@ -31,37 +31,60 @@
      coverage         the coverage store in src/ui/coverage.js, inside
                       the script blob, through the page's save
      dialogue-pass    the page's in-memory script, `aiPass` kept so the
-                      row's own Undo also still works, page save
+                      row's own Undo also still works, page save; the
+                      other versions become the line's alternate takes
+                      (`alts`, the alt-lines.js shape)
      story-steps/map  story.js models, saved by the page's commit()
-     shot-draft       shots.js addShot (append only)
+     shot-draft       shots.js addShot (append only; size, angle, movement,
+                      lens, rig, setup, description)
      scene-story      story.js outline steps, one per scene, linked by
                       sceneId (breakdown-extras.js appendSteps)
-     synopsis-script  scriptgen.js's job (stage 1 → the beat sheet)
-     gen-scenes       scriptgen.js applyScenes (stage 2 → scenes.js)
+     synopsis-script  scriptgen.js's job (stage 1 → the beat sheet), and
+                      story.js's logline and outline steps where BLANK
+     gen-scenes       scriptgen.js applyScenes (stage 2 → scenes.js, each
+                      row's beatId, cast joined to characters.js records)
      gen-batch        scriptgen.js applyBatch (stage 3, one batch →
-                      the script blob, cursor advanced)
+                      the script blob, cursor advanced past what was
+                      written; an unticked scene stays next in line)
      voice-check      coverage.js addTake (a line's alternates)
-     logline          the page's setLogline()
-     genre-comps      story.js fields genre/audience/budgetTier/comps, via commit
+     logline          the page's setLogline(); the other ticked variants
+                      into the story's `loglineAlts` (setLoglineAlts)
+     genre-comps      story.js fields genre/tone/budgetTier/budgetWhy/audience/
+                      comps, via commit
      scene-notes      scenes.js readerNote + cutCandidate on content-matched rows
      breakdown-tags   scenes.js tagMany (adds only), undo = untagMany
      audience-test    audience-store.js, one document in the script blob's
                       documents (a partial run's checkpoint as it lands,
                       the kept run on Accept), through the page's save
-     blocking-draft   shots.js replaceBlock (one new setup on the scene's
-                      blocking map, only the ticked marks / set pieces /
-                      line); undo = removeBlock of exactly that id
+     blocking-draft   shots.js writeBlocking (the scene's floor plan,
+                      filled not overwritten, and one diagram per ticked
+                      shot, each with ONE camera; shot.cam filled only
+                      where blank), one write; undo = undoBlocking
      blocking-enhance shots.js replaceBlock (the ticked ops applied to the
                       setup, blocking-ai-model.js applyBlockOps); undo =
                       replaceBlock of the snapshot taken before Accept
-   beat-critique, tension-notes, audience-quick (the story test) and
-   audience-ask (a question to one viewer) are reads: they write nothing.
+     beat-critique, tension-notes, audience-quick (the story test),
+     audience-ask (a question to one viewer), and the lane reads
+     draft-changes, day-wrap-summary and cert-read (`keepAs`, set at
+     registration) are READS that keep notes:
+                      the prose is shown as it always was, and each point
+                      is a tickable item. Nothing is written until Accept;
+                      then a point that names a scene is APPENDED to that
+                      row's readerNote (scenes.js appendSceneNotes), every
+                      other point is a sticky note in the Idea Vault
+                      (story.js addNotesToVault). Undo removes exactly
+                      what was added (keepNotes below).
 
    NO STORAGE KEY. The only memory here is the last run per task (what
    apply() needs beside the ticked items), in a Map for this visit.
    ============================================================ */
-import { callPort } from './ports.js';
+import { callPort, hasPort } from './ports.js';
+import W from './ai-writing-apply.js';   // pure: takes, alternates, fill-only story, cast join
 import Store from './store.js';   // the open project's format (scene-story)
+/* The ten tasks of docs/AI-EVERYWHERE.md, one module per lane. */
+import * as Preprod from './ai-tasks-preprod.js';
+import * as Post from './ai-tasks-post.js';
+import * as Story from './ai-tasks-story.js';
 
 /* ---- the modules, loaded once ------------------------------- */
 let AI = null;            // ./ai.js
@@ -82,6 +105,7 @@ let AudM = null;          // ./audience-model.js (pure)
 let AudS = null;          // ./audience-store.js
 let BlockAI = null;       // ./blocking-ai-model.js (pure)
 let CharM = null;         // ./characters.js
+let NotesM = null;        // ./notes-model.js (pure)
 let readyP = null;
 
 function loadAll() {
@@ -93,10 +117,10 @@ function loadAll() {
       import('./breakdown-extras.js'), import('./board-frames.js'), import('./drive.js'),
       import('./drive-board.js'), import('./script-analysis-model.js'),
       import('./audience-model.js'), import('./audience-store.js'),
-      import('./blocking-ai-model.js'), import('./characters.js')
-    ]).then(([a, b, st, sc, sp, sh, an, g, cv, bx, bf, dr, di, sa, am, aus, bai, ch]) => {
+      import('./blocking-ai-model.js'), import('./characters.js'), import('./notes-model.js')
+    ]).then(([a, b, st, sc, sp, sh, an, g, cv, bx, bf, dr, di, sa, am, aus, bai, ch, nm]) => {
       AI = a; BP = b; StoryM = st; ScenesM = sc; ScriptM = sp; ShotsM = sh; Analysis = an; Gen = g; Cov = cv; Extras = bx;
-      BoardM = bf; DriveM = dr; DriveImg = di; SA = sa; AudM = am; AudS = aus; BlockAI = bai; CharM = ch;
+      BoardM = bf; DriveM = dr; DriveImg = di; SA = sa; AudM = am; AudS = aus; BlockAI = bai; CharM = ch; NotesM = nm;
       return true;
     }).catch((e) => { readyP = null; throw e; });
   }
@@ -126,6 +150,15 @@ function remember(id, result, mem) {
   return result;
 }
 const recall = (id, result) => (result && result.memo) || last.get(id);
+/* What an Accept did, said in its Undo toast. The Desk's toast says only
+   "applied" otherwise, which hid a partial write (some ticked items
+   skipped) behind the word for a whole one. A property on the undo
+   function, so every caller that only calls undo() is unchanged. */
+function withNote(undo, parts) {
+  const note = [].concat(parts || []).filter(Boolean).join(' ');
+  if (note) undo.note = note;
+  return undo;
+}
 
 /** The refine block, as ai.js writes it, or ''. */
 function refineText(refine) {
@@ -134,9 +167,11 @@ function refineText(refine) {
   /* The model's own previous answer, trimmed to the part that matters,
      so a long list does not crowd the prompt it rides in. */
   let previous = prev;
-  if (prev && Array.isArray(prev.items)) previous = prev.items.map((it) => it.text);
+  /* A read that also lists points to keep refines on its prose, as it
+     always did — the items are a view of the same answer. */
+  if (prev && typeof prev.text === 'string') previous = prev.text;
+  else if (prev && Array.isArray(prev.items)) previous = prev.items.map((it) => it.text);
   else if (prev && typeof prev.proposed === 'string') previous = prev.proposed;
-  else if (prev && typeof prev.text === 'string') previous = prev.text;
   const block = AI && typeof AI.refineBlock === 'function'
     ? AI.refineBlock({ previous, instructions: refine.instructions })
     : '\n\nPrevious answer: ' + JSON.stringify(previous) + '\nChanges asked for:\n'
@@ -391,8 +426,12 @@ const dialogueTask = {
     const others = res.options.slice(1).map((o, n) => 'Version ' + (n + 2) + ': ' + o.text + (o.note ? ' (' + o.note + ')' : ''));
     const note = [res.keep ? 'What already works: ' + res.keep : '', res.options[0].note || '', ...others,
       res.truncated ? 'The reply was cut short.' : ''].filter(Boolean).join('\n');
-    return remember('dialogue-pass', { original: String(els[i].text ?? ''), proposed: res.options[0].text, note },
-      { elId: els[i].id, model: res.model });
+    const alts = res.options.slice(1).map((o) => o.text);
+    const keepNote = alts.length ? 'Accept also keeps ' + (alts.length === 1 ? 'version 2' : 'versions 2–' + (alts.length + 1))
+      + ' as alternate takes of this line, beside it; the line in use is the merged version above.' : '';
+    return remember('dialogue-pass', { original: String(els[i].text ?? ''), proposed: res.options[0].text,
+      note: [note, keepNote].filter(Boolean).join('\n') },
+      { elId: els[i].id, model: res.model, alts });
   },
   apply(text, ctx, result) {
     const c = resolve(ctx);
@@ -410,21 +449,144 @@ const dialogueTask = {
       fail('This speech has changed since the pass ran, so nothing was changed. Run the pass again on the current text.');
     }
     const before = { text: el.text, aiPass: el.aiPass ? { ...el.aiPass } : undefined };
-    if (String(text) === String(el.text)) return null;
-    el.aiPass = { at: new Date().toISOString(), model: mem.model || '', was: el.aiPass ? el.aiPass.was : el.text };
-    el.text = String(text);
+    const changed = String(text) !== String(el.text);
+    if (changed) {
+      el.aiPass = { at: new Date().toISOString(), model: mem.model || '', was: el.aiPass ? el.aiPass.was : el.text };
+      el.text = String(text);
+    }
+    /* The other versions are not thrown away: each becomes an alternate
+       take of this line (alt-lines.js's "dialogue choices"), so the
+       writer can swap one in later without asking again. Only dialogue
+       carries takes. Undo takes out exactly these and nothing a person
+       added beside them. */
+    const added = el.type === 'dialogue' ? W.addTakes(el, mem.alts || []) : [];
+    if (!changed && !added.length) return null;
     call(c.save);
     call(c.render, el.id);
     return () => {
       const now = (d.elements || []).find((e) => String(e.id) === String(mem.elId));
       if (!now) return;
-      now.text = before.text;
-      if (before.aiPass) now.aiPass = before.aiPass; else delete now.aiPass;
+      if (changed) {
+        now.text = before.text;
+        if (before.aiPass) now.aiPass = before.aiPass; else delete now.aiPass;
+      }
+      W.removeTakes(now, added);
       call(c.save);
       call(c.render, now.id);
     };
   }
 };
+
+/* ============================================================
+   KEEPING A READ AS NOTES — the apply() of the four read tasks
+   ------------------------------------------------------------
+   A read used to end in "Nothing was changed", and the writer retyped
+   the points they wanted into the scene list or a sticky note. Now each
+   point is an item { id, text, keep, where?, scene? } beside the prose:
+     keep   the words a note holds (the point, its quote, its "try this")
+     where  the place it names, e.g. 'Sc 4' — printed in front of a
+            sticky note, left off a scene's own note (it IS that scene)
+     scene  { sceneId?, i?, n?, heading? } when the point names a scene
+   A point whose scene resolves to a row on the scene list is APPENDED
+   to that row's readerNote; anything else (no scene, a beat, a scene
+   that is not on the list) becomes a sticky note in the Idea Vault.
+   Both lines start "AI (<tool>):" so nobody mistakes them for their
+   own words. One write per store, and the undo takes out only what
+   this Accept added.
+
+   A SCENE IS RESOLVED BY CONTENT, NEVER BY POSITION ALONE: a row id
+   when the point carries one, else the script slice matched by the
+   same confident join scene-notes uses (matchScenes + isConfident —
+   it compares the heading's parts), else the one row carrying the
+   scene number the WRITER typed on that slice (rowFor; a positional
+   number never counts, and two rows with it is a guess, so neither). A guess would put a
+   note on the wrong scene, where nobody would think to look for it;
+   a sticky note that says "Sc 4" is at worst one move away.
+   ============================================================ */
+function sceneRowFor(ref, c, memo) {
+  if (!ref) return null;
+  if (!memo.rows) memo.rows = ScenesM.listScenes();
+  const rows = memo.rows;
+  if (ref.sceneId) {
+    const r = rows.find((s) => s.id === ref.sceneId);
+    if (r) return r;
+  }
+  if (!memo.els) memo.els = scriptElements(c);
+  let i = Number.isInteger(ref.i) ? ref.i : -1;
+  if (i < 0 && ref.n != null) {
+    if (!memo.slices) { try { memo.slices = AI.coverageScenes(memo.els); } catch (e) { memo.slices = []; } }
+    const hits = memo.slices.map((s, k) => (s.n === String(ref.n) ? k : -1)).filter((k) => k >= 0);
+    if (hits.length === 1) i = hits[0];
+  }
+  if (i >= 0) {
+    // rowFor takes the whole match ({pairs, slices}) since scene-notes
+    // learnt the writer's-scene-number fallback; passing the bare pairs
+    // array would read match.pairs as undefined and resolve nothing.
+    if (!memo.match) { try { memo.match = Analysis.matchScenes(rows, memo.els); } catch (e) { memo.match = { pairs: [], slices: [] }; } }
+    const r = rowFor(memo.match, i);
+    if (r) return rows.find((s) => s.id === r.id) || null;
+  }
+  /* No bare rows-by-number fallback here. `ref.n` is often only a
+     POSITION (coverageScenes and the analysis rows number an untyped
+     scene i+1), so "the row numbered 2" put an inserted scene's note on
+     the next scene down. A number the writer typed is already tried by
+     rowFor() above; anything else becomes a sticky note. */
+  return null;
+}
+
+function keepNotes(selected, ctx, label) {
+  const c = resolve(ctx);
+  const from = 'AI (' + label + ')';
+  const memo = {};
+  const onScene = [];
+  const sticky = [];
+  for (const it of selected || []) {
+    const t = String((it && (it.keep || it.text)) ?? '').trim();
+    if (!t) continue;
+    const row = it.scene ? sceneRowFor(it.scene, c, memo) : null;
+    if (row) onScene.push({ id: row.id, text: t, where: 'Sc ' + (row.number || '?') });
+    else sticky.push(it.where ? it.where + ' — ' + t : t);
+  }
+  if (!onScene.length && !sticky.length) fail('Nothing is ticked, so there is nothing to keep.');
+  const changes = onScene.length ? ScenesM.appendSceneNotes(onScene, { from }) : [];
+  if (changes === null) fail('The scene list could not be saved (storage may be full), so nothing was kept.');
+  const notes = sticky.map((t) => {
+    const n = NotesM.makeNote(from + ': ' + t);
+    if (n) n.from = 'ai';   // a field, not a key: notes pass unknown fields through
+    return n;
+  }).filter(Boolean);
+  const added = notes.length ? StoryM.addNotesToVault(notes) : [];
+  if (added === null) {
+    ScenesM.undoSceneNotes(changes);
+    fail('The notes board could not be saved (storage may be full), so nothing was kept.');
+  }
+  const ids = added.map((n) => n.id);
+  /* Say what was WRITTEN, not what was ticked: a point already on its
+     scene word for word is skipped by appendSceneNotes (changes.same),
+     and an Accept that wrote nothing at all says so and returns no
+     Undo, the way scene-notes does. */
+  const same = (changes && changes.same) || 0;
+  const wroteOnScene = Math.max(0, onScene.length - same);
+  if (!changes.length && !ids.length) {
+    fail((onScene.length === 1 ? 'That note is' : 'Those notes are') + ' already on ' + (onScene.length === 1 ? 'its scene' : 'their scenes') + ', so nothing was written.');
+  }
+  call(c.after);
+  const undo = () => {
+    ScenesM.undoSceneNotes(changes);
+    if (ids.length) StoryM.removeManyFromVault(ids);
+    call(c.after);
+  };
+  /* What the toast says instead of "applied": a read said "Nothing was
+     saved", so after Accept it says exactly what was. */
+  const written = new Set(changes.map((x) => x.id));
+  const whereSaid = [...new Set(onScene.filter((x) => written.has(x.id)).map((x) => x.where))];
+  const scenesSaid = wroteOnScene && changes.length
+    ? plural(wroteOnScene, 'note', 'notes') + ' on the scene list (' + whereSaid.join(', ') + ')' : '';
+  const stickySaid = ids.length ? plural(ids.length, 'sticky note', 'sticky notes') + ' on the notes board' : '';
+  undo.said = label + ': saved ' + [scenesSaid, stickySaid].filter(Boolean).join(' and ') + '.'
+    + (same ? ' ' + plural(same, 'note was', 'notes were') + ' already there.' : '');
+  return undo;
+}
 
 /* ============================================================
    BEAT CRITIQUE — read. Two shapes of ctx:
@@ -433,7 +595,9 @@ const dialogueTask = {
    ------------------------------------------------------------
    beatCritique() quotes only from the `answers` it is handed and
    checks every quote, so for a scene the scene's own text is the one
-   answer. Writes nothing.
+   answer. Writes nothing until Accept: then each ticked note goes to
+   the scene's reader note (script.html) or, for a blueprint step, to a
+   sticky note headed with the step (keepNotes above).
    ============================================================ */
 function critiqueJob(c) {
   if (c.stepId) {
@@ -448,11 +612,27 @@ function critiqueJob(c) {
   const k = i >= 0 ? sceneIndexAt(els, i) : -1;
   const sc = scenes[k >= 0 ? k : 0];
   if (!sc || !sc.text.trim()) fail('There is no scene to critique yet. Write a scene heading and a few lines.');
-  return {
+  const job = {
     step: { num: 'Sc ' + sc.n, title: sc.heading, deck: 'One scene of the screenplay. Critique the scene as written.' },
     answers: [{ label: 'the scene', value: sc.text }],
     context: BP.blueprintContext()
   };
+  /* Which scene the notes belong to, for Accept — non-enumerable, so it
+     never reaches the prompt builder's spread. */
+  Object.defineProperty(job, 'scene', { value: { i: k >= 0 ? k : 0, n: sc.n, heading: sc.heading } });
+  return job;
+}
+
+/** The critique's notes as Desk items (keepNotes). */
+function critiqueItems(res, job) {
+  const sc = job.scene || null;
+  const st = job.step || {};
+  const where = sc ? 'Sc ' + sc.n : [st.num, st.title].filter(Boolean).join(' ');
+  return (res.notes || []).map((n, i) => {
+    const keep = [n.problem, n.quote ? '“' + n.quote + '”' : '', n.tryThis ? 'Try: ' + n.tryThis : ''].filter(Boolean).join(' ');
+    return { id: 'n' + i, text: n.problem, detail: [n.quote ? '“' + n.quote + '”' : '', n.tryThis ? 'Try: ' + n.tryThis : ''].filter(Boolean).join(' · '),
+      keep, where, scene: sc };
+  });
 }
 
 function critiqueText(res) {
@@ -468,7 +648,7 @@ function critiqueText(res) {
     L.push(plural(res.unverified, 'note', 'notes') + ' came back with a quotation that is not word for word '
       + 'what you wrote, so the quotation was dropped rather than shown.');
   }
-  L.push('These are notes, not edits. Nothing was changed.');
+  L.push('These are notes, not edits. Nothing was changed. Tick the ones to keep and press Accept to save them as notes.');
   return L.join('\n').trim();
 }
 
@@ -493,8 +673,9 @@ const critiqueTask = {
     await ready();
     const job = critiqueJob(resolve(ctx));
     const res = await AI.beatCritique({ ...job, context: withRefineContext(job.context, refine) }, { onStatus, signal });
-    return { text: critiqueText(res) };
-  }
+    return { text: critiqueText(res), items: critiqueItems(res, job) };
+  },
+  apply(selected, ctx) { return keepNotes(selected, ctx, 'Beat critique'); }
 };
 
 /* ============================================================
@@ -677,7 +858,7 @@ const shotTask = {
       list.forEach((d, i) => items.push({
         id: sceneId + '#' + i, sceneId, draft: d,
         text: 'Sc ' + numOf.get(sceneId) + ' · ' + d.description,
-        detail: [d.size, d.angle, d.movement, d.lens].filter(Boolean).join(' · ')
+        detail: [d.size, d.angle, d.movement, d.lens, d.rig, d.setup].filter(Boolean).join(' · ')
       }));
     }
     if (!items.length) fail('The model came back with no shots. Nothing was added.');
@@ -688,7 +869,15 @@ const shotTask = {
     const made = [];
     for (const it of selected || []) {
       if (!it.sceneId || !it.draft) continue;
-      made.push(ShotsM.addShot(it.sceneId, { ...it.draft, ai: true }).id);
+      /* Every column the Shot List shows, rig and setup included, so
+         nothing the model drafted has to be retyped there. Named, not
+         spread: a refined or stale draft carrying some other field must
+         not reach the shot record. */
+      const d = it.draft;
+      made.push(ShotsM.addShot(it.sceneId, {
+        size: d.size, angle: d.angle, movement: d.movement, lens: d.lens || '',
+        rig: d.rig || '', setup: d.setup || '', description: d.description, ai: true
+      }).id);
     }
     if (!made.length) return null;
     call(c.after, made);
@@ -817,6 +1006,16 @@ const sceneStoryTask = {
    tick the beats to keep, and Accept writes them into the job,
    exactly where "Draft the beat sheet" wrote them. The page's panel
    then offers stage 2. `prepare()` lets the page save its form first.
+
+   THE STORY PAGE SEES IT TOO. The same Accept fills the Story page's
+   logline and its beat steps (story.js) WHERE THEY ARE BLANK, so the
+   beat sheet is not typed twice: a beat that already has a written
+   step, or a logline already there, is the writer's and is left
+   alone. Steps are written only when the story's beat sheet in force
+   is Save the Cat (the vocabulary scriptgen drafts in) and the
+   outline is not locked; a short film is always the five beats, so a
+   short gets the logline only. Undo takes back only what is still as
+   it was written.
    ============================================================ */
 const synopsisTask = {
   id: 'synopsis-script',
@@ -843,7 +1042,10 @@ const synopsisTask = {
       id: b.id, text: res.byBeat.get(b.id), detail: b.label + (b.pages ? ' · pages ' + b.pages : '')
     }));
     if (!items.length) fail('The reply held no beats, so nothing changed.');
-    return remember('synopsis-script', { items, note: res.logline ? 'Logline: ' + res.logline : '' },
+    const note = [res.logline ? 'Logline: ' + res.logline : '',
+      'Accept also fills the Story page’s logline and beat steps where they are still blank; nothing you wrote there is replaced.']
+      .filter(Boolean).join('\n');
+    return remember('synopsis-script', { items, note },
       { synopsis, logline: res.logline, model: res.model, vocab });
   },
   apply(selected, ctx, result) {
@@ -860,10 +1062,30 @@ const synopsisTask = {
     job.model = mem.model || job.model;
     job.stage = 'beats';
     Gen.save(job);
+    const filled = fillStoryFromBeats(job);
     call(c.after, job);
-    return () => { Gen.save(prev); call(c.after, prev); };
+    return () => { Gen.save(prev); undoStoryFromBeats(filled); call(c.after, prev); };
   }
 };
+
+/* The story half of synopsis-script's Accept (see its header). */
+function fillStoryFromBeats(job) {
+  const story = StoryM.loadStory();
+  const fwId = StoryM.effectiveFramework(story, job.format);
+  const fw = StoryM.frameworkById(fwId);
+  const steps = fw.id === 'save_the_cat' && !story.outlineLockedAt;
+  const beats = (job.beats || []).map((b) => ({ key: W.storyBeatKey(b.id, fw), text: b.happens }));
+  const wrote = W.fillStoryBlanks(story, { logline: job.logline, beats, steps }, StoryM.addOutlineStep);
+  if (!wrote.logline && !wrote.filled.length && !wrote.added.length) return null;
+  StoryM.saveStory(story);
+  return { wrote, logline: story.logline };
+}
+function undoStoryFromBeats(filled) {
+  if (!filled) return;
+  const story = StoryM.loadStory();
+  W.undoStoryFill(story, filled.wrote, filled.logline);
+  StoryM.saveStory(story);
+}
 
 /* A refinement whose `previous` is what this task's model actually
    said (the proposal objects, the drafted elements), not the Desk's
@@ -895,7 +1117,11 @@ function fingerprint(s) {
    the ticked ones to applyScenes(), which writes the SCENE MODEL (so
    the breakdown, stripboard and budget can read them) and moves the
    job to stage 3. `replaceScenes()` is the page's checkbox, read at
-   the moment of Accept. Undo puts back the scene list and the job.
+   the moment of Accept. Each row keeps the beat it serves (`beatId`)
+   and its cast joined to the Characters records, a record made only
+   for a name nobody has (scriptgen.js applyScenes). Undo puts back the
+   scene list and the job, and removes the records it made that are
+   still blank.
    ============================================================ */
 const sceneSlug = (p) => (p.intExt || 'INT') + '. ' + String(p.location || 'Location TBC').toUpperCase() + ' — ' + (p.dayNight || 'DAY');
 
@@ -942,7 +1168,7 @@ const genScenesTask = {
       detail: [String(p.synopsis || '').trim(), (p.cast || []).length ? 'Cast: ' + p.cast.join(', ') : '',
         p.eighths ? p.eighths + '/8 pp' : ''].filter(Boolean).join(' · ')
     }));
-    const note = plural(items.length, 'scene', 'scenes') + ' proposed. Untick any you do not want; the rest go on the scene board in this order.'
+    const note = plural(items.length, 'scene', 'scenes') + ' proposed. Untick any you do not want; the rest go on the scene board in this order, each with its beat, and any name in the cast that is not on the Characters page yet is added there.'
       + (res.truncated ? '\nThe reply was cut short at the length limit, so the list may stop early.' : '');
     return { items, note };
   },
@@ -964,8 +1190,9 @@ const genScenesTask = {
    and writes nothing; the items are those scenes (heading and first
    lines). Accept hands the ticked sceneIds to applyBatch(), which
    appends them to the screenplay (a revision first, on the first
-   batch only), and moves the cursor past the WHOLE batch — an unticked
-   scene is skipped exactly as a scene the reply missed. The identity
+   batch only), and moves the cursor past the scenes it WROTE — an
+   unticked scene, like one the reply missed, stays next in line and is
+   drafted again with the next batch, never skipped for good. The identity
    is the job and its cursor, so every batch is its own Desk session,
    and a draft made at an old cursor is refused ('stale') rather than
    written in the wrong place.
@@ -1023,8 +1250,8 @@ const genBatchTask = {
     }
     if (!items.length) fail('The reply held none of the scenes it was asked for, so nothing was written. Ask again.');
     const note = [
-      plural(items.length, 'scene', 'scenes') + ' drafted. Ticked scenes are added to the end of the screenplay; an unticked one is skipped and the run moves on past it.',
-      missed.length ? 'Not in the reply (skipped if you accept): ' + missed.join('; ') + '.' : '',
+      plural(items.length, 'scene', 'scenes') + ' drafted. Ticked scenes are added to the end of the screenplay; an unticked one stays next in line and is drafted again with the next batch.',
+      missed.length ? 'Not in the reply (asked for again with the next batch): ' + missed.join('; ') + '.' : '',
       draft.truncated ? 'The reply was cut short at the length limit, so the last scene may stop mid-page.' : ''
     ].filter(Boolean).join('\n');
     return { items, note };
@@ -1118,6 +1345,13 @@ const voiceTask = {
   },
   apply(selected, ctx) {
     const c = resolve(ctx);
+    /* The takes are written by the Coverage tab (it registers the
+       addTake port). With that view not open the port answers its
+       fallback, 'gone', for every line — which used to read "those
+       lines are no longer in the script" about lines that are. */
+    if (!hasPort('addTake')) {
+      fail('The Coverage view has to be open to keep these rewrites as takes — it is what writes them. Open it and accept again. Nothing was added, and your lines are still in the script.');
+    }
     const added = [];
     let gone = 0, dup = 0;
     for (const it of selected || []) {
@@ -1143,8 +1377,12 @@ const voiceTask = {
    ------------------------------------------------------------
    loglineWorkshop(): the five-part check of THEIR logline (in the
    note, every span verified) and five variants (the items). Accept
-   takes the first ticked variant as the logline; Undo puts theirs
-   back. Nothing replaces the logline without that Accept.
+   takes the first ticked variant as the logline; every OTHER ticked
+   variant is kept as an alternate on the story (`loglineAlts`, an
+   additive field, through ctx.setLoglineAlts — the page's own commit),
+   shown under the workshop with "Use this". Undo puts their logline
+   back and takes out exactly the alternates it added. Nothing replaces
+   the logline without that Accept.
    ============================================================ */
 const loglineTask = {
   id: 'logline',
@@ -1173,7 +1411,7 @@ const loglineTask = {
       + (res.removed === 1 ? 'it was' : 'they were') + ' not in your logline.' : '';
     return {
       items: res.variants.map((v, i) => ({ id: 'v' + i, text: v.text, detail: v.angle })),
-      note: 'Your logline, checked:\n' + check + removed + '\n\nTick ONE variant to use it as your logline.'
+      note: 'Your logline, checked:\n' + check + removed + '\n\nThe first ticked variant becomes your logline; any other you tick is kept as an alternate under the workshop.'
     };
   },
   apply(selected, ctx) {
@@ -1183,7 +1421,16 @@ const loglineTask = {
     const live = call(c.getLogline);
     const before = typeof live === 'string' ? live : String((storyOf(c) || {}).logline || '');
     c.setLogline(pick.text);
-    return () => c.setLogline(before);
+    let added = [];
+    if (typeof c.setLoglineAlts === 'function') {
+      const r = W.addLoglineAlts(W.loglineAltsOf(storyOf(c)), (selected || []).slice(1).map((it) => it && it.text), pick.text);
+      added = r.added;
+      if (added.length) c.setLoglineAlts(r.list);
+    }
+    return () => {
+      c.setLogline(before);
+      if (added.length) c.setLoglineAlts(W.removeLoglineAlts(W.loglineAltsOf(storyOf(c)), added));
+    };
   }
 };
 
@@ -1196,8 +1443,10 @@ const loglineTask = {
    shows, with verbatim evidence (verified), and 3-5 comparable films.
    The comparables are the model's memory and cannot be checked here,
    so the note says so. The items are the comparables; Accept saves
-   genre, tone-as-budget tier, audience and the ticked comparables on
-   the story (additive fields), and Undo restores the story as it was.
+   genre, tone, budget tier (with its one-line why), audience (only
+   into a blank) and the ticked comparables on the story (additive
+   fields; the Breakdown header shows them), and Undo restores the
+   story as it was.
    ============================================================ */
 const TIER_LABEL = { micro: 'Micro', low: 'Low', mid: 'Mid', high: 'High' };
 
@@ -1238,7 +1487,7 @@ const genreTask = {
       'The comparables are the model’s memory of films, not something this tool can check. Look each one up before it goes in a pitch.',
       res.removed ? plural(res.removed, 'quote', 'quotes') + ' removed because ' + (res.removed === 1 ? 'it was' : 'they were') + ' not word for word in your script.' : '',
       sample.sampled ? 'A long script is sampled for this, so the evidence comes from the opening of each scene.' : '',
-      'Read by ' + res.model + '. Accepting saves the genre, budget tier and audience above and the comparables you tick.'
+      'Read by ' + res.model + '. Accepting saves the genre, tone, budget tier and audience above and the comparables you tick.'
     ].filter(Boolean);
     return remember('genre-comps', {
       items: res.comps.map((cp, i) => ({ id: 'c' + i, title: cp.title, year: cp.year, why: cp.why,
@@ -1254,7 +1503,9 @@ const genreTask = {
     const before = JSON.parse(JSON.stringify(storyOf(c)));
     const s = storyOf(c);
     s.genre = r.genre + (r.subgenres.length ? ' / ' + r.subgenres.join(' / ') : '');
-    if (r.budgetTier) s.budgetTier = r.budgetTier;
+    if (r.tone) s.tone = r.tone;
+    // The why travels with the tier it explains, never apart from it.
+    if (r.budgetTier) { s.budgetTier = r.budgetTier; s.budgetWhy = r.budgetWhy || ''; }
     if (r.audience && !String(s.audience || '').trim()) s.audience = r.audience;
     const have = new Set((s.comps || []).map((x) => x.title.toLowerCase()));
     const comps = (s.comps || []).slice();
@@ -1274,16 +1525,41 @@ const genreTask = {
    ------------------------------------------------------------
    One note per scene, each resting on a quote verified against that
    scene, plus a cut-candidate flag that needs the quote to stand. The
-   items are the notes; Accept writes `readerNote` and `cutCandidate`
-   on the scene rows the ticked notes belong to. A row is found by the
-   same content match the breakdown uses; a pair made only by position
-   is a guess and is left out, and the note says how many.
+   items are the notes; Accept writes on the scene rows the ticked
+   notes belong to:
+     readerNote    APPENDED to what the row already says as a new line
+                   marked "AI (Scene notes):" (scenes.js appendSceneNotes,
+                   the same path the read-only tools use), never written
+                   over it; a note already there word for word is not
+                   added twice
+     cutCandidate  set only when the row's flag is still unset — the
+                   model can raise it, never clear or re-raise it
+   Undo takes out only what this Accept added (undoSceneNotes), so an
+   edit made after Accept survives it.
+   A row is found by the same content match the breakdown uses. A pair
+   made only by POSITION is a guess and is left out, unless the
+   script's own scene number (the writer's, never a position) agrees
+   with the row's — the number is then the evidence, not the order.
+   What is left out is counted in the Undo toast.
    ============================================================ */
-function rowFor(pairs, sliceIndex) {
-  const p = pairs.find((x) => x.slice && x.slice.index === sliceIndex && Analysis.isConfident(x.how));
-  return p ? p.scene : null;
+const normNo = (v) => String(v ?? '').trim().toUpperCase();
+/* The scene row a slice of the script belongs to, or null. Confident
+   pairs first; then the writer's own scene number (slice.number is the
+   heading's sceneNumber, '' when the writer set none — so a number that
+   is only a position never counts). An unpaired slice may take the ONE
+   unpaired row carrying its number; two such rows are a guess again. */
+function rowFor(match, sliceIndex) {
+  if (sliceIndex == null) return null;
+  const pairs = match.pairs || [];
+  const p = pairs.find((x) => x.slice && x.slice.index === sliceIndex);
+  if (p && Analysis.isConfident(p.how)) return p.scene;
+  const slice = p ? p.slice : (match.slices || [])[sliceIndex];
+  const no = normNo(slice && slice.number);
+  if (!no) return null;
+  if (p) return normNo(p.scene.number) === no ? p.scene : null;
+  const free = pairs.filter((x) => !x.slice && normNo(x.scene.number) === no);
+  return free.length === 1 ? free[0].scene : null;
 }
-
 const sceneNotesTask = {
   id: 'scene-notes',
   label: 'Scene notes',
@@ -1323,22 +1599,34 @@ const sceneNotesTask = {
   apply(selected, ctx) {
     const c = resolve(ctx);
     const els = scriptElements(c);
-    const rows = ScenesM.listScenes();
-    const pairs = Analysis.matchScenes(rows, els).pairs;
-    const before = new Map();
-    const patch = new Map();
+    const match = Analysis.matchScenes(ScenesM.listScenes(), els);
+    // ONE append path for every AI note on a scene row: scenes.js
+    // appendSceneNotes, shared with the read-only tools (keepNotes). It
+    // appends a marked line, skips a note already there word for word,
+    // fills cutCandidate only while it is unset, and its undo takes out
+    // only what this Accept added — an edit made after Accept survives.
+    const list = [];
     let skipped = 0;
     for (const it of selected || []) {
-      const row = rowFor(pairs, it.i);
+      const row = rowFor(match, it.i);
       if (!row) { skipped++; continue; }
-      before.set(row.id, { readerNote: row.readerNote || '', cutCandidate: !!row.cutCandidate });
-      patch.set(row.id, { readerNote: it.note, cutCandidate: !!it.cut });
+      list.push({ id: row.id, text: it.note, fill: it.cut ? { cutCandidate: true } : null });
     }
-    if (!patch.size) fail('None of those scenes is matched to a scene on the breakdown by content, so nothing was written.' + (skipped ? ' (' + skipped + ' matched by position only.)' : ''));
-    const write = (m) => ScenesM.saveScenes(ScenesM.listScenes().map((s) => (m.has(s.id) ? { ...s, ...m.get(s.id) } : s)));
-    write(patch);
+    const changes = list.length ? ScenesM.appendSceneNotes(list, { from: 'AI (Scene notes)' }) : [];
+    if (changes === null) fail('The scene list could not be saved (storage may be full), so nothing was written.');
+    const same = changes.same || 0;
+    if (!changes.length) {
+      fail(same && !skipped ? 'Those notes are already on their scenes, so nothing was written.'
+        : 'None of those scenes is matched to a scene on the breakdown by content or scene number, so nothing was written.'
+          + (skipped ? ' (' + plural(skipped, 'note', 'notes') + ' matched by position only.)' : ''));
+    }
     call(c.after);
-    return () => { write(before); call(c.after); };
+    const undo = () => { ScenesM.undoSceneNotes(changes); call(c.after); };
+    return withNote(undo, [
+      'Notes on ' + plural(changes.length, 'scene', 'scenes') + '.',
+      skipped ? plural(skipped, 'note', 'notes') + ' left out: the scene is matched by position only.' : '',
+      same ? plural(same, 'note', 'notes') + ' already there.' : ''
+    ]);
   }
 };
 
@@ -1390,18 +1678,32 @@ const tagsTask = {
   apply(selected, ctx) {
     const c = resolve(ctx);
     const els = scriptElements(c);
-    const pairs = Analysis.matchScenes(ScenesM.listScenes(), els).pairs;
+    const match = Analysis.matchScenes(ScenesM.listScenes(), els);
+    /* Only a category the scene model has: tagMany() would otherwise
+       open a new bucket under any id it is handed, which no view lists. */
+    const known = new Set(ScenesM.ELEMENT_CATEGORIES.map((k) => k.id));
     const tags = [];
-    let skipped = 0;
+    let skipped = 0, unknown = 0;
     for (const it of selected || []) {
-      const row = rowFor(pairs, it.i);
+      if (!known.has(it.category)) { unknown++; continue; }
+      const row = rowFor(match, it.i);
       if (!row) { skipped++; continue; }
       tags.push({ sceneId: row.id, category: it.category, name: it.name });
     }
     const added = ScenesM.tagMany(tags);
-    if (!added.length) fail(skipped ? 'Those scenes are matched to the breakdown by position only, so nothing was tagged.' : 'Every ticked element is already tagged.');
+    const already = tags.length - added.length;
+    /* Every reason something was not tagged is said, on success as well
+       as on failure: a partial Accept that only says "applied" reads as
+       if every ticked element went in. */
+    const why = [
+      skipped ? plural(skipped, 'element', 'elements') + ' left out: the scene is matched by position only.' : '',
+      unknown ? plural(unknown, 'element', 'elements') + ' left out: not a breakdown category.' : '',
+      already ? plural(already, 'element', 'elements') + ' already tagged.' : ''
+    ];
+    if (!added.length) fail((skipped || unknown ? 'Nothing was tagged. ' : 'Every ticked element is already tagged. ') + why.filter(Boolean).join(' '));
     call(c.after);
-    return () => { ScenesM.untagMany(added); call(c.after); };
+    const undo = () => { ScenesM.untagMany(added); call(c.after); };
+    return withNote(undo, [plural(added.length, 'element', 'elements') + ' tagged.', ...why]);
   }
 };
 
@@ -1543,7 +1845,9 @@ const boardTask = {
    per character where they enter and leave), not the pages, and asked
    for notes on where tension builds, sags and releases and on the main
    arcs. A note that names a scene not in the script is dropped and
-   counted. Writes nothing.
+   counted. Writes nothing until Accept: each ticked note names one
+   scene, so it goes to that scene's reader note (the analysis row
+   carries the linked row id), else a sticky note (keepNotes above).
    ============================================================ */
 function tensionRead(c) {
   const els = scriptElements(c);
@@ -1586,8 +1890,17 @@ const tensionTask = {
     });
     const res = SA.readTensionNotes(parsed, a);
     if (!res.notes.length && !res.summary) fail('The reply held no usable notes, so nothing is shown.');
-    return { text: SA.tensionNotesText(res) + (model ? '\n\nRead by ' + model + '.' : '') };
-  }
+    const label = { tension: 'Tension', arc: 'Arc', structure: 'Structure' };
+    const items = res.notes.map((n, k) => {
+      const r = a.scenes.find((x) => String(x.number) === n.scene) || {};
+      const kind = label[n.kind] + (n.character ? ' · ' + n.character : '');
+      return { id: 't' + k, text: 'Sc ' + n.scene + ' · ' + kind + ' — ' + n.note, keep: kind + ' — ' + n.note,
+        where: 'Sc ' + n.scene, scene: { sceneId: r.sceneId || '', i: Number.isInteger(r.i) ? r.i : undefined, n: n.scene, heading: r.heading || '' } };
+    });
+    return { text: SA.tensionNotesText(res) + (model ? '\n\nRead by ' + model + '.' : '')
+      + (items.length ? '\n\nTick the notes to keep and press Accept: each goes to its scene’s reader note.' : ''), items };
+  },
+  apply(selected, ctx) { return keepNotes(selected, ctx, 'Tension notes'); }
 };
 
 /* ============================================================
@@ -1739,10 +2052,13 @@ const audienceTask = {
    script blob to keep a document in, and the story record has no
    field for it — keeping one would need a new field in fms_story_v1
    (a contract with saved work) for something the writer can re-run
-   for one request. So it writes nothing: the answer is resultText()
+   for one request. So the RUN is not kept: the answer is resultText()
    prose and the note, and the last run is remembered for this visit
    only, which is what 'audience-ask' reads when there is no kept
-   screenplay run.
+   screenplay run. What CAN be kept is the points: the same rows the
+   full test lists (resultItems), ticked, become sticky notes on Accept
+   (keepNotes — a beat or passage is not a scene, so none goes to the
+   scene list). Until then the read still says "Nothing was saved".
 
    THE BEATS are the framework's beats in order, numbered by their
    place in it: each one's written steps (an unplaced step joins the
@@ -1787,7 +2103,7 @@ function quickText(res) {
   const text = AudM.resultText(res);
   const extra = AudM.resultNote(res).split('\n').filter((l) => l && !text.includes(l));
   return text + (extra.length ? '\n\n' + extra.join('\n') : '')
-    + '\n\nNothing was saved. Run it again after you change the story.';
+    + '\n\nNothing was saved. Run it again after you change the story, or tick the points to keep and press Accept to save them as sticky notes.';
 }
 
 const audienceQuickTask = {
@@ -1827,8 +2143,10 @@ const audienceQuickTask = {
       context: withRefineContext(BP.blueprintContext(), refine),
       refine: [refineText(refine), extra].filter(Boolean).join('\n\n')
     }, { onStatus, signal });
-    return remember('audience-quick', { text: quickText(res) }, { res });
-  }
+    const items = AudM.resultItems(res).map((it) => ({ ...it, keep: it.text + (it.detail ? ' (' + it.detail + ')' : '') }));
+    return remember('audience-quick', { text: quickText(res), items }, { res });
+  },
+  apply(selected, ctx) { return keepNotes(selected, ctx, 'Audience test — story'); }
 };
 
 /* ============================================================
@@ -1838,7 +2156,10 @@ const audienceQuickTask = {
    Plan §10 item 4. One question to one simulated viewer of a run
    already made, in ONE request (AI.askAudienceViewer) that carries
    that viewer's record — their curve, moments, walkout and verdict —
-   and not the pages. Writes nothing.
+   and not the pages. Writes nothing until Accept: the answer is one
+   item (a sticky note) and each scene it rests on is one more (that
+   scene's reader note, when the run was of the screenplay; a beat or a
+   passage of the story run is a sticky note) — keepNotes above.
 
    WHICH RUN: ctx.result when the caller hands one over, else the
    newest of the kept screenplay run (audience-store latest(), from
@@ -1926,8 +2247,18 @@ const audienceAskTask = {
     const out = await AI.askAudienceViewer({
       result: res, viewer: p ? p.id : '', question, title, refine: refineText(refine), headings: res.headings
     }, { onStatus, signal });
-    return { text: AudM.askText(out, { res, viewer: out.viewer, question, model: out.model }) };
-  }
+    const who = (res.panel.find((x) => x.id === out.viewer) || { label: out.viewer }).label;
+    const tag = res.unit === 'Beat' || res.unit === 'Passage' ? res.unit : 'Sc';
+    const items = [{ id: 'answer', text: who + ': “' + out.answer + '”', detail: 'You asked: ' + question,
+      keep: who + ' (asked “' + question.slice(0, 200) + '”): “' + out.answer + '”' }]
+      .concat(out.cites.map((ct, k) => ({
+        id: 'cite' + k, text: tag + ' ' + ct.scene + (ct.note ? ' — ' + ct.note : ''), detail: who + ', answering: ' + question.slice(0, 200),
+        keep: who + ': ' + (ct.note || out.answer), where: tag + ' ' + ct.scene,
+        scene: tag === 'Sc' ? { n: ct.scene, heading: ((Array.isArray(res.headings) ? res.headings : []).find((x) => String(x.n) === ct.scene) || {}).heading || '' } : null
+      })));
+    return { text: AudM.askText(out, { res, viewer: out.viewer, question, model: out.model }), items };
+  },
+  apply(selected, ctx) { return keepNotes(selected, ctx, 'Ask a viewer'); }
 };
 
 /* ============================================================
@@ -1935,6 +2266,15 @@ const audienceAskTask = {
    ------------------------------------------------------------
    'blocking-draft'    ctx { sceneId, prompt?, after?(blockId|null), say? }
    'blocking-enhance'  ctx { sceneId, blockId, prompt?, after?(blockId|null), say? }
+                       blockId is the diagram SHOWN: the floor plan or one
+                       shot's diagram (a shot's carries the floor as
+                       read-only context, and may not touch the set).
+
+   ONE FLOOR, ONE DIAGRAM PER SHOT (1 Nov 2026). The draft used to come
+   back as one setup holding every shot's camera — six shots, six cameras
+   on one map, which is not a diagram anybody tapes out. It now comes back
+   as the scene's floor (set, 180° line, width, where people start) and a
+   diagram per shot, each naming one of the shot ids the job sent.
 
    The job is the scene as the model needs it to stage it: number,
    heading, synopsis, the script text matched by matchScenes() (the
@@ -1950,9 +2290,12 @@ const audienceAskTask = {
    the same schema.
 
    WRITES go through shots.js only, ONE write per Accept:
-     draft    a new block built from blankBlock/blankMark/blankSetPiece
-              holding only the ticked parts, written with replaceBlock
-              (which inserts it); Undo removes exactly that id.
+     draft    blocking-ai-model.js planDraftApply() decides (pure, Node-
+              tested): the floor gains only what it lacks, a shot already
+              drawn by a person is SKIPPED and said so, shot.cam is filled
+              only where blank; shots.js writeBlocking() writes it all at
+              once; Undo is undoBlocking(), which reverts only rows still
+              exactly as written.
      enhance  the ticked ops applied to a copy of the CURRENT block
               (applyBlockOps — an op naming a mark deleted since the run
               is skipped), written with replaceBlock; Undo writes back
@@ -1989,7 +2332,8 @@ function sceneCharacters(scene, slice) {
 function setupLine(b) {
   const count = (k) => (b.marks || []).filter((m) => m.kind === k).length;
   const cams = (b.marks || []).filter((m) => m.kind === 'camera').map((m) => m.label).filter(Boolean);
-  return (b.name || 'Setup') + ': ' + plural(count('actor'), 'actor', 'actors') + ', '
+  return (b.shotId ? 'diagram of shot id ' + b.shotId + ' “' + (b.name || 'Shot') + '”' : 'floor “' + (b.name || 'Setup') + '”') + ': '
+    + plural(count('actor'), 'actor', 'actors') + ', '
     + plural(count('camera'), 'camera', 'cameras') + (cams.length ? ' (' + cams.join(', ') + ')' : '')
     + (Array.isArray(b.set) && b.set.length ? ', ' + plural(b.set.length, 'set piece', 'set pieces') : '');
 }
@@ -2005,7 +2349,7 @@ function blockingJob(c, { withBlock = false } = {}) {
   const slice = pair ? pair.slice : null;
   const cams = ShotsM.sceneCameras(scene.id);
   const shots = ShotsM.listShots().filter((s) => s.sceneId === scene.id).map((s) => ({
-    number: s.number, size: s.size, angle: s.angle, movement: s.movement, lens: s.lens,
+    id: s.id, number: s.number, size: s.size, angle: s.angle, movement: s.movement, lens: s.lens,
     setup: ShotsM.setupOf(s, cams), description: s.description
   }));
   const blocks = ShotsM.blocksOfScene(scene.id);
@@ -2020,6 +2364,12 @@ function blockingJob(c, { withBlock = false } = {}) {
     const block = findBlock(c.blockId);
     if (!block || block.sceneId !== scene.id) fail('That setup is no longer on this scene. Pick one to review.');
     job.block = block;
+    /* A shot's diagram is reviewed over its floor: the model sees the set
+       and the line, and is told they are not its to change. */
+    if (block.shotId) {
+      const floor = ShotsM.floorOf(scene.id, blocks);
+      if (floor) job.floor = floor;
+    }
   }
   return job;
 }
@@ -2047,10 +2397,14 @@ const blockingDraftTask = {
     const job = blockingJob(resolve(ctx));
     const user = String(input ?? '').trim() ? String(input) : '';
     const res = await AI.draftBlocking({ ...job, user }, { onStatus, signal, refine: refineText(refine) });
-    const items = BlockAI.draftItems(res, { charName: charNamer(job) });
+    const byId = new Map(job.shots.map((s) => [s.id, s]));
+    const shotLabel = (id) => { const s = byId.get(id); return s ? '#' + (s.number || '?') + (s.size ? ' ' + s.size : '') + (s.lens ? ' ' + s.lens : '') : ''; };
+    const items = BlockAI.draftItems(res, { charName: charNamer(job), shotLabel });
     if (!items.length) fail('The model came back with nothing to place. Nothing was added.');
+    const f = res.floor || {};
     const note = [
-      'Setup “' + (res.name || 'Untitled') + '”' + (res.widthM ? ', floor ' + res.widthM + ' m wide' : '') + (res.note ? ': ' + res.note : '.'),
+      'Floor “' + (f.name || 'Untitled') + '”' + (f.widthM ? ', ' + f.widthM + ' m wide' : '') + (f.note ? ': ' + f.note : '.'),
+      plural(res.shots.length, 'shot diagram', 'shot diagrams') + ', one camera each.',
       res.dropped ? plural(res.dropped, 'piece was', 'pieces were') + ' not usable and left out.' : '',
       res.truncated ? 'The reply was cut short, so some pieces may be missing.' : ''
     ].filter(Boolean).join(' ');
@@ -2060,37 +2414,43 @@ const blockingDraftTask = {
     const c = resolve(ctx);
     const mem = recall('blocking-draft', result);
     if (!mem) fail('There is no blocking to keep. Run it first.');
-    if (typeof ShotsM.replaceBlock !== 'function') fail('This build cannot write a setup yet. Nothing was changed.');
+    if (typeof ShotsM.writeBlocking !== 'function') fail('This build cannot write a setup yet. Nothing was changed.');
     const pick = BlockAI.pickDraft(mem.draft, selected);
-    if (!pick.marks.length && !pick.set.length && !pick.axis) return null;
-    const d = mem.draft;
-    const name = d.name || ShotsM.nextBlockName(ShotsM.blocksOfScene(mem.sceneId));
-    const makePiece = typeof ShotsM.blankSetPiece === 'function' ? ShotsM.blankSetPiece : (p) => p;
-    const block = ShotsM.blankBlock({
-      sceneId: mem.sceneId, name, note: d.note, widthM: d.widthM,
-      marks: pick.marks.map((m) => ShotsM.blankMark({ ...m })),
-      set: pick.set.map((p) => makePiece({ ...p })),
-      axis: pick.axis ? { ...pick.axis } : null
+    if (!pick.floor && !pick.shots.length) return null;
+    const blocks = ShotsM.listBlocks();
+    const shots = ShotsM.listShots();
+    const plan = BlockAI.planDraftApply(pick, {
+      sceneId: mem.sceneId,
+      floor: ShotsM.floorOf(mem.sceneId, blocks),
+      blockOfShot: (id) => ShotsM.blockOfShot(id, blocks),
+      shotOf: (id) => shots.find((s) => s.id === id && s.sceneId === mem.sceneId) || null,
+      floorName: 'Floor plan',
+      make: { block: ShotsM.blankBlock, mark: ShotsM.blankMark, piece: ShotsM.blankSetPiece }
     });
-    const saved = ShotsM.replaceBlock(block);
-    const id = (saved && saved.id) || block.id;
-    const wrote = JSON.parse(JSON.stringify(saved || block));
-    call(c.say, 'Added the setup “' + name + '”.');
-    call(c.after, id);
-    /* Undo takes away only what this wrote: the whole setup while it is
-       still exactly that, else just the written pieces still as written
-       (anything added or edited since stays). */
+    const skipped = plan.skipped.length
+      ? plural(plan.skipped.length, 'shot already has', 'shots already have') + ' a diagram you drew, so ' + (plan.skipped.length === 1 ? 'it was' : 'they were') + ' left as ' + (plan.skipped.length === 1 ? 'it is.' : 'they are.')
+      : '';
+    if (!plan.blocks.length) {
+      call(c.say, ['Nothing was added.', skipped || 'The floor plan already has all of it.'].join(' '));
+      return null;
+    }
+    const snap = ShotsM.writeBlocking({ blocks: plan.blocks, cams: plan.cams });
+    call(c.say, [
+      plan.floorAdded ? 'Floor plan: ' + plural(plan.floorAdded, 'thing', 'things') + ' added.' : '',
+      plan.shotsMade ? plural(plan.shotsMade, 'shot diagram', 'shot diagrams') + ' added.' : '',
+      snap.cams.length ? plural(snap.cams.length, 'shot is', 'shots are') + ' now linked to its camera.' : '',
+      skipped
+    ].filter(Boolean).join(' '));
+    const firstShot = plan.blocks.find((b) => b.shotId);
+    call(c.after, firstShot ? firstShot.id : plan.blocks[0].id);
+    /* Undo takes away only what this wrote, and only while it is still
+       exactly as written (shots.js undoBlocking): a diagram edited since,
+       or a shot whose camera was re-picked, stays as the person left it. */
     return () => {
-      const now = findBlock(id);
-      if (!now) { call(c.say, 'That setup has already been deleted. Nothing to undo.'); return; }
-      const { block: left, reverted, kept } = BlockAI.undoBlockOps({ marks: [], set: [], axis: null }, wrote, now);
-      if (!kept && !left.marks.length && !left.set.length && now.name === wrote.name && (now.note || '') === (wrote.note || '')) {
-        ShotsM.removeBlock(id); call(c.after, null); return;
-      }
-      if (reverted) { call(c.before, id); ShotsM.replaceBlock(left); }
-      call(c.say, 'Kept the setup “' + (now.name || name) + '”: it has changed since. '
-        + (reverted ? 'Took out what the AI added and you had not changed.' : 'Nothing the AI added was left unchanged.'));
-      call(c.after, id);
+      const { reverted, kept } = ShotsM.undoBlocking(snap);
+      if (kept) call(c.say, plural(kept, 'diagram has', 'diagrams have') + ' changed since and ' + (kept === 1 ? 'was' : 'were') + ' left as ' + (kept === 1 ? 'it is.' : 'they are.'));
+      else if (!reverted) call(c.say, 'Nothing to undo: it has all changed since.');
+      call(c.after, null);
     };
   }
 };
@@ -2151,7 +2511,15 @@ const blockingEnhanceTask = {
 /* ---- registration ------------------------------------------- */
 const ALL_TASKS = [coverageTask, dialogueTask, critiqueTask, storyStepsTask, storyMapTask, shotTask, sceneStoryTask, synopsisTask,
   genScenesTask, genBatchTask, voiceTask, loglineTask, genreTask, sceneNotesTask, tagsTask, boardTask, tensionTask, audienceTask,
-  audienceQuickTask, audienceAskTask, blockingDraftTask, blockingEnhanceTask];
+  audienceQuickTask, audienceAskTask, blockingDraftTask, blockingEnhanceTask,
+  ...Preprod.TASKS, ...Post.TASKS, ...Story.TASKS];
+const LANES = [Preprod, Post, Story];
+/* A lane's read that sets `keepAs` keeps its ticked points as notes,
+   the way the reads here do (keepNotes above). Set here because the lane
+   modules cannot import this file, which imports them. */
+for (const t of [...Preprod.TASKS, ...Post.TASKS, ...Story.TASKS]) {
+  if (t.kind === 'read' && t.keepAs && typeof t.apply !== 'function') t.apply = (selected, ctx) => keepNotes(selected, ctx, t.keepAs);
+}
 let registered = false;
 
 /** Register every task with the Desk (idempotent), and resolve once
@@ -2164,7 +2532,7 @@ export function registerAll(register) {
     registered = true;
     for (const t of ALL_TASKS) register(t);
   }
-  return loadAll();
+  return Promise.all([loadAll(), ...LANES.map((m) => m.load())]).then(() => true);
 }
 
 export const TASK_IDS = ALL_TASKS.map((t) => t.id);

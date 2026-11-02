@@ -69,6 +69,7 @@ import { mountStageGuide } from '../ui/stage-guide.js';
 import Shots from '../lib/shots.js';
 import { pageHeader, statCard, statStrip, meter, button, chip, field, panel } from '../ui/kit/index.js';
 import { sym } from '../ui/kit/util.js';
+import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
 
 const app = document.getElementById('app');
 
@@ -328,7 +329,7 @@ function render(focus) {
     title: 'Day ' + pad(day.day) + '.',
     sub: day.date ? niceDate(day.date) : 'This day has no date yet — set one on the Plan’s calendar and the page can find it on the morning.',
     meta: isToday ? [h('span.sd-live', {}, [h('span.sd-dot.is-live', { 'aria-hidden': 'true' }), h('span', { text: 'Today' })])] : [],
-    actions: [sheet
+    actions: [aiPill({ label: 'Wrap summary', tasks: ['day-wrap-summary'], ctx: () => ({ day: day.day }) }), sheet
       ? button({ label: 'View call sheet', icon: 'description', href: 'contacts.html?sheet=' + encodeURIComponent(sheet.id) + '#call-sheets',
           attrs: { title: 'Open ' + (sheet.title || 'the call sheet') + ' on Call sheets' } })
       : button({ label: 'Make the call sheet', icon: 'description', variant: 'ghost', href: 'contacts.html?day=' + day.day + '#call-sheets' })]

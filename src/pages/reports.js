@@ -36,6 +36,9 @@ import { h, delegate } from '../lib/dom.js';
 import { isDisabledEverywhere } from '../lib/plan-gate.js';
 import { pageHeader, statStrip, statCard, button } from '../ui/kit/index.js';
 import PDF from '../lib/pdf.js';
+import { sidesScript } from '../lib/sides-script.js';
+import { GEOMETRY } from '../lib/screenplay-export.js';
+import { loadScript } from '../lib/script.js';
 import { printOnly, scrollBox, th, td } from '../ui/script-reports.js';
 import Scenes, {
   INT_EXT, DAY_NIGHT, ELEMENT_CATEGORIES, formatEighths, totalEighths
@@ -279,7 +282,28 @@ function renderReports(scenes, numbers) {
 }
 
 /* ---- sides -------------------------------------------------- */
-function sideBlock(scene, number) {
+/* The scene's script, as it prints. `doc` is read once per render by
+   sidesBody; a scene that cannot be paired with confidence says so. */
+function scriptBlock(scene, doc) {
+  const box = h('div.rp-side-script', { 'aria-label': 'Script pages for this scene' });
+  const found = doc ? sidesScript(scene, doc.elements, doc.numbering) : null;
+  if (!found) {
+    box.append(h('p.rp-side-script-none', { text: 'The script pages for this scene could not be matched.' }));
+    return box;
+  }
+  box.append(h('p.rp-side-script-pg', { text: (found.firstPage ? 'Script page ' + found.firstPage + ' · ' : '') + found.pages + (found.pages === 1 ? ' page' : ' pages') }));
+  for (const el of found.elements) {
+    const g = GEOMETRY[el.type] || GEOMETRY.action;
+    const p = h('p.rp-sc-el.rp-sc-' + (GEOMETRY[el.type] ? el.type : 'action'), { text: el.text });
+    p.style.setProperty('--sc-indent', g.indent + 'ch');
+    p.style.setProperty('--sc-width', g.width + 'ch');
+    if (g.align === 'right') p.dataset.align = 'right';
+    box.append(p);
+  }
+  return box;
+}
+
+function sideBlock(scene, number, doc) {
   const block = h('article.rp-side');
   block.append(h('div.rp-side-bar', {}, [
     h('span.rp-side-no', { text: number }),
@@ -304,6 +328,7 @@ function sideBlock(scene, number) {
     ]));
   }
   if (any) block.append(els);
+  block.append(scriptBlock(scene, doc));
   return block;
 }
 
@@ -322,7 +347,9 @@ function sidesBody(scenes, numbers) {
       text: plural(chosen.length, 'scene', 'scenes') + ' · ' + formatEighths(totalEighths(chosen)) + ' pages'
     })
   ])];
-  for (const scene of chosen) out.push(sideBlock(scene, numbers.get(scene.id)));
+  let doc = null;
+  try { doc = loadScript(); } catch (e) { doc = null; }
+  for (const scene of chosen) out.push(sideBlock(scene, numbers.get(scene.id), doc));
   return out;
 }
 

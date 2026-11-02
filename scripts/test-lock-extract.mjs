@@ -121,6 +121,14 @@ eq(P.extractExtras(sliceOf('e0')), [], 'the kitchen has no extras');
   eq(after.find((s) => s.id === 'sc_bus').synopsis, 'Typed by me.', 'undo never touches a typed synopsis');
 }
 
+/* ---- 5a. a cue's capitals as a role (QA r1 F) ------------------ */
+{
+  const cases = [["RAGAVAN'S FATHER", "Ragavan's Father"], ['HR MANAGER', 'HR Manager'], ["O'BRIEN", "O'Brien"],
+    ['MR. SHARMA', 'Mr. Sharma'], ['DR RAO', 'Dr Rao'], ['JEAN-LUC', 'Jean-Luc'], ['DJ', 'DJ'],
+    ['RAVI', 'Ravi'], ['Priya Rao', 'Priya Rao'], ["DON'T", "Don't"]];
+  cases.forEach(([inp, want]) => eq(S.niceName(inp), want, `niceName(${inp})`));
+}
+
 /* ---- 5. cast contacts ------------------------------------------ */
 {
   fresh();

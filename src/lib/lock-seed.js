@@ -41,11 +41,26 @@ function stable(v) {
   return JSON.stringify(v === undefined ? null : v);
 }
 
-/** A cue's capitals read as "Ravi"; a name already in mixed case is left. */
-function niceName(name) {
+/** A cue's capitals read as "Ravi"; a name already in mixed case is left.
+    Two readings the plain "capital after a break" rule got wrong (QA r1 F):
+    a possessive or contraction tail after an apostrophe stays lower
+    ("RAGAVAN'S" is "Ragavan's", not "Ragavan'S"; "O'BRIEN" still reads
+    "O'Brien"), and a word with no vowel is an initialism and keeps its
+    capitals ("HR MANAGER" is "HR Manager", "DJ", "TV") — bar the honorifics
+    that also have none (Mr, Mrs, Ms, Dr, St, Jr, Sr). */
+const NO_VOWEL_TITLES = new Set(['mr', 'mrs', 'ms', 'dr', 'st', 'jr', 'sr']);
+export function niceName(name) {
   const s = String(name || '').trim();
   if (/[a-z]/.test(s)) return s;
-  return s.toLowerCase().replace(/(^|[\s'’-])([a-z])/g, (m, a, b) => a + b.toUpperCase());
+  return s.split(/(\s+|-)/).map((w) => {
+    const low = w.toLowerCase();
+    const letters = low.replace(/[^a-z]/g, '');
+    if (letters.length >= 2 && !/[aeiouy]/.test(letters) && !NO_VOWEL_TITLES.has(letters)) return w;
+    return low.replace(/(^|['’])([a-z]+)/g, (m, a, b) => {
+      if (a && /^(s|t|d|m|ll|re|ve)$/.test(b)) return a + b;
+      return a + b[0].toUpperCase() + b.slice(1);
+    }).replace(/^([^a-zA-Z]*)([a-z])/, (m, a, b) => a + b.toUpperCase());
+  }).join('');
 }
 
 /* ---- cast contacts -------------------------------------------- */

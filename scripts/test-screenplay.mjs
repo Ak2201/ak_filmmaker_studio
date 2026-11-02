@@ -334,7 +334,7 @@ ok(ms < 1200, `120-page parse + tag + estimate in ${ms}ms (budget 1200ms; parse 
   const dual = [
     E('scene', 'INT. TEA STALL - NIGHT'),
     E('character', 'RAVI'), E('dialogue', 'We are not doing this tonight. Not here, not in front of everyone.'),
-    E('character', 'MEENA', { dual: true }), E('paren', 'over him'), E('dialogue', 'Then when?'),
+    E('character', 'MEENA', { dual: true }), E('paren', '(over him)'), E('dialogue', 'Then when?'),
     E('action', 'The kettle screams.'),
     E('character', 'RAVI'), E('dialogue', 'Turn it off.')
   ];

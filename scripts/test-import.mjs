@@ -417,7 +417,7 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   eq(plan.format, 'docx', 'docx: the format is Word');
   eq(plan.formatLabel, 'Word screenplay', 'docx: and the preview says so');
   eq(plan.elements.map((e) => e.type + ':' + e.text), [
-    'scene:INT. HOSTEL ROOM - NIGHT', 'action:Arun stares at the board.', 'character:ARUN', 'paren:quietly',
+    'scene:INT. HOSTEL ROOM - NIGHT', 'action:Arun stares at the board.', 'character:ARUN', 'paren:(quietly)',
     'dialogue:I will finish this.', 'transition:CUT TO:', 'scene:EXT. ROOF - DAWN', 'action:Meera waits.'
   ], 'docx (styled): every element by its style, the title page left out, capitals where a screenplay wears them');
   eq(plan.scenes.length, 2, 'docx (styled): two scenes');
@@ -563,7 +563,7 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   ok(pn.warnings.some((w) => /revision/i.test(w)), '13: a skipped revision header is reported');
 
   // 14 — a shouted line inside a speech stays dialogue
-  const hey = [E('scene', 'INT. A - DAY'), E('character', 'RAVI'), E('dialogue', 'HEY'), E('paren', 'beat'), E('dialogue', 'Get over here.')];
+  const hey = [E('scene', 'INT. A - DAY'), E('character', 'RAVI'), E('dialogue', 'HEY'), E('paren', '(beat)'), E('dialogue', 'Get over here.')];
   const hb = I.parseScript(S.toFountain({ elements: hey }, { title: 'T', date: '2026-10-06' }), 'h.fountain');
   eq(shape(hb.elements), shape(hey), '14: fountain round trip keeps "HEY" as RAVI\'s dialogue');
   const stop = I.parseScript('INT. A - DAY\n\nMANI\nSTOP\nYou heard me.', 's.fountain');
@@ -572,7 +572,7 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   const pasted = I.parseScript('INT. A - DAY\n\nRain falls.\nRAVI\nHello there.\nMANI\nHi.', 'p.fountain');
   eq(pasted.elements.filter((e) => e.type === 'character').map((e) => e.text), ['RAVI', 'MANI'], '14: cues inside an action block with no blank lines are still found');
   const shout = I.parseScript('INT. A - DAY\n\nRAVI\nHEY\n(beat)\nGet over here.\nEXT. B - NIGHT', 'm.fountain');
-  eq(shape(shout.elements), ['scene:INT. A - DAY', 'character:RAVI', 'dialogue:HEY', 'paren:beat', 'dialogue:Get over here.', 'scene:EXT. B - NIGHT'],
+  eq(shape(shout.elements), ['scene:INT. A - DAY', 'character:RAVI', 'dialogue:HEY', 'paren:(beat)', 'dialogue:Get over here.', 'scene:EXT. B - NIGHT'],
     '14: a speech split by a glued heading still keeps a capitalised line under its cue as dialogue');
   const bareRev = I.parseScript('INT. A - DAY\n\nThe plan, one word on it:\n\nRevised\n\nHe tears it up.', 'r.txt');
   eq(bareRev.elements.map((e) => e.text), ['INT. A - DAY', 'The plan, one word on it:', 'Revised', 'He tears it up.'], '13: a bare "Revised" in the body of a .txt is action');
@@ -586,8 +586,18 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   const conv2 = I.parseScript('INT. A - DAY\n\nRAVI\n(quiet)\nHi.\nMANI\nHello.', 'c2.fountain');
   eq(conv2.elements.filter((e) => e.type === 'character').map((e) => e.text), ['RAVI', 'MANI'], '14: and after a parenthetical too');
   const afterParen = I.parseScript('INT. A - DAY\n\nRAVI\n(beat)\nHEY\n(quiet)\nGo.', 'ap.fountain');
-  eq(shape(afterParen.elements), ['scene:INT. A - DAY', 'character:RAVI', 'paren:beat', 'dialogue:HEY', 'paren:quiet', 'dialogue:Go.'],
+  eq(shape(afterParen.elements), ['scene:INT. A - DAY', 'character:RAVI', 'paren:(beat)', 'dialogue:HEY', 'paren:(quiet)', 'dialogue:Go.'],
     '14: a shouted line straight after a parenthetical is dialogue, not a cue');
+  /* QA r1 B-1: a parenthetical is stored WITH one pair of brackets, as the
+     editor stores a typed one — the Writer's textarea cannot draw brackets
+     it does not hold, so a bare 'quietly' read as a bare italic line on
+     screen while the PDF printed '(quietly)'. */
+  const pq = I.parseScript('INT. A - DAY\n\nRAVI\n(quietly)\nHello.', '');
+  eq(shape(pq.elements), ['scene:INT. A - DAY', 'character:RAVI', 'paren:(quietly)', 'dialogue:Hello.'], 'B-1: an imported parenthetical keeps its brackets');
+  const pq2 = I.parseScript('INT. A - DAY\n\nRAVI\n((quietly))\nHello.', 'x.fountain');
+  eq(pq2.elements[2].text, '(quietly)', 'B-1: doubled brackets come back as exactly one pair');
+  const pq3 = I.parseScript(S.toFountain({ elements: pq.elements }, { title: 'T', date: '2026-10-06' }), 'r.fountain');
+  eq(shape(pq3.elements), shape(pq.elements), 'B-1: and a re-import is unchanged, never "((quietly))"');
   // 13 — under a Word style the style decides: a colour revision line is kept as the writer's
   const colour = [E('scene', 'INT. A - DAY'), E('action', 'Blue Rev. 03/04')];
   const cb = await viaDocx({ elements: colour });

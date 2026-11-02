@@ -83,7 +83,7 @@ ok(/w:rFonts w:ascii="Courier New"/.test(zipText), 'set in Courier New, which ev
 const laid = I.docxScreenplayText(res.paras);
 const back = I.parseScript(laid.text, 'kite.docx');
 eq(back.elements.map((e) => e.type + ':' + e.text), [
-  'scene:INT. HOSTEL ROOM - NIGHT', 'action:Arun stares at the board & the clock.', 'character:ARUN', 'paren:quietly',
+  'scene:INT. HOSTEL ROOM - NIGHT', 'action:Arun stares at the board & the clock.', 'character:ARUN', 'paren:(quietly)',
   'dialogue:நான் முடிப்பேன். I will finish this.', 'transition:CUT TO:', 'scene:EXT. ROOF - DAWN', 'shot:CLOSE ON THE KITE'
 ], 'export → import gives back every element, by type, without the title page');
 /* ...and the title page comes back as the title page (QA: it was cut as

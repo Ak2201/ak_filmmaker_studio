@@ -45,7 +45,12 @@ function strictXml(xml, label) {
 let n = 0;
 const el = (type, text, extra = {}) => ({ id: 'e' + (++n), type, text, ...extra });
 const shape = (els) => els.map((e) => [e.type, e.text, !!e.dual]);
-const printed = (els) => els.filter((e) => String(e.text ?? '').trim());
+/* What an import gives back: printed lines only, and a parenthetical
+   with exactly one pair of brackets — the editor's convention, whether
+   the source stored "quietly" or "(quietly)" (QA r1 B-1). */
+const worn = (t) => '(' + String(t).replace(/^\(+\s*|\s*\)+$/g, '').trim() + ')';
+const printed = (els) => els.filter((e) => String(e.text ?? '').trim())
+  .map((e) => (e.type === 'paren' ? { ...e, text: worn(e.text) } : e));
 
 /* ---- every element type, Tamil, dual dialogue -------------------- */
 const elements = [
@@ -177,10 +182,9 @@ const firstOf = new Set(sample.map((e) => e.id));
 ok(forced > 0 && forced <= starts.length, 'each locked page that opens on a whole element starts a new page in the file (' + forced + ' of ' + starts.length + ')');
 ok(starts.every((id) => firstOf.has(id)), 'every locked start names an element of the script');
 const pback = parseScript(pfdx, 'p.fdx');
-/* The sample stores a few parentheticals WITH their brackets; the
-   model's convention (and the importer's) is without, so compare that. */
-const bare = (els) => els.map((e) => (e.type === 'paren' ? { ...e, text: e.text.replace(/^\(+\s*|\s*\)+$/g, '').trim() } : e));
-eq(shape(pback.elements), shape(bare(printed(sample))), 'the Dragon sample round-trips whole through .fdx');
+/* The sample stores its parentheticals WITH their brackets, which is
+   what the importer gives back now: the round trip is exact. */
+eq(shape(pback.elements), shape(printed(sample)), 'the Dragon sample round-trips whole through .fdx');
 
 /* ---- revision marks ------------------------------------------------ */
 const changed = [elements[2].id, elements[11].id];

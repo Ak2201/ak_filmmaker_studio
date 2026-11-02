@@ -1282,16 +1282,20 @@ export function parseScript(raw, filename) {
     : parseFountain;
   const result = parser(raw);
 
-  /* A parenthetical is STORED without its brackets and WEARS them
-     on paper — that is the editor's convention and what
-     src/lib/screenplay-export.js re-adds when it typesets. Every
-     file format writes them, so they come off here. Without this
-     the Fountain round trip comes back one element different, and
-     three imports in a row would give you "(((quietly)))". */
+  /* A parenthetical is stored WITH exactly one pair of brackets,
+     which is how the editor keeps one: a writer types "(quietly)",
+     the auto-format's "says quietly" makes "(quietly)", and the
+     Dragon sample carries them. The Writer's line is a textarea and
+     cannot draw brackets it does not hold, so an import that stored
+     "quietly" (the old rule here) showed a bare italic line on screen
+     while the PDF printed "(quietly)" (QA r1 B-1). Every exporter and
+     paginate.js add brackets only when they are missing, so the round
+     trip is stable. The strip-then-wrap is what stops three imports in
+     a row giving you "(((quietly)))". */
   const elements = (result.elements || []).map((el) => {
     if (el.type !== 'paren') return el;
     const stripped = String(el.text).replace(/^\(+\s*|\s*\)+$/g, '').trim();
-    return stripped ? blankElement({ type: 'paren', text: stripped }) : el;
+    return stripped ? blankElement({ type: 'paren', text: '(' + stripped + ')' }) : el;
   });
   const counts = {};
   for (const el of elements) counts[el.type] = (counts[el.type] || 0) + 1;

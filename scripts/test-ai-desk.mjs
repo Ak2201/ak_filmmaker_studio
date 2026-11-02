@@ -5,6 +5,8 @@
 import { diffLines, mergeHunks, normalise } from '../src/lib/ai-diff.js';
 import { refineBlock, withRefine } from '../src/lib/ai-refine.js';
 import { readFileSync } from 'node:fs';
+import { listenSay, acceptNote, undoNote } from '../src/lib/ai-desk-outcome.js';
+import { resolve as kitResolve, call as kitCall } from '../src/lib/ai-task-kit.js';
 
 let fail = 0, pass = 0;
 function ok(cond, name, extra) {
@@ -81,6 +83,48 @@ ok(p1.system === 'S' && p1.user.startsWith('U') && p1.user.includes('1. More ten
 
 const aiSrc = readFileSync(new URL('../src/lib/ai.js', import.meta.url), 'utf8');
 ok(/export \{ refineBlock, withRefine \} from '\.\/ai-refine\.js'/.test(aiSrc), 'ai.js re-exports refineBlock');
+
+console.log('ai-desk-outcome (no second toast that contradicts the task)');
+{
+  // A lane task the way ai-tasks-preprod.js writes one: say, then null.
+  const said = [];
+  const pageCtx = () => ({ say: (m) => said.push(m), sheetId: 's1' });
+  const nothing = { apply(sel, ctx) { const c = kitResolve(ctx); kitCall(c.say, '4 fields were filled in since the run, so nothing was written.'); return null; } };
+  let l = listenSay(pageCtx);
+  const r1 = nothing.apply([], l.ctx);
+  ok(r1 === null && l.spoke() && said.length === 1, 'the page\'s say still reaches the page through the wrapped ctx');
+  ok(acceptNote(r1, l.spoke(), 'Recce ideas') === null, 'a task that said "nothing was written" gets no "applied." after it');
+  ok(l.ctx().sheetId === 's1', 'other ctx fields read through unchanged');
+
+  // A silent null (ai-tasks.js returns null when nothing was written).
+  l = listenSay({});
+  const n = acceptNote(null, l.spoke(), 'Logline');
+  ok(n && n.type === 'info' && /nothing was changed/.test(n.text) && !/applied/.test(n.text), 'a silent null says nothing was changed, never "applied."');
+  ok(acceptNote(undefined, false, 'X').text === 'X: applied.', 'a write with no undo still says applied');
+
+  // An undo that refuses because the text was edited since (callsheet-notes).
+  said.length = 0;
+  const notes = { v: '' };
+  const writer = { apply(sel, ctx) {
+    const c = kitResolve(ctx); notes.v = 'AI notes'; kitCall(c.say, 'Notes added to the call sheet.');
+    return () => { if (notes.v !== 'AI notes') { kitCall(c.say, 'The notes were edited since and are left as they are.'); return; } notes.v = ''; };
+  } };
+  l = listenSay(pageCtx);
+  const undo = writer.apply([], l.ctx);
+  notes.v = 'I rewrote these';
+  l.reset();
+  const ur = undo();
+  ok(undoNote(ur, l.spoke()) === null && notes.v === 'I rewrote these', 'a refused undo is not followed by "Undone."');
+  l.reset();
+  notes.v = 'AI notes';
+  ok(undoNote(undo(), l.spoke()) === 'Undone.' && notes.v === '', 'a silent undo that worked still says Undone.');
+  ok(undoNote(false, false) === null, 'an undo returning false refused: no "Undone."');
+
+  const deskSrc = readFileSync(new URL('../src/ui/ai-desk.js', import.meta.url), 'utf8');
+  ok(/task\.apply\(selected, heard\.ctx/.test(deskSrc) && /undoNote\(/.test(deskSrc) && /acceptNote\(/.test(deskSrc)
+    && !/toastSuccess\(label \+ ': applied\.'\)/.test(deskSrc) && !/then\(\(\) => StudioUI\.toast\('Undone\./.test(deskSrc),
+    'ai-desk.js routes Accept and Undo toasts through ai-desk-outcome.js');
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

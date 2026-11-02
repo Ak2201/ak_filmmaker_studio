@@ -55,7 +55,8 @@ for (const [id, [kind, writes]] of Object.entries(SPEC)) {
   if (!t) continue;
   ok(t.kind === kind, id + ': kind ' + kind, t.kind);
   ok(typeof t.input === 'function' && typeof t.run === 'function', id + ': input() and run()');
-  ok(writes ? typeof t.apply === 'function' : !t.apply, id + (writes ? ': has apply()' : ': read-only, no apply (writes nothing)'));
+  ok(writes ? typeof t.apply === 'function' : (!t.apply && typeof t.keepAs === 'string' && !!t.keepAs),
+    id + (writes ? ': has apply()' : ': a read: no apply of its own, keepAs set (ai-tasks.js keeps its points as notes)'));
   ok(typeof t.label === 'string' && t.label.length > 0, id + ': has a label');
   ok(t.editable !== true || kind === 'text' || kind === 'list', id + ': editable only where the input is the prompt');
 }

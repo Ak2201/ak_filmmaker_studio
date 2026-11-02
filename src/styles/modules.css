@@ -823,6 +823,11 @@ button.bd-chip.bd-sug:hover { background: var(--paper-raised); border-style: sol
   letter-spacing: 0;
 }
 .bd-reader-note { margin: var(--s2) 0 0; font-size: var(--fs-sm, 0.9rem); color: var(--ink); }
+/* The story's market reading under the Breakdown's figures (genre-comps). */
+.bd-market { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); margin: var(--s3) 0 0; font-size: var(--fs-sm, 0.9rem); color: var(--ink); }
+.bd-market-row { display: flex; gap: var(--s1); min-width: 0; }
+.bd-market dt { color: var(--ink-muted); }
+.bd-market dd { margin: 0; overflow-wrap: anywhere; }
 .bd-reader-lab { font-family: var(--f-body); font-size: 0.75em; letter-spacing: 0; text-transform: none; color: var(--accent-deep); }
 .bd-scene-songlink select { text-transform: none; letter-spacing: normal; }
 /* min-width: 0 because the card is a grid item of .bd-list, and a grid

@@ -236,6 +236,18 @@
 .st-lw-missing { color: var(--ink-muted); font-style: italic; }
 .st-lw-note { grid-column: 2; color: var(--ink-muted); }
 .st-lw-variants .ai-option { justify-items: start; }
+/* Kept variants (loglineAlts): the text, then Use this / Remove. */
+.st-lw-kept { margin-top: var(--s3); }
+.st-lw-alt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+}
+.st-lw-alt-text { flex: 1 1 16rem; min-width: 0; color: var(--ink); overflow-wrap: anywhere; }
+.st-lw-alt-acts { display: flex; gap: var(--s2); }
 @media (max-width: 520px) {
   .st-lw-part { grid-template-columns: minmax(0, 1fr); }
   .st-lw-note { grid-column: 1; }

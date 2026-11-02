@@ -94,7 +94,32 @@ function renderHeader(scenes) {
     ] : null
   });
   head.append(statStrip(kpis(scenes, eighths), { class: 'bd-kpis', label: 'The breakdown in figures' }));
+  const market = renderMarket();
+  if (market) head.append(market);
   return head;
+}
+
+/* Where the film sits in the market: what the Desk's 'Genre and
+   comparables' saved on the story (genre, tone, budget tier and its
+   why, audience, comps). Shown beside the pill that writes it, so an
+   Accept lands somewhere a person can read; drawn only when something
+   is set, so an untouched project's header (and the baseline) is
+   unchanged. Read from story.js on every render, never copied. */
+const TIER_NAMES = { micro: 'Micro', low: 'Low', mid: 'Mid', high: 'High' };
+function renderMarket() {
+  let s;
+  try { s = loadStory(); } catch (e) { return null; }
+  const tier = TIER_NAMES[s.budgetTier] || '';
+  const rows = [
+    ['Genre', s.genre],
+    ['Tone', s.tone],
+    ['Budget tier', tier ? tier + (s.budgetWhy ? ' — ' + s.budgetWhy : '') : ''],
+    ['Plays to', s.audience],
+    ['Comparables', (s.comps || []).map((c) => c.title + (c.year ? ' (' + c.year + ')' : '')).join(', ')]
+  ].filter(([, v]) => String(v || '').trim());
+  if (!rows.length) return null;
+  return h('dl.bd-market', { 'aria-label': 'Where the film sits in the market' },
+    rows.map(([k, v]) => h('div.bd-market-row', {}, [h('dt', { text: k }), h('dd', { text: v })])));
 }
 
 /* Six figures, all derived from the scene model on render. A figure with

@@ -375,6 +375,48 @@ await pro('(b4) callsheet-notes', async (page) => {
   noPrivate('callsheet-notes');
 });
 
+/* The Desk does not contradict a task that already spoke
+   (src/lib/ai-desk-outcome.js): no "applied." after "nothing was
+   changed", no "Undone." after "left as they are". */
+const toastTexts = (page) => page.evaluate(() => [...document.querySelectorAll('.toast')].map((t) => t.textContent || ''));
+await pro('(b5) callsheet-notes: no contradicting Desk toast', async (page) => {
+  await page.goto(BASE + '/contacts.html#call-sheets', { waitUntil: 'networkidle' });
+  await planKnown(page);
+  await openDesk(page, '.ct-ai-row .ai-pill', 'callsheet-notes');
+  await run(page);
+  await page.evaluate(() => {
+    const k = Object.keys(localStorage).find((x) => x.startsWith('fms_contacts_v1'));
+    const b = JSON.parse(localStorage.getItem(k)); b.callSheets[0].notes = 'Typed meanwhile'; localStorage.setItem(k, JSON.stringify(b));
+  });
+  await page.click('aside.ai-desk [data-action="ai-desk-accept"]');
+  await page.waitForTimeout(1200);
+  let t = await toastTexts(page);
+  ok(t.some((x) => /since the run, so nothing was changed/.test(x)) && !t.some((x) => /applied\./.test(x)),
+    'an Accept that wrote nothing is not followed by "applied."', t);
+  ok((await read(page, 'fms_contacts_v1')).callSheets[0].notes === 'Typed meanwhile', 'and the typed notes stand');
+
+  await page.evaluate(() => {
+    const k = Object.keys(localStorage).find((x) => x.startsWith('fms_contacts_v1'));
+    const b = JSON.parse(localStorage.getItem(k)); b.callSheets[0].notes = ''; localStorage.setItem(k, JSON.stringify(b));
+    document.querySelectorAll('.toast').forEach((n) => n.remove());
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+  await planKnown(page);
+  await openDesk(page, '.ct-ai-row .ai-pill', 'callsheet-notes');
+  await run(page);
+  await page.click('aside.ai-desk [data-action="ai-desk-accept"]');
+  await page.waitForTimeout(1200);
+  await page.evaluate(() => {
+    const k = Object.keys(localStorage).find((x) => x.startsWith('fms_contacts_v1'));
+    const b = JSON.parse(localStorage.getItem(k)); b.callSheets[0].notes = 'I rewrote these'; localStorage.setItem(k, JSON.stringify(b));
+  });
+  await undo(page);
+  t = await toastTexts(page);
+  ok(t.some((x) => /edited since and are left as they are/.test(x)) && !t.some((x) => /^Undone\./.test(x.trim())),
+    'a refused Undo is not followed by "Undone."', t);
+  ok((await read(page, 'fms_contacts_v1')).callSheets[0].notes === 'I rewrote these', 'and the rewritten notes stand');
+});
+
 await pro('(c) callsheet-notes refuses typed notes', async (page) => {
   await page.goto(BASE + '/contacts.html#call-sheets', { waitUntil: 'networkidle' });
   await planKnown(page);

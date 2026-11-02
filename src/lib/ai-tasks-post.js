@@ -13,8 +13,13 @@
      edit-notes         list   edit.html, EMPTY per-scene notes only
      cert-read          read   deliverables.html#certification
 
-   The three reads change nothing and say so. edit-notes is the only
-   writer: Accept fills a scene's edit note that is empty NOW (re-read
+   The three reads change nothing at Run. Their points are also items
+   (ai-post-model.js changesItems / wrapItems / certItems), and Accept
+   keeps the ticked ones as notes through ai-tasks.js keepNotes (it sets
+   their apply from `keepAs`; this lane cannot import ai-tasks.js, which
+   imports it): a wrap point naming one scene of the day goes on that
+   row's note, everything else is a sticky note; Undo removes exactly
+   those. edit-notes writes the edit log: Accept fills a scene's edit note that is empty NOW (re-read
    in apply(), not at Run) through setSceneEdit; a note typed since is
    skipped and counted. Undo restores '' only where the note still
    equals what was written. The decisions are in ai-post-model.js.
@@ -53,13 +58,14 @@ function changesJob(ctx) {
     groups: Diff.groupByScene(diff), stats: diff.stats,
     olderLabel: cmp.olderLabel, newerLabel: cmp.newerLabel
   });
-  return facts;
+  return Object.assign(facts, { labels: { olderLabel: cmp.olderLabel, newerLabel: cmp.newerLabel } });
 }
 
 const draftChangesTask = {
   id: 'draft-changes',
   label: 'Summarise changes',
   kind: 'read',
+  keepAs: 'Draft changes',
   editable: false,
   identity(ctx) { const c = resolve(ctx); return 'drafts:' + String(c.olderId || '') + '>' + String(c.newerId || ''); },
   input(ctx) {
@@ -73,7 +79,8 @@ const draftChangesTask = {
     });
     const res = M.readChanges(parsed, facts.headings);
     if (!res.summary && !res.scenes.length && !res.watch.length) fail('The reply held nothing usable, so nothing is shown.');
-    return { text: M.changesText(res, { model, truncated: truncated || facts.truncated, omitted: facts.omitted }) };
+    return { text: M.changesText(res, { model, truncated: truncated || facts.truncated, omitted: facts.omitted }),
+      items: M.changesItems(res, facts.labels) };
   }
 };
 
@@ -90,13 +97,22 @@ function wrapJob(ctx) {
       takes: takes.length, circled: takes.filter((t) => t.circled).length, floorNote: Shoot.floorNoteOf(s)
     };
   });
-  return M.wrapFacts({ day: d.day, scenes: scenes.map((s) => ({ ...s, shotState: s.shotState || 'not marked' })) });
+  /* A number two rows of the day share names neither (keepNotes would
+     guess), so it maps to nothing and the point becomes a sticky note. */
+  const byNumber = new Map();
+  for (const s of scenes) {
+    const n = String(s.number || '').trim().toUpperCase();
+    if (n) byNumber.set(n, byNumber.has(n) ? '' : s.id);
+  }
+  return Object.assign(M.wrapFacts({ day: d.day, scenes: scenes.map((s) => ({ ...s, shotState: s.shotState || 'not marked' })) }),
+    { byNumber, day: d.day });
 }
 
 const dayWrapTask = {
   id: 'day-wrap-summary',
   label: 'Wrap summary',
   kind: 'read',
+  keepAs: 'Wrap summary',
   editable: false,
   identity(ctx) { return 'day:' + String(resolve(ctx).day || ''); },
   input(ctx) {
@@ -110,7 +126,7 @@ const dayWrapTask = {
     });
     const res = M.readWrap(parsed, facts.numbers);
     if (!res.summary && !res.owed.length && !res.tomorrow.length) fail('The reply held nothing usable, so nothing is shown.');
-    return { text: M.wrapText(res, { model }) };
+    return { text: M.wrapText(res, { model }), items: M.wrapItems(res, { day: facts.day, byNumber: facts.byNumber }) };
   }
 };
 
@@ -209,6 +225,7 @@ const certReadTask = {
   id: 'cert-read',
   label: 'Certification read',
   kind: 'read',
+  keepAs: 'Certification read',
   editable: false,
   identity() { return 'cert-read'; },
   input() {
@@ -223,7 +240,7 @@ const certReadTask = {
     });
     const res = M.readCert(parsed, Cbfc.ruleById);
     if (!res.read && !res.rules.length && !res.questions.length) fail('The reply held nothing usable, so nothing is shown.');
-    return { text: M.certText(res, Cbfc.ruleById, Cbfc.DISCLAIMER, { model }) };
+    return { text: M.certText(res, Cbfc.ruleById, Cbfc.DISCLAIMER, { model }), items: M.certItems(res, Cbfc.ruleById) };
   }
 };
 

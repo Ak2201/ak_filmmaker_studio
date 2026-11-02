@@ -15,7 +15,7 @@
    trap that broke the stage menus on phones.
    ============================================================ */
 import { h } from '../../lib/dom.js';
-import { BLOCK_KINDS, SET_KINDS, blockScale, axisSides, getBlock } from '../../lib/shots.js';
+import { BLOCK_KINDS, SET_KINDS, blockScale, axisSides, getBlock, listBlocks } from '../../lib/shots.js';
 import { button, buttonGroup, field as kitField, badge } from '../kit/index.js';
 import { aiPill } from '../ai-pill.js';
 import { S, Z_MIN, Z_MAX, viewOf, toolOf, snapOf, selectedIn } from './state.js';
@@ -50,7 +50,9 @@ export function palette(block) {
   const tool = toolOf(block.id);
   const drawer = S.drawers.get(block.id) || '';
   const tools = h('div.vz-blk-tools', { role: 'group', 'aria-label': 'Tools' });
+  const shot = !!block.shotId;
   for (const m of MODES) {
+    if (shot && m.id === 'axis') continue;   // the floor's line, not this shot's
     tools.append(button({ label: m.label, icon: m.icon, size: 'sm', action: 'blk-tool', class: 'vz-tool vz-tool-mode',
       title: m.hint + ' (' + m.key + ')', attrs: { 'data-tool': m.id, 'aria-pressed': String(tool === m.id) } }));
   }
@@ -59,14 +61,15 @@ export function palette(block) {
     tools.append(button({ label: k.label, icon: KIND_ICON[k.id] || 'add', size: 'sm', action: 'blk-add-mark', class: 'vz-tool',
       title: 'Add ' + k.label.toLowerCase(), attrs: { 'data-kind': k.id } }));
   }
-  tools.append(h('span.vz-tool-sep', { 'aria-hidden': 'true' }));
-  tools.append(button({ label: 'Set pieces', icon: 'chair', iconAfter: drawer === 'set' ? 'expand_less' : 'expand_more', size: 'sm',
+  /* A shot's diagram holds only its own marks: the set is the floor's. */
+  if (!shot) tools.append(h('span.vz-tool-sep', { 'aria-hidden': 'true' }));
+  if (!shot) tools.append(button({ label: 'Set pieces', icon: 'chair', iconAfter: drawer === 'set' ? 'expand_less' : 'expand_more', size: 'sm',
     action: 'blk-drawer', class: 'vz-tool', attrs: { 'data-drawer': 'set', 'aria-expanded': String(drawer === 'set'), 'aria-controls': 'vzdr-' + block.id } }));
-  tools.append(button({ label: 'Templates', icon: 'dashboard_customize', iconAfter: drawer === 'templates' ? 'expand_less' : 'expand_more', size: 'sm',
+  if (!shot) tools.append(button({ label: 'Templates', icon: 'dashboard_customize', iconAfter: drawer === 'templates' ? 'expand_less' : 'expand_more', size: 'sm',
     action: 'blk-drawer', class: 'vz-tool', attrs: { 'data-drawer': 'templates', 'aria-expanded': String(drawer === 'templates'), 'aria-controls': 'vzdr-' + block.id } }));
 
   const wrap = h('div.vz-blk-palette', {}, [tools]);
-  if (drawer) {
+  if (drawer && !shot) {
     const items = drawer === 'set'
       ? SET_KINDS.map((k) => button({ label: SET_LABEL[k], icon: SET_ICON[k], size: 'sm', action: 'blk-add-set', class: 'vz-drawer-btn', attrs: { 'data-kind': k } }))
       : TEMPLATES.map((t) => button({ label: t.label, icon: t.icon, size: 'sm', action: 'blk-template', class: 'vz-drawer-btn', attrs: { 'data-template': t.id } }));
@@ -128,10 +131,14 @@ export function mapKey(block) {
   return key.childNodes.length ? key : null;
 }
 
-export function axisWarning(block) {
-  const sides = axisSides(block);
+/* `sides` (shots.js sceneAxisSides) checks the floor's line against every
+   camera of the scene, across its shot diagrams; the names come from the
+   whole scene for the same reason. */
+export function axisWarning(block, sceneSides = null) {
+  const sides = sceneSides || axisSides(block);
   if (!sides.crossed) return null;
-  const name = (id) => (block.marks.find((m) => m.id === id) || {}).label || 'a camera';
+  const marks = !sceneSides ? block.marks : listBlocks().filter((b) => b.sceneId === block.sceneId).flatMap((b) => b.marks);
+  const name = (id) => (marks.find((m) => m.id === id) || {}).label || 'a camera';
   const few = sides.left.length <= sides.right.length ? sides.left : sides.right;
   return h('p.vz-axis-msg', { role: 'status' }, [
     badge({ label: 'Crosses the line', tone: 'warn', dot: true }),
@@ -270,13 +277,17 @@ export function inspector(block, { chars = [], hues = new Map() } = {}) {
   }
 
   const setup = h('div.vz-blk-setup', { role: 'group', 'aria-label': 'This setup' });
-  setup.append(kitField({
+  if (block.shotId) {
+    /* The width and the line are the floor plan's; a shot's diagram only
+       reads them, so they are not offered here to be typed twice. */
+    setup.append(h('p.vz-blk-hint', { text: 'The set, the floor width and the 180° line belong to the floor plan: pick “Floor plan” above to change them. This diagram holds this shot’s camera and the actors during it.' }));
+  } else setup.append(kitField({
     kind: 'mono', label: 'Floor width', addon: 'm', value: block.widthM, placeholder: 'e.g. 12',
     class: 'vz-blk-width',
     hint: blockScale(block) ? WIDTH_SET : WIDTH_UNSET,
     attrs: { 'data-block-field': 'widthM', inputmode: 'decimal', 'aria-label': 'Floor width in metres' }
   }));
-  setup.append(h('div.vz-blk-axis', {}, block.axis
+  if (!block.shotId) setup.append(h('div.vz-blk-axis', {}, block.axis
     ? [h('p.vz-blk-sub', { text: '180° line' }),
       h('p.vz-blk-hint', { text: 'Keep every camera of this setup on one side of it. Drag its ends to move it.' }),
       button({ label: 'Clear the line', icon: 'close', size: 'sm', action: 'blk-axis-clear' })]

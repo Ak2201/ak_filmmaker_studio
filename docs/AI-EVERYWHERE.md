@@ -130,15 +130,25 @@ Schemas are JSON Schema objects with `additionalProperties:false`; every field
 - Facts: `diffElements`/`groupByScene` output reduced to per-scene counts and
   the changed lines' text (cap 12,000 chars; truncated with a note).
 - Schema `{summary:string, scenes:[{heading, change}], watch:[string]}`.
-- Apply: none (read-only). The result text ends "Changed nothing." A Copy
-  button on the Desk's read panel (see the Desk change, Lane B).
+- Apply: none at Run. The result text ends "Changed nothing." A Copy
+  button on the Desk's read panel (see the Desk change, Lane B). Since 2 Nov 2026 its points are also
+  items (`changesItems`/`wrapItems`/`certItems` in ai-post-model.js) and Accept
+  keeps the ticked ones as notes through ai-tasks.js `keepNotes` (the task sets
+  `keepAs`; registration gives it the apply): every
+  point is a sticky note headed with its heading, never a scene row (the
+  two drafts need not be the open script). Undo removes exactly those.
 
 ### 6. `day-wrap-summary` (Lane B) shoot.html
 - Pill: "Wrap summary" in the day header (`ctx: {day}`). Kind `read`.
 - Facts: the day's scenes `{number, slug, shotState, takes count, circled
   count, floorNote}` and totals; no crew, no contacts.
 - Schema `{summary:string, owed:[string], tomorrow:[string]}`; every scene named
-  is checked against the ids sent. Read-only; copy button.
+  is checked against the ids sent. Read-only at Run; copy button. Since 2 Nov 2026 its points are also
+  items (`changesItems`/`wrapItems`/`certItems` in ai-post-model.js) and Accept
+  keeps the ticked ones as notes through ai-tasks.js `keepNotes` (the task sets
+  `keepAs`; registration gives it the apply): a point
+  naming ONE scene of the day by its number goes on that row's note
+  (appended, marked AI), the rest are sticky notes. Undo removes exactly those.
 
 ### 7. `edit-notes` (Lane B) edit.html
 - Pill: "Edit notes" on the log's head. Kind `list`; item per scene
@@ -160,7 +170,11 @@ Schemas are JSON Schema objects with `additionalProperties:false`; every field
   is rendered with the ids as "[tobacco]". The prompt and the output MUST say
   it is a hint and not advice, and is not the Board's decision (the page's
   `DISCLAIMER` is appended verbatim by the task, not by the model).
-- Apply: none (read-only).
+- Apply: none at Run. Since 2 Nov 2026 its points are also
+  items (`changesItems`/`wrapItems`/`certItems` in ai-post-model.js) and Accept
+  keeps the ticked ones as notes through ai-tasks.js `keepNotes` (the task sets
+  `keepAs`; registration gives it the apply): each rule and question is a sticky note. Undo
+  removes exactly those.
 
 ### 9. `character-arcs` (Lane C) story.html (Characters & world)
 - Pill: "Draft arcs" in the Characters section head. Kind `list`; item per
@@ -222,8 +236,8 @@ so `scripts/test-ai-*.mjs` runs them in Node with no browser, in the style of
   for each task: the pill is locked without Pro; nothing is sent before Run;
   nothing written before Accept; three idle seconds write nothing; Accept
   writes exactly the allowed fields and leaves a typed value alone; Undo
-  restores only what was written; a read-only task shows no Accept and (Lane B)
-  a working Copy.
+  restores only what was written; a read task shows a working Copy and
+  (since 2 Nov 2026) keeps its points as notes with an exact Undo.
 - Before handing back: `VITE_SITE_GATE=off npx vite build --outDir <dir>`,
   `npm run test:ai-lazy` on that dir, `prove:scroll` on the touched pages (a pill
   must not move content), delete the build dir.

@@ -36,6 +36,9 @@
 import './store.js';   // must evaluate before anything reads localStorage
 import * as Script from './script.js';
 import * as Scenes from './scenes.js';
+import * as Chars from './characters.js';
+import { frameworkById } from './story.js';
+import { storyBeatKey, matchCast, untouchedCharacter } from './ai-writing-apply.js';
 
 /* ai.js and studies.js are imported DYNAMICALLY, inside the functions
    that need them, and that is a size decision rather than a style one.
@@ -230,6 +233,29 @@ export function applyScenes(patch, proposals, { replaceScenes = false, model } =
   const kept = (proposals || []).filter(Boolean);
   if (!kept.length) throw new GenError('No scenes to lay out.', 'noscenes');
 
+  /* THE CAST MEETS THE CHARACTERS PAGE. Each proposed name is joined
+     to a Characters record (name or alias) and written as that
+     record's name, so "Anbu" in the scene list and ANBU on the
+     Characters page are one person to the breakdown and the day out
+     of days. A name no record claims gets a new record holding only
+     the name; an existing record is never renamed or edited. Undo
+     removes only the records this call made, and only while they
+     still hold nothing but that name — a card filled in since is the
+     writer's now. */
+  const chars = Chars.loadCharacters();
+  const createdIds = [];
+  const castOf = kept.map((s) => {
+    const r = matchCast(chars, s.cast || [], Chars);
+    createdIds.push(...r.created);
+    return r.cast;
+  });
+  if (createdIds.length) Chars.saveCharacters(chars);
+  /* The beat each scene serves, in the scene row's own field (the
+     write page's Outline tab reads it). scriptgen's vocabulary is Save
+     the Cat's, spelled as studies.json spells it; storyBeatKey() finds
+     the same beat in the story's framework or leaves it ''. */
+  const stc = frameworkById('save_the_cat');
+
   /* Commit. Scene rows go in through blankScene() so a row this
      module writes is the same shape as a row the user typed — the
      breakdown reads `elements`, the stripboard reads `eighths`,
@@ -243,9 +269,10 @@ export function applyScenes(patch, proposals, { replaceScenes = false, model } =
     location: s.location,
     synopsis: s.synopsis,
     eighths: s.eighths,
+    beatId: storyBeatKey(s.beat, stc),
     // Cast lands in the breakdown's own vocabulary, so the element
     // index and the day-out-of-days see it without a second pass.
-    elements: (s.cast || []).length ? { cast: s.cast.slice() } : {}
+    elements: castOf[i].length ? { cast: castOf[i].slice() } : {}
   }));
   Scenes.saveScenes(existing.concat(rows));
 
@@ -254,7 +281,7 @@ export function applyScenes(patch, proposals, { replaceScenes = false, model } =
     slug: slugFor(r),
     synopsis: r.synopsis,
     eighths: r.eighths,
-    cast: (kept[i].cast || []).slice(),
+    cast: castOf[i].slice(),
     beat: kept[i].beat
   }));
   job.cursor = 0;
@@ -262,8 +289,17 @@ export function applyScenes(patch, proposals, { replaceScenes = false, model } =
   job.stage = 'pages';
   job.startedAt = new Date().toISOString();
   save(job);
-  const undo = () => { Scenes.saveScenes(prevScenes); save(prevJob); };
-  return { job, scenes: rows.length, undo };
+  const undo = () => {
+    Scenes.saveScenes(prevScenes);
+    save(prevJob);
+    if (createdIds.length) {
+      const now = Chars.loadCharacters();
+      const gone = new Set(createdIds);
+      const left = now.filter((c) => !(gone.has(c.id) && untouchedCharacter(c, Chars.CHARACTER_FIELDS)));
+      if (left.length !== now.length) Chars.saveCharacters(left);
+    }
+  };
+  return { job, scenes: rows.length, created: createdIds.length, undo };
 }
 
 /* ============================================================
@@ -340,12 +376,21 @@ export async function draftBatch({ onStatus, signal, extra = '' } = {}) {
 /**
  * Commit a drafted batch. `keep` is the list of sceneIds the writer
  * kept (null = all of them). Resolves to
- * { job, wrote, skipped, truncated, done, undo }.
+ * { job, wrote, skipped, pending, truncated, done, undo }.
  *
- * A scene the writer did not keep is skipped exactly like a scene the
- * reply missed: the cursor still moves past the WHOLE batch, because a
- * run that stops at the first gap can never finish, and the gap is
- * visible in the editor where that scene can be asked for again.
+ * THE CURSOR MOVES PAST WHAT WAS WRITTEN, AND NOTHING ELSE. It used to
+ * move past the WHOLE batch, so a scene the writer unticked (to have it
+ * drafted again) or one the reply left out was skipped for good — the
+ * run finished with a hole in the screenplay and no way to ask for that
+ * scene again. Now the batch's written scenes move up to the cursor in
+ * the order they were appended, and the rest (`pending`) stay next in
+ * line, drafted again with the next batch. The job's scene order is
+ * therefore always the order the pages were written in, which is what
+ * draftBatch's before/after continuity reads.
+ *
+ * A batch that wrote nothing changes nothing — no revision, no cursor
+ * move — so a caller that loops (write.js's bulk run) must stop on
+ * `wrote === 0` or it would ask for the same scenes forever.
  */
 export function applyBatch(draft, keep = null) {
   const prevJob = load();
@@ -357,6 +402,18 @@ export function applyBatch(draft, keep = null) {
   const prevDoc = JSON.parse(JSON.stringify(doc));
   const wanted = keep ? new Set(keep) : null;
 
+  const written = [];
+  const pending = [];
+  for (const s of draft.batch) {
+    const els = draft.byScene[s.sceneId];
+    if (!els || !els.length || (wanted && !wanted.has(s.sceneId))) pending.push(s.sceneId);
+    else written.push(s.sceneId);
+  }
+  if (!written.length) {
+    return { job: prevJob, wrote: 0, skipped: pending.length, pending, truncated: draft.truncated,
+      done: prevJob.cursor >= prevJob.scenes.length, undo: () => {} };
+  }
+
   /* Commit, in the batch's own scene order rather than the reply's,
      so a reply that returns scene 3 before scene 1 does not write
      the script out of order.
@@ -367,17 +424,20 @@ export function applyBatch(draft, keep = null) {
   if (job.cursor === 0 && doc.elements.length) {
     doc.revisions.push(Script.makeRevision(doc.elements, 'Before generated draft'));
   }
-  let wrote = 0;
-  for (const s of draft.batch) {
-    const els = draft.byScene[s.sceneId];
-    if (!els || !els.length) continue;
-    if (wanted && !wanted.has(s.sceneId)) continue;
-    for (const el of els) doc.elements.push(Script.blankElement({ type: el.type, text: el.text }));
-    wrote++;
+  for (const id of written) {
+    for (const el of draft.byScene[id]) doc.elements.push(Script.blankElement({ type: el.type, text: el.text }));
   }
   Script.saveScript(doc);
 
-  job.cursor += draft.batch.length;
+  /* The written scenes first, then the pending ones, in the slots the
+     batch occupied; everything outside the batch stays where it was. */
+  const byId = new Map(job.scenes.map((s) => [s.sceneId, s]));
+  const inBatch = new Set(draft.batch.map((s) => s.sceneId));
+  const head = job.scenes.slice(0, job.cursor);
+  const tail = job.scenes.slice(job.cursor).filter((s) => !inBatch.has(s.sceneId));
+  const mid = written.concat(pending).map((id) => byId.get(id)).filter(Boolean);
+  job.scenes = head.concat(mid, tail);
+  job.cursor += written.length;
   if (draft.truncated) job.truncations += 1;
   job.model = draft.model || job.model;
   if (job.cursor >= job.scenes.length) job.stage = 'done';
@@ -386,8 +446,9 @@ export function applyBatch(draft, keep = null) {
   const undo = () => { Script.saveScript(prevDoc); save(prevJob); };
   return {
     job,
-    wrote,
-    skipped: draft.batch.length - wrote,
+    wrote: written.length,
+    skipped: pending.length,
+    pending,
     truncated: draft.truncated,
     done: job.cursor >= job.scenes.length,
     undo

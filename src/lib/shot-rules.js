@@ -167,6 +167,11 @@ export function shotsForScene(job) {
         angle: SHOT_ANGLES.includes(shot.angle) ? shot.angle : EYE,
         movement: SHOT_MOVEMENTS.includes(shot.movement) ? shot.movement : STATIC,
         lens: shot.lens != null ? shot.lens : LENS[size],
+        // The AI draft's shape (test:shots compares the two). The rules
+        // cannot know the light or the camera positions, so they are left
+        // blank for a person to fill, never guessed.
+        rig: '',
+        setup: '',
         description: clean(shot.description).slice(0, 400)
       }
     });

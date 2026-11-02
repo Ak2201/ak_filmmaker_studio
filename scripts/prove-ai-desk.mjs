@@ -37,8 +37,8 @@
          the batch; three idle seconds with the Desk open write
          nothing; untick one, Accept → the script gained the elements
          of exactly the ticked scenes and the cursor moved past the
-         WHOLE batch; Undo restores script and cursor; Skip writes
-         nothing
+         WRITTEN scenes only, the unticked one next in line; Undo
+         restores script and cursor; Skip writes nothing
      (g) PRO + KEY — the voice check (write.html#coverage): pick a
          character with three lines → the voice-check pill → Run →
          one item per rewrite; Accept one → it is an alternate take
@@ -426,10 +426,10 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
   const sw1 = await scriptWrites(page);
   ok(sw1 - sw0 >= 1 && sw1 - sw0 <= 2, 'one Accept is one write (' + (sw1 - sw0) + ')', sw1 - sw0);
 
-  /* Undo. Scoped to the Desk's own "…: applied." toast: an Accept that
-     edits the script can also start the first scene sync, whose "N scenes
-     added to the Breakdown" toast carries its own Undo (Phase 0). */
-  const undo = page.locator('.toast', { hasText: /applied\./ }).locator('.toast-action', { hasText: /Undo/ }).last();
+  /* Undo — the Desk's OWN toast. Opening the writer with no scene rows
+     now raises the handoff's "N scenes added to the Breakdown." (Undo
+     too) after it, so `.last()` would undo the wrong thing. */
+  const undo = page.locator('.toast', { hasText: 'Dialogue pass' }).locator('.toast-action', { hasText: /Undo/ }).last();
   const hasUndo = await undo.waitFor({ state: 'visible', timeout: 3000 }).then(() => true, () => false);
   ok(hasUndo, 'an Undo toast is offered');
   if (hasUndo) await undo.click();
@@ -456,6 +456,39 @@ for (const [label, kind] of [['signed out', 'signed-out'], ['ai_tools:false', 'n
   ok(!(await deskOpen(page)), 'Skip closes the Desk');
   ok(!(await page.evaluate(() => document.documentElement.classList.contains('ai-desk-open'))), 'html.ai-desk-open is cleared');
   ok(await overflow(page) <= 0, 'no horizontal overflow at 1280', await overflow(page));
+
+  /* A read keeps notes (lane D): the beat critique of the scene at the
+     caret shows its prose AND a tick per note, with Accept; Accept
+     writes only the ticked note (a sticky note when the scene is not on
+     the scene list, its readerNote when it is); Undo takes it back. */
+  const notesNow = () => page.evaluate(() => {
+    const out = [];
+    for (const k of Object.keys(localStorage)) {
+      if (/^fms_idea_vault_v1/.test(k)) { try { out.push(...JSON.parse(localStorage.getItem(k)).map((x) => x.snippet)); } catch (e) { /* skip */ } }
+      if (/^fms_scenes_v1/.test(k)) { try { out.push(...JSON.parse(localStorage.getItem(k)).scenes.map((s) => s.readerNote || '')); } catch (e) { /* skip */ } }
+    }
+    return out.filter((t) => /AI \(Beat critique\)/.test(t));
+  });
+  await openTask(page, 'beat-critique');
+  ok(await deskOpen(page), 'the Desk opens on the beat critique');
+  ok(!(await page.locator('aside.ai-desk [data-action="ai-desk-accept"]').count()), 'before Run a read offers no Accept');
+  await page.click('aside.ai-desk [data-action="ai-desk-run"]');
+  await page.waitForSelector('aside.ai-desk .ai-desk-item input[type="checkbox"]', { timeout: 15000 }).catch(() => {});
+  ok(await page.locator('aside.ai-desk .ai-desk-readtext').count() === 1, 'the critique prose is still shown');
+  ok(await page.locator('aside.ai-desk .ai-desk-item input[type="checkbox"]').count() === 2, 'one tick per note');
+  ok(await page.locator('aside.ai-desk [data-action="ai-desk-accept"]').count() === 1, 'Accept is offered for a read that can keep notes');
+  ok((await notesNow()).length === 0, 'nothing was kept before Accept');
+  await page.locator('aside.ai-desk .ai-desk-item input[type="checkbox"]').nth(1).uncheck();
+  await page.click('aside.ai-desk [data-action="ai-desk-accept"]');
+  await page.waitForTimeout(800);
+  const keptNotes = await notesNow();
+  ok(keptNotes.length === 1 && /The want is stated, not shown/.test(keptNotes[0]), 'Accept kept exactly the ticked note', keptNotes);
+  const said = await page.locator('.toast', { hasText: /Beat critique: saved/ }).count();
+  ok(said >= 1, 'the toast says what was saved');
+  const cundo = page.locator('.toast-action', { hasText: /Undo/ }).last();
+  if (await cundo.waitFor({ state: 'visible', timeout: 3000 }).then(() => true, () => false)) await cundo.click();
+  await page.waitForTimeout(800);
+  ok((await notesNow()).length === 0, 'Undo removed the note it added', await notesNow());
 
   const keys = await page.evaluate(() => Object.keys(localStorage).filter((k) => /desk|chat/i.test(k)));
   ok(keys.length === 0, 'no storage key for the Desk or its chat', keys);
@@ -740,7 +773,8 @@ async function clickUndo(page) {
   ok(JSON.stringify(added) === JSON.stringify(wantEls), 'the script gained the elements of exactly the ticked scenes (' + kept.length + ' of ' + BATCH + ')', { added, wantEls });
   ok(!after.elements.some((e) => String(e.text).includes(batch[dropAt].sceneId)), 'nothing of the unticked scene landed (' + batch[dropAt].sceneId + ')');
   const job = await stored(page, 'fms_scriptgen_v1');
-  ok(job && job.cursor === BATCH && job.stage === 'pages', 'the cursor moved past the WHOLE batch (0 → ' + BATCH + ')', job && { cursor: job.cursor, stage: job.stage });
+  ok(job && job.cursor === BATCH - 1 && job.stage === 'pages', 'the cursor moved past the WRITTEN scenes only (0 → ' + (BATCH - 1) + ')', job && { cursor: job.cursor, stage: job.stage });
+  ok(job && job.scenes[job.cursor] && job.scenes[job.cursor].sceneId === batch[dropAt].sceneId, 'the unticked scene is next in line, not skipped (' + batch[dropAt].sceneId + ')', job && job.scenes.map((s) => s.sceneId));
 
   await clickUndo(page);
   const undone = await scriptDoc(page);

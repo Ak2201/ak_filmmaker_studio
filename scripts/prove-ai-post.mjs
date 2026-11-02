@@ -9,9 +9,12 @@
          question, the Desk never opens
      (b) PRO + KEY — each pill opens the Desk; nothing is sent before
          Run; a read shows the text ending "Changed nothing.", has a
-         working Copy and NO Accept; nothing is written by a Run; a
-         scene or rule the model names that was not sent is dropped;
-         cert-read carries the DISCLAIMER and names no script text
+         working Copy; nothing is written by a Run; a scene or rule the
+         model names that was not sent is dropped; cert-read carries the
+         DISCLAIMER and names no script text. Its points are a "Keep as
+         notes" list: Accept all saves them (scene note or sticky note,
+         ai-tasks.js keepNotes) and the toast's Undo puts the scene list
+         and the notes board back byte for byte
      (c) edit-notes — Accept writes ONLY the empty notes, a note typed
          between Run and Accept is skipped, Undo blanks only what was
          written (and leaves a note edited since)
@@ -227,7 +230,8 @@ for (const rd of reads) {
       ok(disc && text.includes(disc.trim()), 'the page DISCLAIMER is in the read verbatim');
     }
     const accept = await page.locator('aside.ai-desk [data-action="ai-desk-accept"]').count();
-    ok(accept === 0, 'a read has no Accept', accept);
+    const kept = await page.locator('aside.ai-desk .ai-desk-item').count();
+    ok(accept === 1 && kept > 0, 'a read offers its points to keep as notes (' + kept + ')', { accept, kept });
     await page.click('aside.ai-desk [data-action="ai-desk-copy"]');
     await page.waitForTimeout(300);
     const clip = await page.evaluate(() => navigator.clipboard.readText().catch(() => null));
@@ -235,7 +239,27 @@ for (const rd of reads) {
     ok(/Copied/.test(status) && (clip === null || clip === text), 'Copy puts the text on the clipboard', { status, same: clip === text });
     await page.waitForTimeout(3000);
     ok(await writesTo(page, rd.writes) === w0, 'a run and three idle seconds write nothing to ' + rd.writes);
-    await page.click('aside.ai-desk [data-action="ai-desk-skip"]');
+    /* What Undo promises: the same notes on the board (by id) and the same
+       note on every scene row. A save may restamp a blob's meta, so the
+       raw strings are not the measure. */
+    const snap = () => page.evaluate(() => {
+      const val = (re) => { const k = Object.keys(localStorage).find((x) => re.test(x)); try { return k ? JSON.parse(localStorage.getItem(k)) : null; } catch (e) { return null; } };
+      const v = val(/^fms_idea_vault_v1/);
+      const vault = (Array.isArray(v) ? v : (v && (v.items || v.list)) || []).map((x) => x && x.id);
+      const sc = val(/^fms_scenes_v1/);
+      const rows = (Array.isArray(sc) ? sc : (sc && sc.scenes) || []).map((x) => (x && x.id) + ':' + (x && x.readerNote || ''));
+      return JSON.stringify({ vault, rows });
+    });
+    const before = await snap();
+    await page.click('aside.ai-desk [data-action="ai-desk-accept-all"]');
+    const toast = page.locator('.toast', { hasText: /saved/ }).last();
+    const said = await toast.waitFor({ state: 'visible', timeout: 4000 }).then(() => toast.textContent(), () => '');
+    ok(/saved/.test(said) && (await snap()) !== before, 'Accept all keeps the points as notes', said);
+    if (said) {
+      await toast.locator('.toast-action', { hasText: /Undo/ }).click();
+      await page.waitForTimeout(400);
+      ok((await snap()) === before, 'Undo puts the scene list and the notes board back exactly');
+    }
     ok(errors.length === 0, 'no page errors', errors);
   } catch (e) { ok(false, 'stopped: ' + String(e && e.message || e).split('\n')[0]); } finally { await ctx.close(); }
 }

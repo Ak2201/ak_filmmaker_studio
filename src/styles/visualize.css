@@ -974,6 +974,11 @@
 .vz-axis.is-crossed .vz-axis-line { stroke: var(--danger); }
 .vz-axis-tag { fill: var(--warn-deep); font-size: 2.2px; font-family: var(--f-body); paint-order: stroke; stroke: var(--surface-canvas); stroke-width: 0.6px; }
 .vz-axis.is-crossed .vz-axis-tag { fill: var(--danger-deep); }
+/* A shot's diagram draws the FLOOR's set and line underneath, dimmed and
+   out of the pointer's way: they are edited on the floor plan, never here. */
+.vz-set.vz-under { opacity: 0.45; pointer-events: none; }
+.vz-axis.vz-under .vz-axis-line { opacity: 0.6; }
+.vz-axis.vz-under { pointer-events: none; }
 .vz-axis-warn circle { fill: var(--danger); }
 .vz-axis-warn text { fill: var(--surface-canvas); font-size: 2.4px; font-weight: 700; font-family: var(--f-mono); }
 

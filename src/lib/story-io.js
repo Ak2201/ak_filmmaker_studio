@@ -82,11 +82,25 @@ export const isEmptyStory = (s) => !String(s.source || '').trim() && !(s.marks |
 export const KEPT_ON_SAMPLE = ['conflicts', 'conflictLine', 'genre', 'audience', 'budgetTier', 'comps', 'tone', 'budgetWhy'];
 const said = (v) => (Array.isArray(v) ? v.length > 0 : String(v == null ? '' : v).trim() !== '');
 
-/** `sample` with the writer's kept fields from `cur` laid over it. */
-export function sampleOver(cur, sample) {
+/** `sample` with the writer's kept fields from `cur` laid over it.
+ *  `liveSceneIds` (the ids now in the scene list) drops a step's scene
+ *  link when that scene is not there. The sample's steps name the HUB
+ *  sample's scenes (dragon-sc-N); loaded onto a project that does not
+ *  hold them, every linked step drew "Scene gone" on a sample nobody
+ *  had touched (pre-sale QA r1-A-1). Unlinked, "Send to screenplay"
+ *  makes them as for any outline. Omitted, links are kept as they are. */
+export function sampleOver(cur, sample, liveSceneIds = null) {
   const out = { ...sample };
   for (const k of KEPT_ON_SAMPLE) {
     if (cur && said(cur[k])) out[k] = JSON.parse(JSON.stringify(cur[k]));
+  }
+  if (liveSceneIds && Array.isArray(out.outline)) {
+    const live = new Set(liveSceneIds);
+    out.outline = out.outline.map((st) => {
+      if (!st || !st.sceneId || live.has(st.sceneId)) return st;
+      const { sceneId, synced, syncedWas, syncedBeat, ...rest } = st;
+      return rest;
+    });
   }
   return out;
 }

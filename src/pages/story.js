@@ -1707,7 +1707,7 @@ async function useSample(id) {
   // The Story Bible's conflict answers and the market fields stay the
   // writer's (IO.sampleOver); re-read so an edit made while the
   // confirm was open is the one kept.
-  const s = IO.sampleOver(story(), await sampleStory(sm.id));
+  const s = IO.sampleOver(story(), await sampleStory(sm.id), Scenes.listScenes().map((r) => r.id));
   s.frameworkChosen = true;   // the sample's outline is laid out under its own format
   mode = 'tag'; started = true; litBeat = '';
   pathStep = s.outline.length ? 'outline' : 'synopsis';

@@ -527,6 +527,19 @@ eq(S.clipSourceHost(''), '', 'clipSourceHost: no URL, no link');
   const blankOut = IO.sampleOver(S.blankStory(), { ...smp, genre: 'Fantasy' });
   eq(blankOut.genre, 'Fantasy', 'sampleOver: a blank kept field takes the sample\'s value');
   out.comps.push('x'); eq(cur.comps, ['Drishyam'], 'sampleOver copies, never shares, a kept array');
+  // QA r1-A-1: the sample's steps name the hub sample's scenes; over a
+  // scene list that lacks them, no step may keep a dead link ("Scene gone").
+  ok(smp.outline.some((st) => st.sceneId), 'the sample outline carries scene links');
+  const none = IO.sampleOver(cur, smp, []);
+  eq(none.outline.filter((st) => st.sceneId || st.synced).length, 0, 'sampleOver over an empty scene list drops every scene link');
+  eq(none.outline.length, smp.outline.length, 'sampleOver drops links, never steps');
+  const firstLinked = smp.outline.find((st) => st.sceneId);
+  const kept = IO.sampleOver(cur, smp, [firstLinked.sceneId]);
+  eq(kept.outline.filter((st) => st.sceneId).map((st) => st.sceneId), [firstLinked.sceneId], 'sampleOver keeps a link whose scene is in the list');
+  ok(smp.outline.find((st) => st.id === firstLinked.id).sceneId === firstLinked.sceneId, 'sampleOver never edits the sample it was given');
+  for (const f of ['src/ui/story-kit.js', 'src/pages/story.js']) {
+    ok(/IO\.sampleOver\([^;]*listScenes\(\)/.test((await import('node:fs')).readFileSync(new URL('../' + f, import.meta.url), 'utf8')), f + ': useSample passes the live scene ids to sampleOver()');
+  }
   ok(!IO.sampleReplacesWork(cur), 'kept fields alone ask no question (nothing they hold is replaced)');
   const t = S.blankStory(); t.tension = { b1: 7 };
   ok(IO.sampleReplacesWork(t), 'hand-set tension alone is work a sample replaces — it asks');

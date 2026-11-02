@@ -676,5 +676,23 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   eq(shape(fo.elements), shape(storm), 'fountain round trip keeps "ACT 2: THE STORM" an act, a mixed-case centred line centred');
 }
 
+/* QA r2 B-2: a binary file renamed .fountain was taken as one action
+   line, control bytes and all. It is refused like a bad .fdx; a stray
+   control byte in a real script is dropped, and a few U+FFFD from a
+   Latin-1 file do not refuse it. */
+{
+  const bin = I.parseScript(String.fromCharCode(0, 1, 2, 3, 0xfffd, 0xfffd, 0, 0) + 'AB', 'bin.fountain');
+  ok(bin.fatal && bin.elements.length === 0, 'a binary file is refused (fatal, no elements)');
+  ok(/does not look like a screenplay/.test(bin.warnings[0] || ''), 'the refusal says the file does not look like a screenplay');
+  const noNul = I.parseScript(String.fromCharCode(1, 2, 3, 4, 5, 6) + 'AB', 'x.txt');
+  ok(noNul.fatal, 'mostly control bytes, no NUL, is refused too');
+  const stray = I.parseScript('INT. KITCHEN - DAY\n\nShe wa\u0007its.\n', 's.fountain');
+  ok(!stray.fatal && stray.elements.every((e) => !/[\u0000-\u0008\u000B\u000E-\u001F\u007F]/.test(e.text)),
+    'a stray control byte in a real script is dropped, the script imported');
+  ok(stray.elements.some((e) => e.text === 'She waits.'), 'the line around the stray byte keeps its words');
+  const latin = I.parseScript('INT. CAF\uFFFD - DAY\n\nShe orders a cr\uFFFDpe and waits for the bill.\n', 'l.fountain');
+  ok(!latin.fatal && latin.elements.length >= 2, 'a few U+FFFD (Latin-1 read as UTF-8) does not refuse the file');
+}
+
 console.log(`${fail ? '✗' : '✓'} script import: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

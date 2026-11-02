@@ -29,6 +29,7 @@ import '../styles/story-pacing.css';
 import '../styles/script-analysis.css';
 import { h } from '../lib/dom.js';
 import { beatBasisText } from '../lib/beat-basis.js';
+import { formatPages } from '../lib/script.js';
 import { analyseScript, pagesOf, readableName, sceneSpan } from '../lib/script-analysis-model.js';
 import { smoothPath } from '../lib/story-pacing.js';
 import { formatDuration } from '../lib/screenplay-analysis.js';
@@ -480,8 +481,8 @@ function structurePanel(a) {
   const t = table({ label: 'Beats against the pages', columns: cols, rows });
   return panel({
     eyebrow: ['Structure', s.framework.short],
-    meta: s.pages + ' pages, estimated' + (s.linked ? ' · ' + plural(s.linked, 'beat') + ' linked to scenes' : ''),
-    body: [t, h('p.pc-note.sa-basis', { text: beatBasisText(s.basis) }), h('p.pc-note', { text: 'Where each beat of ' + s.framework.label + ' conventionally falls, as a page of this script, and the scene that is on that page. Link scenes to beats on the Story page and it also says where each beat really opens.' })]
+    meta: formatPages(s.pages) + ' pages, estimated' + (s.linked ? ' · ' + plural(s.linked, 'beat') + ' linked to scenes' : ''),
+    body: [t, h('p.pc-note.sa-basis', { text: beatBasisText(s.basis, formatPages(s.pages)) }), h('p.pc-note', { text: 'Where each beat of ' + s.framework.label + ' conventionally falls, as a page of this script, and the scene that is on that page. Link scenes to beats on the Story page and it also says where each beat really opens.' })]
   });
 }
 

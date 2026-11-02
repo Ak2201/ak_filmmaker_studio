@@ -131,5 +131,21 @@ eq(A.readableName('COLLEGE CLERK'), 'College Clerk', 'a plain cue is title-cased
 eq(A.sceneSpan('23', '23'), 'Sc 23', 'one scene is not a range from itself');
 eq(A.sceneSpan('4', '9'), 'Sc 4–9', 'a range');
 
+/* QA r2 B-1: one estimate, one notation, on the Script analysis tab —
+   the stat strip's total, the Structure panel's and the beat-basis line
+   are the same figure. */
+{
+  const { beatBasisText } = await import('../src/lib/beat-basis.js');
+  const { formatPages } = await import('../src/lib/script.js');
+  const shown = formatPages(a.structure.pages);
+  eq(a.totals.pages, shown, 'the stat strip total is the structure\'s page figure (' + shown + ')');
+  ok(/^\d+(\.\d)?$/.test(a.totals.pages) || a.totals.pages === '0', 'the script total is in the studio\'s decimal notation, not eighths');
+  if (a.structure.basis.basis === 'script') {
+    ok(beatBasisText(a.structure.basis, shown).endsWith(', ' + shown + (Number(shown) === 1 ? ' page' : ' pages')), 'the basis line repeats that figure');
+  }
+  eq(beatBasisText({ pages: 107, basis: 'script' }, '106.5'), 'Beats placed against the script as written, 106.5 pages', 'basis line takes the shown figure');
+  eq(beatBasisText({ pages: 100, basis: 'target' }, '106.5'), 'Beats placed against your 100-page target', 'a target line ignores it');
+}
+
 console.log(`\ntest:analysis — ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

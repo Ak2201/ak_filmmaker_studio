@@ -34,7 +34,7 @@
 import { sliceScript, estimateSlice, cueName } from './screenplay-analysis.js';
 import { lexicalTension, expectedAt, frameworkById, effectiveFramework, PACING } from './story.js';
 import { levelOf, HIGH_TENSION, tensionCurve, intensity, beatDeck } from './story-pacing.js';
-import { elementLines, LINES_PER_PAGE } from './script.js';
+import { elementLines, LINES_PER_PAGE, formatPages } from './script.js';
 import { beatPageBasis } from './beat-basis.js';
 
 const textOf = (el) => String((el && el.text) ?? '').trim();
@@ -264,14 +264,21 @@ export function analyseScript({ elements = [], scenes = [], story = null, fwId =
   if (story && String(story.source || '').trim()) {
     try { storyCurve = { curve: tensionCurve(story, fw), intensity: intensity(story, fw) }; } catch (e) { storyCurve = null; }
   }
+  const structure = structureRead(rows, { fwId: fw, story, scenes, elements, targetPages });
   return {
     framework: fw,
     scenes: rows,
-    totals: { scenes: rows.length, eighths, pages: pagesOf(eighths), seconds, words: rows.reduce((n, r) => n + r.words, 0) },
+    /* The script's page total is the STRUCTURE's figure (lines over
+       LINES_PER_PAGE), printed the way every other script total in the
+       studio is (formatPages, one decimal). It used to be the sum of
+       the scene rows' rounded eighths, so one tab printed "106 2/8",
+       "106.5" and "107" for one estimate (QA r2 B-1). Eighths stay the
+       notation for a SCENE's length; `eighths` is still the row sum. */
+    totals: { scenes: rows.length, eighths, pages: formatPages(structure.pages), seconds, words: rows.reduce((n, r) => n + r.words, 0) },
     tension: tensionRead(rows, fw),
     pacing: pacingRead(rows),
     cast: castRead(rows),
-    structure: structureRead(rows, { fwId: fw, story, scenes, elements, targetPages }),
+    structure,
     story: storyCurve
   };
 }

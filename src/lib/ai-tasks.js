@@ -837,32 +837,62 @@ function shotJobs(c) {
   });
 }
 
+/* How many scenes a shot division covers, for the button and its cost line. */
+const shotCount = (ctx) => { try { return shotJobs(resolve(ctx)).length; } catch (e) { return 0; } };
+
+/* Why a batch failed, in the words of the note under the cards. */
+const FAIL_WHY = { rate: 'rate limited', overloaded: 'the API was busy', server: 'server error', network: 'no connection', malformed: 'the reply was not usable', truncated: 'the reply was cut off' };
+
 const shotTask = {
   id: 'shot-draft',
   label: 'Draft a shot division',
   kind: 'list',
   editable: false,
+  /* One press: the scenes go in small batches, three requests at a time,
+     and a card shows the moment its scene is whole (ai.js
+     draftShotDivision). The run goes on with the Desk closed. */
+  stream: true,
+  background: true,
+  effortSwitch: true,
+  runLabel(ctx) { const n = shotCount(ctx); return n ? 'Draft shots for ' + plural(n, 'scene', 'scenes') : 'Draft shots'; },
+  cost(ctx) {
+    const n = shotCount(ctx);
+    if (!n) return '';
+    const req = Math.ceil(n / AI.SHOT_BATCH);
+    return 'About ' + plural(req, 'request', 'requests') + (req > 1 ? ', ' + Math.min(req, AI.SHOT_CONCURRENCY) + ' at a time' : '') + '.';
+  },
+  total: shotCount,
   input(ctx) {
     try { return AI.buildPrompt(shotJobs(resolve(ctx))); }
     catch (e) { return (e && e.message) || ''; }
   },
-  async run(input, { onStatus, signal, refine, ctx } = {}) {
+  async run(input, { onStatus, signal, refine, ctx, onItems, careful } = {}) {
     await ready();
     let jobs = shotJobs(resolve(ctx));
     const extra = refineText(refine);
     if (extra) jobs = jobs.map((j) => ({ ...j, synopsis: [j.synopsis, extra].filter(Boolean).join('\n\n') }));
-    const res = await AI.draftShotDivision(jobs, { onStatus, signal });
-    const numOf = new Map(jobs.map((j) => [j.sceneId, j.number || '—']));
-    const items = [];
-    for (const [sceneId, list] of res.byScene) {
-      list.forEach((d, i) => items.push({
-        id: sceneId + '#' + i, sceneId, draft: d,
-        text: 'Sc ' + numOf.get(sceneId) + ' · ' + d.description,
-        detail: [d.size, d.angle, d.movement, d.lens, d.rig, d.setup].filter(Boolean).join(' · ')
-      }));
+    const info = new Map(jobs.map((j) => [j.sceneId, { num: j.number || '—', slug: j.slug }]));
+    const toItems = (entries) => entries.flatMap(({ sceneId, shots }) => shots.map((d, i) => ({
+      id: sceneId + '#' + i, sceneId, draft: d,
+      group: sceneId, groupLabel: 'Sc ' + info.get(sceneId).num + ' · ' + info.get(sceneId).slug,
+      text: 'Sc ' + info.get(sceneId).num + ' · ' + d.description,
+      detail: [d.size, d.angle, d.movement, d.lens, d.rig, d.setup].filter(Boolean).join(' · ')
+    })));
+    const res = await AI.draftShotDivision(jobs, {
+      onStatus, signal, careful,
+      onItems: onItems ? (entries) => onItems(toItems(entries)) : undefined
+    });
+    const items = toItems([...res.byScene].map(([sceneId, shots]) => ({ sceneId, shots })));
+    if (!items.length) {
+      if (res.stopped) return { items: [], model: res.model };
+      fail('The model came back with no shots. Nothing was added.');
     }
-    if (!items.length) fail('The model came back with no shots. Nothing was added.');
-    return { items, note: res.truncated ? 'The reply was cut short, so some scenes may be missing.' : '' };
+    const note = [
+      res.truncated ? 'The reply was cut short, so some scenes may be missing.' : '',
+      ...(res.failures || []).map((f) => 'Not drafted (' + (FAIL_WHY[f.kind] || 'it failed') + '): '
+        + f.sceneIds.map((id) => 'Sc ' + info.get(id).num).join(', ') + ' \u2014 run again for these.')
+    ].filter(Boolean).join('\n');
+    return { items, note, model: res.model };
   },
   apply(selected, ctx) {
     const c = resolve(ctx);
@@ -1022,12 +1052,14 @@ const synopsisTask = {
   label: 'Synopsis → beat sheet',
   kind: 'list',
   editable: true,      // the input IS the synopsis that is sent
+  stream: true,        // a card per beat as it is written
+  effortSwitch: true,  // medium by default, high when Careful
   input(ctx) {
     const c = resolve(ctx);
     call(c.prepare);
     return String(Gen.load().synopsis || '');
   },
-  async run(input, { onStatus, signal, refine, ctx } = {}) {
+  async run(input, { onStatus, signal, refine, ctx, onItems, careful } = {}) {
     await ready();
     const job = Gen.load();
     const synopsis = String(input ?? '').trim() ? String(input) : String(job.synopsis || '');
@@ -1037,15 +1069,20 @@ const synopsisTask = {
     /* draftBeatSheet keeps 6,000 characters of synopsis; the follow-up
        goes in front so it is never the part that is cut. */
     const sent = extra ? 'WRITER’S NOTES FOR THIS DRAFT:\n' + extra + '\n\nTHE SYNOPSIS ITSELF:\n' + synopsis : synopsis;
-    const res = await AI.draftBeatSheet({ synopsis: sent, format: job.format, lang: job.lang, beats: vocab }, { onStatus, signal });
-    const items = vocab.filter((b) => res.byBeat.get(b.id)).map((b) => ({
-      id: b.id, text: res.byBeat.get(b.id), detail: b.label + (b.pages ? ' · pages ' + b.pages : '')
-    }));
+    const label = new Map(vocab.map((b) => [b.id, b]));
+    const beatItem = (id, text) => ({
+      id, text, detail: label.get(id).label + (label.get(id).pages ? ' · pages ' + label.get(id).pages : '')
+    });
+    const res = await AI.draftBeatSheet({ synopsis: sent, format: job.format, lang: job.lang, beats: vocab }, {
+      onStatus, signal, careful,
+      onItems: onItems ? (beats) => onItems(beats.filter((b) => label.has(b.id)).map((b) => beatItem(b.id, b.happens))) : undefined
+    });
+    const items = vocab.filter((b) => res.byBeat.get(b.id)).map((b) => beatItem(b.id, res.byBeat.get(b.id)));
     if (!items.length) fail('The reply held no beats, so nothing changed.');
     const note = [res.logline ? 'Logline: ' + res.logline : '',
       'Accept also fills the Story page’s logline and beat steps where they are still blank; nothing you wrote there is replaced.']
       .filter(Boolean).join('\n');
-    return remember('synopsis-script', { items, note },
+    return remember('synopsis-script', { items, note, model: res.model },
       { synopsis, logline: res.logline, model: res.model, vocab });
   },
   apply(selected, ctx, result) {
@@ -1135,6 +1172,8 @@ const genScenesTask = {
   label: 'Lay out the scenes',
   kind: 'list',
   editable: false,
+  stream: true,        // a card per scene as it is laid out (still ONE request: the list needs the whole story)
+  effortSwitch: true,
   identity(ctx) {
     try {
       const j = scenesJob(resolve(ctx));
@@ -1152,25 +1191,30 @@ const genScenesTask = {
     if (String(j.synopsis || '').trim()) L.push('', 'Synopsis:', String(j.synopsis).slice(0, 6000));
     return L.join('\n');
   },
-  async run(input, { onStatus, signal, refine, ctx } = {}) {
+  async run(input, { onStatus, signal, refine, ctx, onItems, careful } = {}) {
     await ready();
     const c = resolve(ctx);
     const patch = call(c.patch) || {};
     const prevItems = refine && refine.previous && Array.isArray(refine.previous.items) ? refine.previous.items : [];
     const extra = refineWith(refine, prevItems.map((it) => it.proposal).filter(Boolean));
-    const res = await Gen.draftScenes(patch, { onStatus, signal, extra });
-    const proposals = res.proposals || [];
-    if (!proposals.length) fail('The reply held no scenes, so nothing changed.');
-    last.set('gen-scenes', { proposals, model: res.model });
-    const items = proposals.map((p, i) => ({
-      id: 'p' + i, proposal: p, model: res.model,
+    const sceneItem = (p, i, model) => ({
+      id: 'p' + i, proposal: p, model,
       text: sceneSlug(p),
       detail: [String(p.synopsis || '').trim(), (p.cast || []).length ? 'Cast: ' + p.cast.join(', ') : '',
         p.eighths ? p.eighths + '/8 pp' : ''].filter(Boolean).join(' · ')
-    }));
+    });
+    let seen = 0;
+    const res = await Gen.draftScenes(patch, {
+      onStatus, signal, extra, careful,
+      onItems: onItems ? (rows) => onItems(rows.map((p) => sceneItem(p, seen++, ''))) : undefined
+    });
+    const proposals = res.proposals || [];
+    if (!proposals.length) fail('The reply held no scenes, so nothing changed.');
+    last.set('gen-scenes', { proposals, model: res.model });
+    const items = proposals.map((p, i) => sceneItem(p, i, res.model));
     const note = plural(items.length, 'scene', 'scenes') + ' proposed. Untick any you do not want; the rest go on the scene board in this order, each with its beat, and any name in the cast that is not on the Characters page yet is added there.'
       + (res.truncated ? '\nThe reply was cut short at the length limit, so the list may stop early.' : '');
-    return { items, note };
+    return { items, note, model: res.model };
   },
   apply(selected, ctx) {
     const c = resolve(ctx);
@@ -1184,23 +1228,24 @@ const genScenesTask = {
 };
 
 /* ============================================================
-   SYNOPSIS → SCRIPT, STAGE 3 — list, ONE BATCH. ctx { before?(), after?() }
+   SYNOPSIS → SCRIPT, STAGE 3 — list, THE REST IN ONE PRESS. ctx { before?(), after?() }
    ------------------------------------------------------------
-   draftBatch() drafts the next BATCH_SIZE scenes at the job's cursor
-   and writes nothing; the items are those scenes (heading and first
-   lines). Accept hands the ticked sceneIds to applyBatch(), which
+   draftRest() drafts EVERY remaining scene (PAGE_BATCH to a request,
+   PAGE_CONCURRENCY at a time, a card per scene as it parses) and writes
+   nothing; the items are those scenes, one each, grouped under their
+   slug. Accept hands the ticked sceneIds to applyBatch(), which
    appends them to the screenplay (a revision first, on the first
-   batch only), and moves the cursor past the scenes it WROTE — an
-   unticked scene, like one the reply missed, stays next in line and is
-   drafted again with the next batch, never skipped for good. The identity
-   is the job and its cursor, so every batch is its own Desk session,
-   and a draft made at an old cursor is refused ('stale') rather than
-   written in the wrong place.
+   write only), and moves the cursor past the scenes it WROTE — an
+   unticked scene, one a failed request lost and one the reply missed
+   stay next in line and are drafted again, never skipped for good. The
+   identity is the job and its cursor, so a draft made at an old cursor
+   is its own Desk session, and one applied at a stale cursor is refused
+   ('stale') rather than written in the wrong place.
    ============================================================ */
-function batchSlice() {
+/* Every scene still to write: from the job's cursor to the end. */
+function restSlice() {
   const job = Gen.load();
-  const batch = job.scenes.slice(job.cursor, job.cursor + Gen.BATCH_SIZE);
-  return { job, batch };
+  return { job, rest: job.scenes.slice(job.cursor) };
 }
 
 const elLine = (el) => {
@@ -1210,51 +1255,85 @@ const elLine = (el) => {
   return t;
 };
 
+const restCount = () => { try { return restSlice().rest.length; } catch (e) { return 0; } };
+
 const genBatchTask = {
   id: 'gen-batch',
-  label: 'Write the next scenes',
+  label: 'Write the remaining scenes',
   kind: 'list',
   editable: false,
+  /* One press writes every remaining scene: PAGE_BATCH scenes a request,
+     PAGE_CONCURRENCY at a time, a card per scene the moment it parses
+     (scriptgen.js draftRest). Nothing is written until Accept, and an
+     unticked or missing scene stays next in line (applyBatch). */
+  stream: true,
+  background: true,
+  effortSwitch: true,
+  runLabel() { const n = restCount(); return n ? (n === restSlice().job.scenes.length ? 'Write all ' : 'Write the remaining ') + plural(n, 'scene', 'scenes') : 'Write the remaining scenes'; },
+  cost() {
+    const n = restCount();
+    if (!n) return '';
+    const req = Math.ceil(n / Gen.PAGE_BATCH);
+    return 'About ' + plural(req, 'request', 'requests') + (req > 1 ? ', ' + Math.min(req, Gen.PAGE_CONCURRENCY) + ' at a time' : '') + '.';
+  },
+  total: restCount,
   identity() {
-    try { const j = Gen.load(); return 'batch:' + (j.startedAt || '') + ':' + j.cursor; }
-    catch (e) { return 'batch'; }
+    try { const j = Gen.load(); return 'rest:' + (j.startedAt || '') + ':' + j.cursor; }
+    catch (e) { return 'rest'; }
   },
   input() {
-    const { job, batch } = batchSlice();
+    const { job, rest } = restSlice();
     if (job.stage !== 'pages' && job.stage !== 'done') return 'Lay out the scenes first.';
-    if (!batch.length) return 'Every scene on the list is written. There is nothing left to send.';
-    const L = ['Scenes ' + (job.cursor + 1) + '–' + (job.cursor + batch.length) + ' of ' + job.scenes.length
-      + ', each with its slug line and one-line synopsis; the logline; the character names written so far; '
-      + 'and the slugs and synopses of the two scenes either side, for continuity. Nothing else.', ''];
-    batch.forEach((s, i) => {
+    if (!rest.length) return 'Every scene on the list is written. There is nothing left to send.';
+    const L = ['Scenes ' + (job.cursor + 1) + '\u2013' + job.scenes.length + ' of ' + job.scenes.length
+      + ', each with its slug line and one-line synopsis, sent ' + Gen.PAGE_BATCH + ' to a request; the logline; the character names written so far; '
+      + 'and the whole scene list for continuity. Nothing else.', ''];
+    rest.forEach((s, i) => {
       L.push((job.cursor + i + 1) + '. ' + s.slug);
       if (s.synopsis) L.push('   ' + s.synopsis);
     });
     return L.join('\n');
   },
-  async run(input, { onStatus, signal, refine } = {}) {
+  async run(input, { onStatus, signal, refine, onItems, careful } = {}) {
     await ready();
     const prevItems = refine && refine.previous && Array.isArray(refine.previous.items) ? refine.previous.items : [];
     const prevDraft = prevItems.length ? prevItems[0].draft : null;
     const extra = refineWith(refine, prevDraft ? prevDraft.byScene : undefined);
-    const draft = await Gen.draftBatch({ onStatus, signal, extra });
+    const slugs = new Map(Gen.load().scenes.map((s) => [s.sceneId, s.slug]));
+    const card = (sceneId, els, draft) => {
+      const body = els.filter((el) => el.type !== 'scene' && String(el.text || '').trim()).slice(0, 3).map(elLine);
+      return {
+        id: sceneId, draft, group: sceneId, groupLabel: slugs.get(sceneId) || sceneId,
+        text: body.join(' / ') + (els.length > 4 ? ' \u2026' : '') || (slugs.get(sceneId) || sceneId),
+        detail: plural(els.length, 'line', 'lines')
+      };
+    };
+    const draft = await Gen.draftRest({
+      onStatus, signal, extra, careful,
+      onItems: onItems ? (entries) => onItems(entries.map((e) => card(e.sceneId, e.elements, null))) : undefined
+    });
     if (draft.done) fail('Every scene on the list is written. There is nothing left to draft.');
     last.set('gen-batch', { draft });
     const items = [];
     const missed = [];
+    const failedIds = new Set(draft.failed || []);
     for (const s of draft.batch) {
       const els = draft.byScene[s.sceneId];
-      if (!els || !els.length) { missed.push(s.slug); continue; }
-      const body = els.filter((el) => el.type !== 'scene' && String(el.text || '').trim()).slice(0, 3).map(elLine);
-      items.push({ id: s.sceneId, draft, text: s.slug, detail: body.join(' / ') + (els.length > 4 ? ' …' : '') });
+      if (!els || !els.length) { if (!failedIds.has(s.sceneId)) missed.push(s.slug); continue; }
+      items.push(card(s.sceneId, els, draft));
     }
-    if (!items.length) fail('The reply held none of the scenes it was asked for, so nothing was written. Ask again.');
+    if (!items.length) {
+      if (draft.stopped) return { items: [], model: draft.model };
+      fail('The reply held none of the scenes it was asked for, so nothing was written. Ask again.');
+    }
     const note = [
-      plural(items.length, 'scene', 'scenes') + ' drafted. Ticked scenes are added to the end of the screenplay; an unticked one stays next in line and is drafted again with the next batch.',
-      missed.length ? 'Not in the reply (asked for again with the next batch): ' + missed.join('; ') + '.' : '',
-      draft.truncated ? 'The reply was cut short at the length limit, so the last scene may stop mid-page.' : ''
+      plural(items.length, 'scene', 'scenes') + ' drafted. Ticked scenes are added to the end of the screenplay; an unticked one stays next in line and is drafted again next time.',
+      ...(draft.failures || []).map((f) => 'Not drafted (' + (FAIL_WHY[f.kind] || 'it failed') + '): '
+        + f.sceneIds.map((id) => slugs.get(id) || id).join('; ') + ' \u2014 run again for these.'),
+      missed.length ? 'Not in the reply (asked for again next time): ' + missed.join('; ') + '.' : '',
+      draft.truncated ? 'A reply was cut short at the length limit, so a scene may stop mid-page.' : ''
     ].filter(Boolean).join('\n');
-    return { items, note };
+    return { items, note, model: draft.model };
   },
   apply(selected, ctx) {
     const c = resolve(ctx);

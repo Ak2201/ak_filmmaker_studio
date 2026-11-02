@@ -42,7 +42,7 @@ const AI_FIELDS = [...mapBlock.matchAll(/^\s*(\w+):/gm)].map((m) => m[1]).sort()
 const retLine = fn.match(/return \{ ([^}]+) \};/);
 const AI_RESULT = retLine ? retLine[1].split(',').map((x) => x.trim()).sort() : [];
 ok(AI_FIELDS.length >= 5, 'read the draft fields out of ai.js: ' + AI_FIELDS.join(','));
-eq(AI_RESULT, ['byScene', 'model', 'truncated'], 'read the result keys out of ai.js');
+eq(AI_RESULT, ['byScene', 'failed', 'failures', 'model', 'stopped', 'truncated'], 'read the result keys out of ai.js');
 
 /* ---- the sample ------------------------------------------------ */
 const scenes = sample.scenes.map((s, i) => ({ id: 'sc' + (i + 1), ...s }));

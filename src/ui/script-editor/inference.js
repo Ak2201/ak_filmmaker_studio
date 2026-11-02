@@ -15,9 +15,10 @@
 
    The classifiers are pure (no DOM, no storage). createInference()
    is the hook the editor calls. Every change goes through the
-   editor's one type path, setElementType; a type the writer chose
-   themselves (select, Alt+digit, Tab) is remembered for that line,
-   in memory only, and never re-inferred.
+   editor's one type path, setElementType. A type the writer chose
+   by hand (select, Alt+digit, Tab) is NOT protected (owner, 2 Nov
+   2026: Final Draft reformats those too); the only line left alone
+   is one whose auto-switch the writer UNDID, remembered in memory.
    ============================================================ */
 
 import { ACT_LINE } from '../../lib/act-line.js';
@@ -214,7 +215,7 @@ export function parseSaysLine(text, names) {
  *  history: one undo step around fn) and `speak(i, parsed)` (replace line
  *  i with cue + paren + dialogue; returns the dialogue's index). */
 export function createInference(ed) {
-  const explicit = new Set();            // element ids; memory only
+  const suppressed = new Set();          // element ids; memory only
   let auto = false;
 
   const apply = (i, type) => {
@@ -236,17 +237,19 @@ export function createInference(ed) {
   };
 
   return {
-    /** Called by the editor's type path for every change; a change that
-     *  did not come from here was the writer's. */
-    noteTypeChange(id) { if (!auto && id) explicit.add(id); },
+    /** Called by the editor's type path for every change. Kept as a
+     *  hook, but a hand-chosen type no longer shields the line: the
+     *  owner wants it reformatted like any other (2 Nov 2026). One
+     *  Ctrl+Z still restores it, and that undo is what suppresses. */
+    noteTypeChange() {},
     /** The writer undid a switch on this line: never re-infer it. */
-    suppress(id) { if (id) explicit.add(id); },
+    suppress(id) { if (id) suppressed.add(id); },
     /** After the model has taken the new text of line i. `was` is the
      *  line's text before the keystroke. */
     onInput(i, ta, was) {
       const list = ed.getElements();
       const el = list[i];
-      if (!el || explicit.has(el.id)) return false;
+      if (!el || suppressed.has(el.id)) return false;
       const r = classifyInput(el.text, el.type, { prevType: list[i - 1] && list[i - 1].type, was });
       if (!r || (r.type === el.type && r.text === el.text)) return false;
       step(el.id, () => {
@@ -261,7 +264,7 @@ export function createInference(ed) {
      *  auto-format has something to do with it. */
     wouldFormat(i, text) {
       const el = ed.getElements()[i];
-      if (!el || explicit.has(el.id) || !String(text || '').trim()) return false;
+      if (!el || suppressed.has(el.id) || !String(text || '').trim()) return false;
       const known = names();
       if (el.type === 'action' && parseSaysLine(text, known)) return true;
       return !!classifyReturn(text, el.type, { names: known });
@@ -272,7 +275,7 @@ export function createInference(ed) {
      *  same history step, so one undo restores the line as typed. */
     onReturn(i, ta) {
       const el = ed.getElements()[i];
-      if (!el || explicit.has(el.id)) return null;
+      if (!el || suppressed.has(el.id)) return null;
       const text = ta ? ta.value : el.text;
       const known = names();
       if (el.type === 'action' && typeof ed.speak === 'function') {

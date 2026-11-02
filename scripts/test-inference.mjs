@@ -38,8 +38,11 @@ const ed = { getElements: () => els, setElementType: (i, t) => { els[i].type = t
 const inf = createInference(ed);
 eq(inf.onInput(0, null), true, 'auto-applies');
 eq(els[0].type, 'scene', 'typed');
-inf.noteTypeChange('b');                  // the writer chose
-eq(inf.onInput(1, null), false, 'explicit line left alone');
+inf.noteTypeChange('b');                  // the writer chose action by hand
+eq(inf.onInput(1, null), true, 'a hand-chosen line is reformatted too (owner, 2 Nov)');
+eq(els[1].type, 'scene', 'now a heading');
+els[1].type = 'action'; inf.suppress('b');   // the writer undid that switch
+eq(inf.onInput(1, null), false, 'an undone switch is left alone');
 eq(els[1].type, 'action', 'still action');
 /* ---- any line type (owner, 2 Nov 2026) ------------------------------ */
 const { parseSaysLine: says, normaliseNames } = await import('../src/ui/script-editor/inference.js');

@@ -1,0 +1,46 @@
+/* ============================================================
+   SCRIPT PRODUCTION — the Fit to page and Reports sheets, and the
+   reports' print (src/ui/script-production-ui.js). Tokens only;
+   the print is the --print-* family.
+   ============================================================ */
+.scf, .scr { display: grid; gap: var(--s3); }
+.scf-lead, .scr-lead { margin: 0; color: var(--ink); }
+.scf-limits, .scf-note { margin: 0; color: var(--ink-muted); font-size: 0.9rem; }
+.scf-list { display: grid; gap: var(--s1); margin: 0; padding: 0; border: 0; }
+.scf-list legend { padding: 0; margin-bottom: var(--s1); font-weight: 600; color: var(--ink); }
+.scf-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto 3.5em;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 44px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--rule);
+  border-radius: var(--sk-field-radius, var(--radius-sm));
+  color: var(--ink);
+  cursor: pointer;
+}
+.scf-row:has(input:checked) { border-color: var(--brand); background: var(--brand-wash); }
+.scf-row input { accent-color: var(--brand); }
+.scf-pages, .scf-saved { font-variant-numeric: tabular-nums; text-align: right; }
+.scf-saved { color: var(--ink-muted); }
+.scf-actions, .scr-actions { display: flex; flex-wrap: wrap; gap: var(--s2); justify-content: flex-end; }
+
+.scr-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.scr-table caption { text-align: left; font-weight: 600; padding-bottom: var(--s1); color: var(--ink); }
+.scr-table th, .scr-table td { padding: var(--s1) var(--s2); border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; color: var(--ink); }
+.scr-table th { color: var(--ink-muted); font-weight: 600; }
+.scr-table .scr-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.scr-print { display: none; }
+@media print {
+  body.pdf-scr #main > *:not(.scr-print):not(#pdf-masthead) { display: none !important; }
+  body.pdf-scr .scr-print { display: grid; gap: 18pt; color: var(--print-ink); font-size: 9.5pt; }
+  body.pdf-scr .scr-table { font-size: 9.5pt; }
+  body.pdf-scr .scr-table caption { color: var(--print-ink); font-size: 11pt; }
+  body.pdf-scr .scr-table thead { display: table-header-group; }
+  body.pdf-scr .scr-table tr { break-inside: avoid; }
+  body.pdf-scr .scr-table th,
+  body.pdf-scr .scr-table td { color: var(--print-ink) !important; background: var(--print-paper) !important; border-bottom: 1px solid var(--print-rule) !important; padding: 2pt 4pt; }
+  body.pdf-scr .scr-table th { background: var(--print-wash) !important; }
+}

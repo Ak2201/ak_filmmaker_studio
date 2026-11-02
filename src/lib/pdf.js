@@ -71,6 +71,7 @@ import { callPort } from './ports.js';
 import { region } from './region.js';
 import { paperDate, paperPrefsOf } from './paper-date.js';
 import { SETUPS, LETTER_OF, DOCUMENTS, paperSetupName, resolveSetup as resolveFor } from './paper-setups.js';
+import { shaveMargin } from './fit-page.js';
 
 /* The page setups and the documents live in ./paper-setups.js (pure,
    so the choice of paper is testable in Node); re-exported here, where
@@ -149,7 +150,10 @@ export function stage(opts = {}) {
 
   const doc = DOCUMENTS[opts.scope] || DOCUMENTS.blueprint;
   const prefs = filmPrefs();
-  const { setup } = resolveSetup(opts, prefs);
+  const resolved = resolveSetup(opts, prefs).setup;
+  /* `opts.cheatMm`: a fit-to-page cheat (src/lib/fit-page.js) takes this
+     much off the top and bottom margins, never the sides. */
+  const setup = opts.cheatMm > 0 ? { ...resolved, margin: shaveMargin(resolved.margin, opts.cheatMm) } : resolved;
   // pdf.css keys its few Letter-only rules off this (Letter is shorter).
   const onLetter = /^Letter/.test(setup.size);
   const project = opts.project || projectTitle();
@@ -264,6 +268,7 @@ if (typeof window !== 'undefined' && window.addEventListener) {
                paper is Letter (resolveSetup)
      paper     'A4' | 'Letter' — override the film's paper for one job
      classes   extra body classes for a page's own print rules
+     cheatMm   fit to page: mm off the top and bottom margins
      before()  build or mark whatever this document needs
      after()   put it back
    ------------------------------------------------------------ */

@@ -39,6 +39,7 @@
    ============================================================ */
 import { h } from './dom.js';
 import { hasTitlePage, sceneNumbers } from './script.js';
+import { cheatGeometry } from './fit-page.js';
 /* The geometry and the paginator live in src/lib/paginate.js (pure, so
    the editor's live page view and Node share it); every name is
    re-exported here so no caller had to change. */
@@ -62,8 +63,13 @@ export {
     a locked page records the script as written. */
 export function paginateDoc(doc, opts = {}) {
   const els = (doc && doc.elements) || [];
-  const auto = opts && opts.autoContd === true ? { autoContd: true } : null;
-  if (!doc || !doc.numbering || doc.numbering.locked !== true) return paginate(els, auto || undefined);
+  /* `opts.bodyLines` is a fit-to-page cheat (src/lib/fit-page.js): the
+     print only. The page lock and the editor's page view never pass it. */
+  const auto = {
+    ...(opts && opts.autoContd === true ? { autoContd: true } : {}),
+    ...(opts && Number.isInteger(opts.bodyLines) ? { bodyLines: opts.bodyLines } : {})
+  };
+  if (!doc || !doc.numbering || doc.numbering.locked !== true) return paginate(els, Object.keys(auto).length ? auto : undefined);
   const plan = lockPlan(doc);
   return paginate(els, {
     ...auto,
@@ -427,7 +433,16 @@ export function buildDocument(doc, meta = {}) {
 
   const marked = markSet(meta.marks);
   const opts = { sceneNumbers: !!meta.sceneNumbers, marked };
-  const pages = paginateDoc(doc, { autoContd: meta.autoContd === true });
+  /* FIT TO PAGE (`meta.cheat`, extra lines a page): a taller body for
+     the paginator and, for the print, the leading that makes it real
+     (write.css reads --wr-cheat-lh under .pdf-cheat; the margins are
+     pdf.js's, via shaveMargin). The text is the same text. */
+  const cheat = cheatGeometry(meta.cheat || 0, BODY_LINES);
+  if (cheat.lines) {
+    root.classList.add('wr-cheat');
+    root.style.setProperty('--wr-cheat-lh', String(cheat.lineHeight));
+  }
+  const pages = paginateDoc(doc, { autoContd: meta.autoContd === true, ...(cheat.lines ? { bodyLines: cheat.bodyLines } : {}) });
   const labels = pageNumbersDoc(doc, pages);
   pages.forEach((rows, i) => {
     const revised = !!marked && rows.some((r) => rowMarked(r, marked));

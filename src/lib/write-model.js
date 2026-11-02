@@ -24,7 +24,7 @@ export { formatStamp, prettyStamp, TITLE_LABELS, titlePlaceholder, pageAnchors }
 export const titlePageStateText = (on) => (on ? 'Page 1 of the PDF' : 'Empty — the PDF opens on a plain title');
 
 /* ---- import --------------------------------------------------- */
-export const TYPE_ORDER = ['scene', 'action', 'character', 'paren', 'dialogue', 'transition', 'shot'];
+export const TYPE_ORDER = ['scene', 'action', 'character', 'paren', 'dialogue', 'transition', 'shot', 'centered', 'lyrics', 'act'];
 
 /** Where the scene numbers came from, in one sentence. A number is
     what the stripboard, the sides and the call sheet call a scene,

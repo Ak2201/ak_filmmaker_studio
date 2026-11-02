@@ -124,7 +124,8 @@ export function dialogueRows(elements, scenes, opts = {}) {
     }
     // Action, a transition or a shot ends the speech: the next line
     // without a cue has no speaker rather than the last one's.
-    if (type === 'action' || type === 'transition' || type === 'shot') { who = ''; paren = []; }
+    if (type === 'action' || type === 'transition' || type === 'shot'
+        || type === 'centered' || type === 'lyrics' || type === 'act') { who = ''; paren = []; }
   }
   return {
     rows,

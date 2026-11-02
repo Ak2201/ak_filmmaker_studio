@@ -15,7 +15,7 @@
    ============================================================ */
 
 /** Types that are one line on the page: a newline inside one is never right. */
-export const ONE_LINE_TYPES = new Set(['scene', 'character', 'transition']);
+export const ONE_LINE_TYPES = new Set(['scene', 'character', 'transition', 'act']);
 
 /** Does this paste need splitting? A one-line type takes no newline at
     all; any line takes a passage of several paragraphs as several

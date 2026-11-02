@@ -45,7 +45,8 @@ export function typeKeyHint(type, preset, known) {
    chips agree with the type menu and the shortcuts (QA: the bar was a
    fixed list with Dialogue before Paren and no Shot). */
 const CHIP_LABELS = { scene: 'Scene', action: 'Action', character: 'Character', paren: 'Paren',
-  dialogue: 'Dialogue', transition: 'Trans', shot: 'Shot' };
+  dialogue: 'Dialogue', transition: 'Trans', shot: 'Shot',
+  centered: 'Centered', lyrics: 'Lyrics', act: 'Act' };
 /** [{ id, label }] for the chip bar, in the preset's digit order. */
 export function chipTypes(preset, known) {
   return Keys.cycleOrder(preset, known).map((id) => ({ id, label: CHIP_LABELS[id] || typeName(id) }));

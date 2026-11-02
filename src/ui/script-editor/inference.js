@@ -20,6 +20,8 @@
    in memory only, and never re-inferred.
    ============================================================ */
 
+import { ACT_LINE } from '../../lib/act-line.js';
+
 const SCENE_PREFIX = /^(?:int\.?\/ext\.?|i\/e\.?|int\.|ext\.)(?=\s|$|[A-Za-z])/i;
 /* Outside an action line the writer is writing words, not headings —
    "Int. is short for interior" in a speech must stay a speech — so a
@@ -62,6 +64,8 @@ export function classifyInput(text, type, ctx = {}) {
     // ".." and "..." open an ellipsis, not a heading.
     if (t.length >= 2 && t[0] === '.' && t[1] !== '.') return { type: 'scene', text: t.slice(1).replace(/^\s+/, '') };
     if (t.length >= 2 && t[0] === '@') return { type: 'character', text: t.slice(1).replace(/^\s+/, '') };
+    // Fountain's lyric mark. (>centered< needs its closing mark, so it waits for Return.)
+    if (t.length >= 2 && t[0] === '~') return { type: 'lyrics', text: t.slice(1).replace(/^\s+/, '') };
   } else if (type !== 'scene' && SCENE_PREFIX_CAPS.test(t)) {
     return { type: 'scene', text };
   }
@@ -94,10 +98,16 @@ export function classifyReturn(text, type, ctx = {}) {
   const t = text.trim();
   if (!t || headingInProgress(t, type)) return null;
   if (type === 'action' && t[0] === '>') {
-    if (/<\s*$/.test(t)) return null;                  // >centered<
+    if (/<\s*$/.test(t)) {                            // >centered<
+      const inner = t.replace(/^>\s*/, '').replace(/\s*<$/, '');
+      return inner ? { type: 'centered', text: inner } : null;
+    }
     const rest = t.slice(1).trim();
     return rest ? { type: 'transition', text: rest } : null;
   }
+  /* "ACT TWO" / "END OF ACT ONE" typed as action is an act break, not a
+     character cue — the cue rule below would otherwise take it. */
+  if (type === 'action' && ACT_LINE.test(t)) return { type: 'act', text: t };
   /* The standard transitions that do not end in TO: (QA r4: FADE OUT.,
      CUT TO BLACK. and SMASH CUT: became a character cue, or stayed
      action). Same words the importer's TRANS_RE knows. A closing card

@@ -44,11 +44,13 @@ import { hasTitlePage, sceneNumbers } from './script.js';
    re-exported here so no caller had to change. */
 import {
   GEOMETRY, geometryOf, DUAL, PAGE_LINES, BODY_LINES,
-  wrapText, printedText, paginate, autoContdIndices, pageIndex
+  wrapText, printedText, paginate, autoContdIndices, pageIndex,
+  isActEnd, isActStart
 } from './paginate.js';
 export {
   GEOMETRY, geometryOf, DUAL, PAGE_LINES, BODY_LINES,
-  wrapText, printedText, paginate, autoContdIndices, pageIndex
+  wrapText, printedText, paginate, autoContdIndices, pageIndex,
+  isActEnd, isActStart
 };
 
 /** The script's own pages: its elements, numbered the way its lock
@@ -272,6 +274,9 @@ const PRINT_CLASS = {
   dialogue: 'wr-pr-dialogue',
   transition: 'wr-pr-transition',
   shot: 'wr-pr-shot',
+  centered: 'wr-pr-centered',
+  lyrics: 'wr-pr-lyrics',
+  act: 'wr-pr-act',
   more: 'wr-pr-more'
 };
 
@@ -479,6 +484,7 @@ function textRow(row) {
   const geom = row.type === 'more' ? GEOMETRY.paren : geometryOf(row.type);
   return row.lines.map((line) => {
     if (geom.align === 'right') return pad(Math.max(0, TEXT_WIDTH - line.length)) + line;
+    if (geom.align === 'center') return pad(Math.floor(Math.max(0, TEXT_WIDTH - line.length) / 2)) + line;
     return pad(geom.indent) + line;
   });
 }

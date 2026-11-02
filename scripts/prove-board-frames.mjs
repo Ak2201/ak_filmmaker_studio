@@ -554,12 +554,22 @@ for (const width of [1280, 390]) {
       const widths = [...document.querySelectorAll('[data-shot="h1"] td')].map((t) => t.getBoundingClientRect().width);
       return { fits: wrap.scrollWidth <= wrap.clientWidth, sw: wrap.scrollWidth, cw: wrap.clientWidth, cols: [...document.querySelectorAll("[data-shot=\"h1\"] td")].map((t) => (t.className || "?") + ":" + Math.round(t.getBoundingClientRect().width)).join(" "), desc: desc.getBoundingClientRect().width, clip: desc.scrollHeight - desc.clientHeight,
         widest: Math.max(...widths) === (desc.closest('td').getBoundingClientRect().width), rig: !!document.querySelector('[data-shot="h1"] .vz-rig'),
-        size: sel.options[sel.selectedIndex].text, title: sel.title };
+        size: sel.options[sel.selectedIndex].text, title: sel.title,
+        /* Room for the widest code (EWS / MCU / ECU) between the select's
+           padding and its chevron: a 4rem column clipped EWS to "EV". */
+        sizeRoom: (() => {
+          const cs = getComputedStyle(sel);
+          const c = document.createElement('canvas').getContext('2d');
+          c.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+          const need = Math.max(...[...sel.options].map((o) => c.measureText(o.text).width));
+          return sel.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - need;
+        })() };
     });
     ok(lay.fits, 'the list fits its panel at 1280 with every default column', lay);
     ok(lay.desc >= 200 && lay.widest && lay.clip <= 1, '"What we see" is the widest column and shows its whole text', lay);
     ok(lay.rig, 'Light / rig shows by default', lay);
     ok(lay.size === 'EWS' && /extreme wide/.test(lay.title), 'the size select shows its code, the words in its title', lay);
+    ok(lay.sizeRoom >= 0, 'the size select has room for its widest code', lay.sizeRoom);
     ok(await overflow(page) <= 0, 'no sideways overflow');
     ok(errors.length === 0, 'no page errors', errors);
   } catch (e) { ok(false, 'the scenario stopped: ' + String(e && e.message || e).split('\n')[0]); }

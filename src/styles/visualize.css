@@ -142,7 +142,14 @@
    its code); "What we see" is the one prose column and takes whatever
    width is left, and its box grows to its text instead of clipping. */
 .vz-table .vz-c-no    { width: 4rem; min-width: 4rem; }
-.vz-table .vz-c-size  { width: 4rem; min-width: 4rem; }
+.vz-table .vz-c-size  { width: 4.5rem; min-width: 4.5rem; }
+/* The size codes run to three capitals (EWS, MCU, ECU): with the cell's
+   own 8px each side and the select's 8px + chevron, a 4rem column left
+   46px and clipped "EWS" to "EV" (QA, 2 Nov 2026). Half the cell's
+   padding and half a rem more hold the widest code; the Done column (a
+   26px box in 56px) gave up most of the difference, so the description
+   keeps its 200px box and the 1280 panel still fits. */
+.vz-table td.vz-c-size { padding-inline: var(--s1); }
 .vz-table .vz-c-angle { width: 5.5rem; min-width: 5.5rem; }
 .vz-table .vz-c-move  { width: 5.5rem; min-width: 5.5rem; }
 /* Wide enough for "100mm macro"; the angle and move pickers hold
@@ -155,7 +162,7 @@
 .vz-table .vz-c-setup .k-control + .k-control { margin-top: var(--s1); }
 .vz-table .vz-c-mins  { width: 3.75rem; min-width: 3.75rem; }
 .vz-table .vz-c-desc  { width: auto; min-width: 13.75rem; }
-.vz-table .vz-c-done  { width: 3.5rem; min-width: 3.5rem; }
+.vz-table .vz-c-done  { width: 3.125rem; min-width: 3.125rem; }
 @supports (field-sizing: content) {
   .vz-table .vz-desc { field-sizing: content; min-height: 3lh; }
 }

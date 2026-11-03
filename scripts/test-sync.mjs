@@ -348,6 +348,25 @@ Sync.syncScript(base());
   }
 }
 
+/* QA r3: a binned scene's place leaves the call sheet's header location
+   (the lock drafts "BUS / KITCHEN / TEMPLE"), and Restore puts it back. */
+{
+  reset();
+  const mk = (id, location) => ({ ...Scenes.blankScene(), id, number: id, location });
+  Scenes.saveScenes([mk('k', 'KITCHEN'), mk('b', 'BUS'), mk('t', 'TEMPLE'), mk('k2', 'KITCHEN')]);
+  const cs = Contacts.addCallSheet({ location: 'BUS / KITCHEN / TEMPLE', sceneIds: ['k', 'b', 't', 'k2'] });
+  const typed = Contacts.addCallSheet({ location: 'Studio 4, Vadapalani', sceneIds: ['b', 't'] });
+  const loc = (id) => Contacts.listCallSheets().find((c) => c.id === id).location;
+  const e = Bin.binScene('b', { reason: 'hand' });
+  eq(loc(cs.id), 'KITCHEN / TEMPLE', 'the binned scene\u2019s place leaves the drafted location');
+  eq(loc(typed.id), 'Studio 4, Vadapalani', 'a location somebody typed is not touched');
+  const e2 = Bin.binScene('k', { reason: 'hand' });
+  eq(loc(cs.id), 'KITCHEN / TEMPLE', 'a place another scene on the sheet still has stays');
+  Bin.restoreFromBin(e2.id);
+  Bin.restoreFromBin(e.id);
+  eq(loc(cs.id), 'BUS / KITCHEN / TEMPLE', 'Restore puts the location back');
+}
+
 /* ---- held mode (docs/SCRIPT-LOCK.md §3) ------------------------------ */
 {
   const SS = await import('../src/lib/script.js');

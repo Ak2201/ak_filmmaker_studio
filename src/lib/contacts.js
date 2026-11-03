@@ -227,16 +227,38 @@ export function setSheetCall(sheetId, contactId, on, time) {
    A call sheet holds scene ids; a scene going to the bin
    (src/lib/scene-bin.js) leaves every sheet it was on, and its place
    in each sheet's order is remembered so Restore puts it back where
-   it was. Raw sheets, so nothing is added to a sheet in passing. */
-export function takeSceneOut(sceneId) {
+   it was. Raw sheets, so nothing is added to a sheet in passing.
+   The header LOCATION follows too (QA r3): a sheet drafted at the lock
+   says "BUS / KITCHEN / TEMPLE", and binning the BUS scene left BUS on
+   the printed sheet. `placeOf(id)` gives a scene's location; when the
+   sheet's location is that " / " list, the binned scene's place is
+   dropped from it unless another scene on the sheet is there too. A
+   location somebody typed that is not such a list is never touched, and
+   a sheet is never left with no location. Restore puts the old text back
+   only while the sheet still says what this wrote. */
+const placeKey = (x) => String(x ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+export function takeSceneOut(sceneId, placeOf = null) {
   const all = readAll();
   const sheets = [];
   const callSheets = all.callSheets.map((sheet) => {
     const ids = sheet && Array.isArray(sheet.sceneIds) ? sheet.sceneIds : null;
     const index = ids ? ids.indexOf(sceneId) : -1;
     if (index < 0) return sheet;
-    sheets.push({ sheetId: sheet.id, index });
-    return { ...sheet, sceneIds: ids.filter((id) => id !== sceneId) };
+    const rec = { sheetId: sheet.id, index };
+    const next = { ...sheet, sceneIds: ids.filter((id) => id !== sceneId) };
+    const gone = typeof placeOf === 'function' ? placeKey(placeOf(sceneId)) : '';
+    if (gone && typeof sheet.location === 'string') {
+      const parts = sheet.location.split(' / ');
+      const kept = parts.filter((x) => placeKey(x) !== gone);
+      const stillThere = next.sceneIds.some((id) => placeKey(placeOf(id)) === gone);
+      if (kept.length && kept.length < parts.length && !stillThere) {
+        next.location = kept.join(' / ');
+        rec.location = sheet.location;
+        rec.locationNow = next.location;
+      }
+    }
+    sheets.push(rec);
+    return next;
   });
   if (sheets.length) writeAll({ ...all, callSheets });
   return sheets;
@@ -255,7 +277,10 @@ export function putSceneBack(sceneId, sheets) {
     if (ids.includes(sceneId)) return sheet;
     ids.splice(Math.min(at.get(sheet.id), ids.length), 0, sceneId);
     n++;
-    return { ...sheet, sceneIds: ids };
+    const rec = sheets.find((x) => x.sheetId === sheet.id) || {};
+    const back = typeof rec.location === 'string' && sheet.location === rec.locationNow
+      ? { location: rec.location } : {};
+    return { ...sheet, ...back, sceneIds: ids };
   });
   if (n) writeAll({ ...all, callSheets });
   return n;

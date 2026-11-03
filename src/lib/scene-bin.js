@@ -151,7 +151,7 @@ export function binScene(sceneId, opts = {}) {
   const row = rows[index];
   const vindex = virtualIds(rows, readBin().entries).indexOf(sceneId);
   const shots = Shots.takeSceneOut(sceneId);
-  const sheets = Contacts.takeSceneOut(sceneId);
+  const sheets = Contacts.takeSceneOut(sceneId, (id) => ((rows.find((s) => s && s.id === id) || {}).location));
   const edit = Edit.takeSceneOut(sceneId);
   const entry = {
     id: uid(),

@@ -163,6 +163,40 @@ const livePre = (els) => {
   return i < 0 ? els : els.slice(0, i);
 };
 
+/* groupByScene() puts the lines under a DELETED heading into that heading's
+   omitted group, but those lines are still in the script: they now read as
+   part of the scene above. That scene has no op of its own, so it was never
+   reported, and its pages, shots, sides and call sheet changed with no item
+   saying so (QA r2). Each such scene gets a group here, its count of
+   `added` being the lines it absorbed, in script order. */
+function withAbsorbed(diff, els) {
+  const ops = (diff && diff.ops) || [];
+  const groups = groupByScene(diff);
+  const at = new Map(ops.map((o, i) => [o, i]));
+  const covered = new Set(groups.map((g) => g.headingId).filter(Boolean));
+  const absorbed = new Map();   // live heading id -> lines gained
+  for (const g of groups) {
+    if (g.headingOp !== 'removed') continue;
+    for (const o of g.ops) {
+      if (!o.b || o.op === 'removed' || (o.b.type === 'scene' && norm(o.b.text))) continue;
+      const i = els.findIndex((e) => e && e.id === o.b.id);
+      let h = null;
+      for (let k = i - 1; k >= 0 && !h; k--) if (els[k] && els[k].type === 'scene' && norm(els[k].text)) h = els[k];
+      if (!h || covered.has(h.id)) continue;
+      absorbed.set(h.id, (absorbed.get(h.id) || 0) + (norm(o.b.text) ? 1 : 0));
+    }
+  }
+  const out = groups.map((g) => ({ g, i: at.get(g.ops[0]) ?? 0 }));
+  for (const [hid, n] of absorbed) {
+    if (!n) continue;
+    const i = ops.findIndex((o) => o.b && o.b.id === hid);
+    if (i < 0) continue;
+    out.push({ i, g: { heading: norm(ops[i].b.text), headingId: hid, headingOp: ops[i].op, ops: [ops[i]],
+      counts: { changed: 0, moved: 0, added: n, removed: 0 } } });
+  }
+  return out.sort((x, y) => x.i - y.i).map((x) => x.g);
+}
+
 /**
  * What changed since the lock, scene by scene, and what each touches
  * downstream. PURE: scenes, shots and callSheets are INJECTED; nothing is
@@ -190,7 +224,7 @@ export function changeReport(doc, { scenes = [], shots = [], callSheets = [] } =
   const pending = reconcile(els, rows, { held: true, numbering: n }).pending;
 
   const items = [];
-  for (const g of groupByScene(diff)) {
+  for (const g of withAbsorbed(diff, els)) {
     const op = g.ops[0] || {};
     const pre = !g.heading && !g.headingId && !(op.a && op.a.type === 'scene') && !(op.b && op.b.type === 'scene');
     let kind = 'changed';

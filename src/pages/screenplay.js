@@ -490,6 +490,21 @@ document.addEventListener('paste', (e) => {
   pasteTarget = row.dataset.el;
   setTimeout(() => { pasteBefore = null; }, 4000);
 }, true);
+/* The Desk ctx the AI pill and the no-AI clean-up share: the same
+   selection, the same type path, the same save and redraw. */
+function deskCtx() {
+  return {
+    identity: 'script:' + (curId || ''),
+    getDoc: () => doc,
+    cursorId: () => curId,
+    getSelection: () => cleanupBlock(),
+    setType: (id, type) => editor.setElementType(id, type),
+    save: () => persistNow(),
+    render: (id) => renderPage(id ? elFocus(id) : null),
+    after: () => refreshDraftLabel(),
+    say: (m) => say(m)
+  };
+}
 function cleanupBlock() {
   const live = new Set(doc.elements.map((x) => x.id));
   const pick = (ids) => (ids || []).filter((id) => live.has(id));
@@ -630,6 +645,12 @@ async function openLockSheet(returnTo, onClose) {
   }
 }
 delegate(document, 'click', '[data-action="sc-lock"]', (e, btn) => { openLockSheet(btn); });
+/* The rules clean-up: the local Desk task, imported at the click so the page
+   loads no Desk code until it is pressed. */
+delegate(document, 'click', '[data-action="sc-cleanup-rules"]', () => {
+  import('../ui/ai-desk.js').then((D) => D.openDesk('script-cleanup-rules', deskCtx))
+    .catch((e) => console.warn('[screenplay] the Desk did not load', e));
+});
 delegate(document, 'click', '[data-action="sc-unlock"]', async (e, btn) => {
   if (!isNumberingLocked(doc.numbering)) {
     tell({ eyebrow: 'Script lock', icon: 'lock_open', title: 'The script is not locked', body: 'The script is not locked. Scene numbers already follow the script.' });
@@ -877,21 +898,16 @@ function buildTop() {
       { id: 'coverage', label: 'Coverage report' },
       { id: 'dialogue-pass', label: 'Dialogue pass (speech at the caret)' },
       { id: 'beat-critique', label: 'Critique this scene' },
-      { id: 'script-cleanup', label: 'Clean up pasted text' }
+      { id: 'script-cleanup', label: 'Enhance clean-up with AI' }
     ],
-    ctx: () => ({
-      identity: 'script:' + (curId || ''),
-      getDoc: () => doc,
-      cursorId: () => curId,
-      /* script-cleanup: the lines selected in a line or just pasted /
-         imported, and the editor's one type path. */
-      getSelection: () => cleanupBlock(),
-      setType: (id, type) => editor.setElementType(id, type),
-      save: () => persistNow(),
-      render: (id) => renderPage(id ? elFocus(id) : null),
-      after: () => refreshDraftLabel(),
-      say: (m) => say(m)
-    })
+    ctx: deskCtx
+  });
+  /* The rules twin (docs/RULES-BREAKDOWN.md C1): no key, no plan, nothing
+     sent. Opens the local Desk task `script-cleanup-rules` on the same
+     selection; never behind aiUnlocked(). */
+  const cleanBtn = button({
+    label: 'Clean up (no AI)', size: 'sm', action: 'sc-cleanup-rules', class: 'sc-cleanup-btn',
+    title: 'Cut the selected or pasted text into screenplay lines by the script’s own rules. Your words are kept exactly.'
   });
 
   /* The shell's `.toolbar` convention is not used: this bar is the
@@ -909,7 +925,7 @@ function buildTop() {
     buildViews(),
     meta,
     h('div.sc-tools', {}, [
-      h('div.sc-tools-l', {}, [typePill, h('span.sc-vsep', { 'aria-hidden': 'true' }), beatsBtn, ai, notesButton({ label: 'Notes' }), h('span#scFocusSlot.sc-focus-slot')]),
+      h('div.sc-tools-l', {}, [typePill, h('span.sc-vsep', { 'aria-hidden': 'true' }), beatsBtn, cleanBtn, ai, notesButton({ label: 'Notes' }), h('span#scFocusSlot.sc-focus-slot')]),
       pos,
       h('div.sc-tools-r', {}, [lockBtn, fileMenu, menu, toolsBtn])
     ]),

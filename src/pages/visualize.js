@@ -842,6 +842,16 @@ function shotsDrafted(made) {
   preservingFocus(render);
 }
 
+/* The rules' shots, kept from the Desk's list: the same Undo as the draft,
+   and a status that does not say AI (they are not). */
+function shotsByRules(made) {
+  aiLastRun = made || [];
+  aiLastSnap = draftSnapshot(aiLastRun);
+  aiError = '';
+  aiStatus = aiLastRun.length ? plural(aiLastRun.length, 'shot', 'shots') + ' kept from the rules. Read them before you shoot them.' : '';
+  preservingFocus(render);
+}
+
 /* Which script text goes with which scene is matchScenes()'s answer,
    the same one the breakdown and the reports print: by heading, not by
    position, with the text above the first heading belonging to no
@@ -948,9 +958,16 @@ function renderAI(scenes, shots) {
     label: 'Basic breakdown (no AI key needed)', variant: 'primary', icon: 'rule',
     action: 'vz-basic-run', disabled: none || aiRunning
   });
+  /* The same rules in the Desk's own tick list (the local task
+     `shot-basic`: no key, no plan, nothing sent), reviewed before anything
+     is kept. Never behind aiUnlocked(); the pill beside it only enhances. */
+  const reviewBtn = button({
+    label: 'Shots without AI', icon: 'rule', action: 'vz-shots-basic', disabled: none || aiRunning,
+    title: 'Propose the shots by rule for the ticked scenes, and keep the ones you tick'
+  });
   /* ctx is computed at the click, so it carries the scenes ticked THEN. */
   const pill = aiPill({
-    label: 'Draft ' + plural(aiPicked.size, 'scene', 'scenes') + ' with AI',
+    label: 'Enhance ' + plural(aiPicked.size, 'scene', 'scenes') + ' with AI',
     tasks: ['shot-draft'],
     ctx: () => {
       const ids = [...(aiPicked || [])];
@@ -959,6 +976,7 @@ function renderAI(scenes, shots) {
   });
   wrap.append(h('div.vz-ai-acts', {}, [
     basicBtn,
+    reviewBtn,
     pill,
     aiLastRun.length && !aiRunning
       ? button({ label: 'Undo the last draft (' + aiLastRun.length + ')', icon: 'history', action: 'vz-ai-undo' })
@@ -1635,6 +1653,16 @@ delegate(document, 'click', '[data-action="vz-basic-run"]', async () => {
   for (const id of result.byScene.keys()) aiPicked.delete(id);
   render();
   say(plural(made.length, 'shot', 'shots') + ' drafted. Read them before you shoot them.');
+});
+
+/* "Shots without AI": the local Desk task `shot-basic` over the ticked scenes. */
+delegate(document, 'click', '[data-action="vz-shots-basic"]', () => {
+  if (aiRunning) return;
+  const ids = [...(aiPicked || [])];
+  if (!ids.length) { aiError = 'Tick at least one scene.'; render(); return; }
+  import('../ui/ai-desk.js')
+    .then((D) => D.openDesk('shot-basic', { identity: 'shots-basic:' + ids.slice().sort().join(','), sceneIds: ids, after: shotsByRules }))
+    .catch((e) => console.warn('[visualize] the Desk did not load', e));
 });
 
 delegate(document, 'click', '[data-action="vz-ai-undo"]', async () => {

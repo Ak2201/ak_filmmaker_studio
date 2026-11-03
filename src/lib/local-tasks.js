@@ -29,6 +29,7 @@
    ============================================================ */
 import { RULES_TASKS_PREPROD } from './local-tasks-preprod.js';
 import { RULES_TASKS_POST } from './local-tasks-post.js';   // docs/RULES-BREAKDOWN.md lane B
+import { RULES_TASKS_STORY } from './local-tasks-story.js';
 let Extras = null, ScenesM = null, ScriptM = null, ShotsM = null, StoryM = null, Store = null;
 let readyP = null;
 
@@ -153,6 +154,6 @@ const storyBasic = {
   }
 };
 
-export const LOCAL_TASKS = [shotBasic, storyBasic, ...RULES_TASKS_PREPROD, ...RULES_TASKS_POST];
+export const LOCAL_TASKS = [shotBasic, storyBasic, ...RULES_TASKS_PREPROD, ...RULES_TASKS_POST, ...RULES_TASKS_STORY];
 export const LOCAL_TASK_IDS = LOCAL_TASKS.map((t) => t.id);
 export default { ready, LOCAL_TASKS, LOCAL_TASK_IDS };

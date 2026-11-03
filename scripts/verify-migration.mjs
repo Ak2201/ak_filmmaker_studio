@@ -348,7 +348,13 @@ const SKIN_FILES = fs
    list is growing, that is the signal to re-baseline deliberately with
    `npm run baseline` rather than to keep adding rows. */
 const EXPECTED = /* every earlier row was emptied by the 27 Oct 2026 re-baseline (Public site & shell: the stage descriptions, the shortcut sheet and the palette's section rows changed words on every page); a row now is one made after it */ {
-  "hub": {},
+  "hub": {
+    /* QA r2 H (826a2f1): every project card reads the guide of its own
+       blob, the open one included, so the gate's empty 'Verification'
+       card says "Not started" where the open card's full journey() once
+       said "Story". Deliberate: the same film no longer reads two stages. */
+    story: 'the open project card reads its guide: an empty film is "Not started", not "Story" (QA r2 H)'
+  },
   "stripboard": {},
   "reports": {},
   "contacts": {},

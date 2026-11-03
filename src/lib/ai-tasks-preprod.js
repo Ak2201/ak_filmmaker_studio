@@ -203,13 +203,17 @@ const recceTask = {
    ============================================================ */
 function safeCalc() { try { return BudgetM.readCalcData() || {}; } catch (e) { return null; } }
 
-function budgetFacts() {
+/* `c.scenes` (Run all, ai-headless-ctx.js) is the scene list AS IF a drafted
+   shoot order were accepted: the estimate reads that schedule, and nothing
+   is written. Absent, the scenes as stored. */
+function budgetFacts(c = {}) {
+  const scenes = Array.isArray(c.scenes) ? c.scenes : ScenesM.listScenes();
   let elements = [];
   try { elements = ScriptM.loadScript().elements || []; } catch (e) { elements = []; }
   let region = '';
   try { region = Region.filmRegion().region || ''; } catch (e) { region = ''; }
   return M.budgetFacts({
-    schedule: BudgetM.scheduleFacts(), scenes: ScenesM.listScenes(), scriptElements: elements, region,
+    schedule: BudgetM.scheduleFacts(scenes), scenes, scriptElements: elements, region,
     currency: BudgetM.budgetCurrency(), presets: BudgetM.PRESET_ITEMS, data: safeCalc() || {}
   });
 }
@@ -236,12 +240,12 @@ const budgetTask = {
   kind: 'list',
   editable: false,
   identity() { return 'budget-estimate'; },
-  input() {
-    try { const f = budgetFacts(); return f.schedule.scenes ? M.budgetPrompt(f) : NO_SCENES; } catch (e) { return (e && e.message) || ''; }
+  input(ctx) {
+    try { const f = budgetFacts(resolve(ctx)); return f.schedule.scenes ? M.budgetPrompt(f) : NO_SCENES; } catch (e) { return (e && e.message) || ''; }
   },
-  async run(input, { onStatus, signal, refine } = {}) {
+  async run(input, { onStatus, signal, refine, ctx } = {}) {
     await load();
-    const f = budgetFacts();
+    const f = budgetFacts(resolve(ctx));
     if (!f.schedule.scenes) fail(NO_SCENES);
     const { parsed, truncated } = await ask(M.BUDGET_SYSTEM, M.budgetPrompt(f, refineText(refine, M.budgetPrevious)), M.budgetSchema(), { onStatus, signal });
     const res = M.readBudget(parsed, f, (n) => bandOf(n, f.currency));

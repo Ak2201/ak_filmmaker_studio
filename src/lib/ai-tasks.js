@@ -1017,6 +1017,7 @@ const shotTask = {
     const c = resolve(ctx);
     const m = metaFor('shot-draft', meta, result && result.model);
     const made = [];
+    const pairs = [];
     for (const it of selected || []) {
       if (!it.sceneId || !it.draft) continue;
       /* Every column the Shot List shows, rig and setup included, so
@@ -1031,15 +1032,23 @@ const shotTask = {
         rig: d.rig || '', setup: d.setup || '', description: d.description };
       for (const k of Object.keys(fields)) if (fields[k] === undefined) delete fields[k];   // a blank default, never `undefined`
       const { sceneId: _s, number: _n, ...rest } = Stamp.stampAI('shot', ShotsM.blankShot(fields), m);
-      made.push(ShotsM.addShot(it.sceneId, rest).id);
+      const id = ShotsM.addShot(it.sceneId, rest).id;
+      made.push(id);
+      pairs.push([it.id, id]);
     }
     if (!made.length) return null;
     call(c.after, made);
-    return () => {
+    const undo = () => {
       const ids = new Set(made);
       ShotsM.saveShots(ShotsM.listShots().filter((s) => !ids.has(s.id)));
       call(c.after, []);
     };
+    /* Which drafted item became which shot: [itemId, shotId]. Run all
+       (ai-run-all.js acceptDraft) reads it to point the blocking and the
+       frames drafted on 'draft:<n>' shots at the real ones. A property on
+       the undo, like `said`, so a caller that only calls undo() is unchanged. */
+    undo.made = pairs;
+    return undo;
   }
 };
 
@@ -2001,7 +2010,8 @@ const tagsTask = {
    ============================================================ */
 function boardJobsFor(c, max) {
   return BoardM.boardJobs({
-    shots: ShotsM.listShots(), scenes: ScenesM.listScenes(), frames: ShotsM.listFrames(),
+    // drafted shots too (Run all, ids 'draft:<n>'), mapped to real ones on Accept
+    shots: ShotsM.listShots().concat(Array.isArray(c.draftShots) ? c.draftShots : []), scenes: ScenesM.listScenes(), frames: ShotsM.listFrames(),
     onlyShotIds: Array.isArray(c.shotIds) && c.shotIds.length ? c.shotIds : null,
     max: max == null ? BoardM.MAX_FRAMES : max
   });
@@ -2626,6 +2636,14 @@ function blockingJob(c, { withBlock = false } = {}) {
     id: s.id, number: s.number, size: s.size, angle: s.angle, movement: s.movement, lens: s.lens,
     setup: ShotsM.setupOf(s, cams), description: s.description
   }));
+  /* Run all stages a scene on shots that are still DRAFTS (ids
+     'draft:<n>', ai-headless-ctx.js): they are offered like real ones, and
+     acceptDraft maps the ids to the real shots before this task's apply. */
+  for (const s of Array.isArray(c.draftShots) ? c.draftShots : []) {
+    if (!s || String(s.sceneId) !== String(scene.id)) continue;
+    shots.push({ id: s.id, number: s.number, size: s.size, angle: s.angle, movement: s.movement, lens: s.lens,
+      setup: s.setup || '', description: s.description });
+  }
   const blocks = ShotsM.blocksOfScene(scene.id);
   const job = {
     sceneId: scene.id, number: scene.number, slug: slugOf(scene), synopsis: scene.synopsis,
@@ -2829,4 +2847,12 @@ export function registerAll(register) {
 }
 
 export const TASK_IDS = ALL_TASKS.map((t) => t.id);
-export default { registerAll, TASK_IDS };
+
+/** Every task by id, once every model the tasks read has loaded — for a
+    caller that is not the Desk (ai-run-all.js runs and applies tasks with
+    a headless ctx). registerAll() registers once, so a second registrar
+    would get nothing from it; this reads the same list. */
+export function loadTasks() {
+  return Promise.all([loadAll(), ...LANES.map((m) => m.load())]).then(() => new Map(ALL_TASKS.map((t) => [t.id, t])));
+}
+export default { registerAll, loadTasks, TASK_IDS };

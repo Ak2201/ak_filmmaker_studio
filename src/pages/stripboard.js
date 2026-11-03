@@ -578,7 +578,7 @@ function dayLoadBits(day, eighths, target) {
     out.push(badge({
       label: `Over target · ${formatEighths(eighths)} / ${formatEighths(target)} pp`,
       tone: 'danger', icon: 'warning', class: 'sb-load is-over',
-      title: `The day carries ${formatEighths(eighths)} pages against a target of ${formatEighths(target)}.`
+      title: `The day carries ${formatEighths(eighths)} ${eighths === 8 ? 'page' : 'pages'} against a target of ${formatEighths(target)}.`
     }));
   }
   out.push(h('span.sb-group-hours', { 'data-hours-day': String(day) }));

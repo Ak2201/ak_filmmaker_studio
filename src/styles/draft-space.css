@@ -1,0 +1,31 @@
+/* ============================================================
+   THE DRAFT SPACE (src/ui/draft-space.js) on preprod.html#drafts.
+   Colours are tokens, shapes are skin variables; nothing here names a
+   literal. It sits on the page's one column, under the open step.
+   ============================================================ */
+.pp-has-menu > .pp-drafts, .pp-drafts { max-width: var(--measure-wide); margin: 0 auto var(--s8); padding: 0 var(--s5); scroll-margin-top: var(--scroll-offset, 0px); }
+.pp-drafts > * + * { margin-top: var(--s4); }
+.pp-drafts .ds-head h2 { margin: 0 0 var(--s2); font-family: var(--f-display); font-size: var(--t-2xl); line-height: var(--lh-tight); }
+.ds-ticks { margin: 0; padding: var(--s4); border: var(--sk-card-line-w, 1px) solid var(--rule); border-radius: var(--sk-radius, var(--radius)); background: var(--paper-raised); min-width: 0; }
+.ds-ticks legend { padding: 0 var(--s2); font-weight: 600; }
+.ds-tick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: var(--s2) var(--s4); }
+.ds-tick { display: flex; align-items: flex-start; gap: var(--s2); min-height: 32px; cursor: pointer; }
+.ds-tick input { margin-top: 3px; flex: none; }
+.ds-tick > span { display: grid; gap: 2px; min-width: 0; }
+.ds-tick-hint { font-size: var(--t-small); color: var(--ink-muted); }
+.ds-act, .ds-card-act, .ds-locked { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.ds-runs { display: grid; gap: var(--s5); }
+.ds-run-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2) var(--s3); margin-bottom: var(--s3); }
+.ds-run-head h3 { margin: 0; font-size: var(--t-lg); }
+.ds-facts { margin: 0; font-size: var(--t-small); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.ds-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: var(--s3); }
+.ds-card { display: grid; align-content: start; gap: var(--s2); min-width: 0; padding: var(--s4); background: var(--paper-raised); border: var(--sk-card-line-w, 1px) solid var(--rule); border-radius: var(--sk-radius, var(--radius)); }
+.ds-card[data-ds-status="ready"] { border-color: var(--accent-primary); }
+.ds-card[data-ds-status="skipped"], .ds-card[data-ds-status="rejected"] { background: var(--paper-sunk); }
+.ds-card-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s2); }
+.ds-card-head h4 { margin: 0; font-size: var(--t-base); overflow-wrap: anywhere; }
+.ds-why { margin: 0; font-size: var(--t-small); color: var(--ink-body); overflow-wrap: anywhere; }
+.ds-card[data-ds-status="failed"] .ds-why { color: var(--danger); }
+@media (max-width: 719px) {
+  .pp-drafts { padding-inline: var(--s4); }
+}

@@ -17,6 +17,18 @@
      openDesk(taskId, ctx)    open the Desk on that task with that ctx
      closeDesk()              close it; the session (chat + versions)
                               stays in memory until reload
+     openWithDraft(taskId, ctx, result, opts)
+                              open the Desk on a STORED answer (Run all's
+                              draft space, src/ui/draft-space.js): `result`
+                              is shown as v1 without a request, so the
+                              tick list, refine, Accept and Undo all work
+                              as after a run. opts { identity, run, model,
+                              accept(selected, result, info) → undo,
+                              onAccepted(undo) }: `accept` replaces the
+                              task's own apply on Accept (acceptDraft
+                              accepts the draft's parents first, then the
+                              task's apply), so a draft reviewed here and
+                              one accepted from its card take one path.
 
    TASK SHAPE
      {
@@ -752,8 +764,13 @@ async function accept(all) {
       run: v.run || newId('air'),
       at: new Date().toISOString()
     };
-    undo = await task.apply(selected, heard.ctx, v.result, meta);
+    /* A stored draft (openWithDraft) accepts through its owner's path,
+       which ends in this same task's apply with this same meta. */
+    undo = typeof sess.acceptVia === 'function'
+      ? await sess.acceptVia(selected, v.result, { all, version: sess.current, meta })
+      : await task.apply(selected, heard.ctx, v.result, meta);
     v.accepted = true;
+    if (typeof sess.onAccepted === 'function') { try { sess.onAccepted(undo); } catch (e) { console.warn('[ai-desk] onAccepted threw', e); } }
   } catch (e) {
     sess.error = (e && e.message) || 'The change could not be written. Nothing was changed.';
     render();
@@ -972,6 +989,62 @@ export async function openDesk(taskId, ctxArg = {}) {
     && sess.versions.every((x) => x.accepted)) run();
 }
 
+/**
+ * Open the Desk on an answer that already exists (a Run all draft): no
+ * request is sent to show it. The session is keyed by `opts.identity`
+ * (the draft space passes run, key and the draft's end time, so a draft
+ * that ran again opens fresh). A refine is an ordinary run on `ctx`.
+ * Opening it stops a non-background run left in the Desk, as openDesk
+ * does; Run all's own engine is not a Desk session and is never touched.
+ */
+export async function openWithDraft(taskId, ctxArg = {}, result = {}, opts = {}) {
+  if (!PlanGate.aiUnlocked()) return false;          // fails closed, as the pill
+  const from = document.activeElement;
+  ensureDesk();
+  missingText = '';
+  await loadTasks();
+  const t = getTask(taskId);
+  if (!t) {
+    mode = 'missing';
+    task = null;
+    sess = null;
+    missingText = 'This build has no “' + String(taskId) + '” tool, so the draft cannot be reviewed here.';
+  } else {
+    mode = 'task';
+    task = t;
+    ctx = ctxArg || {};
+    const key = t.id + '|draft:' + String(opts.identity ?? '');
+    let s = sessions.get(key);
+    if (!s) {
+      let input = '';
+      try { input = String(t.input ? (t.input(ctx) ?? '') : ''); } catch (e) { input = ''; }
+      s = { key, input, edited: false, versions: [], current: -1, chat: [], draft: '',
+        run: null, bg: false, taskId: t.id, status: '', error: '', promptOpen: false };
+      const v = makeVersion(t, { ...(result || {}), model: (result && result.model) || opts.model || '' });
+      v.run = opts.run || newId('air');
+      s.versions.push(v);
+      s.current = 0;
+      sessions.set(key, s);
+    }
+    s.acceptVia = typeof opts.accept === 'function' ? opts.accept : null;
+    s.onAccepted = typeof opts.onAccepted === 'function' ? opts.onAccepted : null;
+    sess = s;
+  }
+  for (const o of sessions.values()) {
+    if (o.run && o !== sess && (!o.bg || (task && o.taskId === task.id))) o.run.abort();
+  }
+  if (sess && !sess.run) { sess.status = 'A stored draft: nothing is written until you accept.'; sess.error = ''; }
+  if (!open) opener = from && from !== document.body ? from : null;
+  open = true;
+  desk.hidden = false;
+  document.documentElement.classList.add('ai-desk-open');
+  render();
+  publishWidth();
+  const first = desk.querySelector(mode === 'task' ? '.ai-desk-ver[aria-pressed="true"]' : '[data-action="ai-desk-close"]');
+  (first || desk).focus();
+  return mode === 'task';
+}
+
 export function closeDesk() {
   if (!desk || !open) return;
   /* Closing stops a request — except a background one, which fills its
@@ -991,7 +1064,7 @@ export function closeDesk() {
   window.dispatchEvent(new Event('ai-desk:closed'));
 }
 
-export default { registerTask, getTask, listTasks, openDesk, closeDesk };
+export default { registerTask, getTask, listTasks, openDesk, openWithDraft, closeDesk };
 
 /* ==== HISTORY TAB (Lane B) ====================================
    docs/AI-FAST-HARNESS.md B6(a): the project's AI-made items grouped by

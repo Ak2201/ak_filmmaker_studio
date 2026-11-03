@@ -88,6 +88,10 @@ function renderHeader(scenes) {
                 { id: 'genre-comps', label: 'Genre and comparables' }],
         ctx: { elements: () => loadScript().elements, after: () => render() }
       }),
+      /* Run all: every AI tool's draft in one press, reviewed in the
+         Pre-Production page's draft space (src/ui/draft-space.js). */
+      button({ label: 'Draft space', href: 'preprod.html#drafts', icon: 'auto_awesome',
+        title: 'Ask every AI tool for its draft in one press, and review each one' }),
       button({
         label: 'Re-measure pages from the script', action: 'eighths-measure',
         title: 'Recount each scene’s length in eighths from the script as it stands now'

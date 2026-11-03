@@ -70,6 +70,13 @@
   color: var(--accent-deep);
   text-underline-offset: 3px;
 }
+/* base.css floors touch targets at 44px under (pointer: coarse), but
+   only for a.btn and buttons -- a bare link is not on its list. The
+   four longer tool links wrapped to two lines and looked fine at 43px;
+   the one-line "certification" link was 22px. Floor them all here. */
+@media (pointer: coarse) {
+  .dv-tool { display: inline-flex; align-items: center; min-height: 44px; }
+}
 
 /* ---- sources ------------------------------------------------ */
 .dv-src {
@@ -89,6 +96,11 @@
   padding: 0;
 }
 .dv-src-links a { color: var(--accent-deep); overflow-wrap: anywhere; }
+/* A bare inline link is 16px tall; base.css's coarse floor names a.btn,
+   not a plain <a>, so a touch screen needs its own target here. */
+@media (pointer: coarse) {
+  .dv-src-links a { display: inline-flex; align-items: center; min-height: 44px; }
+}
 
 /* ---- streamer switches -------------------------------------- */
 .dv-ott { margin: 0 0 var(--s6); }

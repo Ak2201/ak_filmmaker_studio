@@ -72,6 +72,9 @@ ok('no answer at all: rupees, fallback', v.currency === 'INR' && v.fallback && v
 v = M.shopView('INR', notice());
 ok('a rupee visitor is shown rupees from the same notice (the CURRENT price)', v.currency === 'INR' && v.plans.pro.minor === 99900 && !v.fallback);
 ok('rupeeView before any answer', M.rupeeView('USD').currency === 'INR' && M.rupeeView('USD').fallback && !M.rupeeView('INR').fallback);
+ok('switch presses INR when a dollar ask fell back to rupees', M.pressedCurrency('USD', M.shopView('USD', null), false) === 'INR');
+ok('switch presses USD while dollars load and once they show', M.pressedCurrency('USD', null, true) === 'USD' && M.pressedCurrency('USD', M.shopView('USD', notice()), false) === 'USD');
+ok('switch presses INR for a rupee ask', M.pressedCurrency('INR', M.rupeeView('INR'), false) === 'INR');
 eq('fromDay is the cheapest plan a day, in the view\'s currency', M.fromDay(M.shopView('USD', notice())), '$0.05');
 
 /* ---- a rise, in dollars ---------------------------------------------- */

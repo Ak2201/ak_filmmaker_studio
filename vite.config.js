@@ -963,5 +963,9 @@ export default defineConfig({
       }
     }
   },
-  server: { port: 5173, open: false }
+  /* watch.ignored, DEV ONLY: `.claude/worktrees/` holds the agent worktrees
+     (git-excluded), each a whole copy of the repo; watching them ran out of
+     inotify watches (ENOSPC) and the dev server never answered, which is how
+     prove:stage-guide's dev half timed out on index.html. */
+  server: { port: 5173, open: false, watch: { ignored: [/[\\/]\.claude[\\/]/] } }
 });

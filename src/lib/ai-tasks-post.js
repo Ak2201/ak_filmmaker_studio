@@ -26,6 +26,7 @@
    ============================================================ */
 import { ai, resolve, call, fail, plural, remember, recall, refineText } from './ai-task-kit.js';
 import * as M from './ai-post-model.js';
+import Stamp from './ai-stamp.js';   // the history stamp (docs/AI-FAST-HARNESS.md B)
 
 let Diff = null, ScenesM = null, Shoot = null, Edit = null, Cbfc = null, Rules = null, ScriptM = null;
 
@@ -180,8 +181,9 @@ const editNotesTask = {
     ].filter(Boolean).join(' ');
     return remember('edit-notes', { items: res.items, note }, {});
   },
-  apply(selected, ctx, result) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const sm = Stamp.metaOf('edit-notes', meta, result && result.model);
     if (!recall('edit-notes', result)) fail('There are no notes to keep. Run it first.');
     const wrote = [];
     let skipped = 0;
@@ -191,6 +193,8 @@ const editNotesTask = {
       if (!M.canFill(Edit.sceneEdit(it.sceneId).note)) { skipped++; continue; }
       if (!ScenesM.listScenes().some((s) => s.id === it.sceneId)) { skipped++; continue; }
       Edit.setSceneEdit(it.sceneId, { note: it.note });
+      // the history stamp: the note was blank, the run filled it
+      Edit.setSceneEdit(it.sceneId, { aiFill: Stamp.stampFill('edit', Edit.sceneEdit(it.sceneId), sm, ['note'], 'fill').aiFill });
       wrote.push({ sceneId: it.sceneId, note: it.note });
     }
     call(c.say, (wrote.length ? plural(wrote.length, 'edit note', 'edit notes') + ' added.' : 'No edit notes were added.')
@@ -201,7 +205,7 @@ const editNotesTask = {
     return () => {
       let reverted = 0, kept = 0;
       for (const w of wrote) {
-        if (M.canUndo(Edit.sceneEdit(w.sceneId).note, w.note)) { Edit.setSceneEdit(w.sceneId, { note: '' }); reverted++; } else kept++;
+        if (M.canUndo(Edit.sceneEdit(w.sceneId).note, w.note)) { Edit.setSceneEdit(w.sceneId, { note: '', aiFill: Stamp.unstampFill(Edit.sceneEdit(w.sceneId), sm.run).aiFill }); reverted++; } else kept++;
       }
       call(c.say, (reverted ? plural(reverted, 'edit note', 'edit notes') + ' taken back.' : 'Nothing to take back.')
         + (kept ? ' ' + plural(kept, 'note was', 'notes were') + ' edited since and left as written.' : ''));

@@ -125,6 +125,18 @@ await Tasks.registerAll((t) => reg.set(t.id, t));
   undo();
   eq([doc.elements[2].text, doc.elements[2].alts], ['The bus is late again, like every single day.', ['Mine, typed.']], 'dialogue: Undo restores the line and removes exactly the added takes');
   ok(!('aiPass' in doc.elements[2]), 'dialogue: Undo removes the pass mark');
+  // Typed into the same speech after Accept: Undo keeps the words (QA r1 K-1).
+  const r2 = await t.run(t.input(ctx), { ctx });
+  const said = [];
+  const ctx2 = { ...ctx, say: (m) => said.push(m) };
+  const undo2 = t.apply(r2.proposed, ctx2, r2);
+  doc.elements[2].text += ' LATER';
+  undo2();
+  eq(doc.elements[2].text, 'The bus is late. LATER', 'dialogue: Undo after a later edit keeps the edited speech');
+  eq(doc.elements[2].alts, ['Mine, typed.'], 'dialogue: Undo after a later edit still removes the added takes');
+  ok(said.length === 1 && /edited since/.test(said[0]), 'dialogue: Undo after a later edit says so', said);
+  doc.elements[2].text = 'The bus is late again, like every single day.';
+  delete doc.elements[2].aiPass;
   undoFetch();
 }
 
@@ -260,14 +272,14 @@ await Tasks.registerAll((t) => reg.set(t.id, t));
   eq([done.wrote, Gen.load().cursor, Gen.load().scenes.map((s) => s.sceneId)], [4, 4, ['g1', 'g2', 'g3', 'g4', 'g5']], 'gen-batch: a whole batch written keeps the order and moves past it');
 }
 
-/* ---- the bulk run keeps an undo and stops on an empty batch ----- */
+/* ---- the bulk run is the Desk's now: nothing unreviewed ---------- */
 {
   const { readFileSync } = await import('node:fs');
   const Wr = readFileSync(new URL('../src/pages/write.js', import.meta.url), 'utf8');
-  const run = Wr.slice(Wr.indexOf('async function genRun('), Wr.indexOf('function offerRunUndo('));
-  ok(/if \(res\.wrote && !firstUndo\) firstUndo = res\.undo;/.test(run) && /offerRunUndo\(firstUndo, wroteAny\)/.test(run), 'write.js: the bulk run keeps the first batch\'s undo and offers it once');
-  ok(/if \(!d\.done && !res\.wrote\) \{/.test(run), 'write.js: the bulk run stops on a batch that wrote nothing');
-  ok(/!== left\)/.test(Wr.slice(Wr.indexOf('function offerRunUndo('))), 'write.js: the run\'s Undo refuses once the screenplay has changed since');
+  ok(!/async function genRun\(/.test(Wr) && !/function offerRunUndo\(/.test(Wr), 'write.js: the unreviewed bulk loop (genRun) is gone');
+  ok(!/Scriptgen\.draftBatch\(/.test(Wr) && !/Scriptgen\.applyBatch\(/.test(Wr), 'write.js: the page itself neither drafts nor writes a batch');
+  const press = Wr.slice(Wr.indexOf('[data-action="gen-run-all"]\', async'), Wr.indexOf('[data-action="gen-run-all"]\', async') + 500);
+  ok(/openDesk\('gen-batch', genDeskCtx\(\{ go: true \}\)\)/.test(press), 'write.js: the one-press button opens the Desk on gen-batch with go');
 }
 
 /* ---- voice-check without the Coverage view ---------------------- */

@@ -535,6 +535,29 @@ const SINGULAR = Object.fromEntries(LEX_CATS.map((k) => {
 }));
 const foldKey = (cat, k) => (SINGULAR[cat] && SINGULAR[cat].get(k)) || k;
 const CAPS_SOUND = new RegExp('\\b(' + lexicon.soundCaps.words.map(escRe).join('|') + ')\\b', 'g');
+/* A verb ("falls", "rings") is an element only when its subject is a
+   person or a vehicle. "Rain falls" and "a phone rings" already carry
+   their element in the subject (rain, phone); the bare verb came back as
+   a "falls" stunt and a "rings" sound, which bulk accept then wrote into
+   the breakdown and the stunt budget (QA r2). See `verbs` in the lexicon. */
+const VERBS = new Set(((lexicon.verbs && lexicon.verbs.words) || []).map((w) => w.toLowerCase()));
+const THING_WORDS = new Set([
+  ...((lexicon.verbs && lexicon.verbs.notAfter) || []),
+  ...((lexicon.verbs && lexicon.verbs.thingCategories) || []).flatMap((k) => (lexicon[k] || [])
+    .flatMap((w) => String(w).toLowerCase().split(/\s+/))),
+].map((w) => w.toLowerCase()));
+/* "A crowd of 40 villagers" names one group: the villagers. Offering
+   "crowd" beside "villagers" put the same people on the breakdown twice
+   (QA r2), so a crowd word followed by "of … <extras noun>" is left to
+   that noun; a bare "the crowd" is still offered. */
+const CROWD_WORDS = new Set(['crowd', 'crowds', 'mob']);
+const CROWD_OF_NOUN = new RegExp('^\\s+of\\s+(?:[\\p{L}\\p{N},\'’-]+\\s+){0,3}?(?:'
+  + [...(lexicon.extras || [])].sort((a, b) => b.length - a.length).map(escRe).join('|') + ')\\b', 'iu');
+const crowdOfNoun = (t, end) => CROWD_OF_NOUN.test(t.slice(end));
+const subjectIsThing = (t, at) => {
+  const m = t.slice(0, at).match(/([\p{L}'’]+)\s+$/u);
+  return !!m && THING_WORDS.has(m[1].toLowerCase());
+};
 
 /* A capital after a space, a hyphen, a slash or an opening bracket —
    NOT after an apostrophe, which `\b` counts as a word edge and which
@@ -582,6 +605,8 @@ export function suggestElements(scene, slice) {
       while ((m = RE[cat].exec(t))) {
         // Sound words in lower case are often prose ("the rain"); keep
         // them, but a capitalised cue is the stronger signal below.
+        if (VERBS.has(m[1].toLowerCase()) && subjectIsThing(t, m.index)) continue;
+        if (cat === 'extras' && CROWD_WORDS.has(m[1].toLowerCase()) && crowdOfNoun(t, m.index + m[1].length)) continue;
         add(cat, m[1].toLowerCase(), t);
       }
     }

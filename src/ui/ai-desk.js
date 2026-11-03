@@ -41,7 +41,7 @@
           `previous` is the current version's result and
           `instructions` the numbered chat messages so far. A refine
           re-sends the same system prompt against the SAME schema.
-       apply(selected, ctx, result)
+       apply(selected, ctx, result, meta)
                              → performs the write through the owning
                                model (editor edit path, scenes.js,
                                blueprint-store writeFields). For 'text'
@@ -49,7 +49,9 @@
                                (only the ticked hunks applied); for
                                'list' it is the array of chosen items;
                                `result` is the SHOWN version's run()
-                               result, not the latest run's;
+                               result, not the latest run's; `meta` is
+                               { task, model, run, at } — which run wrote
+                               this (the history's stamp, docs/AI-FAST-HARNESS.md);
                                'read' tasks may omit apply (a read with
                                an apply and items shows Accept). May return
                                an undo function (or a Promise of one),
@@ -62,6 +64,25 @@
                                that reported through ctx.say is not
                                echoed by the Desk (ai-desk-outcome.js).
      }
+
+   OPTIONAL TASK FIELDS (docs/AI-FAST-HARNESS.md §A5; none renamed)
+     stream: true       run() gets opts.onItems(items[]) — Desk items, as a
+                        'list' result holds them — and the Desk shows each
+                        the moment it arrives, as a live version
+     background: true   closing the Desk, or opening another task, does NOT
+                        abort the run; reopening the same task and identity
+                        shows the live session. Leaving the PAGE stops it
+                        (nothing was written). One background run per task id.
+     effortSwitch: true the Careful switch (aiCareful in the device prefs,
+                        written on a click only); run() gets opts.careful
+     runLabel(ctx)      the primary button's words; default 'Run'
+     cost(ctx)          one line under it
+     total(ctx)         how many units (scenes) a full run covers, for
+                        "Stopped after 4 of 12 scenes"
+     An item may carry `group` and `groupLabel`: items of one group sit
+     under a header with its own checkbox (tick per scene).
+     ctx.go === true runs at once on open — the page button that sets it
+     must show disclose() beside it, because that press is the send.
 
    RULES
      - Chat and versions live in memory for this page only: no
@@ -98,8 +119,10 @@
    SELECTORS the proofs read (scripts/prove-ai-desk.mjs):
      header       .ai-desk-title, .ai-desk-model,
                   button[data-action="ai-desk-close"]
-     what goes in textarea.ai-desk-input, .ai-disclose,
-                  button[data-action="ai-desk-run"]
+     what goes in details.ai-desk-editprompt > textarea.ai-desk-input (closed
+                  until the "Edit prompt" link is opened), .ai-disclose,
+                  button[data-action="ai-desk-run"],
+                  input[data-action="ai-desk-careful"] (effortSwitch tasks)
      running      .ai-status[role=status], .ai-error[role=alert],
                   button[data-action="ai-desk-stop"]
      answer       .ai-hunk input[type=checkbox] ('text'),
@@ -129,6 +152,8 @@ import StudioUI from './chrome.js';
 import { disclose, aiMark } from './ai-panel.js';
 import { LOCAL_TASKS, ready as localReady } from '../lib/local-tasks.js';
 import { listenSay, acceptNote, undoNote } from '../lib/ai-desk-outcome.js';
+import { newId } from '../lib/record-id.js';
+import { readAiCareful, saveAiCareful } from '../lib/chrome-prefs.js';
 import '../styles/ai.css';
 import '../styles/ai-desk.css';
 
@@ -178,6 +203,7 @@ function identity(ctx) {
   if (ctx.identity != null) return String(ctx.identity);
   try {
     return JSON.stringify(ctx, (k, v) => {
+      if (k === 'go') return undefined;       // the one-press flag is not part of what a session is
       if (typeof v === 'function') return undefined;
       if (typeof Node !== 'undefined' && v instanceof Node) return undefined;
       return v;
@@ -197,7 +223,10 @@ function sessionFor(task, ctx) {
   };
   let s = sessions.get(key);
   if (!s) {
-    s = { key, input: derive(), edited: false, versions: [], current: -1, chat: [], draft: '' };
+    /* A run belongs to its session: `run` is the AbortController while a
+       request is out, `bg` says it may outlive the Desk being closed. */
+    s = { key, input: derive(), edited: false, versions: [], current: -1, chat: [], draft: '',
+      run: null, bg: false, taskId: task.id, status: '', error: '', promptOpen: false };
     sessions.set(key, s);
   } else if (!s.versions.length && !s.edited) {
     /* Nothing has come back yet and the writer has not typed in the
@@ -232,9 +261,10 @@ let opener = null;
 let task = null;
 let ctx = {};
 let sess = null;
-let running = null;     // AbortController while a request is out
-let statusText = '';
-let errorText = '';
+/* The run, its status line and its error live on the SESSION (sess.run,
+   sess.status, sess.error): a background task's run goes on while the Desk
+   shows something else or nothing at all. */
+const busyNow = () => !!(sess && sess.run);
 let mode = 'task';      // 'task' | 'nokey' | 'missing' | 'blocked'
 let blockedWhy = null;  // a task's blocked(ctx) answer while mode is 'blocked'
 let missingText = '';   // why a local task could not open
@@ -293,6 +323,7 @@ function publishWidth() {
 /* ---- rendering ------------------------------------------------- */
 function header() {
   return h('header.ai-desk-head', {}, [
+    historyButton(),
     h('div.ai-desk-headtext', {}, [
       h('h2#ai-desk-title.ai-desk-title', { text: task ? task.label : 'AI' }),
       h('p.ai-desk-model', { text: modelText() })
@@ -330,10 +361,36 @@ function answerText(v) {
   });
 }
 
+/* Items that carry a `group` (a scene) sit under a header with its own
+   checkbox: tick or untick the whole scene. */
+function groupHeader(v, it) {
+  const ids = v.items.map((x, j) => (x.group === it.group ? v.itemIds[j] : null)).filter(Boolean);
+  return h('label.ai-desk-group', {}, [
+    h('input', {
+      type: 'checkbox', 'data-tick': 'group', 'data-group': String(it.group),
+      checked: ids.every((id) => !v.unticked.has(id)), 'aria-label': 'Tick every item of ' + String(it.groupLabel || it.group)
+    }),
+    h('span', { text: String(it.groupLabel || it.group) })
+  ]);
+}
+
 function answerList(v) {
-  if (!v.items.length) return [h('p.ai-desk-empty', { text: 'Nothing came back to choose from.' })];
-  return v.items.map((it, i) =>
-    h('label.ai-desk-item', {}, [
+  if (!v.items.length) {
+    return [h('p.ai-desk-empty', { text: v.live ? 'Waiting for the first scene…' : 'Nothing came back to choose from.' })];
+  }
+  const rows = [];
+  let lastGroup = null;
+  v.items.forEach((it, i) => {
+    if (it.group != null && it.group !== lastGroup) rows.push(groupHeader(v, it));
+    lastGroup = it.group != null ? it.group : null;
+    rows.push(itemRow(v, it, i));
+  });
+  return rows;
+}
+
+function itemRow(v, it, i) {
+  return (
+    h('label.ai-desk-item' + (it.group != null ? '.ai-desk-ingroup' : ''), {}, [
       h('input', { type: 'checkbox', 'data-tick': 'item', 'data-id': v.itemIds[i], checked: !v.unticked.has(v.itemIds[i]) }),
       h('div.ai-desk-itemtext', {}, [
         /* A picture to judge before it is kept (board-frames): an object
@@ -365,18 +422,53 @@ function answerRead(v) {
    its task has an apply and the run gave it points to keep. */
 const canAccept = (t, v) => t.kind !== 'read' || (typeof t.apply === 'function' && !!v && v.items.length > 0);
 
+const liveNow = () => !!(sess && sess.run && sess.versions.some((x) => x.live));
+
 function statusLines() {
+  const err = sess ? sess.error : '';
   return h('div.ai-desk-lines', {}, [
-    h('p.ai-status', { role: 'status', text: statusText }),
-    errorText ? h('p.ai-error', { role: 'alert' }, [
-      h('strong', { text: 'It did not run. ' }), h('span', { text: errorText })
+    h('p.ai-status' + (liveNow() ? '.ai-desk-progress' : ''), { role: 'status', text: sess ? sess.status : '' }),
+    err ? h('p.ai-error', { role: 'alert' }, [
+      h('strong', { text: 'It did not run. ' }), h('span', { text: err })
     ]) : null,
-    running ? h('button.btn.ai-desk-stop', { type: 'button', 'data-action': 'ai-desk-stop', text: 'Stop' }) : null
+    busyNow() ? h('button.btn.ai-desk-stop', { type: 'button', 'data-action': 'ai-desk-stop', text: 'Stop' }) : null
   ]);
+}
+
+/* The answer section's children, shared by a full render and by the
+   lighter refresh a live card arrival does (no focus or scroll lost). */
+function answerSection(v) {
+  const vers = h('div.ai-desk-vers', { role: 'group', 'aria-label': 'Versions' },
+    sess.versions.map((_, i) => h('button.ai-desk-ver', {
+      type: 'button', 'data-action': 'ai-desk-ver', 'data-i': String(i),
+      'aria-pressed': i === sess.current ? 'true' : 'false', text: 'v' + (i + 1)
+    })));
+  const answer = task.kind === 'text' ? answerText(v) : task.kind === 'list' ? answerList(v) : answerRead(v);
+  const note = v.live
+    ? 'Cards appear as each scene arrives. Nothing is written until you accept.'
+    : (v.result.note ? String(v.result.note) : '');
+  return [
+    h('div.ai-desk-answerhead', {}, [h('h3.ai-desk-label', { text: 'The answer' }), vers]),
+    note ? h('p.ai-desk-note', { text: note }) : null,
+    ...answer
+  ];
+}
+
+/** A live card arrived: patch the answer in place. */
+function refreshAnswer() {
+  if (!desk || !open || !sess) return;
+  if (historyOpen) return;   // the History is on screen: a card must not redraw it (it re-reads the project, and focus and scroll would go)
+  const v = sess.versions[sess.current];
+  const host = desk.querySelector('.ai-desk-answer');
+  if (!v || !host) { render(); return; }
+  const keep = body.scrollTop;
+  host.replaceChildren(...answerSection(v).filter(Boolean));
+  body.scrollTop = keep;
 }
 
 function render() {
   if (!desk) return;
+  if (historyOpen) return showHistory();
   const keepScroll = body.scrollTop;
   foot.replaceChildren();
   if (mode === 'nokey') {
@@ -415,38 +507,46 @@ function render() {
   }
 
   const v = sess.versions[sess.current] || null;
-  const busy = !!running;
+  const busy = busyNow();
   const kids = [header()];
 
+  const local = isLocal(task);
+  const runWords = (() => {
+    try { return (typeof task.runLabel === 'function' && String(task.runLabel(ctx) || '')) || 'Run'; } catch (e) { return 'Run'; }
+  })();
+  const costLine = (() => {
+    try { return typeof task.cost === 'function' ? String(task.cost(ctx) || '') : ''; } catch (e) { return ''; }
+  })();
+  const promptBox = h('textarea.ai-desk-input', {
+    rows: local ? '4' : '8', 'aria-label': local ? 'What it reads' : 'What goes in', spellcheck: 'false',
+    readonly: task.editable === false || sess.versions.length > 0 || busy ? true : null
+  });
   kids.push(h('section.ai-desk-sec.ai-desk-in', {}, [
-    h('h3.ai-desk-label', { text: isLocal(task) ? 'What it reads' : 'What goes in' }),
-    h('textarea.ai-desk-input', {
-      rows: isLocal(task) ? '4' : '8', 'aria-label': isLocal(task) ? 'What it reads' : 'What goes in', spellcheck: 'false',
-      readonly: task.editable === false || sess.versions.length > 0 || busy ? true : null
-    }),
-    isLocal(task)
+    local ? h('h3.ai-desk-label', { text: 'What it reads' }) : null,
+    local ? promptBox : null,
+    local
       ? h('p.ai-desk-note', { text: 'Built on this device from your script and scene list. Nothing is sent anywhere, and nothing is kept until you accept.' })
-      : disclose('When you press Run, the text above is sent to ' + apiName(provOf(task)) + ' at ' + apiHost(provOf(task))
+      : disclose('When you press ' + runWords + ', the prompt behind the link below is sent to ' + apiName(provOf(task)) + ' at ' + apiHost(provOf(task))
         + ' with your key, and nowhere else. Chat refinements send it again with your requests.'),
+    !local && task.effortSwitch ? h('label.ai-desk-careful', {}, [
+      h('input', { type: 'checkbox', 'data-action': 'ai-desk-careful', checked: readAiCareful(), disabled: busy ? true : null }),
+      h('span', { text: 'Careful \u2014 slower, more thorough' })
+    ]) : null,
     sess.versions.length ? null : h('button.btn.primary.ai-desk-run', {
-      type: 'button', 'data-action': 'ai-desk-run', disabled: busy ? true : null, text: busy ? 'Running…' : 'Run'
-    })
+      type: 'button', 'data-action': 'ai-desk-run', disabled: busy ? true : null, text: busy ? 'Running\u2026' : runWords
+    }),
+    !local && costLine && !sess.versions.length ? h('p.ai-desk-cost', { text: costLine }) : null,
+    /* The prompt is optional reading, not a step: closed until asked for. */
+    local ? null : h('details.ai-desk-editprompt', { open: sess.promptOpen ? true : null }, [
+      h('summary', { text: task.editable === false ? 'See what is sent' : 'Edit prompt' }),
+      promptBox
+    ])
   ]));
 
   kids.push(statusLines());
 
   if (v) {
-    const vers = h('div.ai-desk-vers', { role: 'group', 'aria-label': 'Versions' },
-      sess.versions.map((_, i) => h('button.ai-desk-ver', {
-        type: 'button', 'data-action': 'ai-desk-ver', 'data-i': String(i),
-        'aria-pressed': i === sess.current ? 'true' : 'false', text: 'v' + (i + 1)
-      })));
-    const answer = task.kind === 'text' ? answerText(v) : task.kind === 'list' ? answerList(v) : answerRead(v);
-    kids.push(h('section.ai-desk-sec.ai-desk-answer', {}, [
-      h('div.ai-desk-answerhead', {}, [h('h3.ai-desk-label', { text: 'The answer' }), vers]),
-      v.result.note ? h('p.ai-desk-note', { text: String(v.result.note) }) : null,
-      ...answer
-    ]));
+    kids.push(h('section.ai-desk-sec.ai-desk-answer', {}, answerSection(v).filter(Boolean)));
 
     if (!isLocal(task)) kids.push(h('section.ai-desk-sec.ai-desk-talk', {}, [
       h('h3.ai-desk-label', { text: 'Ask for changes' }),
@@ -466,7 +566,10 @@ function render() {
     read ? null : h('button.btn.ai-desk-acceptall', {
       type: 'button', 'data-action': 'ai-desk-accept-all', disabled: !v || busy ? true : null, text: 'Accept all'
     }),
-    h('button.btn.ai-desk-skip', { type: 'button', 'data-action': 'ai-desk-skip', text: read ? 'Done' : 'Skip' })
+    h('button.btn.ai-desk-skip', {
+      type: 'button', 'data-action': 'ai-desk-skip',
+      text: read ? 'Done' : (busy && sess.bg ? 'Close \u2014 keeps drafting' : 'Skip')
+    })
   ]));
 
   body.replaceChildren(...kids);
@@ -493,45 +596,122 @@ async function copyText(text) {
   } catch (e) { return false; }
 }
 
-function setStatus(text) {
-  statusText = text || '';
-  const el = desk && desk.querySelector('.ai-desk-lines .ai-status');
-  if (el) el.textContent = statusText;
+function setStatus(text, own = sess) {
+  if (!own) return;
+  own.status = text || '';
+  if (own !== sess || !desk) return;
+  const el = desk.querySelector('.ai-desk-lines .ai-status');
+  if (el) el.textContent = own.status;
 }
 
 /* ---- running --------------------------------------------------- */
+/* A live card (or several) arrived from the task's run(): add them to
+   the live version by id (a retried batch re-sends a scene; the later
+   copy replaces the earlier one), and patch the answer in place. */
+function addLive(own, live, items) {
+  for (const it of [].concat(items || []).filter(Boolean)) {
+    const id = it.id != null ? String(it.id) : 'i' + live.items.length;
+    const at = live.itemIds.indexOf(id);
+    if (at >= 0) { live.items[at] = it; continue; }
+    live.items.push(it);
+    live.itemIds.push(id);
+  }
+  if (open && sess === own && own.versions[own.current] === live) refreshAnswer();
+}
+
+const groupsOf = (items) => new Set(items.filter((it) => it.group != null).map((it) => it.group)).size;
+
+function stopNote(t, c, items) {
+  const n = groupsOf(items) || items.length;
+  let total = 0;
+  try { total = typeof t.total === 'function' ? Number(t.total(c)) || 0 : 0; } catch (e) { total = 0; }
+  return 'Stopped after ' + n + (total ? ' of ' + total : '') + (n === 1 ? ' scene' : ' scenes')
+    + '. Nothing is written until you accept.';
+}
+
 async function run(refineWith) {
-  if (!task || running || !sess) return;
+  if (!task || !sess || sess.run) return;
   const own = sess;
+  const myTask = task;
+  const myCtx = ctx;
   const ctl = new AbortController();
-  running = ctl;
-  errorText = '';
-  statusText = refineWith ? 'Refining…' : 'Sending…';
+  own.run = ctl;
+  own.bg = !!myTask.background && !isLocal(myTask);
+  own.taskId = myTask.id;
+  own.error = '';
+  own.status = refineWith ? 'Refining\u2026' : 'Sending\u2026';
+  const runId = newId('air');
+  const careful = readAiCareful();          // read once: fixed for the whole run
+  const previous = refineWith ? own.versions[own.current].result : undefined;
+  let live = null;
+  if (myTask.stream && !isLocal(myTask)) {
+    live = makeVersion(myTask, { items: [] });
+    live.live = true;
+    live.run = runId;
+    own.versions.push(live);
+    own.current = own.versions.length - 1;
+  }
   render();
   try {
-    const refine = refineWith
-      ? { previous: own.versions[own.current].result, instructions: refineWith }
-      : undefined;
-    const result = await task.run(own.input, {
-      onStatus: (m) => { if (running === ctl) setStatus(m); },
-      signal: ctl.signal, ctx, refine
+    const refine = refineWith ? { previous, instructions: refineWith } : undefined;
+    let result = await myTask.run(own.input, {
+      onStatus: (m) => { if (own.run === ctl) setStatus(m, own); },
+      signal: ctl.signal, ctx: myCtx, refine, careful,
+      onItems: live ? (items) => { if (own.run === ctl) addLive(own, live, items); } : undefined
     });
-    if (ctl.signal.aborted) throw Object.assign(new Error('Stopped. Nothing was changed.'), { code: 'aborted' });
+    const stopped = ctl.signal.aborted;
+    if (stopped && !(live && result && Array.isArray(result.items) && result.items.length)) {
+      throw Object.assign(new Error('Stopped. Nothing was changed.'), { code: 'aborted' });
+    }
     if (refineWith) { own.chat = refineWith.slice(); own.draft = ''; }
-    own.versions.push(makeVersion(task, result));
-    own.current = own.versions.length - 1;
-    statusText = 'v' + own.versions.length + ' is ready.';
+    result = result || {};
+    if (stopped) result = { ...result, note: stopNote(myTask, myCtx, result.items) + (result.note ? '\n' + result.note : '') };
+    let v;
+    if (live) {
+      const fresh = makeVersion(myTask, result);
+      Object.assign(live, { result: fresh.result, items: fresh.items, itemIds: fresh.itemIds, live: false });
+      v = live;
+    } else {
+      v = makeVersion(myTask, result);
+      v.run = runId;
+      own.versions.push(v);
+      own.current = own.versions.length - 1;
+    }
+    own.status = stopped ? 'Stopped. Nothing is written until you accept.' : 'v' + own.versions.length + ' is ready.';
   } catch (e) {
     const stopped = (e && (e.kind === 'aborted' || e.code === 'aborted' || e.name === 'AbortError')) || ctl.signal.aborted;
-    statusText = stopped ? 'Stopped. Nothing was changed.' : '';
-    errorText = stopped ? '' : ((e && e.message) || 'Something went wrong.');
+    const msg = (e && e.message) || 'Something went wrong.';
+    if (live && live.items.length) {
+      /* Keep what arrived: every card is still a reviewed choice. */
+      live.result = {
+        items: live.items.slice(),
+        note: stopped ? stopNote(myTask, myCtx, live.items)
+          : 'The run ended early (' + msg + ') — the scenes below arrived. Nothing is written until you accept.'
+      };
+      live.live = false;
+      own.status = stopped ? 'Stopped. Nothing is written until you accept.' : '';
+      own.error = stopped ? '' : msg;
+    } else {
+      if (live) {
+        own.versions.splice(own.versions.indexOf(live), 1);
+        own.current = own.versions.length - 1;
+      }
+      own.status = stopped ? 'Stopped. Nothing was changed.' : '';
+      own.error = stopped ? '' : msg;
+    }
   } finally {
-    if (running === ctl) running = null;
+    if (own.run === ctl) own.run = null;
   }
   if (open && sess === own) {
     render();
-    const focus = desk.querySelector(errorText ? '.ai-error' : '.ai-desk-answer .ai-desk-ver[aria-pressed="true"]');
+    const focus = desk.querySelector(own.error ? '.ai-error' : '.ai-desk-answer .ai-desk-ver[aria-pressed="true"]');
     if (focus) focus.focus();
+  } else if (own.bg && !own.error && !ctl.signal.aborted && own.versions.length) {
+    /* A background run finished while the Desk was closed or on another
+       task: say so, with the one button that gets back to it. */
+    StudioUI.toast(myTask.label + ' is ready in the AI Desk. Nothing is written until you accept.', {
+      action: 'Open', onAction: () => { openDesk(myTask.id, myCtx); }
+    });
   }
 }
 
@@ -543,7 +723,7 @@ function send(text) {
 
 /* ---- accepting --------------------------------------------------- */
 async function accept(all) {
-  if (!task || !sess || running) return;
+  if (!task || !sess || sess.run) return;
   const v = sess.versions[sess.current];
   if (!v) return;
   let selected;
@@ -564,9 +744,18 @@ async function accept(all) {
      the Desk's own "applied." / "Undone." — ai-desk-outcome.js. */
   const heard = listenSay(ctx);
   try {
-    undo = await task.apply(selected, heard.ctx, v.result);
+    /* The fourth argument says which run wrote this: the stamp the
+       history reads (docs/AI-FAST-HARNESS.md). A local task is no AI. */
+    const meta = {
+      task: task.id,
+      model: isLocal(task) ? '' : String((v.result && v.result.model) || getModel() || ''),
+      run: v.run || newId('air'),
+      at: new Date().toISOString()
+    };
+    undo = await task.apply(selected, heard.ctx, v.result, meta);
+    v.accepted = true;
   } catch (e) {
-    errorText = (e && e.message) || 'The change could not be written. Nothing was changed.';
+    sess.error = (e && e.message) || 'The change could not be written. Nothing was changed.';
     render();
     return;
   }
@@ -636,8 +825,15 @@ function wire() {
       });
   });
   delegate(desk, 'click', '[data-action="ai-desk-stop"]', () => {
-    if (running) { running.abort(); setStatus('Stopping…'); }
+    if (sess && sess.run) { sess.run.abort(); setStatus('Stopping…'); }
   });
+  /* The Careful switch: how this device asks, written on the click. */
+  delegate(desk, 'change', 'input[data-action="ai-desk-careful"]', (e, el) => { saveAiCareful(el.checked); });
+  /* `toggle` does not bubble; the capture phase sees it. The open state
+     of "Edit prompt" survives the redraws a run causes. */
+  desk.addEventListener('toggle', (e) => {
+    if (sess && e.target && e.target.classList && e.target.classList.contains('ai-desk-editprompt')) sess.promptOpen = e.target.open;
+  }, true);
   delegate(desk, 'click', '[data-action="ai-desk-ver"]', (e, el) => {
     const i = Number(el.dataset.i);
     if (!sess || !(i >= 0 && i < sess.versions.length)) return;
@@ -657,7 +853,28 @@ function wire() {
   delegate(desk, 'change', 'input[data-tick]', (e, el) => {
     const v = sess && sess.versions[sess.current];
     if (!v) return;
+    if (el.dataset.tick === 'group') {
+      /* Tick or untick every item of one scene, and the boxes with it. */
+      v.items.forEach((it, i) => {
+        if (String(it.group) !== el.dataset.group) return;
+        if (el.checked) v.unticked.delete(v.itemIds[i]); else v.unticked.add(v.itemIds[i]);
+      });
+      desk.querySelectorAll('input[data-tick="item"]').forEach((box) => {
+        const at = v.itemIds.indexOf(box.dataset.id);
+        if (at >= 0 && String(v.items[at].group) === el.dataset.group) box.checked = el.checked;
+      });
+      return;
+    }
     if (el.checked) v.unticked.delete(el.dataset.id); else v.unticked.add(el.dataset.id);
+    /* The scene's own box follows its items. */
+    if (el.dataset.tick === 'item') {
+      const at = v.itemIds.indexOf(el.dataset.id);
+      const g = at >= 0 ? v.items[at].group : null;
+      if (g != null) {
+        const head = desk.querySelector('input[data-tick="group"][data-group="' + CSS.escape(String(g)) + '"]');
+        if (head) head.checked = v.items.every((it, i) => String(it.group) !== String(g) || !v.unticked.has(v.itemIds[i]));
+      }
+    }
   });
   delegate(desk, 'input', '.ai-desk-input', (e, el) => { if (sess) { sess.input = el.value; sess.edited = true; } });
   delegate(desk, 'input', '.ai-desk-chat', (e, el) => { if (sess) sess.draft = el.value; });
@@ -667,6 +884,7 @@ function wire() {
 
   document.addEventListener('keydown', onDocKey);
   window.addEventListener('resize', onResize);
+  delegate(desk, 'click', '[data-action="ai-desk-history"]', () => toggleHistory());
 }
 
 export async function openDesk(taskId, ctxArg = {}) {
@@ -685,9 +903,6 @@ export async function openDesk(taskId, ctxArg = {}) {
   }
 
   ensureDesk();
-  if (running) { running.abort(); running = null; }
-  statusText = '';
-  errorText = '';
   missingText = '';
 
   const local = isLocal(getTask(taskId));
@@ -730,6 +945,14 @@ export async function openDesk(taskId, ctxArg = {}) {
     }
   }
 
+  /* Runs left behind: a run that is not a background one stops (as ever);
+     a background run goes on — unless this open is the SAME task asking
+     for something else (one background run per task id). */
+  for (const o of sessions.values()) {
+    if (o.run && o !== sess && (!o.bg || (task && o.taskId === task.id))) o.run.abort();
+  }
+  if (sess && !sess.run) { sess.status = ''; sess.error = ''; }
+
   if (!open) opener = from && from !== document.body ? from : null;
   open = true;
   desk.hidden = false;
@@ -737,16 +960,23 @@ export async function openDesk(taskId, ctxArg = {}) {
   render();
   publishWidth();
   const first = desk.querySelector(mode === 'task'
-    ? (sess && sess.versions.length ? '.ai-desk-ver[aria-pressed="true"]' : '.ai-desk-input')
+    ? (sess && sess.versions.length ? '.ai-desk-ver[aria-pressed="true"]' : '.ai-desk-run, .ai-desk-input')
     : (mode === 'nokey' ? 'a[href="settings.html#ai"]'
       : mode === 'blocked' ? '.ai-desk-unblock, .ai-desk-fix, [data-action="ai-desk-close"]' : '[data-action="ai-desk-close"]'));
   (first || desk).focus();
   if (local && mode === 'task' && sess && !sess.versions.length) run();   // nothing to spend: build the list now
+  /* One press: the page button asked for the run (and showed the
+     provider disclosure beside itself). A session whose answers were all
+     accepted starts a fresh run; one with an unaccepted answer shows it. */
+  else if (c.go === true && mode === 'task' && sess && !isLocal(task) && !sess.run
+    && sess.versions.every((x) => x.accepted)) run();
 }
 
 export function closeDesk() {
   if (!desk || !open) return;
-  if (running) { running.abort(); running = null; }
+  /* Closing stops a request — except a background one, which fills its
+     session while the Desk is away (nothing is written either way). */
+  if (sess && sess.run && !sess.bg) sess.run.abort();
   open = false;
   if (held) { releaseFocus(desk); held = false; }
   desk.hidden = true;
@@ -762,3 +992,41 @@ export function closeDesk() {
 }
 
 export default { registerTask, getTask, listTasks, openDesk, closeDesk };
+
+/* ==== HISTORY TAB (Lane B) ====================================
+   docs/AI-FAST-HARNESS.md B6(a): the project's AI-made items grouped by
+   run, in the Desk. Reads only; opening it writes nothing. The list is
+   src/ui/ai-history-view.js (lazy), drawn into this body. It shows for
+   as long as the task and ctx the Desk was on when it was opened are
+   still the ones on show: pressing a pill (a new task, a new ctx) lands
+   on that task, not on a stale History. */
+import('../styles/ai-history.css');
+let historyOpen = false;
+let histTask = null;
+let histCtx = null;
+
+function historyButton() {
+  return h('button.btn.ai-desk-histbtn', {
+    type: 'button', 'data-action': 'ai-desk-history', 'aria-pressed': String(historyOpen),
+    title: 'What AI has drafted in this film', text: 'History'
+  });
+}
+
+function toggleHistory() {
+  historyOpen = !historyOpen;
+  histTask = task;
+  histCtx = ctx;
+  render();
+  const b = desk && desk.querySelector('.ai-desk-histbtn');
+  if (b) b.focus();
+}
+
+function showHistory() {
+  if (task !== histTask || ctx !== histCtx) { historyOpen = false; render(); return; }
+  const host = h('section.ai-desk-sec.ai-desk-history', { 'aria-label': 'AI history' });
+  body.replaceChildren(header(), host);
+  foot.replaceChildren();
+  import('./ai-history-view.js').then((m) => m.mountHistory(host, { compact: true }));
+}
+
+window.addEventListener('ai-desk:closed', () => { historyOpen = false; });

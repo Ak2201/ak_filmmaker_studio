@@ -279,8 +279,14 @@ try {
       .then(() => ok(true, 'and offers to renew: another year, bought by hand'), () => ok(false, 'and offers to renew: another year, bought by hand'));
     /* §52: renewing early stacks the new year onto the end of the one running */
     await page.click('#plan .is-current [data-plan-action="buy"]');
-    await page.waitForFunction(() => /Renew Intermediate/.test((document.querySelector('#plan .is-current') || {}).textContent || ''), null, { timeout: 15000 }).catch(() => {});
-    await page.waitForTimeout(500);
+    /* Wait for the SECOND payment to land in the fake DB, not for the
+       card's text (it already read "Renew Intermediate" before the click,
+       so that wait resolved at once and a cold run checked too early —
+       QA r1 I-2). A signal, never a fixed delay. */
+    for (const t0 = Date.now(); Date.now() - t0 < 15000;) {
+      if (F.db.payments.filter((x) => x.plan_id === 'indie' && x.status === 'paid').length >= 2) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
     { const paid = F.db.payments.filter((x) => x.plan_id === 'indie' && x.status === 'paid');
       const left = (Date.parse(acc.plan_until) - Date.now()) / 86400e3;
       ok(paid.length === 2 && paid[1].amount_paise === 799900 && left > 729.9 && left <= 730, 'renewing early charges the full year and stacks it: ' + left.toFixed(2) + ' days left');

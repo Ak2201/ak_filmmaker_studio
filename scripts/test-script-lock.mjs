@@ -154,6 +154,21 @@ const edited = () => {
   ok(L.changeReport(d, inject).items.find((i) => i.key === '3').kind === 'omitted', 'and 3 is still omitted after the restore');
 }
 
+{
+  // QA r2: deleting ONLY a heading moves its lines into the scene above,
+  // and that scene is reported as changed beside the omitted one.
+  const d = script();
+  L.takeLock(d, rows());
+  d.elements = d.elements.filter((x) => x.id !== 'h3');
+  Script.saveScript(d);
+  const rep = L.changeReport(d, inject);
+  eq(rep.items.map((i) => [i.key, i.kind]), [['2', 'changed'], ['3', 'omitted']], 'the scene that absorbed the lines is changed, in order');
+  const chg = rep.items[0];
+  eq([chg.sceneId, chg.counts.added, chg.impact.shots, chg.reviewed], ['s2', 1, 2, false], 'it carries its row, the lines gained and its shots');
+  const marked = { ...d, numbering: L.markReviewed(d.numbering, rep.items, ['2']) };
+  ok(L.changeReport(marked, inject).items.find((i) => i.key === '2').reviewed, 'and it can be marked reviewed');
+}
+
 /* ---- 5. markReviewed --------------------------------------------- */
 {
   const d = edited();

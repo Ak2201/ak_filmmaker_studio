@@ -21,12 +21,16 @@ export function beatPageBasis({ targetPages = 0, scriptPages = 0 } = {}) {
   return { pages: Math.max(1, Math.round(s > 0 ? s : 0)), basis: 'script', ...(s > 0 ? {} : { empty: true }) };
 }
 
-/** The one line each view prints under its beats. */
-export function beatBasisText(b) {
+/** The one line each view prints under its beats. `shown`, when given, is
+ *  the page total the view already prints for the script ("106.5"), so
+ *  the line repeats that figure instead of its whole-page rounding
+ *  beside it (QA r2 B-1: "106.5 pages" and "107 pages" on one tab). */
+export function beatBasisText(b, shown) {
+  const pages = b.basis === 'script' && shown ? shown : b.pages;
   return b.basis === 'target'
     ? 'Beats placed against your ' + b.pages + '-page target'
     : b.empty ? 'No script pages yet, so the beats have nothing to be placed against'
-    : 'Beats placed against the script as written, ' + b.pages + (b.pages === 1 ? ' page' : ' pages');
+    : 'Beats placed against the script as written, ' + pages + (Number(pages) === 1 ? ' page' : ' pages');
 }
 
 export default { beatPageBasis, beatBasisText };

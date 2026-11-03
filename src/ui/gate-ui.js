@@ -591,6 +591,16 @@ delegate(document, 'submit', '[data-gate-form]', (e, form) => {
 const keepDraft = (e, el) => { if (el.closest('form.gt-create')) admin.draft[el.dataset.gateField] = el.value; };
 delegate(document, 'input', 'form.gt-create [data-gate-field]', keepDraft);
 delegate(document, 'change', 'form.gt-create [data-gate-field]', keepDraft);
+/* The demo form is a div.gt-create, not a form, so keepDraft never saw
+   it: a redraw landing after the admin typed (the one createCode runs
+   after loadAdmin, say) put the stored default back, and the demo link
+   went out with 50 uses whatever the box had said. Keep them as typed. */
+const keepDemo = (e, el) => {
+  if (el.dataset.gateField === 'demo-uses') admin.demoUses = el.value;
+  else admin.demoDur = el.value;
+};
+delegate(document, 'input', '[data-gate-field="demo-uses"], [data-gate-field="demo-dur"]', keepDemo);
+delegate(document, 'change', '[data-gate-field="demo-uses"], [data-gate-field="demo-dur"]', keepDemo);
 delegate(document, 'input', '[data-gate-field="code"]', (e, el) => {
   // Show the normalised form as it is typed (FR-101), keeping the caret at the end.
   const f = formatCode(el.value);

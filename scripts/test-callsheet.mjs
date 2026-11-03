@@ -71,6 +71,9 @@ ok(unit.includes('Map: https://www.google.com/maps/'), 'map link');
 ok(unit.includes('Sunrise 06:34 · Sunset 18:16 (IST)'), 'sunrise and sunset');
 ok(unit.includes('*Scenes (2 · 1 6/8 pages)*'), 'scene heading with total');
 ok(unit.includes('3 · EXT. Engineering college — DAY · 1 2/8 pp'), 'scene line');
+// QA r2 D: exactly one page is "1 page", never "1 pages".
+{ const one = WA.unitMessage(Object.assign({}, facts, { scenes: [facts.scenes[1]], pagesTotal: '1' }));
+  ok(one.includes('*Scenes (1 · 1 page)*'), 'one page is singular: ' + one.split('\n').find((l) => l.includes('Scenes'))); }
 ok(unit.includes('*Notes*\nCrane up before 07:00.'), 'notes');
 ok(!/\+\d+ more/.test(unit), 'nothing cut when it fits');
 

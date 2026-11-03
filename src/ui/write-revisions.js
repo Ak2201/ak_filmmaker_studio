@@ -151,7 +151,8 @@ function renderNumbering(doc) {
   if (!isNumberingLocked(doc.numbering)) {
     box.append(
       h('p.wr-tool-sub', {
-        text: 'Numbered by position: the twelfth heading is scene 12. Lock the script when it '
+        text: 'Numbered in script order while the numbers run 1, 2, 3 unbroken; once a scene is '
+            + 'cut or a number typed, the numbers in use stay put and a gap can show. Lock the script when it '
             + 'goes to the floor — after that a scene inserted after 12 is 12A, a cut scene stays '
             + 'in the pages as OMITTED, and no call sheet ends up pointing at the wrong scene.'
       }),

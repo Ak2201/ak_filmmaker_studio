@@ -313,7 +313,7 @@ function runPanel(run, target, cov) {
   box.append(head);
   box.append(field({
     kind: 'number', label: 'Target length', addon: 'min',
-    value: target || '', hint: 'One target for the film: the same figure as Reports’ runtime target',
+    value: target || '', hint: 'One target for the film: the same figure as the Breakdown’s runtime target',
     attrs: { 'data-edit-target': '', min: '0', max: '600', step: '1', 'aria-label': 'Target length in minutes' }
   }));
   return box;
@@ -446,7 +446,7 @@ function render(focus) {
   /* The open pick-ups by scene, so the figure says where, not only how many. */
   const pkNote = pickupNote(cov, scenes);
   main.append(statStrip([
-    withBar(statCard({ label: 'Pages in the can', value: cov.pages.inCan + ' / ' + cov.pages.need }),
+    withBar(statCard({ label: 'Pages in the can', value: cov.pages.inCan + ' of ' + cov.pages.need }),
       cov.pages.eighthsInCan, cov.pages.eighthsNeed, 'Pages in the can'),
     { label: cov.counts.owed === 1 ? 'Scene still owed' : 'Scenes still owed', value: cov.counts.owed,
       note: cov.counts.owed ? 'before the cut can lock' : '', noteTone: cov.counts.owed ? 'warn' : '' },
@@ -464,7 +464,8 @@ function render(focus) {
   const run = Object.keys(secondsOf).length
     ? Edit.cutRunTime(cov, secondsOf, listSongs().map((x) => ({ id: x.id, seconds: durationSeconds(x) })))
     : null;
-  /* ONE target, and it is Reports' (songs.js `targetMinutes`). A value this
+  /* ONE target, and it is the Breakdown's Runtime panel's (songs.js `targetMinutes`;
+     reports.html#runtime forwards there). A value this
      log stored before that stays readable here as the fallback and is never
      dropped; the first time the field is set, it is the shared one that moves. */
   const target = targetRuntime().minutes;   // the same helper the screenplay's beats panel reads

@@ -448,5 +448,21 @@ reset();
   reset();
 }
 
+{
+  /* QA r2: a SHOT diagram holds ONE camera by hand too, as the AI paths
+     already enforce; the floor plan still takes any number. */
+  reset();
+  const sh = S.addShot('scOne');
+  const sb = S.ensureShotBlock(sh.id);
+  const cA = S.addMark(sb.id, 'camera');
+  ok(!!cA && cA.label === 'Cam A', 'a shot diagram takes its first camera');
+  eq(S.addMark(sb.id, 'camera'), null, 'and refuses a second by hand');
+  eq(S.duplicateMarks(sb.id, [cA.id]), [], 'and refuses a copy of its camera');
+  ok(!!S.addMark(sb.id, 'actor'), 'other marks are still added');
+  eq(S.getBlock(sb.id).marks.filter((m) => m.kind === 'camera').length, 1, 'one camera stays on the shot diagram');
+  ok(S.hasShotCamera(S.getBlock(sb.id)) && !S.hasShotCamera(S.addBlock('scOne')), 'hasShotCamera is true for a shot diagram with its camera only');
+  reset();
+}
+
 console.log(`test:blocking — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

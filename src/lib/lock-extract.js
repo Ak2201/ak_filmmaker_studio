@@ -135,7 +135,11 @@ const GAP = `(?:(?!(?:the|a|an|and|at|in|on|to|from|with|of|pm|am)\\b)[\\p{L}'â€
 const RE_PAREN = new RegExp(`\\b(${NOUN_RE})\\s*\\(\\s*(\\d[\\d,]*)\\s*\\)`, 'giu');
 const RE_DIGIT = new RegExp(`(?<![\\d,.])(\\d[\\d,]*)\\s+${GAP}(${NOUN_RE})\\b`, 'giu');
 const RE_WORD = new RegExp(`\\b(${NW})\\s+${GAP}(${NOUN_RE})\\b`, 'giu');
-const RE_CROWD_OF = new RegExp(`\\b(crowds?|mob)\\s+of\\s+(\\d[\\d,]*|${NW})\\b`, 'giu');
+/* "A crowd of 40 villagers" is ONE group of 40: the noun after the count
+   carries it (RE_DIGIT / RE_WORD), so a crowd whose count names its own
+   noun is not counted again as Crowd (40) â€” that was 80 extras for a
+   40-person crowd (QA r2). "A crowd of fifty" still reads Crowd (50). */
+const RE_CROWD_OF = new RegExp(`\\b(crowds?|mob)\\s+of\\s+(\\d[\\d,]*|${NW})\\b(?!\\s+${GAP}(?:${NOUN_RE})\\b)`, 'giu');
 const RE_BARE = new RegExp(`\\b(${NOUN_RE})\\b`, 'giu');
 const LEAD = /(?:^|\s)(?:a|an|the|of|large|small|big|huge|noisy|angry|cheering|thin|whole)\s+$/i;
 

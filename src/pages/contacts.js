@@ -37,6 +37,10 @@ import { saveOnInput } from '../lib/autosave.js';
 import PDF from '../lib/pdf.js';
 import Contacts from '../lib/contacts.js';
 import Scenes, { formatEighths, ELEMENT_CATEGORIES } from '../lib/scenes.js';
+
+/* "1 page" for exactly one page, as the Stripboard, Shoot Day and DPR
+   print it (plan-model.js pagesOf); a call sheet said "1 pages". */
+const pagesOf = (e) => formatEighths(e) + (Number(e) === 8 ? ' page' : ' pages');
 import Locations from '../lib/locations.js';
 import DPR from '../lib/dpr.js';
 import Geo from '../lib/recce-geo.js';
@@ -412,13 +416,13 @@ function renderDayCard(sheet, scenes) {
 
   // scenes
   const sc = h('div.ct-gl-scenes', {}, [
-    h('h4.ct-gl-h', { text: 'Scenes to shoot' + (onSheet.length ? ' · ' + onSheet.length + ' · ' + formatEighths(eighths) + ' pages' : '') })
+    h('h4.ct-gl-h', { text: 'Scenes to shoot' + (onSheet.length ? ' · ' + onSheet.length + ' · ' + pagesOf(eighths) : '') })
   ]);
   if (!onSheet.length) sc.append(h('p.ct-gl-small', { text: 'No scenes ticked for this day yet.' }));
   onSheet.forEach((s) => sc.append(h('div.ct-gl-scene', {}, [
     h('span.ct-gl-no', { text: 'Scene ' + (s.number || '—') }),
     h('span.ct-gl-slug', { text: slugOf(s) }),
-    h('span.ct-gl-pg', { text: formatEighths(s.eighths) + ' pgs' }),
+    h('span.ct-gl-pg', { text: pagesOf(s.eighths) }),
     s.synopsis ? h('span.ct-gl-syn', { text: s.synopsis }) : null
   ])));
   card.append(sc);
@@ -583,7 +587,7 @@ function renderSheetDoc(sheet, contacts, scenes) {
         : (sched.date ? prettyDate(sched.date) + ' (from the schedule)' : prettyDate(''))),
       docFact('General call', sheet.generalCall || 'Not set'),
       docFact('Location', sheet.location || 'Not set'),
-      docFact('Scenes', String(onSheet.length) + ' · ' + formatEighths(eighths) + ' pages')
+      docFact('Scenes', String(onSheet.length) + ' · ' + pagesOf(eighths))
     ])
   ]));
 
@@ -1194,7 +1198,7 @@ function sidesPacket(sheet, scenes) {
   host.append(h('div.ct-sp-head', {}, [
     h('span.ct-sp-title', { text: 'Sides' }),
     h('span.ct-sp-meta', { text: onSheet.length + (onSheet.length === 1 ? ' scene' : ' scenes') + ' · '
-      + formatEighths(eighthsOf(onSheet)) + ' pages' })
+      + pagesOf(eighthsOf(onSheet)) })
   ]));
   onSheet.forEach((s) => {
     const no = String(s.number || scenes.indexOf(s) + 1);

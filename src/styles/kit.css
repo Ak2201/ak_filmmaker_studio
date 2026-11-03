@@ -809,6 +809,9 @@ a.k-stage:focus-visible { outline: var(--focus); outline-offset: var(--focus-off
   line-height: var(--lh-tight);
   letter-spacing: var(--track-tight);
   color: var(--ink);
+  /* A long unbroken name ("Remove <200 letters>?") must wrap inside the
+     modal, not run past its edge (QA r1 F). */
+  overflow-wrap: anywhere;
 }
 .dlg.dlg.k-modal .k-modal-close { align-self: start; color: var(--ink-muted); }
 .dlg.dlg.k-modal .k-modal-close:hover { color: var(--ink); }

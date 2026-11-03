@@ -116,7 +116,7 @@ import {
   prettyStamp, TITLE_LABELS, titlePlaceholder as titlePlaceholderFor, titlePageStateText,
   TYPE_ORDER, sceneNumberNote, importReplaceQuestion, importDoneMessage,
   synopsisFromText, synopsisLoadNote, synopsisPendingText,
-  GEN_FORMATS, GEN_LANGS, genLang, genStage as genStageOf, genFailState,
+  GEN_FORMATS, GEN_LANGS, genLang, genStage as genStageOf,
   currentRevision as currentRevisionOf, exportMeta as exportMetaOf, restoreQuestion, docMetaText,
   pageViewLayout, omittedPlacements, pvWhereText as pvWhereTextOf,
   shotCountLabels, uncoveredShotJobs
@@ -291,23 +291,14 @@ let importBusy = false;
 let replaceScript = false;
 let replaceScenes = false;
 
-/* Generation state. `gen` is the persisted job and IS the user's work
-   — the synopsis and the agreed beats — so it is stored. Everything
-   beside it is this run: a busy flag, the abort controller behind Stop,
-   the last status line, the last error, and whether the user asked for
-   one batch or for all of them.
-
-   `genAll` is the only thing in here that can spend money more than
-   once per click, so it is read at the TOP of each loop turn and
-   cleared by Stop. A loop that re-read it from a stale closure would
-   keep billing after Stop, which is the one bug this feature cannot
-   be allowed to have. */
+/* The state of the generate section. There is NO run in here any more: the
+   pages are written by the AI Desk's 'gen-batch' task, which drafts every
+   remaining scene in the background (scriptgen.js draftRest), shows each
+   scene as it arrives and writes only on Accept. This page keeps the job
+   (`gen`), the last status line and the last error. */
 let gen = Scriptgen.load();
-let genBusy = false;
-let genAbort = null;
 let genStatus = '';
 let genError = '';
-let genAll = false;
 let genReplaceScenes = false;
 
 /* ---- persistence ------------------------------------------- */
@@ -684,7 +675,7 @@ function importPreview(plan) {
 
   const stats = h('div.wr-imp-stats');
   stats.append(impStat(String(plan.elements.length), plan.elements.length === 1 ? 'element' : 'elements'));
-  stats.append(impStat(formatPages(plan.pages), 'pages'));
+  stats.append(impStat(formatPages(plan.pages), 'pages, est.'));
   stats.append(impStat(String(plan.scenes.length), plan.scenes.length === 1 ? 'scene' : 'scenes'));
   wrap.append(stats);
 
@@ -856,11 +847,13 @@ const SYN_ACCEPT = '.txt,.text,.md,.markdown,.pdf,text/plain,text/markdown,appli
    copies of a sentence about what leaves the browser is two chances
    for one of them to be more generous than the code. */
 const GEN_DISCLOSURE =
-  'What is sent: the synopsis you wrote, the beats as they stand, and for each '
-  + 'batch of scenes its own slug lines plus the two scenes either side for '
-  + 'continuity. Not your other projects, not your notes, not the rest of the '
-  + 'screenplay. Nothing is sent until you press a button, and the key never '
-  + 'leaves this device except as the one header that authorises the request.';
+  'What is sent: the synopsis you wrote, the beats as they stand, the logline and '
+  + 'the character names so far, and the scene list (every slug line with its '
+  + 'one-line synopsis) so each request keeps its continuity. Writing the '
+  + 'remaining scenes sends them in small requests, a few at a time. Not your '
+  + 'other projects, not your notes, not the rest of the screenplay. Nothing is '
+  + 'sent until you press a button, and the key never leaves this device except '
+  + 'as the one header that authorises the request.';
 
 /**
  * Read a file into a synopsis.
@@ -1103,6 +1096,17 @@ function renderGenBeats() {
   return wrap;
 }
 
+/* What the Desk's 'gen-batch' task needs from this page: flush the unsaved
+   edit before the write, reload the copy after it. Shared by the pill and
+   the one-press button (which adds `go`). */
+function genDeskCtx(extra) {
+  return {
+    before: flushDoc,
+    after: () => { reloadDoc(); gen = Scriptgen.load(); genError = ''; genStatus = ''; render(); },
+    ...(extra || {})
+  };
+}
+
 /* ---- stage 3: the pages ------------------------------------ */
 function renderGenPages() {
   const wrap = h('div.wr-gen-pages');
@@ -1159,34 +1163,33 @@ function renderGenPages() {
         : 'Nothing written yet. Each request covers ' + Scriptgen.BATCH_SIZE
           + ' scenes, so this list is about ' + p.batches + ' requests.'
     }),
-    /* Two ways on. The AI pill is the reviewed one: the AI Desk's
-       'gen-batch' task drafts the next batch, the writer reads it, ticks
-       the scenes to keep and accepts (an unticked scene stays next in
-       line and is drafted again with the next batch). The bulk button
-       writes every batch in a row without stopping to ask, and offers
-       one Undo for the whole run afterwards; it is hidden — not greyed — on a plan
-       without AI, because the pill beside it already carries the offer,
-       and plan:changed (below) shows it once the plan is known. */
+    /* ONE PRESS. "Write the remaining scenes" opens the AI Desk and runs
+       at once: the scenes go in small requests a few at a time, each one
+       appears as a card the moment it is written, and nothing is written
+       into the screenplay until the writer accepts (all, or tick per
+       scene; an unticked scene stays next in line). The press IS the
+       send, so the provider disclosure sits right here beside it. The
+       button is hidden — not greyed — on a plan without AI, because the
+       pill beside it already carries the offer, and plan:changed (below)
+       shows it once the plan is known. */
     h('div.wr-gen-acts', {}, [
+      h('button.btn.primary', {
+        type: 'button', 'data-action': 'gen-run-all',
+        hidden: PlanGate.aiUnlocked() ? null : true,
+        text: p.done ? 'Write the remaining ' + p.left + ' scenes' : 'Write all ' + p.left + ' scenes'
+      }),
       aiPill({
         label: 'Next ' + Math.min(Scriptgen.BATCH_SIZE, p.left) + ' scenes, in the Desk', tasks: ['gen-batch'],
-        ctx: () => ({
-          before: flushDoc,
-          after: () => { reloadDoc(); gen = Scriptgen.load(); genError = ''; genStatus = ''; render(); }
-        })
+        ctx: () => genDeskCtx()
       }),
-      h('button.btn', {
-        type: 'button', 'data-action': 'gen-run-all', disabled: genBusy,
-        hidden: PlanGate.aiUnlocked() ? null : true,
-        text: genBusy ? 'Writing…' : (p.done ? 'Resume and write the rest' : 'Write all ' + p.left + ' scenes')
-      }),
-      genBusy ? h('button.btn.is-danger', { type: 'button', 'data-action': 'gen-stop', text: 'Stop' }) : null,
-      h('button.btn', { type: 'button', 'data-action': 'gen-reset', disabled: genBusy,
-        text: 'Start over' })
+      h('button.btn', { type: 'button', 'data-action': 'gen-reset', text: 'Start over' })
+    ]),
+    Panelm ? Panelm.disclose(GEN_DISCLOSURE) : h('div.ai-disclose', {}, [
+      h('strong', { text: 'What gets sent, and where' }), h('p', { text: GEN_DISCLOSURE })
     ]),
     h('p.wr-gen-cost', {
-      text: 'About ' + p.batches + (p.batches === 1 ? ' request' : ' requests')
-        + ' left. Stop is immediate and keeps everything already written.'
+      text: 'About ' + Math.ceil(p.left / Scriptgen.PAGE_BATCH) + (Math.ceil(p.left / Scriptgen.PAGE_BATCH) === 1 ? ' request' : ' requests')
+        + ' left, ' + Scriptgen.PAGE_CONCURRENCY + ' at a time. Stop keeps every scene already written; nothing goes into the screenplay until you accept.'
     })
   );
   return wrap;
@@ -1239,7 +1242,7 @@ function renderGenerate() {
   if (stage === 'beats') section.append(renderGenBeats());
   else section.append(renderGenPages());
   section.append(...genStatusBlock());
-  section.append(disclosure());
+  if (stage === 'beats' || Scriptgen.progress(gen).left === 0) section.append(disclosure());
   return section;
 }
 
@@ -2277,32 +2280,6 @@ function readGenBeats() {
   }
 }
 
-function genBegin() {
-  genBusy = true;
-  genError = '';
-  genStatus = '';
-  genAbort = new AbortController();
-}
-function genEnd() {
-  genBusy = false;
-  genAbort = null;
-  genAll = false;
-}
-const genSay = (m) => {
-  genStatus = m;
-  const line = document.querySelector('#generate .ai-status');
-  if (line) line.textContent = m;
-};
-
-/* One place that turns a thrown thing into a line the user can act
-   on, so the three stages cannot disagree about what a 401 means. */
-function genFail(err) {
-  const st = genFailState(err);
-  genError = st.error;
-  if (st.aborted) { genStatus = st.status; return; }
-  console.warn('[write] gen', err);
-}
-
 delegate(document, 'change', '[data-action="gen-replace-scenes"]', (e, box) => {
   genReplaceScenes = !!box.checked;
   render();
@@ -2352,97 +2329,21 @@ delegate(document, 'input', '[data-beat-text]', (e, ta) => {
   Scriptgen.save(gen);
 });
 
-/* One batch, or all of them.
-
-   `genAll` is checked at the TOP of every turn and cleared by Stop, so
-   Stop ends the loop after at most the batch already in flight — which
-   the AbortSignal cuts anyway. Reading a captured copy instead would
-   keep the loop billing after the user asked it to stop, and that is
-   the one failure this feature is not allowed to have. */
-async function genRun(all) {
-  if (genBusy) return;
-  /* The pill does these two checks for the reviewed path; the bulk
-     button is a plain button, so it asks them itself. */
+/* The one-press button: open the Desk on 'gen-batch' and run at once.
+   The Desk checks the plan and the key itself (a locked plan never
+   reaches it, no key shows the Settings step). Nothing is written until
+   the writer accepts. */
+delegate(document, 'click', '[data-action="gen-run-all"]', async () => {
   if (!PlanGate.aiUnlocked()) return;
-  if (!hasKey()) {
-    genError = 'No AI key on this device. Add your key once in Settings (settings.html#ai); every AI tool uses it.';
+  try {
+    const { openDesk } = await import('../ui/ai-desk.js');
+    await openDesk('gen-batch', genDeskCtx({ go: true }));
+  } catch (err) {
+    genError = (err && err.message) || 'The AI Desk did not open. Reload the page and try again.';
     render();
-    return;
   }
-  if (!await primeAI()) return;
-  genBegin();
-  genAll = all;
-  render();
-  /* THE BULK RUN HAS NO REVIEW, SO IT KEEPS AN UNDO. The Desk's
-     reviewed path shows every batch before Accept; this one writes
-     batch after batch without asking, which is what it is for. What it
-     owes instead is one Undo for the whole run: the first batch's undo
-     (scriptgen.js applyBatch) puts back the script and the job exactly
-     as they were before the run began. It is offered only while the
-     script is still the one the run left — a line typed afterwards
-     would otherwise be undone with it. */
-  let firstUndo = null, wroteAny = 0;
-  try {
-    for (;;) {
-      /* One batch is these two halves; they are called apart so
-         the page's unsaved edit is flushed after the (slow) draft and
-         before the commit, and `doc` reloaded after it — see flushDoc. */
-      const d = await Scriptgen.draftBatch({ onStatus: genSay, signal: genAbort.signal });
-      let res;
-      if (d.done) res = { job: Scriptgen.load(), done: true };
-      else {
-        flushDoc();
-        res = Scriptgen.applyBatch(d, null);
-        reloadDoc();
-        if (res.wrote && !firstUndo) firstUndo = res.undo;
-        wroteAny += res.wrote || 0;
-      }
-      gen = res.job;
-      // Re-render between batches: the progress bar is the only honest
-      // report of how far a run that might still fail has actually got.
-      render();
-      if (res.done) { say('The draft is complete.'); break; }
-      /* A batch that wrote nothing moved nothing (applyBatch keeps an
-         unwritten scene next in line), so going round again would ask
-         for — and pay for — the same scenes forever. */
-      if (!d.done && !res.wrote) {
-        genError = 'The reply held none of the scenes asked for, so nothing was written and the run stopped. Ask for the next scenes again.';
-        break;
-      }
-      if (!genAll) break;
-      if (!genAbort) break;          // Stop ran between turns
-    }
-    genStatus = '';
-  } catch (err) { genFail(err); }
-  genEnd();
-  render();
-  if (firstUndo) offerRunUndo(firstUndo, wroteAny);
-}
-
-/* The Undo for one bulk run (see genRun). */
-function offerRunUndo(undo, scenes) {
-  const left = JSON.stringify(Script.loadScript().elements);
-  try {
-    StudioUI.toast(scenes + (scenes === 1 ? ' scene' : ' scenes') + ' written into the screenplay.', {
-      action: 'Undo',
-      onAction: () => {
-        flushDoc();
-        if (JSON.stringify(Script.loadScript().elements) !== left) {
-          StudioUI.toastError('The screenplay has changed since the run, so nothing was undone.');
-          return;
-        }
-        undo();
-        reloadDoc();
-        gen = Scriptgen.load();
-        render();
-        StudioUI.toast('Undone.', { type: 'info' });
-      }
-    });
-  } catch (e) { /* chrome may not be up */ }
-}
-
-delegate(document, 'click', '[data-action="gen-run-all"]', () => genRun(true));
-/* The bulk button is hidden until the plan is known to carry AI, and
+});
+/* The button is hidden until the plan is known to carry AI, and
    the plan arrives after first paint. Toggled in place rather than by
    a re-render, so a plan landing mid-sentence never rebuilds the page
    under the caret. */
@@ -2451,17 +2352,11 @@ Store.subscribe('plan:changed', () => {
   document.querySelectorAll('[data-action="gen-run-all"]').forEach((b) => { b.hidden = !on; });
 });
 
-delegate(document, 'click', '[data-action="gen-stop"]', () => {
-  genAll = false;
-  if (genAbort) { try { genAbort.abort(); } catch (e) { /* already gone */ } }
-});
-
 /* Clears the JOB, not the writing. The pages stay in the editor and
    the revision taken before them stays in the list — a reset that
    silently deleted a hundred written pages would be the worst button
    in the app. */
 delegate(document, 'click', '[data-action="gen-reset"]', () => {
-  if (genBusy) return;
   Scriptgen.clear();
   gen = Scriptgen.load();
   genStatus = '';
@@ -2603,9 +2498,27 @@ async function breakIntoShots() {
 
     // 4. Append. Nothing a person wrote is touched or renumbered.
     const made = [];
+    /* The history stamp, loaded here (an AI draft is the only caller): one run
+       for the whole division. Not a static import: it is not first paint. */
+    const Stamp = byAI ? await import('../lib/ai-stamp.js') : null;
+    const stampMeta = byAI ? Stamp.aiMeta('shot-draft', result.model) : null;
     for (const [sceneId, list] of result.byScene) {
       for (const draft of list) {
-        made.push(Shots.addShot(sceneId, byAI ? { ...draft, ai: true } : { ...draft, rules: true }).id);
+        if (!byAI) { made.push(Shots.addShot(sceneId, { ...draft, rules: true }).id); continue; }
+        /* The stamp replaces `ai: true`, built on the full shot so its hash
+           is of the fields as the Shot List reads them. */
+        const { sceneId: _s, number: _n, ...stamped } = Stamp.stampAI('shot', Shots.blankShot(draft), stampMeta);
+        made.push(Shots.addShot(sceneId, stamped).id);
+      }
+    }
+    /* A batch the AI failed on left its scenes with no shots; they get the basic
+       breakdown (what a whole failure always did), so none is silently empty. */
+    const failedIds = new Set(byAI && Array.isArray(result.failed) ? result.failed : []);
+    const fallbackJobs = jobs.filter((j) => failedIds.has(j.sceneId) && !result.byScene.has(j.sceneId));
+    if (fallbackJobs.length) {
+      const basic = await basicShotDivision(fallbackJobs);
+      for (const [sceneId, list] of basic.byScene) {
+        for (const draft of list) made.push(Shots.addShot(sceneId, { ...draft, rules: true }).id);
       }
     }
     decorateShotCounts();
@@ -2617,6 +2530,7 @@ async function breakIntoShots() {
     const sceneIds = new Set(addedScenes);
     shotsToast(made.length + (made.length === 1 ? ' shot' : ' shots') + ' added'
       + (byAI ? ' by ' + result.model : '')
+      + (fallbackJobs.length ? ' · ' + fallbackJobs.length + (fallbackJobs.length === 1 ? ' scene' : ' scenes') + ' the AI missed got the basic breakdown' : '')
       + (sceneIds.size ? ' · ' + sceneIds.size + (sceneIds.size === 1 ? ' scene' : ' scenes') + ' added to the Breakdown' : ''),
     () => {
       Shots.saveShots(Shots.listShots().filter((s) => !shotIds.has(s.id)));

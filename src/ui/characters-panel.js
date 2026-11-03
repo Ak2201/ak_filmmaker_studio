@@ -45,6 +45,7 @@ import C, {
 } from '../lib/characters.js';
 import { renderCharacterSections, onCardInput, onCardChange, onCardClick, flushCardEdits, displayName, statsText } from './character-card.js';
 import { askDanger } from './dialog.js';
+import { aiBadge } from './ai-badge.js';   // the AI history badge
 
 let hooks = {
   getDoc: () => ({ elements: [] }),
@@ -102,6 +103,7 @@ function card(c, read, contacts, stats, names) {
   box.append(
     h('summary.wr-ch-sum', {}, [
       h('strong.wr-ch-name', { text: displayName(c) }),
+      aiBadge(c, 'character'),   // a card an AI run made or filled (null otherwise)
       c.role ? h('span.wr-ch-tag', { text: C.roleLabel(c.role) }) : null,
       c.derived ? h('span.wr-ch-tag', { text: 'from the cues' }) : null,
       c.virtual ? h('span.wr-ch-tag', { text: 'from your blueprint' }) : null,

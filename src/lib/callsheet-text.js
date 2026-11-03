@@ -93,7 +93,7 @@ function assemble(top, f, sceneCount, notes) {
   const scenes = f.scenes || [];
   const out = top.slice();
   if (scenes.length) {
-    out.push('', '*Scenes (' + scenes.length + (clean(f.pagesTotal) ? ' · ' + clean(f.pagesTotal) + ' pages' : '') + ')*');
+    out.push('', '*Scenes (' + scenes.length + (clean(f.pagesTotal) ? ' · ' + clean(f.pagesTotal) + (clean(f.pagesTotal) === '1' ? ' page' : ' pages') : '') + ')*');
     scenes.slice(0, sceneCount).forEach((s) => out.push(sceneLine(s)));
     const rest = scenes.length - sceneCount;
     if (rest > 0) out.push('+' + rest + ' more');

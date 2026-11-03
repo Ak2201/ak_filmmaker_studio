@@ -346,7 +346,7 @@ function render(focus) {
        "today" only when it is — the same rule as the eyebrow. */
     kpi('Scenes shot', String(day.shot), '/ ' + total, total ? day.shot / total : 0,
       (day.remaining ? day.remaining + ' left' : 'none left') + (isToday ? ' today' : '')),
-    kpi('Pages shot', day.pagesShot, '/ ' + day.pagesTotal, day.eighthsTotal ? day.eighthsShot / day.eighthsTotal : 0),
+    kpi('Pages shot', day.pagesShot, 'of ' + day.pagesTotal, day.eighthsTotal ? day.eighthsShot / day.eighthsTotal : 0),
     /* The whole film, not the day: shot over every scene. */
     kpi('In the can', String(overall.shot), '/ ' + overall.scenes, overall.scenes ? overall.shot / overall.scenes : 0,
       overall.pagesShot + ' of ' + overall.pagesTotal + ' pages, film total'),

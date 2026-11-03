@@ -722,6 +722,13 @@ try {
     ok(new RegExp('^' + BASE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + 'start\\.html#code=[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$').test(link), 'a new code is shown as a LANDING link, code in the fragment: ' + link);
     // The demo link (admin console, Access): one standard code labelled Demo, copied as invite.html#code=..&demo=1.
     await page.fill('#gtDemoUses', '25');
+    /* A redraw between typing and pressing must keep what was typed: a
+       second standard code forces one (createCode → loadAdmin → rerender),
+       which used to put the stored default 50 back (QA r2 I-1). */
+    await page.fill('#gtLabel', 'Redraw test');
+    await page.click('#admin-console form[data-gate-form="create"] button[type="submit"]');
+    await page.waitForFunction(() => [...document.querySelectorAll('#admin-console')].some((el) => el.textContent.includes('Redraw test')), null, { timeout: 8000 });
+    ok((await page.inputValue('#gtDemoUses')) === '25', 'the demo Uses typed before a console redraw survives it');
     await page.click('#admin-console [data-gate-action="create-demo"]');
     await page.waitForSelector('.gt-demo .gt-link', { timeout: 8000 });
     const demoLink = await page.textContent('.gt-demo .gt-link');

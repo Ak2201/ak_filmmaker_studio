@@ -504,7 +504,7 @@ async function useSample(id) {
   // the market fields stay the writer's, and tension scores or an
   // outline lock count as work worth a question.
   if (IO.sampleReplacesWork(cur) && !await askDanger(IO.sampleQuestion(sm.title, 'the Story page'))) return;
-  const s = IO.sampleOver(Story.loadStory(), await IO.sampleStory(sm.id));
+  const s = IO.sampleOver(Story.loadStory(), await IO.sampleStory(sm.id), Scenes.listScenes().map((r) => r.id));
   Story.saveStory(s);
   refreshStoryKit();
   StudioUI.toast('The ' + sm.title + ' sample story is on the Story page.');

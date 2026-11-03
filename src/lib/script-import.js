@@ -1275,23 +1275,60 @@ export function scenesFrom(elements) {
    One entry point. Returns everything the preview needs and
    nothing is written.
    ------------------------------------------------------------ */
+/* A file that is not text at all (an image, an archive, any binary
+   renamed .fountain) reads back from FileReader as NULs, control bytes
+   and U+FFFD, and every parser took it as one line of action, so the
+   control characters were written into the script blob and travelled
+   into every export (QA r2 B-2). A NUL never occurs in a screenplay;
+   a scattering of U+FFFD does (a Latin-1 file read as UTF-8), so the
+   ratio only refuses a file that is mostly undecodable. */
+const CONTROL_RE = /[\u0000-\u0008\u000B\u000E-\u001F\u007F]/g;
+function looksBinary(text) {
+  if (text.indexOf('\u0000') !== -1) return true;
+  const solid = text.replace(/\s+/g, '').length;
+  if (!solid) return false;
+  const bad = (text.match(CONTROL_RE) || []).length + (text.match(/\uFFFD/g) || []).length;
+  return bad / solid > 0.1;
+}
+
 export function parseScript(raw, filename) {
+  if (looksBinary(String(raw == null ? '' : raw))) {
+    const format = detectFormat(filename, raw);
+    return {
+      format, formatLabel: (FORMATS.find((f) => f.id === format) || {}).label || format,
+      meta: {}, titlePage: null, elements: [], scenes: [],
+      numbering: { fromFile: 0, fromHeading: 0, ordinal: 0, conflicted: 0, duplicated: 0 },
+      counts: {}, lines: 0, pages: 0,
+      warnings: ['That file does not look like a screenplay: it is not a text file.'],
+      skipped: {}, fatal: true
+    };
+  }
   const format = detectFormat(filename, raw);
   const parser = format === 'fdx' ? parseFDX
     : (format === 'text' || format === 'pdf' || format === 'docx') ? parseText
     : parseFountain;
   const result = parser(raw);
 
-  /* A parenthetical is STORED without its brackets and WEARS them
-     on paper — that is the editor's convention and what
-     src/lib/screenplay-export.js re-adds when it typesets. Every
-     file format writes them, so they come off here. Without this
-     the Fountain round trip comes back one element different, and
-     three imports in a row would give you "(((quietly)))". */
+  /* A parenthetical is stored WITH exactly one pair of brackets,
+     which is how the editor keeps one: a writer types "(quietly)",
+     the auto-format's "says quietly" makes "(quietly)", and the
+     Dragon sample carries them. The Writer's line is a textarea and
+     cannot draw brackets it does not hold, so an import that stored
+     "quietly" (the old rule here) showed a bare italic line on screen
+     while the PDF printed "(quietly)" (QA r1 B-1). Every exporter and
+     paginate.js add brackets only when they are missing, so the round
+     trip is stable. The strip-then-wrap is what stops three imports in
+     a row giving you "(((quietly)))". */
   const elements = (result.elements || []).map((el) => {
+    /* A stray control byte in an otherwise good file is dropped rather
+       than stored: it prints as nothing and breaks the XML exports. */
+    if (typeof el.text === 'string') {
+      const clean = el.text.replace(CONTROL_RE, '');
+      if (clean !== el.text) el = { ...el, text: clean };
+    }
     if (el.type !== 'paren') return el;
     const stripped = String(el.text).replace(/^\(+\s*|\s*\)+$/g, '').trim();
-    return stripped ? blankElement({ type: 'paren', text: stripped }) : el;
+    return stripped ? blankElement({ type: 'paren', text: '(' + stripped + ')' }) : el;
   });
   const counts = {};
   for (const el of elements) counts[el.type] = (counts[el.type] || 0) + 1;

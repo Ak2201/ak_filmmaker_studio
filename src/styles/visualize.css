@@ -142,20 +142,40 @@
    its code); "What we see" is the one prose column and takes whatever
    width is left, and its box grows to its text instead of clipping. */
 .vz-table .vz-c-no    { width: 4rem; min-width: 4rem; }
-.vz-table .vz-c-size  { width: 4rem; min-width: 4rem; }
-.vz-table .vz-c-angle { width: 5.5rem; min-width: 5.5rem; }
-.vz-table .vz-c-move  { width: 5.5rem; min-width: 5.5rem; }
-/* Wide enough for "100mm macro"; the angle and move pickers hold
-   "eye level" / "handheld" like Rig does. Every default column, the
+.vz-table .vz-c-size  { width: 4.5rem; min-width: 4.5rem; }
+/* The size codes run to three capitals (EWS, MCU, ECU): with the cell's
+   own 8px each side and the select's 8px + chevron, a 4rem column left
+   46px and clipped "EWS" to "EV" (QA, 2 Nov 2026). Half the cell's
+   padding and half a rem more hold the widest code; the Done column (a
+   26px box in 56px) gave up most of the difference, so the description
+   keeps its 200px box and the 1280 panel still fits. */
+.vz-table td.vz-c-size { padding-inline: var(--s1); }
+/* The angle and move pickers clipped the same way at 5.5rem: 36px of
+   text room for "overhead" (53px), "handheld" (52) and "eye level" (50),
+   read as "eye lev" / "handh" (QA r2, 3 Nov 2026). The size column's
+   half padding and a little more width hold the widest of each list.
+   The 24px that takes is given back by the other short field cells
+   (lens, rig, setup, minutes): each takes the same half padding and is
+   8px narrower, so its field keeps exactly the room it had and the 1280
+   panel still fits with "What we see" at its 200px box. */
+.vz-table .vz-c-angle { width: 6.25rem; min-width: 6.25rem; }
+.vz-table .vz-c-move  { width: 6.25rem; min-width: 6.25rem; }
+.vz-table td.vz-c-angle,
+.vz-table td.vz-c-move,
+.vz-table td.vz-c-lens,
+.vz-table td.vz-c-rig,
+.vz-table td.vz-c-setup,
+.vz-table td.vz-c-mins { padding-inline: var(--s1); }
+/* Wide enough for "100mm macro". Every default column, the
    description at its 200px box, fits the 1280 panel (prove:board-frames);
    narrowed 28 Oct 2026 when the labelled 224px rail took the width. */
-.vz-table .vz-c-lens  { width: 6rem; min-width: 6rem; }
-.vz-table .vz-c-rig   { width: 5.5rem; min-width: 5.5rem; }
-.vz-table .vz-c-setup { width: 5.5rem; min-width: 5.5rem; }
+.vz-table .vz-c-lens  { width: 5.5rem; min-width: 5.5rem; }
+.vz-table .vz-c-rig   { width: 5rem; min-width: 5rem; }
+.vz-table .vz-c-setup { width: 5rem; min-width: 5rem; }
 .vz-table .vz-c-setup .k-control + .k-control { margin-top: var(--s1); }
-.vz-table .vz-c-mins  { width: 3.75rem; min-width: 3.75rem; }
+.vz-table .vz-c-mins  { width: 3.25rem; min-width: 3.25rem; }
 .vz-table .vz-c-desc  { width: auto; min-width: 13.75rem; }
-.vz-table .vz-c-done  { width: 3.5rem; min-width: 3.5rem; }
+.vz-table .vz-c-done  { width: 3.125rem; min-width: 3.125rem; }
 @supports (field-sizing: content) {
   .vz-table .vz-desc { field-sizing: content; min-height: 3lh; }
 }
@@ -266,9 +286,17 @@
   font-size: var(--t-micro);
   color: var(--ink);
 }
-.vz-card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); }
+/* The checkbox keeps its place at the right of the spec line on every
+   card: with wrap on, a long spec ("MCU · eye level · handheld · 100mm
+   macro") pushed it onto a line of its own and the cards of one scene
+   started their descriptions at different heights (QA r2). The spec
+   wraps inside its own box instead. */
+.vz-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s2); }
+.vz-card-head > .vz-done-check { flex: none; }
 .vz-card-spec {
+  flex: 1 1 auto;
   min-width: 0;
+  overflow-wrap: anywhere;
   font-size: var(--t-micro);
   letter-spacing: 0;
   text-transform: none;

@@ -145,7 +145,16 @@ export function mountLockBar() {
     if (!btn.closest('#lockBar')) return;
     try {
       const U = await import('./script-lock-ui.js');
-      await U.openChangeReport({ returnTo: btn, after: paint, onClose: paint });
+      /* The report writes the scenes and the bin behind whatever page this
+         is. `after` used to repaint only the bar, so the Breakdown's Scene
+         List kept a binned row on screen, and an edit typed into it was
+         accepted and dropped (QA r1). The page hears `lock:report-applied`
+         and redraws from storage. */
+      const after = () => {
+        paint();
+        document.dispatchEvent(new CustomEvent('lock:report-applied'));
+      };
+      await U.openChangeReport({ returnTo: btn, after, onClose: paint });
     } catch (err) {
       console.warn('[lock-bar] report sheet', err);
     }

@@ -20,6 +20,7 @@
    ============================================================ */
 import { ai, resolve, call, fail, plural, remember, recall, refineText } from './ai-task-kit.js';
 import * as M from './ai-story-model.js';
+import Stamp from './ai-stamp.js';   // the history stamp (docs/AI-FAST-HARNESS.md B)
 
 let CharsM = null, StoryM = null, ScenesM = null, ScriptM = null;
 let loading = null;
@@ -94,8 +95,9 @@ const arcsTask = {
       truncated ? 'The reply was cut short, so some characters may be missing.' : '');
     return remember('character-arcs', { items: res.items, note }, {});
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const sm = Stamp.metaOf('character-arcs', meta);
     const { writes, skipped } = M.planArcWrites(selected, (id) => viewNow(c, id));
     const wrote = [];
     let listTouched = false;
@@ -107,6 +109,22 @@ const arcsTask = {
       if (r.listChanged) listTouched = true;
       const back = viewNow(c, w.characterId);
       if (back && String(back[w.field] || '') === w.value) wrote.push(w);
+    }
+    /* The history stamp: each character CARD the run filled fields of
+       gets one 'fill' entry naming them. A field that lives in the
+       blueprint answers instead of the card (view.backed) has no record
+       to carry a stamp and is not stamped (named in test:ai-history). */
+    {
+      const by = new Map();
+      for (const w of wrote) { if (!by.has(w.characterId)) by.set(w.characterId, []); by.get(w.characterId).push(w.field); }
+      const list = charList(c);
+      for (const [id, fields] of by) {
+        const rec = list.find((x) => x && x.id === id);
+        if (rec && CharsM.CHARACTER_FIELDS.some((f) => fields.includes(f))) {
+          rec.aiFill = Stamp.stampFill('character', rec, sm, fields.filter((f) => CharsM.CHARACTER_FIELDS.includes(f)), 'fill').aiFill;
+          listTouched = true;
+        }
+      }
     }
     if (listTouched) { if (typeof c.save === 'function') c.save(true); else CharsM.saveCharacters(charList(c)); }
     if (!wrote.length) {
@@ -126,6 +144,17 @@ const arcsTask = {
         if (!v) continue;
         const r = CharsM.setField(charList(c), v, b.field, '');
         if (r.listChanged) touched = true;
+      }
+      {   // a card whose every field this run wrote went back loses the stamp; an edited one keeps it
+        const list = charList(c);
+        const ids = new Set(wrote.map((w) => w.characterId));
+        for (const id of ids) {
+          const all = wrote.filter((w) => w.characterId === id);
+          if (!all.every((w) => blank.some((b) => b.characterId === id && b.field === w.field))) continue;
+          const rec = list.find((x) => x && x.id === id);
+          const n = rec ? Stamp.unstampFill(rec, sm.run) : null;
+          if (n && n !== rec) { if (n.aiFill) rec.aiFill = n.aiFill; else delete rec.aiFill; touched = true; }
+        }
       }
       if (touched) { if (typeof c.save === 'function') c.save(true); else CharsM.saveCharacters(charList(c)); }
       call(c.say, sentence(plural(blank.length, 'field', 'fields') + ' blanked again.',
@@ -200,8 +229,9 @@ const cleanupTask = {
       originals: clone(r.block)
     });
   },
-  apply(selected, ctx, result) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const sm = Stamp.metaOf('script-cleanup', meta);
     const mem = recall('script-cleanup', result);
     if (!mem) fail('There is nothing to apply. Run the clean-up first.');
     if (typeof c.setType !== 'function') fail('This build cannot change a line’s type from here. Nothing was changed.');
@@ -217,15 +247,20 @@ const cleanupTask = {
        by element id, so a fresh id would detach them from a line the writer
        never changed. Only genuinely new lines get new elements. */
     const pool = els.slice(there.at, there.at + mem.snap.block.length);
+    const fresh = new Set();
     const added = plan.map((p) => {
       const k = pool.findIndex((e) => e && String(e.text || '').trim() === String(p.text || '').trim());
-      if (k < 0) return ScriptM.blankElement({ type: 'action', text: p.text });
+      if (k < 0) { const el = ScriptM.blankElement({ type: 'action', text: p.text }); fresh.add(el.id); return el; }
       const kept = pool[k]; pool[k] = null;
       return kept;
     });
     els.splice(there.at, mem.snap.block.length, ...added);
     /* Every type change goes through the editor's one path. */
     added.forEach((el, i) => { if (plan[i].type !== el.type) c.setType(el.id, plan[i].type); });
+    /* The history stamp: the NEW lines only (a kept line, same id, is the
+       writer's), stamped after the type change so the hash covers the
+       type the line ended up with. */
+    for (const el of els) if (el && fresh.has(el.id)) Object.assign(el, Stamp.stampAI('element', el, sm));
     const wrote = added.map(brief);
     call(c.save);
     call(c.render, added[0].id);

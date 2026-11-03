@@ -116,8 +116,12 @@ jobs:
       - run: npm run prove:budget-privacy
       - run: npm run prove:budget-money
       - run: npm run prove:ai-desk
+      # One press, small batches three at a time, live cards, Careful, a run that outlives the Desk (faked held provider).
+      - run: npm run prove:ai-fast
       # The ten AI Desk tasks on the pages that had none (Phase 3, 1 Nov 2026), faked provider.
       - run: npm run prove:ai-everywhere
+      # The AI history: stamp, badge, Desk History tab, dashboard #ai, Undo from History (2 Nov 2026), faked provider.
+      - run: npm run prove:ai-history
       # Sticky notes, beat <-> scene sync and the shared beat sheet (HISTORY
       # 61-62), then the proofs that ran only by hand until the full-app QA
       # (HISTORY 67). All read this job's gate-off dist/.

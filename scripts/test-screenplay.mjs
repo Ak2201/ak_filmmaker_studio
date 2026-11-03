@@ -235,6 +235,25 @@ eq(wide.setdressing.map((x) => x.name), ['sofa'], 'set dressing is its own categ
 eq(wide.wardrobe.map((x) => x.name), ['saree'], 'wardrobe is suggested');
 eq(wide.makeup.map((x) => x.name), ['blood'], 'makeup is suggested');
 eq(wide.special.map((x) => x.name), ['drone'], 'special equipment is suggested');
+{
+  const r = A.suggestElements({ elements: {} }, { elements: [el('action', 'Rain. An explosion lights the road.')] });
+  eq(r.sound.map((x) => x.name), [], 'lower-case rain / explosion are not ALSO a sound suggestion (QA r1)');
+  eq(r.sfx.map((x) => x.name).sort(), ['explosion', 'rain'], 'rain and explosion are SFX');
+  eq(A.suggestElements({ elements: {} }, { elements: [el('action', 'An EXPLOSION.')] }).sound.map((x) => x.name), ['explosion'], 'a capitalised EXPLOSION is still a sound cue');
+}
+{
+  // QA r2: a verb whose subject is already an element is not a second element.
+  const a = A.suggestElements({ elements: {} }, { elements: [el('action', 'Maya pours tea. A gunshot rings out outside. Her car horn blares. Thunder rumbles. A phone rings.')] });
+  eq(a.sound.map((x) => x.name), ['gunshot', 'horn', 'thunder'], 'a phone rings / a gunshot rings: no bare "rings" sound');
+  ok(a.props.some((x) => x.name === 'phone'), 'the phone is still a prop');
+  const b = A.suggestElements({ elements: {} }, { elements: [el('action', 'A dog barks. Rain falls. Night falls.')] });
+  eq(b.stunts, [], '"Rain falls" and "Night falls" are not a stunt');
+  eq(b.sfx.map((x) => x.name), ['rain'], 'rain is still SFX');
+  eq(A.suggestElements({ elements: {} }, { elements: [el('action', 'Ravi falls.')] }).stunts.map((x) => x.name), ['falls'], 'a person falling is still a stunt');
+  eq(A.suggestElements({ elements: {} }, { elements: [el('action', 'A crowd of 40 villagers watches.')] }).extras.map((x) => x.name), ['villagers'], 'a crowd of 40 villagers is one extras chip');
+  eq(A.suggestElements({ elements: {} }, { elements: [el('action', 'The crowd turns.')] }).extras.map((x) => x.name), ['crowd'], 'a bare crowd is still offered');
+  eq(A.suggestElements({ elements: {} }, { elements: [el('action', 'The phone RINGS.')] }).sound.map((x) => x.name), ['rings'], 'a capitalised RINGS is still a sound cue');
+}
 eq(A.suggestElements({ elements: {} }, { elements: [el('action', 'He wears a scarf and runs a business.')] }).vehicles, [], 'whole words only: scarf is not car, business is not bus');
 eq(A.suggestElements({ elements: {} }, { elements: [el('character', "RAGAVAN'S FATHER")] }).cast.map((x) => x.name), ["Ragavan's Father"], 'a cue with a possessive is title-cased without a capital after the apostrophe');
 {
@@ -334,7 +353,7 @@ ok(ms < 1200, `120-page parse + tag + estimate in ${ms}ms (budget 1200ms; parse 
   const dual = [
     E('scene', 'INT. TEA STALL - NIGHT'),
     E('character', 'RAVI'), E('dialogue', 'We are not doing this tonight. Not here, not in front of everyone.'),
-    E('character', 'MEENA', { dual: true }), E('paren', 'over him'), E('dialogue', 'Then when?'),
+    E('character', 'MEENA', { dual: true }), E('paren', '(over him)'), E('dialogue', 'Then when?'),
     E('action', 'The kettle screams.'),
     E('character', 'RAVI'), E('dialogue', 'Turn it off.')
   ];

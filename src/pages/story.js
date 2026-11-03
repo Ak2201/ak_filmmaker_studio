@@ -71,6 +71,7 @@ import '../styles/beat-color.css';   // a step's label colour (owner, 24 Oct 202
 import '../styles/beat-views.css';   // the Beat Sheet's Lanes and Spine (owner, 31 Oct 2026)
 
 import StudioUI from '../ui/chrome.js';
+import { aiBadge } from '../ui/ai-badge.js';   // the AI history badge
 import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
 import { saveOnInput, preservingFocus, flushAutosave } from '../lib/autosave.js';
@@ -1016,6 +1017,7 @@ function renderStepRow(st, opts, first, last, unplaced = false, locked = false, 
     }, [h('span.sym', { 'aria-hidden': 'true', translate: 'no', text: 'drag_indicator' })]),
     h('label.st-ol-n', { for: fid, text: 'Step ' + st.n }),
     badge,
+    aiBadge(st, 'step'),   // a step an AI run wrote or filled (null otherwise; filtered below)
     locked ? null : h('button.st-card-open', {
       type: 'button', 'data-st': 'step-open', 'data-step': st.id, 'aria-expanded': String(open),
       'aria-label': (open ? 'Close the controls of step ' : 'Edit step ') + st.n, title: open ? 'Close' : 'Colour, move or remove'
@@ -1707,7 +1709,7 @@ async function useSample(id) {
   // The Story Bible's conflict answers and the market fields stay the
   // writer's (IO.sampleOver); re-read so an edit made while the
   // confirm was open is the one kept.
-  const s = IO.sampleOver(story(), await sampleStory(sm.id));
+  const s = IO.sampleOver(story(), await sampleStory(sm.id), Scenes.listScenes().map((r) => r.id));
   s.frameworkChosen = true;   // the sample's outline is laid out under its own format
   mode = 'tag'; started = true; litBeat = '';
   pathStep = s.outline.length ? 'outline' : 'synopsis';

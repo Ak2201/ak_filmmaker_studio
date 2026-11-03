@@ -509,6 +509,11 @@
 
 @media (pointer: coarse) {
   .ai-pill { min-height: 44px; }
+  /* The locked pill's compact height above is (0,3,0), which beat the
+     plain `.ai-pill` floor here and base.css's (0,2,0) one: every
+     "… · Pro" button measured 32px on a phone (QA r2, 3 Nov 2026).
+     Same weight, declared later, so the touch floor wins. */
+  .ai-pill.ai-pill.is-locked { min-height: 44px; }
   .ai-pill-item { min-height: 44px; }
 }
 

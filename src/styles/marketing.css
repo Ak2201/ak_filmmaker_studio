@@ -515,6 +515,12 @@ html.mk-modal-open { overflow: hidden; }
    for its footer links, its text links and the opt-out. */
 @media (pointer: coarse) {
   .mk-foot a:not(.mk-brand), .mk-link, .mk-foot .st-optout-btn { min-height: 44px; display: inline-flex; align-items: center; }
+  /* The header and the crumbs too (QA r2, 3 Nov 2026): the brand link
+     was 30px, the header's Continue with Google 40px (.mk-btn--sm) and
+     a guide's "Home" crumb 32px. The band is --mk-top-h tall, so 44px
+     fits inside it without moving anything. */
+  .mk-top .mk-brand, .mk-top .mk-btn--sm, .mk-crumbs a, .mk-skip { min-height: 44px; }
+  .mk-skip { display: inline-flex; align-items: center; }
 }
 
 /* REFLOW AT 320px (WCAG 1.4.10; 400% zoom of 1280): the brand gives way

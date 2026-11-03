@@ -660,3 +660,14 @@ Nothing here has run against a real provider. To measure:
    the level: add its prefix to `geminiThinkingLevel()` and say which model.
 6. If replies come back `truncated`, raise that job's ceiling in E2 — not the
    default.
+
+## F. Run all uses this harness (3 Nov 2026)
+
+"Break down everything" (`docs/AI-RUN-ALL.md`) runs the same tasks through
+the same `callModel`, effort table, ceilings and batches as the Desk. Its
+engine reads Careful once per run and fixes each task's effort for that run,
+so the prompt-cache key holds across a run's batches. Its drafts are kept
+in IndexedDB (`fms-ai-drafts`), never in `localStorage`, and Accept goes
+through each task's own apply, so the stamps and exact undos described above
+hold for drafts too. Pro only (`aiUnlocked()`), and Run all's requests are
+sized by the same rules as E1 to E4.

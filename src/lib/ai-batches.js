@@ -106,11 +106,12 @@ export async function runBatches(jobs, {
 
   function launch(i) {
     inflight++;
+    const t0 = Date.now();   // timing is shown by the Desk, never stored
     attempt(i).then(() => {
       inflight--;
       if (i === 0) released = true;
       if (onBatch && !aborted()) {
-        try { onBatch({ done: okCount, total, failed: st.filter((x) => x.error).length }); } catch (e) { /* UI */ }
+        try { onBatch({ done: okCount, total, failed: st.filter((x) => x.error).length, index: i, ms: Date.now() - t0, ok: !!st[i].final }); } catch (e) { /* UI */ }
       }
       pump();
     });

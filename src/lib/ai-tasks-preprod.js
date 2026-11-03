@@ -50,9 +50,11 @@ export const load = () => {
 const sentence = (...parts) => parts.filter(Boolean).join(' ');
 const cut = (n, what) => (n ? plural(n, what + ' was', what + 's were') + ' not usable and left out.' : '');
 
-async function ask(system, user, schema, { onStatus, signal, maxTokens = 6000 } = {}) {
+/* `task` names the Desk task, so its effort comes from the ONE table
+   (ai-effort.js TASK_EFFORT; the Careful pref raises it a step). */
+async function ask(system, user, schema, { onStatus, signal, maxTokens = 6000, task } = {}) {
   const { parsed, truncated } = await (await ai()).callModelForTask({
-    system, user, schema, maxTokens, effort: 'medium', onStatus, signal
+    system, user, schema, maxTokens, task, onStatus, signal
   });
   return { parsed, truncated };
 }
@@ -79,7 +81,7 @@ const shootOrderTask = {
     const f = shootFacts();
     if (!f.scenes.length) fail('There are no scenes to place: every scene is either shot or on a day that has begun shooting. Nothing was changed.');
     const { parsed, truncated } = await ask(M.SHOOT_ORDER_SYSTEM,
-      M.shootOrderPrompt(f, refineText(refine, M.shootOrderPrevious)), M.shootOrderSchema(), { onStatus, signal });
+      M.shootOrderPrompt(f, refineText(refine, M.shootOrderPrevious)), M.shootOrderSchema(), { task: 'shoot-order', onStatus, signal });
     const res = M.readShootOrder(parsed, f);
     if (!res.items.length) fail('The model came back with no usable days. Nothing was changed.');
     const placed = res.items.reduce((n, i) => n + i.sceneIds.length, 0);
@@ -157,7 +159,7 @@ const recceTask = {
     const c = resolve(ctx);
     const f = recceFacts(c);
     if (!f.places.length) fail(recceNone(c) + ' Nothing was changed.');
-    const { parsed, truncated } = await ask(M.RECCE_SYSTEM, M.reccePrompt(f, refineText(refine, M.reccePrevious)), M.recceSchema(), { onStatus, signal });
+    const { parsed, truncated } = await ask(M.RECCE_SYSTEM, M.reccePrompt(f, refineText(refine, M.reccePrevious)), M.recceSchema(), { task: 'recce-notes', onStatus, signal });
     const res = M.readRecce(parsed, f);
     if (!res.items.length) fail('The model came back with nothing usable for these places. Nothing was changed.');
     const note = sentence(
@@ -243,7 +245,7 @@ const budgetTask = {
     await load();
     const f = budgetFacts();
     if (!f.schedule.scenes) fail(NO_SCENES);
-    const { parsed, truncated } = await ask(M.BUDGET_SYSTEM, M.budgetPrompt(f, refineText(refine, M.budgetPrevious)), M.budgetSchema(), { onStatus, signal });
+    const { parsed, truncated } = await ask(M.BUDGET_SYSTEM, M.budgetPrompt(f, refineText(refine, M.budgetPrevious)), M.budgetSchema(), { task: 'budget-estimate', onStatus, signal });
     const res = M.readBudget(parsed, f, (n) => bandOf(n, f.currency));
     if (!res.items.length) fail('The model came back with no new lines to add. Nothing was changed.');
     const flagged = res.items.filter((i) => i.outOfBand).length;
@@ -322,7 +324,7 @@ const callsheetTask = {
     if (String(sheet.notes || '').trim()) fail('Notes are already written on this sheet, so there is nothing to fill. Clear them first if you want a draft. Nothing was changed.');
     const { parsed } = await ask(M.CALLSHEET_SYSTEM,
       M.callsheetPrompt(j.facts, j.example, refineText(refine, (p) => ({ notes: p && p.proposed || '', unitMessage: (p && p.unit) || '' }))),
-      M.callsheetSchema(), { onStatus, signal, maxTokens: 3000 });
+      M.callsheetSchema(), { task: 'callsheet-notes', onStatus, signal, maxTokens: 3000 });
     const res = M.readCallsheet(parsed, WA.WA_LIMIT);
     if (!res.notes) fail('The reply held no notes. Nothing was changed.');
     const note = 'A model’s draft from the sheet’s facts only; check it before the day. Accept fills the notes box and keeps no other copy. '

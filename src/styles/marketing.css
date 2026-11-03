@@ -521,6 +521,15 @@ html.mk-modal-open { overflow: hidden; }
      fits inside it without moving anything. */
   .mk-top .mk-brand, .mk-top .mk-btn--sm, .mk-crumbs a, .mk-skip { min-height: 44px; }
   .mk-skip { display: inline-flex; align-items: center; }
+  /* And the rest (QA r3, 3 Nov 2026): the burger panel's rows were the
+     desktop mega menu's 40px, the "On this page" rows 36px and the
+     footer's brand link 34px -- the footer rule above exempts .mk-brand
+     because it lays out its own monogram, so it gets its floor here. An
+     FAQ's closing "Read the ... Policy" link is the answer's way out,
+     not a word in its sentence, so it takes the floor too; inline-flex
+     keeps it on the answer's last line. */
+  .mk-mega a, .mk-toc a, .mk-foot .mk-brand { min-height: 44px; }
+  .mk-link.mk-link--inline { display: inline-flex; align-items: center; min-height: 44px; }
 }
 
 /* REFLOW AT 320px (WCAG 1.4.10; 400% zoom of 1280): the brand gives way

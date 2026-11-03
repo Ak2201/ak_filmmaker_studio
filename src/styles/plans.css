@@ -84,6 +84,8 @@
 .pl-check li.pl-check-more::before { content: none; }
 .pl-check li.pl-check-more { padding-left: var(--s5); }
 .pl-check-more a { color: var(--accent-deep); text-underline-offset: 2px; }
+/* a row of its own, not a word in a sentence: 44px on touch (QA r3) */
+@media (pointer: coarse) { .pl-check-more a { display: inline-flex; align-items: center; min-height: 44px; } }
 /* the caps, one quiet line under the bullets (plan-cards.js limitList) */
 .pl-limits { margin: var(--s1) 0 0; font-size: var(--t-tiny); line-height: var(--lh-body); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
 .pl-features { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s1) var(--s3); margin: 0; padding-top: var(--s3); border-top: 1px solid var(--border-hair); }

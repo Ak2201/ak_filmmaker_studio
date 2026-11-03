@@ -117,6 +117,12 @@
   text-wrap: balance;
 }
 .studio-no-project-banner a { color: inherit; text-decoration: underline; }
+/* The banner's one way to a project was a 14px line of micro type on a
+   phone (QA r3, 3 Nov 2026): the 44px floor base.css gives a tap target
+   under a coarse pointer reaches buttons, not a plain link. */
+@media (pointer: coarse) {
+  .studio-no-project-banner a { display: inline-flex; align-items: center; min-height: 44px; }
+}
 
 /* A placed slot (learn-places.js, CORE) holds the pill's room from its
    first paint: the pill lands a dynamic import later, and an empty slot

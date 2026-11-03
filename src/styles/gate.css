@@ -8,6 +8,8 @@
 .gt-card { max-width: 32rem; display: grid; gap: var(--s3); }
 .gt-body { margin: 0; color: var(--ink-body); line-height: var(--lh-body); }
 .gt-meta { margin: 0; font-size: var(--t-small); color: var(--ink-muted); }
+/* Settings' "What is this? About ..." is the line's only content: 44px on touch (QA r3) */
+@media (pointer: coarse) { .gt-about { display: inline-flex; align-items: center; min-height: 44px; } }
 .gt-actions { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s2); }
 .gt-error { margin: var(--s2) 0 0; color: var(--ink); background: var(--danger-wash); border-left: 3px solid var(--danger); padding: var(--s2) var(--s3); border-radius: var(--sk-radius, var(--radius)); }
 

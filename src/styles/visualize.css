@@ -1172,6 +1172,8 @@
   color: var(--ink-muted);
 }
 .vz-scene-day a { color: var(--brand-deep); text-decoration: underline; text-underline-offset: 2px; }
+/* the day link sits alone on the card's line: a 44px tap target on touch (QA r3) */
+@media (pointer: coarse) { .vz-scene-day a { display: inline-flex; align-items: center; min-height: 44px; } }
 .vz-scene-progress { padding: var(--s3) var(--s4) 0; }
 .vz-scene-meter .k-meter-row {
   font-family: var(--f-body);

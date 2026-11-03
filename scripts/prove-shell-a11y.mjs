@@ -293,6 +293,21 @@ async function ctxAt(width, height, extra = {}) {
   await page.click('#mkBurger');
   const pr = await page.evaluate(() => { const l = document.querySelector('#mkNav .mk-nav-pricing').getBoundingClientRect(); return { bottom: l.bottom, vh: innerHeight }; });
   ok(pr.bottom <= pr.vh, 'pricing at 390: Pricing is visible in the open menu without scrolling (bottom ' + Math.round(pr.bottom) + ' of ' + pr.vh + ')');
+  /* QA r3 J: every standalone link on the public site and the studio's
+     lone links meets the 44px floor on touch (the burger's rows were 40,
+     "On this page" 36, the legal contents 40, the footer brand 34, the
+     no-project banner's link 14). */
+  const under44 = (sel) => page.evaluate((s) => [...document.querySelectorAll(s)]
+    .filter((a) => a.getClientRects().length && a.getBoundingClientRect().height < 44)
+    .map((a) => a.textContent.trim().slice(0, 20) + ' ' + Math.round(a.getBoundingClientRect().height)), sel);
+  let small = await under44('#mkNav a');
+  ok(small.length === 0, 'pricing at 390: every burger-menu link is at least 44px on touch [' + small.slice(0, 4) + ']');
+  for (const [f, sel] of [['guide-call-sheet.html', 'nav.mk-toc a, .mk-foot .mk-brand'], ['privacy.html', '.legal-toc-m a'], ['start.html', '.st-faq-a .mk-link']]) {
+    await page.goto(BASE + f, { waitUntil: 'networkidle' });
+    await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
+    small = await under44(sel);
+    ok(small.length === 0, f + ' at 390: contents / footer-brand / standalone links are at least 44px on touch [' + small.slice(0, 4) + ']');
+  }
   await page.goto(BASE + 'pricing.html', { waitUntil: 'networkidle' });
   /* The trial card became the launch-pass strip (§61), drawn only while a
      pass is on sale: measure the lede against whatever follows it on the page. */
@@ -303,6 +318,14 @@ async function ctxAt(width, height, extra = {}) {
     return { px: n ? n.getBoundingClientRect().top - l.getBoundingClientRect().bottom : null, next: n ? n.className : null };
   });
   ok(gap.px !== null && gap.px >= 16, 'pricing at 390: the lede and the block after it (' + gap.next + ') have room between them (' + Math.round(gap.px) + 'px)');
+  await ctx.close();
+}
+{
+  /* QA r3 J: with no project, the banner's one way to a project is a 44px tap target on touch */
+  const { ctx, page } = await ctxAt(390, 844, { isMobile: true, hasTouch: true });
+  await page.goto(BASE + 'breakdown.html', { waitUntil: 'networkidle' });
+  const bh = await page.evaluate(() => { const a = document.querySelector('.studio-no-project-banner a'); return a ? a.getBoundingClientRect().height : null; });
+  ok(bh !== null && bh >= 44, 'breakdown at 390, no project: the banner\'s "Create or open a project" link is at least 44px on touch (' + bh + ')');
   await ctx.close();
 }
 ok(/href="about\.html"[^>]*>About /.test(fs.readFileSync(path.join(DIST, '404.html'), 'utf8')), "the 404 page's About button opens about.html");

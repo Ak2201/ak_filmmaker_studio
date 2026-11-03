@@ -145,6 +145,14 @@
 .legal-toc-m[open] > summary::after { transform: rotate(-135deg); }
 .legal-toc-m[open] > summary { margin-bottom: var(--s2); }
 .legal-toc-m a { min-height: 40px; display: flex; align-items: center; }
+/* A tap target on a touch screen (QA r3, 3 Nov 2026): the rows were
+   ~40px, under the 44px floor the public header and footer keep
+   (marketing.css). Flex, so a two-line title still centres. HERE, after
+   the 40px rule above: placed earlier, that rule won on order. */
+@media (pointer: coarse) {
+  .legal-toc a,
+  .legal-toc-m a { display: flex; align-items: center; min-height: 44px; }
+}
 
 /* ---- the document ---------------------------------------------- */
 .legal h1 {

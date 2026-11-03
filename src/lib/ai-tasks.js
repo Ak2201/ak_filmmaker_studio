@@ -75,6 +75,18 @@
                       (story.js addNotesToVault). Undo removes exactly
                       what was added (keepNotes below).
 
+   THE HISTORY STAMP (docs/AI-FAST-HARNESS.md B, src/lib/ai-stamp.js). Every
+   apply() takes the Desk's 4th argument `meta` ({ task, model, run, at }; a
+   fresh one when a direct caller gives none) and stamps what it writes:
+   `ai` on a record the run CREATED (a shot, a scene row, a script line, a
+   step, a sticky note, a frame, a diagram, a document, a character it made),
+   `aiFill[]` on a record it only FILLED or CHANGED (mode 'fill' | 'append' |
+   'replace'). The stamp is a field on an existing record, never a key, and
+   Undo takes it away with the words. The one exception is budget-estimate
+   (ai-tasks-preprod.js says why). test:ai-history fails on a task with an
+   apply that is not in its stamped list: add the task, a stamp and a block
+   there together.
+
    NO STORAGE KEY. The only memory here is the last run per task (what
    apply() needs beside the ticked items), in a Map for this visit.
    ============================================================ */
@@ -85,6 +97,9 @@ import Store from './store.js';   // the open project's format (scene-story)
 import * as Preprod from './ai-tasks-preprod.js';
 import * as Post from './ai-tasks-post.js';
 import * as Story from './ai-tasks-story.js';
+/* The history stamp (docs/AI-FAST-HARNESS.md B): every record an Accept
+   writes carries the run that wrote it. */
+import Stamp from './ai-stamp.js';
 
 /* ---- the modules, loaded once ------------------------------- */
 let AI = null;            // ./ai.js
@@ -138,6 +153,64 @@ const call = (fn, ...args) => (typeof fn === 'function' ? fn(...args) : undefine
 const fail = (msg) => { const e = new Error(msg); e.kind = 'nocontent'; throw e; };
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
 const last = new Map();   // taskId → what apply() needs from the last run
+/* The stamp's source: the Desk's 4th apply argument, else a fresh one. */
+const metaFor = (task, meta, model) => Stamp.metaOf(task, meta, model);
+/* Stamp a record IN PLACE (the page's in-memory objects): a created
+   record, or a fill of fields it already had. dropFill is its Undo. */
+const stampNew = (kind, rec, m) => { if (rec) Object.assign(rec, Stamp.stampAI(kind, rec, m)); return rec; };
+const stampFilled = (kind, rec, m, fields, mode) => { if (rec) rec.aiFill = Stamp.stampFill(kind, rec, m, fields, mode).aiFill; return rec; };
+const dropFill = (rec, run) => {
+  if (!rec) return;
+  const n = Stamp.unstampFill(rec, run);
+  if (n === rec) return;
+  if (n.aiFill) rec.aiFill = n.aiFill; else delete rec.aiFill;
+};
+/* THE SCENE ROWS A NOTE OR A TAG LANDED ON, stamped in a second pass (scenes.js is on
+   many pages' first paint and takes no stamp code; this file is lazy). Same Accept,
+   a second write of the scenes blob. `changes` is appendSceneNotes()'s answer:
+   [{ id, before, after, filled }]. The note is an APPEND, a flag a FILL. */
+function stampNoteRows(changes, m) {
+  if (!changes || !changes.length) return;
+  const by = new Map(changes.map((c) => [c.id, c]));
+  ScenesM.saveScenes(ScenesM.listScenes().map((r) => {
+    const c = by.get(r.id);
+    if (!c) return r;
+    let out = r;
+    if (c.after !== c.before) out = Stamp.stampFill('scene', out, m, ['readerNote'], 'append');
+    const keys = Object.keys(c.filled || {});
+    if (keys.length) out = Stamp.stampFill('scene', out, m, keys, 'fill');
+    return out;
+  }));
+}
+/* …and the Undo: a row whose note and flags are back as they were loses this run's stamp;
+   one the writer has edited since keeps it (it is still partly the run's). */
+function unstampNoteRows(changes, m) {
+  if (!changes || !changes.length) return;
+  const by = new Map(changes.map((c) => [c.id, c]));
+  ScenesM.saveScenes(ScenesM.listScenes().map((r) => {
+    const c = by.get(r.id);
+    if (!c) return r;
+    let out = r;
+    if (c.after !== c.before) {
+      /* The append is gone when its text is no longer in the note (undoAppend took
+         it out, even past a line the writer typed after it); equality with
+         `before` would leave a badge on a note with no AI text in it. */
+      const base = String(c.before || '').replace(/\s+$/, '');
+      const added = String(c.after || '').slice(base.length);
+      if (!added.trim() || !String(r.readerNote || '').includes(added)) out = Stamp.unstampFill(out, m.run, { mode: 'append' });
+    }
+    const keys = Object.keys(c.filled || {});
+    if (keys.length && keys.every((k) => r[k] === c.filled[k].was)) out = Stamp.unstampFill(out, m.run, { mode: 'fill' });
+    return out;
+  }));
+}
+/* A document the store just wrote, stamped and saved again (the stores
+   return the live record; the page's save is the owner's write). */
+function stampDoc(doc, m, save) {
+  if (!doc) return;
+  Object.assign(doc, Stamp.stampAI('document', doc, m));
+  call(save);
+}
 /* The same memory, pinned to the result it belongs to. The Desk keeps
    a version per run (and a session per speech), and Accept can be
    pressed on any of them, so apply() must read the memory of the
@@ -322,8 +395,9 @@ const coverageTask = {
     const items = coverageItems(res.report || {});
     return remember('coverage', { items, note: coverageNote(res) }, { sig, checkpoint, res });
   },
-  apply(selected, ctx, result) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const m = metaFor('coverage', meta, result && result.model);
     const mem = recall('coverage', result);
     if (!mem || !mem.res) fail('There is no coverage to keep. Run it first.');
     const keep = new Set((selected || []).map((it) => it.id));
@@ -345,6 +419,7 @@ const coverageTask = {
     const partCopy = part ? JSON.parse(JSON.stringify(part)) : null;
     const doc = store.storeResult(res);
     if (!doc) fail('The script could not be reached, so nothing was saved.');
+    stampDoc(doc, { ...m, model: m.model || res.model }, c.save);
     call(c.after, doc);
     return () => {
       const d = getDoc();
@@ -433,9 +508,10 @@ const dialogueTask = {
       note: [note, keepNote].filter(Boolean).join('\n') },
       { elId: els[i].id, model: res.model, alts });
   },
-  apply(text, ctx, result) {
+  apply(text, ctx, result, meta) {
     const c = resolve(ctx);
     const mem = recall('dialogue-pass', result) || {};
+    const m = metaFor('dialogue-pass', meta, mem.model);
     const d = call(c.getDoc);
     const els = d && Array.isArray(d.elements) ? d.elements : null;
     const el = els && els.find((e) => String(e.id) === String(mem.elId));
@@ -461,6 +537,7 @@ const dialogueTask = {
        added beside them. */
     const added = el.type === 'dialogue' ? W.addTakes(el, mem.alts || []) : [];
     if (!changed && !added.length) return null;
+    stampFilled('element', el, m, [changed ? 'text' : '', added.length ? 'alts' : ''].filter(Boolean), changed ? 'replace' : 'append');
     call(c.save);
     call(c.render, el.id);
     return () => {
@@ -470,8 +547,10 @@ const dialogueTask = {
          keeps against Run): if the writer has typed in this speech
          since, putting `before.text` back would delete those words.
          The speech is left as it is then; the takes Accept added are
-         still taken out, because removeTakes() removes exactly those. */
+         still taken out, because removeTakes() removes exactly those.
+         The AI-fill stamp goes only when the speech goes back too. */
       const edited = changed && String(now.text ?? '') !== String(text);
+      if (!edited) dropFill(now, m.run);
       if (changed && !edited) {
         now.text = before.text;
         if (before.aiPass) now.aiPass = before.aiPass; else delete now.aiPass;
@@ -547,8 +626,9 @@ function sceneRowFor(ref, c, memo) {
   return null;
 }
 
-function keepNotes(selected, ctx, label) {
+function keepNotes(selected, ctx, label, task, meta) {
   const c = resolve(ctx);
+  const m = metaFor(task || 'read', meta);
   const from = 'AI (' + label + ')';
   const memo = {};
   const onScene = [];
@@ -563,9 +643,10 @@ function keepNotes(selected, ctx, label) {
   if (!onScene.length && !sticky.length) fail('Nothing is ticked, so there is nothing to keep.');
   const changes = onScene.length ? ScenesM.appendSceneNotes(onScene, { from }) : [];
   if (changes === null) fail('The scene list could not be saved (storage may be full), so nothing was kept.');
+  stampNoteRows(changes, m);
   const notes = sticky.map((t) => {
     const n = NotesM.makeNote(from + ': ' + t);
-    if (n) n.from = 'ai';   // a field, not a key: notes pass unknown fields through
+    if (n) { n.from = 'ai'; Object.assign(n, Stamp.stampAI('note', n, m)); }   // fields, not keys: notes pass unknown fields through
     return n;
   }).filter(Boolean);
   const added = notes.length ? StoryM.addNotesToVault(notes) : [];
@@ -586,6 +667,7 @@ function keepNotes(selected, ctx, label) {
   call(c.after);
   const undo = () => {
     ScenesM.undoSceneNotes(changes);
+    unstampNoteRows(changes, m);
     if (ids.length) StoryM.removeManyFromVault(ids);
     call(c.after);
   };
@@ -688,7 +770,7 @@ const critiqueTask = {
     const res = await AI.beatCritique({ ...job, context: withRefineContext(job.context, refine) }, { onStatus, signal });
     return { text: critiqueText(res), items: critiqueItems(res, job) };
   },
-  apply(selected, ctx) { return keepNotes(selected, ctx, 'Beat critique'); }
+  apply(selected, ctx, result, meta) { return keepNotes(selected, ctx, 'Beat critique', 'beat-critique', meta); }
 };
 
 /* ============================================================
@@ -738,13 +820,14 @@ const storyStepsTask = {
     const res = await AI.draftOutlineSteps(job, { onStatus, signal });
     return { items: res.steps.map((t, i) => ({ id: 's' + i, text: t })) };
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const m = metaFor('story-steps', meta);
     const s = storyOf(c);
     const added = [];
     for (const it of selected || []) {
       const st = StoryM.addOutlineStep(s, { beat: c.beatKey, text: it.text });
-      if (st) added.push(st.id);
+      if (st) { stampNew('step', st, m); added.push(st.id); }
     }
     if (!added.length) return null;
     commitStory(c, s);
@@ -795,8 +878,10 @@ const storyMapTask = {
     return remember('story-map', { items, note: res.truncated ? 'The reply was cut short, so some beats may be missing.' : '' },
       { fwId: fw.id, rows: res.rows });
   },
-  apply(selected, ctx, result) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const m = metaFor('story-map', meta);
+    const run = m.run;
     const mem = recall('story-map', result);
     if (!mem) fail('There is no mapping to keep. Run it first.');
     const rows = (selected || []).map((it) => it.row || mem.rows[Number(String(it.id).slice(1))]).filter(Boolean);
@@ -806,6 +891,14 @@ const storyMapTask = {
     const beforeTag = new Map(s.marks.map((m) => [m.id, m.tags[fwId]]));
     const beforeTension = { ...(s.tension || {}) };
     const { added, dropped } = StoryM.applyBeatMap(s, fwId, rows);
+    /* The history stamp: a passage the run tagged fresh is its record
+       (it already says origin 'ai'); one that already existed gained a
+       tag, an append. Stamped after the model wrote, so the hash is of
+       the final tags. */
+    for (const mk of s.marks) {
+      if (!beforeIds.has(mk.id)) stampNew('mark', mk, m);
+      else if (beforeTag.get(mk.id) !== mk.tags[fwId]) stampFilled('mark', mk, m, ['tags'], 'append');
+    }
     commitStory(c, s);
     const note = plural(added, 'passage', 'passages') + ' tagged'
       + (dropped ? '; ' + plural(dropped, 'quote was', 'quotes were') + ' not word for word in the synopsis and dropped' : '');
@@ -818,6 +911,7 @@ const storyMapTask = {
         if (!beforeTag.has(m.id)) continue;
         const was = beforeTag.get(m.id);
         if (was === undefined) delete m.tags[fwId]; else m.tags[fwId] = was;
+        dropFill(m, run);
       }
       back.tension = beforeTension;
       commitStory(c, back);
@@ -850,35 +944,66 @@ function shotJobs(c) {
   });
 }
 
+/* How many scenes a shot division covers, for the button and its cost line. */
+const shotCount = (ctx) => { try { return shotJobs(resolve(ctx)).length; } catch (e) { return 0; } };
+
+/* Why a batch failed, in the words of the note under the cards. */
+const FAIL_WHY = { rate: 'rate limited', overloaded: 'the API was busy', server: 'server error', network: 'no connection', malformed: 'the reply was not usable', truncated: 'the reply was cut off' };
+
 const shotTask = {
   id: 'shot-draft',
   label: 'Draft a shot division',
   kind: 'list',
   editable: false,
+  /* One press: the scenes go in small batches, three requests at a time,
+     and a card shows the moment its scene is whole (ai.js
+     draftShotDivision). The run goes on with the Desk closed. */
+  stream: true,
+  background: true,
+  effortSwitch: true,
+  runLabel(ctx) { const n = shotCount(ctx); return n ? 'Draft shots for ' + plural(n, 'scene', 'scenes') : 'Draft shots'; },
+  cost(ctx) {
+    const n = shotCount(ctx);
+    if (!n) return '';
+    const req = Math.ceil(n / AI.SHOT_BATCH);
+    return 'About ' + plural(req, 'request', 'requests') + (req > 1 ? ', ' + Math.min(req, AI.SHOT_CONCURRENCY) + ' at a time' : '') + '.';
+  },
+  total: shotCount,
   input(ctx) {
     try { return AI.buildPrompt(shotJobs(resolve(ctx))); }
     catch (e) { return (e && e.message) || ''; }
   },
-  async run(input, { onStatus, signal, refine, ctx } = {}) {
+  async run(input, { onStatus, signal, refine, ctx, onItems, careful } = {}) {
     await ready();
     let jobs = shotJobs(resolve(ctx));
     const extra = refineText(refine);
     if (extra) jobs = jobs.map((j) => ({ ...j, synopsis: [j.synopsis, extra].filter(Boolean).join('\n\n') }));
-    const res = await AI.draftShotDivision(jobs, { onStatus, signal });
-    const numOf = new Map(jobs.map((j) => [j.sceneId, j.number || '—']));
-    const items = [];
-    for (const [sceneId, list] of res.byScene) {
-      list.forEach((d, i) => items.push({
-        id: sceneId + '#' + i, sceneId, draft: d,
-        text: 'Sc ' + numOf.get(sceneId) + ' · ' + d.description,
-        detail: [d.size, d.angle, d.movement, d.lens, d.rig, d.setup].filter(Boolean).join(' · ')
-      }));
+    const info = new Map(jobs.map((j) => [j.sceneId, { num: j.number || '—', slug: j.slug }]));
+    const toItems = (entries) => entries.flatMap(({ sceneId, shots }) => shots.map((d, i) => ({
+      id: sceneId + '#' + i, sceneId, draft: d,
+      group: sceneId, groupLabel: 'Sc ' + info.get(sceneId).num + ' · ' + info.get(sceneId).slug,
+      text: 'Sc ' + info.get(sceneId).num + ' · ' + d.description,
+      detail: [d.size, d.angle, d.movement, d.lens, d.rig, d.setup].filter(Boolean).join(' · ')
+    })));
+    const res = await AI.draftShotDivision(jobs, {
+      onStatus, signal, careful,
+      onItems: onItems ? (entries) => onItems(toItems(entries)) : undefined
+    });
+    const items = toItems([...res.byScene].map(([sceneId, shots]) => ({ sceneId, shots })));
+    if (!items.length) {
+      if (res.stopped) return { items: [], model: res.model };
+      fail('The model came back with no shots. Nothing was added.');
     }
-    if (!items.length) fail('The model came back with no shots. Nothing was added.');
-    return { items, note: res.truncated ? 'The reply was cut short, so some scenes may be missing.' : '' };
+    const note = [
+      res.truncated ? 'The reply was cut short, so some scenes may be missing.' : '',
+      ...(res.failures || []).map((f) => 'Not drafted (' + (FAIL_WHY[f.kind] || 'it failed') + '): '
+        + f.sceneIds.map((id) => 'Sc ' + info.get(id).num).join(', ') + ' \u2014 run again for these.')
+    ].filter(Boolean).join('\n');
+    return { items, note, model: res.model };
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const m = metaFor('shot-draft', meta, result && result.model);
     const made = [];
     for (const it of selected || []) {
       if (!it.sceneId || !it.draft) continue;
@@ -887,10 +1012,14 @@ const shotTask = {
          spread: a refined or stale draft carrying some other field must
          not reach the shot record. */
       const d = it.draft;
-      made.push(ShotsM.addShot(it.sceneId, {
-        size: d.size, angle: d.angle, movement: d.movement, lens: d.lens || '',
-        rig: d.rig || '', setup: d.setup || '', description: d.description, ai: true
-      }).id);
+      /* The stamp replaces the old `ai: true` (which still reads truthy
+         wherever the boolean is read). It is built on the FULL shot, so
+         its hash is of the fields as the Shot List will read them. */
+      const fields = { size: d.size, angle: d.angle, movement: d.movement, lens: d.lens || '',
+        rig: d.rig || '', setup: d.setup || '', description: d.description };
+      for (const k of Object.keys(fields)) if (fields[k] === undefined) delete fields[k];   // a blank default, never `undefined`
+      const { sceneId: _s, number: _n, ...rest } = Stamp.stampAI('shot', ShotsM.blankShot(fields), m);
+      made.push(ShotsM.addShot(it.sceneId, rest).id);
     }
     if (!made.length) return null;
     call(c.after, made);
@@ -991,11 +1120,13 @@ const sceneStoryTask = {
     ].filter(Boolean).join(' ');
     return { items, note };
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const m = metaFor('scene-story', meta);
     const s = StoryM.loadStory();
     const made = Extras.appendSteps(s, selected);
     if (!made.length) return null;
+    for (const st of s.outline) if (made.includes(st.id)) stampNew('step', st, m);
     StoryM.saveStory(s);
     call(c.after, made);
     return () => {
@@ -1035,12 +1166,14 @@ const synopsisTask = {
   label: 'Synopsis → beat sheet',
   kind: 'list',
   editable: true,      // the input IS the synopsis that is sent
+  stream: true,        // a card per beat as it is written
+  effortSwitch: true,  // medium by default, high when Careful
   input(ctx) {
     const c = resolve(ctx);
     call(c.prepare);
     return String(Gen.load().synopsis || '');
   },
-  async run(input, { onStatus, signal, refine, ctx } = {}) {
+  async run(input, { onStatus, signal, refine, ctx, onItems, careful } = {}) {
     await ready();
     const job = Gen.load();
     const synopsis = String(input ?? '').trim() ? String(input) : String(job.synopsis || '');
@@ -1050,20 +1183,29 @@ const synopsisTask = {
     /* draftBeatSheet keeps 6,000 characters of synopsis; the follow-up
        goes in front so it is never the part that is cut. */
     const sent = extra ? 'WRITER’S NOTES FOR THIS DRAFT:\n' + extra + '\n\nTHE SYNOPSIS ITSELF:\n' + synopsis : synopsis;
-    const res = await AI.draftBeatSheet({ synopsis: sent, format: job.format, lang: job.lang, beats: vocab }, { onStatus, signal });
-    const items = vocab.filter((b) => res.byBeat.get(b.id)).map((b) => ({
-      id: b.id, text: res.byBeat.get(b.id), detail: b.label + (b.pages ? ' · pages ' + b.pages : '')
-    }));
+    const label = new Map(vocab.map((b) => [b.id, b]));
+    const beatItem = (id, text) => ({
+      id, text, detail: label.get(id).label + (label.get(id).pages ? ' · pages ' + label.get(id).pages : '')
+    });
+    const res = await AI.draftBeatSheet({ synopsis: sent, format: job.format, lang: job.lang, beats: vocab }, {
+      onStatus, signal, careful,
+      onItems: onItems ? (beats) => onItems(beats.filter((b) => label.has(b.id)).map((b) => beatItem(b.id, b.happens))) : undefined
+    });
+    const items = vocab.filter((b) => res.byBeat.get(b.id)).map((b) => beatItem(b.id, res.byBeat.get(b.id)));
     if (!items.length) fail('The reply held no beats, so nothing changed.');
     const note = [res.logline ? 'Logline: ' + res.logline : '',
       'Accept also fills the Story page’s logline and beat steps where they are still blank; nothing you wrote there is replaced.']
       .filter(Boolean).join('\n');
-    return remember('synopsis-script', { items, note },
+    return remember('synopsis-script', { items, note, model: res.model },
       { synopsis, logline: res.logline, model: res.model, vocab });
   },
-  apply(selected, ctx, result) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
-    const mem = recall('synopsis-script', result);
+    /* THIS run's memory only: a stopped run's kept cards carry none, and the
+       last finished run's synopsis and logline are not theirs to write. */
+    const mem0 = result && result.memo;
+    const m = metaFor('synopsis-script', meta, mem0 && mem0.model);
+    const mem = mem0;
     if (!mem) fail('There is no beat sheet to keep. Run it first.');
     const keep = new Map((selected || []).map((it) => [String(it.id), it.text]));
     if (!keep.size) return null;
@@ -1075,14 +1217,14 @@ const synopsisTask = {
     job.model = mem.model || job.model;
     job.stage = 'beats';
     Gen.save(job);
-    const filled = fillStoryFromBeats(job);
+    const filled = fillStoryFromBeats(job, m);
     call(c.after, job);
-    return () => { Gen.save(prev); undoStoryFromBeats(filled); call(c.after, prev); };
+    return () => { Gen.save(prev); undoStoryFromBeats(filled, m.run); call(c.after, prev); };
   }
 };
 
 /* The story half of synopsis-script's Accept (see its header). */
-function fillStoryFromBeats(job) {
+function fillStoryFromBeats(job, m) {
   const story = StoryM.loadStory();
   const fwId = StoryM.effectiveFramework(story, job.format);
   const fw = StoryM.frameworkById(fwId);
@@ -1090,13 +1232,24 @@ function fillStoryFromBeats(job) {
   const beats = (job.beats || []).map((b) => ({ key: W.storyBeatKey(b.id, fw), text: b.happens }));
   const wrote = W.fillStoryBlanks(story, { logline: job.logline, beats, steps }, StoryM.addOutlineStep);
   if (!wrote.logline && !wrote.filled.length && !wrote.added.length) return null;
+  /* The history stamp: the logline is a FILL on the story root, a step
+     the run laid is its own record, a blank step it filled is a fill. */
+  if (wrote.logline) stampFilled('story', story, m, ['logline'], 'fill');
+  for (const st of story.outline || []) {
+    if ((wrote.added || []).some((a) => a.id === st.id)) stampNew('step', st, m);
+    else if ((wrote.filled || []).some((f) => f.id === st.id)) stampFilled('step', st, m, ['text'], 'fill');
+  }
   StoryM.saveStory(story);
   return { wrote, logline: story.logline };
 }
-function undoStoryFromBeats(filled) {
+function undoStoryFromBeats(filled, run) {
   if (!filled) return;
   const story = StoryM.loadStory();
   W.undoStoryFill(story, filled.wrote, filled.logline);
+  /* A fill that was taken back leaves no stamp; one the writer has
+     edited since is theirs now and keeps it. */
+  if (filled.wrote.logline && !String(story.logline || '').trim()) dropFill(story, run);
+  for (const st of story.outline || []) if (!String(st.text || '').trim()) dropFill(st, run);
   StoryM.saveStory(story);
 }
 
@@ -1148,6 +1301,8 @@ const genScenesTask = {
   label: 'Lay out the scenes',
   kind: 'list',
   editable: false,
+  stream: true,        // a card per scene as it is laid out (still ONE request: the list needs the whole story)
+  effortSwitch: true,
   identity(ctx) {
     try {
       const j = scenesJob(resolve(ctx));
@@ -1165,55 +1320,61 @@ const genScenesTask = {
     if (String(j.synopsis || '').trim()) L.push('', 'Synopsis:', String(j.synopsis).slice(0, 6000));
     return L.join('\n');
   },
-  async run(input, { onStatus, signal, refine, ctx } = {}) {
+  async run(input, { onStatus, signal, refine, ctx, onItems, careful } = {}) {
     await ready();
     const c = resolve(ctx);
     const patch = call(c.patch) || {};
     const prevItems = refine && refine.previous && Array.isArray(refine.previous.items) ? refine.previous.items : [];
     const extra = refineWith(refine, prevItems.map((it) => it.proposal).filter(Boolean));
-    const res = await Gen.draftScenes(patch, { onStatus, signal, extra });
-    const proposals = res.proposals || [];
-    if (!proposals.length) fail('The reply held no scenes, so nothing changed.');
-    last.set('gen-scenes', { proposals, model: res.model });
-    const items = proposals.map((p, i) => ({
-      id: 'p' + i, proposal: p, model: res.model,
+    const sceneItem = (p, i, model) => ({
+      id: 'p' + i, proposal: p, model,
       text: sceneSlug(p),
       detail: [String(p.synopsis || '').trim(), (p.cast || []).length ? 'Cast: ' + p.cast.join(', ') : '',
         p.eighths ? p.eighths + '/8 pp' : ''].filter(Boolean).join(' · ')
-    }));
+    });
+    let seen = 0;
+    const res = await Gen.draftScenes(patch, {
+      onStatus, signal, extra, careful,
+      onItems: onItems ? (rows) => onItems(rows.map((p) => sceneItem(p, seen++, ''))) : undefined
+    });
+    const proposals = res.proposals || [];
+    if (!proposals.length) fail('The reply held no scenes, so nothing changed.');
+    last.set('gen-scenes', { proposals, model: res.model });
+    const items = proposals.map((p, i) => sceneItem(p, i, res.model));
     const note = plural(items.length, 'scene', 'scenes') + ' proposed. Untick any you do not want; the rest go on the scene board in this order, each with its beat, and any name in the cast that is not on the Characters page yet is added there.'
       + (res.truncated ? '\nThe reply was cut short at the length limit, so the list may stop early.' : '');
-    return { items, note };
+    return { items, note, model: res.model };
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
     const kept = (selected || []).map((it) => it && it.proposal).filter(Boolean);
     if (!kept.length) return null;
     const model = ((selected || []).find((it) => it && it.model) || {}).model || (last.get('gen-scenes') || {}).model;
-    const r = Gen.applyScenes(call(c.patch) || {}, kept, { replaceScenes: !!call(c.replaceScenes), model });
+    const r = Gen.applyScenes(call(c.patch) || {}, kept, { replaceScenes: !!call(c.replaceScenes), model, ai: Stamp.stamper(metaFor('gen-scenes', meta, model)) });
     call(c.after, r.job);
     return () => { r.undo(); call(c.after, null); };
   }
 };
 
 /* ============================================================
-   SYNOPSIS → SCRIPT, STAGE 3 — list, ONE BATCH. ctx { before?(), after?() }
+   SYNOPSIS → SCRIPT, STAGE 3 — list, THE REST IN ONE PRESS. ctx { before?(), after?() }
    ------------------------------------------------------------
-   draftBatch() drafts the next BATCH_SIZE scenes at the job's cursor
-   and writes nothing; the items are those scenes (heading and first
-   lines). Accept hands the ticked sceneIds to applyBatch(), which
+   draftRest() drafts EVERY remaining scene (PAGE_BATCH to a request,
+   PAGE_CONCURRENCY at a time, a card per scene as it parses) and writes
+   nothing; the items are those scenes, one each, grouped under their
+   slug. Accept hands the ticked sceneIds to applyBatch(), which
    appends them to the screenplay (a revision first, on the first
-   batch only), and moves the cursor past the scenes it WROTE — an
-   unticked scene, like one the reply missed, stays next in line and is
-   drafted again with the next batch, never skipped for good. The identity
-   is the job and its cursor, so every batch is its own Desk session,
-   and a draft made at an old cursor is refused ('stale') rather than
-   written in the wrong place.
+   write only), and moves the cursor past the scenes it WROTE — an
+   unticked scene, one a failed request lost and one the reply missed
+   stay next in line and are drafted again, never skipped for good. The
+   identity is the job and its cursor, so a draft made at an old cursor
+   is its own Desk session, and one applied at a stale cursor is refused
+   ('stale') rather than written in the wrong place.
    ============================================================ */
-function batchSlice() {
+/* Every scene still to write: from the job's cursor to the end. */
+function restSlice() {
   const job = Gen.load();
-  const batch = job.scenes.slice(job.cursor, job.cursor + Gen.BATCH_SIZE);
-  return { job, batch };
+  return { job, rest: job.scenes.slice(job.cursor) };
 }
 
 const elLine = (el) => {
@@ -1223,53 +1384,87 @@ const elLine = (el) => {
   return t;
 };
 
+const restCount = () => { try { return restSlice().rest.length; } catch (e) { return 0; } };
+
 const genBatchTask = {
   id: 'gen-batch',
-  label: 'Write the next scenes',
+  label: 'Write the remaining scenes',
   kind: 'list',
   editable: false,
+  /* One press writes every remaining scene: PAGE_BATCH scenes a request,
+     PAGE_CONCURRENCY at a time, a card per scene the moment it parses
+     (scriptgen.js draftRest). Nothing is written until Accept, and an
+     unticked or missing scene stays next in line (applyBatch). */
+  stream: true,
+  background: true,
+  effortSwitch: true,
+  runLabel() { const n = restCount(); return n ? (n === restSlice().job.scenes.length ? 'Write all ' : 'Write the remaining ') + plural(n, 'scene', 'scenes') : 'Write the remaining scenes'; },
+  cost() {
+    const n = restCount();
+    if (!n) return '';
+    const req = Math.ceil(n / Gen.PAGE_BATCH);
+    return 'About ' + plural(req, 'request', 'requests') + (req > 1 ? ', ' + Math.min(req, Gen.PAGE_CONCURRENCY) + ' at a time' : '') + '.';
+  },
+  total: restCount,
   identity() {
-    try { const j = Gen.load(); return 'batch:' + (j.startedAt || '') + ':' + j.cursor; }
-    catch (e) { return 'batch'; }
+    try { const j = Gen.load(); return 'rest:' + (j.startedAt || '') + ':' + j.cursor; }
+    catch (e) { return 'rest'; }
   },
   input() {
-    const { job, batch } = batchSlice();
+    const { job, rest } = restSlice();
     if (job.stage !== 'pages' && job.stage !== 'done') return 'Lay out the scenes first.';
-    if (!batch.length) return 'Every scene on the list is written. There is nothing left to send.';
-    const L = ['Scenes ' + (job.cursor + 1) + '–' + (job.cursor + batch.length) + ' of ' + job.scenes.length
-      + ', each with its slug line and one-line synopsis; the logline; the character names written so far; '
-      + 'and the slugs and synopses of the two scenes either side, for continuity. Nothing else.', ''];
-    batch.forEach((s, i) => {
+    if (!rest.length) return 'Every scene on the list is written. There is nothing left to send.';
+    const L = ['Scenes ' + (job.cursor + 1) + '\u2013' + job.scenes.length + ' of ' + job.scenes.length
+      + ', each with its slug line and one-line synopsis, sent ' + Gen.PAGE_BATCH + ' to a request; the logline; the character names written so far; '
+      + 'and the whole scene list for continuity. Nothing else.', ''];
+    rest.forEach((s, i) => {
       L.push((job.cursor + i + 1) + '. ' + s.slug);
       if (s.synopsis) L.push('   ' + s.synopsis);
     });
     return L.join('\n');
   },
-  async run(input, { onStatus, signal, refine } = {}) {
+  async run(input, { onStatus, signal, refine, onItems, careful } = {}) {
     await ready();
     const prevItems = refine && refine.previous && Array.isArray(refine.previous.items) ? refine.previous.items : [];
     const prevDraft = prevItems.length ? prevItems[0].draft : null;
     const extra = refineWith(refine, prevDraft ? prevDraft.byScene : undefined);
-    const draft = await Gen.draftBatch({ onStatus, signal, extra });
+    const slugs = new Map(Gen.load().scenes.map((s) => [s.sceneId, s.slug]));
+    const card = (sceneId, els, draft) => {
+      const body = els.filter((el) => el.type !== 'scene' && String(el.text || '').trim()).slice(0, 3).map(elLine);
+      return {
+        id: sceneId, draft, group: sceneId, groupLabel: slugs.get(sceneId) || sceneId,
+        text: body.join(' / ') + (els.length > 4 ? ' \u2026' : '') || (slugs.get(sceneId) || sceneId),
+        detail: plural(els.length, 'line', 'lines')
+      };
+    };
+    const draft = await Gen.draftRest({
+      onStatus, signal, extra, careful,
+      onItems: onItems ? (entries) => onItems(entries.map((e) => card(e.sceneId, e.elements, null))) : undefined
+    });
     if (draft.done) fail('Every scene on the list is written. There is nothing left to draft.');
     last.set('gen-batch', { draft });
     const items = [];
     const missed = [];
+    const failedIds = new Set(draft.failed || []);
     for (const s of draft.batch) {
       const els = draft.byScene[s.sceneId];
-      if (!els || !els.length) { missed.push(s.slug); continue; }
-      const body = els.filter((el) => el.type !== 'scene' && String(el.text || '').trim()).slice(0, 3).map(elLine);
-      items.push({ id: s.sceneId, draft, text: s.slug, detail: body.join(' / ') + (els.length > 4 ? ' …' : '') });
+      if (!els || !els.length) { if (!failedIds.has(s.sceneId)) missed.push(s.slug); continue; }
+      items.push(card(s.sceneId, els, draft));
     }
-    if (!items.length) fail('The reply held none of the scenes it was asked for, so nothing was written. Ask again.');
+    if (!items.length) {
+      if (draft.stopped) return { items: [], model: draft.model };
+      fail('The reply held none of the scenes it was asked for, so nothing was written. Ask again.');
+    }
     const note = [
-      plural(items.length, 'scene', 'scenes') + ' drafted. Ticked scenes are added to the end of the screenplay; an unticked one stays next in line and is drafted again with the next batch.',
-      missed.length ? 'Not in the reply (asked for again with the next batch): ' + missed.join('; ') + '.' : '',
-      draft.truncated ? 'The reply was cut short at the length limit, so the last scene may stop mid-page.' : ''
+      plural(items.length, 'scene', 'scenes') + ' drafted. Ticked scenes are added to the end of the screenplay; an unticked one stays next in line and is drafted again next time.',
+      ...(draft.failures || []).map((f) => 'Not drafted (' + (FAIL_WHY[f.kind] || 'it failed') + '): '
+        + f.sceneIds.map((id) => slugs.get(id) || id).join('; ') + ' \u2014 run again for these.'),
+      missed.length ? 'Not in the reply (asked for again next time): ' + missed.join('; ') + '.' : '',
+      draft.truncated ? 'A reply was cut short at the length limit, so a scene may stop mid-page.' : ''
     ].filter(Boolean).join('\n');
-    return { items, note };
+    return { items, note, model: draft.model };
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
     const chosen = (selected || []).filter(Boolean);
     const draft = (chosen[0] && chosen[0].draft) || (last.get('gen-batch') || {}).draft;
@@ -1283,7 +1478,7 @@ const genBatchTask = {
        sentence the writer can act on; the Desk shows it and writes
        nothing. */
     call(c.before);
-    const r = Gen.applyBatch(draft, chosen.map((it) => it.id));
+    const r = Gen.applyBatch(draft, chosen.map((it) => it.id), { ai: Stamp.stamper(metaFor('gen-batch', meta, draft.model)) });
     call(c.after, r.job);
     return () => { r.undo(); call(c.after, null); };
   }
@@ -1356,8 +1551,9 @@ const voiceTask = {
     out.push('Read by ' + res.model + '.');
     return { items, note: out.join('\n') };
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const m = metaFor('voice-check', meta);
     /* The takes are written by the Coverage tab (it registers the
        addTake port). With that view not open the port answers its
        fallback, 'gone', for every line — which used to read "those
@@ -1370,7 +1566,7 @@ const voiceTask = {
     for (const it of selected || []) {
       if (!it || !it.elId || !it.rewrite) continue;
       // The take goes onto the row the Coverage tab has open (a port it registers).
-      const r = callPort('addTake', 'gone', it.elId, it.rewrite);
+      const r = callPort('addTake', 'gone', it.elId, it.rewrite, Stamp.stamper(m));
       if (r === 'ok') added.push(it); else if (r === 'gone') gone++; else dup++;
     }
     if (!added.length) {
@@ -1378,7 +1574,7 @@ const voiceTask = {
     }
     call(c.after);
     return () => {
-      for (let i = added.length - 1; i >= 0; i--) callPort('removeTake', undefined, added[i].elId, added[i].rewrite);
+      for (let i = added.length - 1; i >= 0; i--) callPort('removeTake', undefined, added[i].elId, added[i].rewrite, Stamp.stamper(m));
       call(c.after);
     };
   }
@@ -1427,8 +1623,9 @@ const loglineTask = {
       note: 'Your logline, checked:\n' + check + removed + '\n\nThe first ticked variant becomes your logline; any other you tick is kept as an alternate under the workshop.'
     };
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const m = metaFor('logline', meta);
     const pick = (selected || [])[0];
     if (!pick || typeof c.setLogline !== 'function') return null;
     const live = call(c.getLogline);
@@ -1440,9 +1637,21 @@ const loglineTask = {
       added = r.added;
       if (added.length) c.setLoglineAlts(r.list);
     }
+    /* The history stamp on the story root: the logline in use is a FILL
+       over a blank or a REPLACE over words; the alternates are appends. */
+    {
+      const sx = storyOf(c);
+      if (sx) {
+        stampFilled('story', sx, m, ['logline'], String(before).trim() ? 'replace' : 'fill');
+        if (added.length) stampFilled('story', sx, m, ['loglineAlts'], 'append');
+        commitStory(c, sx);
+      }
+    }
     return () => {
       c.setLogline(before);
       if (added.length) c.setLoglineAlts(W.removeLoglineAlts(W.loglineAltsOf(storyOf(c)), added));
+      const sx = storyOf(c);
+      if (sx) { dropFill(sx, m.run); commitStory(c, sx); }
     };
   }
 };
@@ -1508,18 +1717,21 @@ const genreTask = {
       note: out.join('\n\n')
     }, { res });
   },
-  apply(selected, ctx, result) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
     const mem = recall('genre-comps', result);
     if (!mem || !mem.res) fail('There is nothing to keep. Run it first.');
+    const m = metaFor('genre-comps', meta, mem.res.model);
     const r = mem.res;
     const before = JSON.parse(JSON.stringify(storyOf(c)));
     const s = storyOf(c);
+    const wrote = ['genre'];
+    const over = (s.comps || []).length || String(s.genre || '').trim() || (r.tone && String(s.tone || '').trim()) || (r.budgetTier && String(s.budgetTier || '').trim());
     s.genre = r.genre + (r.subgenres.length ? ' / ' + r.subgenres.join(' / ') : '');
-    if (r.tone) s.tone = r.tone;
+    if (r.tone) { s.tone = r.tone; wrote.push('tone'); }
     // The why travels with the tier it explains, never apart from it.
-    if (r.budgetTier) { s.budgetTier = r.budgetTier; s.budgetWhy = r.budgetWhy || ''; }
-    if (r.audience && !String(s.audience || '').trim()) s.audience = r.audience;
+    if (r.budgetTier) { s.budgetTier = r.budgetTier; s.budgetWhy = r.budgetWhy || ''; wrote.push('budgetTier', 'budgetWhy'); }
+    if (r.audience && !String(s.audience || '').trim()) { s.audience = r.audience; wrote.push('audience'); }
     const have = new Set((s.comps || []).map((x) => x.title.toLowerCase()));
     const comps = (s.comps || []).slice();
     for (const it of selected || []) {
@@ -1528,6 +1740,8 @@ const genreTask = {
       comps.push({ title: it.title, year: it.year || '', why: it.why || '' });
     }
     s.comps = comps;
+    if (comps.length !== (before.comps || []).length) wrote.push('comps');
+    stampFilled('story', s, m, wrote, over ? 'replace' : 'fill');   // the history stamp
     commitStory(c, s);
     return () => commitStory(c, before);
   }
@@ -1609,8 +1823,9 @@ const sceneNotesTask = {
         + (removed ? ' ' + plural(removed, 'quote', 'quotes') + ' removed because not word for word in the script; those notes keep their words and cannot be cut candidates.' : '')
     };
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const m = metaFor('scene-notes', meta);
     const els = scriptElements(c);
     const match = Analysis.matchScenes(ScenesM.listScenes(), els);
     // ONE append path for every AI note on a scene row: scenes.js
@@ -1628,13 +1843,14 @@ const sceneNotesTask = {
     const changes = list.length ? ScenesM.appendSceneNotes(list, { from: 'AI (Scene notes)' }) : [];
     if (changes === null) fail('The scene list could not be saved (storage may be full), so nothing was written.');
     const same = changes.same || 0;
+    stampNoteRows(changes, m);
     if (!changes.length) {
       fail(same && !skipped ? 'Those notes are already on their scenes, so nothing was written.'
         : 'None of those scenes is matched to a scene on the breakdown by content or scene number, so nothing was written.'
           + (skipped ? ' (' + plural(skipped, 'note', 'notes') + ' matched by position only.)' : ''));
     }
     call(c.after);
-    const undo = () => { ScenesM.undoSceneNotes(changes); call(c.after); };
+    const undo = () => { ScenesM.undoSceneNotes(changes); unstampNoteRows(changes, m); call(c.after); };
     return withNote(undo, [
       'Notes on ' + plural(changes.length, 'scene', 'scenes') + '.',
       skipped ? plural(skipped, 'note', 'notes') + ' left out: the scene is matched by position only.' : '',
@@ -1688,8 +1904,9 @@ const tagsTask = {
         + ' Elements already tagged on a scene are skipped, not duplicated.'
     };
   },
-  apply(selected, ctx) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const m = metaFor('breakdown-tags', meta);
     const els = scriptElements(c);
     const match = Analysis.matchScenes(ScenesM.listScenes(), els);
     /* Only a category the scene model has: tagMany() would otherwise
@@ -1704,6 +1921,9 @@ const tagsTask = {
       tags.push({ sceneId: row.id, category: it.category, name: it.name });
     }
     const added = ScenesM.tagMany(tags);
+    const touched = new Set(added.map((a) => a.sceneId));
+    /* the history stamp: an APPEND on the elements of every scene the run tagged */
+    if (touched.size) ScenesM.saveScenes(ScenesM.listScenes().map((r) => (touched.has(r.id) ? Stamp.stampFill('scene', r, m, ['elements'], 'append') : r)));
     const already = tags.length - added.length;
     /* Every reason something was not tagged is said, on success as well
        as on failure: a partial Accept that only says "applied" reads as
@@ -1715,7 +1935,12 @@ const tagsTask = {
     ];
     if (!added.length) fail((skipped || unknown ? 'Nothing was tagged. ' : 'Every ticked element is already tagged. ') + why.filter(Boolean).join(' '));
     call(c.after);
-    const undo = () => { ScenesM.untagMany(added); call(c.after); };
+    const undo = () => {
+      ScenesM.untagMany(added);
+      const touched = new Set(added.map((a) => a.sceneId));
+      ScenesM.saveScenes(ScenesM.listScenes().map((r) => (touched.has(r.id) ? Stamp.unstampFill(r, m.run) : r)));
+      call(c.after);
+    };
     return withNote(undo, [plural(added.length, 'element', 'elements') + ' tagged.', ...why]);
   }
 };
@@ -1814,8 +2039,9 @@ const boardTask = {
         + (missed.length ? ' Not drawn: ' + missed.join('; ') + '.' : '')
     };
   },
-  async apply(selected, ctx) {
+  async apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const m = metaFor('board-frames', meta);
     const picked = (selected || []).filter((it) => it && it.shotId && it.blob);
     if (!picked.length) return null;
     // Accept is a click, so this is the one place a lapsed token may be re-asked for.
@@ -1829,7 +2055,8 @@ const boardTask = {
           { description: 'Storyboard frame for shot ' + it.label + ' (the shot list links to this file).' });
         if (!meta || !meta.id) throw new Error('Drive did not return a file id.');
         files.push(meta.id);
-        frames.push(ShotsM.addFrame(it.shotId, { ref: DriveM.driveRef(meta.id), caption: '' }).id);
+        const { shotId: _sh, ...frame } = Stamp.stampAI('frame', ShotsM.blankFrame({ ref: DriveM.driveRef(meta.id), caption: '' }), m);
+        frames.push(ShotsM.addFrame(it.shotId, frame).id);
       }
     } catch (e) {
       // All or nothing: one Accept is one write.
@@ -1913,7 +2140,7 @@ const tensionTask = {
     return { text: SA.tensionNotesText(res) + (model ? '\n\nRead by ' + model + '.' : '')
       + (items.length ? '\n\nTick the notes to keep and press Accept: each goes to its scene’s reader note.' : ''), items };
   },
-  apply(selected, ctx) { return keepNotes(selected, ctx, 'Tension notes'); }
+  apply(selected, ctx, result, meta) { return keepNotes(selected, ctx, 'Tension notes', 'tension-notes', meta); }
 };
 
 /* ============================================================
@@ -2039,14 +2266,16 @@ const audienceTask = {
       + '\nRead ' + plural(res.scenes, 'scene', 'scenes') + ' in ' + plural(res.requests, 'request', 'requests') + '.' },
     { sig, checkpoint, res });
   },
-  apply(selected, ctx, result) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const m = metaFor('audience-test', meta, result && result.model);
     const mem = recall('audience-test', result);
     if (!mem || !mem.res) fail('There is no audience test to keep. Run it first.');
     const keep = new Set((selected || []).map((it) => it.id));
     const store = AudS.audienceStore(() => call(c.getDoc), () => call(c.save));
     const out = store.storeResult(JSON.parse(JSON.stringify(mem.res)), keep);
     if (!out) fail('The script could not be reached, so nothing was saved.');
+    stampDoc(out.doc, { ...m, model: m.model || mem.res.model }, c.save);
     call(c.after, out.doc);
     return () => { out.undo(); call(c.after, null); };
   }
@@ -2159,7 +2388,7 @@ const audienceQuickTask = {
     const items = AudM.resultItems(res).map((it) => ({ ...it, keep: it.text + (it.detail ? ' (' + it.detail + ')' : '') }));
     return remember('audience-quick', { text: quickText(res), items }, { res });
   },
-  apply(selected, ctx) { return keepNotes(selected, ctx, 'Audience test — story'); }
+  apply(selected, ctx, result, meta) { return keepNotes(selected, ctx, 'Audience test — story', 'audience-quick', meta); }
 };
 
 /* ============================================================
@@ -2271,7 +2500,7 @@ const audienceAskTask = {
       })));
     return { text: AudM.askText(out, { res, viewer: out.viewer, question, model: out.model }), items };
   },
-  apply(selected, ctx) { return keepNotes(selected, ctx, 'Ask a viewer'); }
+  apply(selected, ctx, result, meta) { return keepNotes(selected, ctx, 'Ask a viewer', 'audience-ask', meta); }
 };
 
 /* ============================================================
@@ -2423,8 +2652,9 @@ const blockingDraftTask = {
     ].filter(Boolean).join(' ');
     return remember('blocking-draft', { items, note }, { sceneId: job.sceneId, draft: res });
   },
-  apply(selected, ctx, result) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const m = metaFor('blocking-draft', meta);
     const mem = recall('blocking-draft', result);
     if (!mem) fail('There is no blocking to keep. Run it first.');
     if (typeof ShotsM.writeBlocking !== 'function') fail('This build cannot write a setup yet. Nothing was changed.');
@@ -2447,7 +2677,20 @@ const blockingDraftTask = {
       call(c.say, ['Nothing was added.', skipped || 'The floor plan already has all of it.'].join(' '));
       return null;
     }
-    const snap = ShotsM.writeBlocking({ blocks: plan.blocks, cams: plan.cams });
+    /* The history stamp: a diagram the run made is its record; the floor
+       plan it FILLED (an existing block) takes a fill. Stamped on the
+       cleaned block, so the hash is of what the page reads back. */
+    const had = new Set(blocks.map((b) => b.id));
+    const stamped = plan.blocks.map((b) => {
+      const row = ShotsM.cleanBlock(b);
+      return had.has(row.id) ? Stamp.stampFill('block', row, m, ['marks', 'set', 'axis'], 'append') : Stamp.stampAI('block', row, m);
+    });
+    const snap = ShotsM.writeBlocking({ blocks: stamped, cams: plan.cams });
+    /* the camera links the run filled on shots are FILLS (shots.js takes no stamp code) */
+    if (snap.cams.length) {
+      const linked = new Set(snap.cams.map((x) => x.id));
+      ShotsM.saveShots(ShotsM.listShots().map((sh) => (linked.has(sh.id) ? Stamp.stampFill('shot', sh, m, ['cam'], 'fill') : sh)));
+    }
     call(c.say, [
       plan.floorAdded ? 'Floor plan: ' + plural(plan.floorAdded, 'thing', 'things') + ' added.' : '',
       plan.shotsMade ? plural(plan.shotsMade, 'shot diagram', 'shot diagrams') + ' added.' : '',
@@ -2461,6 +2704,10 @@ const blockingDraftTask = {
        or a shot whose camera was re-picked, stays as the person left it. */
     return () => {
       const { reverted, kept } = ShotsM.undoBlocking(snap);
+      if (snap.cams.length) {   // a link taken back loses its stamp; one a kept diagram holds keeps it
+        const gone = new Set(snap.cams.map((x) => x.id));
+        ShotsM.saveShots(ShotsM.listShots().map((sh) => (gone.has(sh.id) && !sh.cam ? Stamp.unstampFill(sh, m.run) : sh)));
+      }
       if (kept) call(c.say, plural(kept, 'diagram has', 'diagrams have') + ' changed since and ' + (kept === 1 ? 'was' : 'were') + ' left as ' + (kept === 1 ? 'it is.' : 'they are.'));
       else if (!reverted) call(c.say, 'Nothing to undo: it has all changed since.');
       call(c.after, null);
@@ -2490,8 +2737,9 @@ const blockingEnhanceTask = {
     ].filter(Boolean).join(' ');
     return remember('blocking-enhance', { items: res.items, note }, { blockId: job.block.id });
   },
-  apply(selected, ctx, result) {
+  apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
+    const m = metaFor('blocking-enhance', meta);
     const mem = recall('blocking-enhance', result);
     if (!mem) fail('There are no suggestions to keep. Run it first.');
     if (typeof ShotsM.replaceBlock !== 'function') fail('This build cannot write a setup yet. Nothing was changed.');
@@ -2504,7 +2752,7 @@ const blockingEnhanceTask = {
     const { block, applied } = BlockAI.applyBlockOps(current, ops, makers);
     if (!applied) return null;
     call(c.before, mem.blockId);
-    const wrote = JSON.parse(JSON.stringify(ShotsM.replaceBlock(block) || block));
+    const wrote = JSON.parse(JSON.stringify(ShotsM.replaceBlock(Stamp.stampFill('block', ShotsM.cleanBlock(block), m, ['marks', 'set', 'axis'], 'replace')) || block));
     call(c.say, plural(applied, 'change', 'changes') + ' made to “' + (current.name || 'the setup') + '”.');
     call(c.after, mem.blockId);
     /* Undo reverses only these changes, against the setup as it is NOW:
@@ -2514,7 +2762,7 @@ const blockingEnhanceTask = {
       const now = findBlock(mem.blockId);
       if (!now) { call(c.say, 'That setup has been deleted since. Nothing to undo.'); return; }
       const { block: back, reverted, kept } = BlockAI.undoBlockOps(snapshot, wrote, now);
-      if (reverted) { call(c.before, mem.blockId); ShotsM.replaceBlock(back); }
+      if (reverted) { call(c.before, mem.blockId); if (!kept) dropFill(back, m.run); ShotsM.replaceBlock(back); }
       if (kept) call(c.say, plural(kept, 'change was', 'changes were') + ' edited since and left as they are.');
       call(c.after, mem.blockId);
     };
@@ -2531,7 +2779,7 @@ const LANES = [Preprod, Post, Story];
    the way the reads here do (keepNotes above). Set here because the lane
    modules cannot import this file, which imports them. */
 for (const t of [...Preprod.TASKS, ...Post.TASKS, ...Story.TASKS]) {
-  if (t.kind === 'read' && t.keepAs && typeof t.apply !== 'function') t.apply = (selected, ctx) => keepNotes(selected, ctx, t.keepAs);
+  if (t.kind === 'read' && t.keepAs && typeof t.apply !== 'function') t.apply = (selected, ctx, result, meta) => keepNotes(selected, ctx, t.keepAs, t.id, meta);
 }
 let registered = false;
 

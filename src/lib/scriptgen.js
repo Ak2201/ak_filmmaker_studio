@@ -39,6 +39,7 @@ import * as Scenes from './scenes.js';
 import * as Chars from './characters.js';
 import { frameworkById } from './story.js';
 import { storyBeatKey, matchCast, untouchedCharacter } from './ai-writing-apply.js';
+import { readAiCareful } from './chrome-prefs.js';
 
 /* ai.js and studies.js are imported DYNAMICALLY, inside the functions
    that need them, and that is a size decision rather than a style one.
@@ -200,7 +201,7 @@ export function slugFor(scene) {
    writes nothing; applyScenes() commits the rows the writer kept and
    hands back an undo. There is no one-press "ask and write" path: every
    caller drafts, shows, and applies only what the writer kept. */
-export async function draftScenes(patch, { onStatus, signal, extra = '' } = {}) {
+export async function draftScenes(patch, { onStatus, signal, extra = '', onItems, careful } = {}) {
   const job = { ...load(), ...patch };
   if (!job.beats.length) throw new GenError('Draft the beat sheet first.', 'nobeats');
   const AI = await ai();
@@ -216,7 +217,7 @@ export async function draftScenes(patch, { onStatus, signal, extra = '' } = {}) 
     lang: job.lang,
     target: job.target,
     beats: labelled
-  }, { onStatus, signal });
+  }, { onStatus, signal, onItems, careful });
   return { proposals: res.scenes, truncated: res.truncated, model: res.model };
 }
 
@@ -226,7 +227,7 @@ export async function draftScenes(patch, { onStatus, signal, extra = '' } = {}) 
  * { job, scenes, undo } — undo puts back the scene list and the job
  * exactly as they were.
  */
-export function applyScenes(patch, proposals, { replaceScenes = false, model } = {}) {
+export function applyScenes(patch, proposals, { replaceScenes = false, model, ai = null } = {}) {
   const prevJob = load();
   const prevScenes = Scenes.listScenes();
   const job = { ...prevJob, ...patch };
@@ -249,6 +250,13 @@ export function applyScenes(patch, proposals, { replaceScenes = false, model } =
     createdIds.push(...r.created);
     return r.cast;
   });
+  /* The history stamp (`ai`): a scene row this run wrote, and a character
+     record it made for a name nobody had. Stamped on the final record,
+     so the hash is of what the page will read back. */
+  if (ai && createdIds.length) {
+    const made = new Set(createdIds);
+    for (let i = 0; i < chars.length; i++) if (made.has(chars[i].id)) chars[i] = ai.create('character', chars[i]);
+  }
   if (createdIds.length) Chars.saveCharacters(chars);
   /* The beat each scene serves, in the scene row's own field (the
      write page's Outline tab reads it). scriptgen's vocabulary is Save
@@ -273,7 +281,7 @@ export function applyScenes(patch, proposals, { replaceScenes = false, model } =
     // Cast lands in the breakdown's own vocabulary, so the element
     // index and the day-out-of-days see it without a second pass.
     elements: castOf[i].length ? { cast: castOf[i].slice() } : {}
-  }));
+  })).map((r) => (ai ? ai.create('scene', r) : r));
   Scenes.saveScenes(existing.concat(rows));
 
   job.scenes = rows.map((r, i) => ({
@@ -338,7 +346,7 @@ function knownCharacters(job) {
  * applyBatch() can refuse a draft that went stale. `extra` is a Desk
  * refinement, carried on the logline (ai-refine.js refineBlock).
  */
-export async function draftBatch({ onStatus, signal, extra = '' } = {}) {
+export async function draftBatch({ onStatus, signal, extra = '', careful, onItems } = {}) {
   const job = load();
   if (job.stage !== 'pages') throw new GenError('Lay out the scenes first.', 'nostage');
   if (job.cursor >= job.scenes.length) return { cursor: job.cursor, batch: [], byScene: {}, truncated: false, done: true };
@@ -363,7 +371,7 @@ export async function draftBatch({ onStatus, signal, extra = '' } = {}) {
     })),
     before: before.map((s) => ({ slug: s.slug, synopsis: s.synopsis })),
     after: after.map((s) => ({ slug: s.slug, synopsis: s.synopsis }))
-  }, { onStatus, signal });
+  }, { onStatus, signal, careful, onItems });
 
   const byScene = {};
   for (const s of batch) {
@@ -371,6 +379,96 @@ export async function draftBatch({ onStatus, signal, extra = '' } = {}) {
     if (els && els.length) byScene[s.sceneId] = els.map((el) => ({ type: el.type, text: el.text }));
   }
   return { cursor: job.cursor, batch, byScene, truncated: res.truncated, model: res.model, done: false };
+}
+
+/* ---- the whole rest in one press ------------------------------
+   `draftBatch` is ONE reviewed batch. `draftRest` is the same idea
+   for everything left: every remaining scene, PAGE_BATCH at a time,
+   PAGE_CONCURRENCY requests in flight, each scene reported the moment
+   it parses. It still writes nothing — it resolves a draft in the
+   SAME shape draftBatch does, with `batch` = every remaining scene, so
+   the unchanged applyBatch(draft, keep) writes it: a scene that did
+   not arrive, failed or was unticked stays pending, next in line.
+
+   Every request of the run shares one prefix (the system prompt, the
+   schema over ALL the run's ids, and the `shared` block: logline, the
+   cast read ONCE here, the rules and the scene map), so a prompt cache
+   written by the first batch serves the rest. Continuity per batch
+   comes from the scene LIST (synopses), not from the pages of the
+   batch before — which is what lets the batches run side by side.
+   Nothing in the shared text or the system prompt names a batch. */
+export const PAGE_BATCH = 2;          // scenes per request in a run
+export const PAGE_CONCURRENCY = 3;
+
+export async function draftRest({ onStatus, signal, onItems, careful, extra = '' } = {}) {
+  const job = load();
+  if (job.stage !== 'pages') throw new GenError('Lay out the scenes first.', 'nostage');
+  if (job.cursor >= job.scenes.length) {
+    return { cursor: job.cursor, batch: [], byScene: {}, truncated: false, model: '', done: true, failed: [], failures: [], stopped: false };
+  }
+  const AI = await ai();
+  const { runBatches } = await import('./ai-batches.js');
+  const hard = careful === undefined ? readAiCareful() : !!careful;   // fixed for the whole run
+  const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
+
+  const rest = job.scenes.slice(job.cursor);
+  const runIds = rest.map((s) => s.sceneId);
+  const at = new Map(rest.map((s, i) => [s.sceneId, job.cursor + i]));
+  const logline = extra ? job.logline + '\n\n' + extra : job.logline;
+  const shared = AI.buildPagesShared({
+    lang: job.lang,
+    logline,
+    characters: knownCharacters(job),            // read ONCE: part of the shared prefix
+    overview: job.scenes.slice(Math.max(0, job.cursor - 2)).map((s) => ({ slug: s.slug, synopsis: s.synopsis }))
+  });
+  const jobs = rest.map((s) => ({
+    sceneId: s.sceneId, slug: s.slug, synopsis: s.synopsis, eighths: s.eighths, cast: s.cast,
+    beatLabel: beatLabel(job, s.beat)
+  }));
+  say('Writing ' + jobs.length + (jobs.length === 1 ? ' scene' : ' scenes') + '…');
+
+  let arrived = 0;
+  let failedBatches = 0;
+  const sendBatch = async (batch, { signal: sig, onItems: emit, onStart }) => {
+    const from = at.get(batch[0].sceneId);
+    const r = await AI.draftScenePages({
+      lang: job.lang, logline, format: job.format,
+      scenes: batch,
+      before: job.scenes.slice(Math.max(0, from - 2), from).map((s) => ({ slug: s.slug, synopsis: s.synopsis })),
+      after: job.scenes.slice(from + batch.length, from + batch.length + 2).map((s) => ({ slug: s.slug, synopsis: s.synopsis }))
+    }, { signal: sig, careful: hard, runIds, shared, onStart, onItems: emit });
+    return {
+      items: [...r.byScene].map(([sceneId, elements]) => ({ sceneId, elements })),
+      truncated: r.truncated, model: r.model
+    };
+  };
+  const out = await runBatches(jobs, {
+    size: PAGE_BATCH, concurrency: PAGE_CONCURRENCY, run: sendBatch, signal,
+    onItems: (items) => {
+      arrived += items.length;
+      say('Writing… ' + arrived + ' of ' + jobs.length + ' scenes' + (failedBatches ? ' · ' + failedBatches + ' failed' : ''));
+      if (onItems) onItems(items);
+    },
+    onBatch: ({ failed }) => { failedBatches = failed; }
+  });
+
+  const have = new Map();
+  for (const e of out.items) have.set(e.sceneId, e.elements);
+  const byScene = {};
+  for (const s of rest) {
+    const els = have.get(s.sceneId);
+    if (els && els.length) byScene[s.sceneId] = els.map((el) => ({ type: el.type, text: el.text }));
+  }
+  const failures = out.failed.map((f) => ({
+    sceneIds: f.jobs.map((j) => j.sceneId).filter((id) => !byScene[id]),
+    kind: (f.error && f.error.kind) || 'unknown',
+    message: (f.error && f.error.message) || ''
+  })).filter((f) => f.sceneIds.length);
+  if (!Object.keys(byScene).length && !out.stopped && out.failed.length) throw out.failed[0].error;
+  return {
+    cursor: job.cursor, batch: rest, byScene, truncated: out.truncated, model: out.model || '',
+    done: false, failed: failures.flatMap((f) => f.sceneIds), failures, stopped: out.stopped
+  };
 }
 
 /**
@@ -392,7 +490,7 @@ export async function draftBatch({ onStatus, signal, extra = '' } = {}) {
  * move — so a caller that loops (write.js's bulk run) must stop on
  * `wrote === 0` or it would ask for the same scenes forever.
  */
-export function applyBatch(draft, keep = null) {
+export function applyBatch(draft, keep = null, { ai = null } = {}) {
   const prevJob = load();
   if (prevJob.stage !== 'pages' || prevJob.cursor !== draft.cursor) {
     throw new GenError('That batch is out of date — the draft moved on since it was written. Ask for the next batch again.', 'stale');
@@ -425,7 +523,10 @@ export function applyBatch(draft, keep = null) {
     doc.revisions.push(Script.makeRevision(doc.elements, 'Before generated draft'));
   }
   for (const id of written) {
-    for (const el of draft.byScene[id]) doc.elements.push(Script.blankElement({ type: el.type, text: el.text }));
+    for (const el of draft.byScene[id]) {
+      const made = Script.blankElement({ type: el.type, text: el.text });
+      doc.elements.push(ai ? ai.create('element', made) : made);   // the history stamp (ai is a stamper)
+    }
   }
   Script.saveScript(doc);
 

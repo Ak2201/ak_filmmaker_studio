@@ -1,0 +1,50 @@
+/* ============================================================
+   AI HISTORY — the history lists (the badge is ai-badge.css)
+   ------------------------------------------------------------
+   src/ui/ai-history-view.js and the Desk's History button. Tokens only; a fill is
+   never a text colour, so the badge is --brand-deep ink on --brand-wash
+   (the brand as TEXT, measured AA in both palettes). Shapes come from the
+   skin (--sk-field-radius, --sk-radius), never a typed radius.
+   ============================================================ */
+
+/* ---- the history list ---------------------------------------- */
+.aih { display: grid; gap: var(--s3); }
+.aih-empty { margin: 0; color: var(--ink-muted); }
+.aih-filters { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
+.aih-task {
+  min-height: 32px;
+  padding: 0 var(--s2);
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface-card);
+  border: var(--sk-card-line-w, 1px) solid var(--border-subtle);
+  border-radius: var(--sk-field-radius, var(--radius));
+}
+.aih-runs { display: grid; gap: var(--s3); margin: 0; padding: 0; list-style: none; }
+.aih-run {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s3);
+  background: var(--surface-card);
+  border: var(--sk-card-line-w, 1px) solid var(--border-subtle);
+  border-radius: var(--sk-radius, var(--radius));
+}
+.aih-run-head { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); align-items: baseline; justify-content: space-between; }
+.aih-run-title { margin: 0; font-family: var(--f-display, inherit); font-size: var(--t-body); font-weight: 600; color: var(--ink); }
+.aih-run-meta { margin: 0; font-size: var(--t-micro); color: var(--ink-muted); }
+.aih-items { display: grid; gap: var(--s1); margin: 0; padding: 0; list-style: none; }
+.aih-item { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); align-items: baseline; font-size: var(--t-small, var(--t-body)); }
+.aih-item a { color: var(--brand-deep); }
+.aih-kind { font-size: var(--t-micro); color: var(--ink-muted); }
+.aih-state { font-size: var(--t-micro); color: var(--ink-muted); }
+.aih-state.is-edited { color: var(--warn-deep); }
+.aih-more { margin: 0; font-size: var(--t-micro); color: var(--ink-muted); }
+.aih-actions { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
+.aih-note { margin: 0; font-size: var(--t-micro); color: var(--ink-muted); }
+.aih-status { margin: 0; font-size: var(--t-small, var(--t-body)); color: var(--ink); }
+
+/* ---- the Desk's History button (src/ui/ai-desk.js, HISTORY TAB) ---- */
+.ai-desk-histbtn { order: 2; flex: none; margin-inline-start: auto; }
+.ai-desk-histbtn[aria-pressed="true"] { background: var(--brand-wash); color: var(--brand-deep); }
+.ai-desk-head .ai-desk-close { order: 3; }
+.ai-desk-history { padding-top: var(--s3); }

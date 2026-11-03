@@ -1022,9 +1022,10 @@ restoreFetch();
   /* write.js wires it: the pill flushes and reloads, and the bulk run
      commits between a flush and a reload (no bare runNextBatch). */
   const W = readFileSync(new URL('../src/pages/write.js', import.meta.url), 'utf8');
-  const pill = W.slice(W.indexOf("tasks: ['gen-batch']"), W.indexOf("tasks: ['gen-batch']") + 400);
-  ok(/before: flushDoc/.test(pill) && /after: \(\) => \{ reloadDoc\(\);/.test(pill), 'write.js: the gen-batch pill passes before: flushDoc and reloads doc in after');
-  ok(!/Scriptgen\.runNextBatch\(/.test(W) && /flushDoc\(\);\s*res = Scriptgen\.applyBatch\(d, null\);\s*reloadDoc\(\);/.test(W), 'write.js: the bulk run flushes, commits and reloads');
+  const ctxFn = W.slice(W.indexOf('function genDeskCtx('), W.indexOf('function genDeskCtx(') + 400);
+  ok(/before: flushDoc/.test(ctxFn) && /after: \(\) => \{ reloadDoc\(\);/.test(ctxFn), 'write.js: the gen-batch ctx passes before: flushDoc and reloads doc in after');
+  ok(/tasks: \['gen-batch'\],\s*ctx: \(\) => genDeskCtx\(\)/.test(W), 'write.js: the gen-batch pill uses that ctx');
+  ok(!/Scriptgen\.runNextBatch\(/.test(W) && !/Scriptgen\.applyBatch\(/.test(W) && /openDesk\('gen-batch', genDeskCtx\(\{ go: true \}\)\)/.test(W), 'write.js: no bulk loop writes without review; the one-press button opens the Desk on gen-batch');
   /* Nothing a Desk task drafts is written before Accept: scriptgen
      offers draft/apply halves only, never a one-call ask-and-write. */
   eq(Object.keys(Gen).filter((k) => /^run/.test(k)), [], 'scriptgen: no run* export asks the model and writes in one call');

@@ -14,6 +14,7 @@ import { h } from '../lib/dom.js';
 import { paperTextarea, paperField } from './paper-field.js';
 import { button, sym } from './kit/index.js';
 import { COLORS, COLOR_LABEL, colorOf, pinValue } from '../lib/notes-model.js';
+import { aiBadge } from './ai-badge.js';   // the AI history badge
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export const dayLabel = (at) => { const d = new Date(at); return isNaN(d) ? '' : d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(); };
@@ -63,6 +64,8 @@ export function noteCard(note, o = {}) {
   }
   top.append(dots);
   top.append(h('span.nt-date', { text: dayLabel(note.at) }));
+  const aib = aiBadge(note, 'note');   // a note an AI run kept (null otherwise)
+  if (aib) top.append(aib);
   li.append(top);
 
   const ta = paperField(paperTextarea('.nt-text', {

@@ -41,6 +41,10 @@ export const CONCURRENCY = 3;
 const RETRY_DELAY_MS = 8000;
 const SETTLED = new Set(['ready', 'failed', 'skipped', 'accepted', 'rejected']);
 const RERUN = new Set(['queued', 'running', 'failed']);
+/* A child skipped only because its parent had not finished is not
+   settled for good: once Resume re-runs the parent it runs too (and is
+   skipped again, with the same sentence, if the parent fails again). */
+const rerunnable = (d) => RERUN.has(d.status) || (d.status === 'skipped' && !!d.error && d.error.kind === 'parent');
 
 const isAbort = (e) => !!(e && (e.kind === 'aborted' || e.code === 'aborted' || e.name === 'AbortError'));
 const retryable = (e) => !!(e && (e.kind === 'rate' || e.kind === 'overloaded'));
@@ -59,6 +63,22 @@ async function readCareful() {
   try { const P = await import('./chrome-prefs.js'); return !!P.readAiCareful(); } catch (e) { return false; }
 }
 
+/* Which film is open NOW. Every task reads the models through the store
+   proxy, which scopes to whichever project is open at call time, while
+   the draft store is bound to the project the run started in: a run that
+   went on after the project changed would draft film B and keep it as
+   film A's. So the engine asks before each node and after each answer,
+   and stops (what was in flight goes back to queued) the moment it moved.
+   undefined means "cannot tell" (a test's store), which never stops. */
+async function projectNowOf(deps) {
+  if (typeof deps.projectNow === 'function') return deps.projectNow;
+  try {
+    const S = await import('./store.js');
+    const f = S.currentProjectId || (S.default && S.default.currentProjectId);
+    return typeof f === 'function' ? f : null;
+  } catch (e) { return null; }
+}
+
 async function envOf(deps = {}) {
   const tasks = deps.tasks
     || await import('./ai-tasks.js').then((m) => m.loadTasks());
@@ -75,7 +95,8 @@ async function envOf(deps = {}) {
        task's prompt-cache key and must not change between its batches.
        Tests pass `careful` explicitly. */
     careful: deps.careful == null ? await readCareful() : !!deps.careful,
-    unlocked: deps.unlocked
+    unlocked: deps.unlocked,
+    projectNow: await projectNowOf(deps)
   };
 }
 
@@ -159,7 +180,25 @@ function parentsOf(d, byKey) {
   return out;
 }
 
-async function drive(env, store, runId, { signal, onUpdate } = {}) {
+/** true when a project other than `projectId` is open now. */
+function movedFrom(env, projectId) {
+  if (!env.projectNow) return false;
+  let p;
+  try { p = env.projectNow(); } catch (e) { return false; }
+  if (p === undefined) return false;
+  return String(p || '') !== String(projectId || '');
+}
+
+async function drive(env, store, runId, { signal: outer, onUpdate, projectId } = {}) {
+  /* One signal the tasks see: the caller's Stop, or the project moving. */
+  const ctl = new AbortController();
+  const signal = ctl.signal;
+  if (outer) { if (outer.aborted) ctl.abort(); else outer.addEventListener('abort', () => ctl.abort(), { once: true }); }
+  let moved = false;
+  const checkMoved = () => {
+    if (!moved && movedFrom(env, projectId)) { moved = true; ctl.abort(); }
+    return moved;
+  };
   const rows = await store.getRun(runId);
   const byKey = new Map(rows.map((r) => [r.key, r]));
   const tell = (d, extra) => { if (onUpdate) { try { onUpdate(extra ? { ...d, ...extra } : d); } catch (e) { /* UI */ } } };
@@ -183,7 +222,7 @@ async function drive(env, store, runId, { signal, onUpdate } = {}) {
   /* Resume: what had not finished runs again, from the start. */
   const pending = [];
   for (const d of rows) {
-    if (!RERUN.has(d.status)) continue;
+    if (!rerunnable(d)) continue;
     if (d.status !== 'queued') await save(d, { status: 'queued', error: null, startedAt: null, endedAt: null, ms: null });
     pending.push(d);
   }
@@ -217,6 +256,7 @@ async function drive(env, store, runId, { signal, onUpdate } = {}) {
       tries++;
       const shown = [];
       try {
+        if (checkMoved()) throw Object.assign(new Error('Stopped.'), { kind: 'aborted' });
         const ctx = env.ctxFor(d.taskId, d.ctx, { parentsResults: parents });
         const gate = typeof task.blocked === 'function' ? task.blocked(ctx) : null;
         if (gate) {
@@ -229,13 +269,16 @@ async function drive(env, store, runId, { signal, onUpdate } = {}) {
           onStatus: (m) => tell(d, { statusText: String(m || '') }),
           onItems: (items) => { shown.push(...[].concat(items || [])); tell(d, { partial: shown.slice() }); }
         });
-        if (aborted()) throw Object.assign(new Error('Stopped.'), { kind: 'aborted' });
+        if (checkMoved() || aborted()) throw Object.assign(new Error('Stopped.'), { kind: 'aborted' });
         const { result, memo } = storable(res || {});
         const ended = Date.now();
         await save(d, {
           status: 'ready', result, memo, error: null,
           model: String((result && result.model) || (memo && memo.model) || ''),
-          aiRun: newId('air'), endedAt: new Date(ended).toISOString(), ms: ended - started
+          aiRun: newId('air'), endedAt: new Date(ended).toISOString(), ms: ended - started,
+          /* which version of each parent this was drafted against (a
+             refined parent bumps its `rev`; acceptDraft compares) */
+          parentRev: Object.fromEntries((d.parents || []).map((k) => [k, Number((byKey.get(k) || {}).rev) || 0]))
         });
         return;
       } catch (e) {
@@ -263,6 +306,7 @@ async function drive(env, store, runId, { signal, onUpdate } = {}) {
      behind every other wave-1 tool. Otherwise wave, then plan order. */
   const fed = (d) => (d.parents || []).length > 0 && !waitsOn(d);
   function pump() {
+    checkMoved();
     if (!aborted() && !halted) {
       const next = pending.slice().sort((a, z) => (fed(z) - fed(a)) || (a.wave - z.wave) || (a.order - z.order));
       for (const d of next) {
@@ -286,10 +330,10 @@ async function drive(env, store, runId, { signal, onUpdate } = {}) {
     }
     const counts = {};
     for (const d of rows) counts[d.status] = (counts[d.status] || 0) + 1;
-    finish({ runId, stopped: aborted(), counts });
+    finish({ runId, stopped: aborted(), moved, counts });
   }
 
-  if (signal) signal.addEventListener('abort', () => { if (inflight === 0) settle(); }, { once: true });
+  signal.addEventListener('abort', () => { if (inflight === 0) settle(); }, { once: true });
   pump();
   return done;
 }
@@ -318,16 +362,17 @@ export async function startRun({ projectId, ticks, signal, onUpdate, ...deps } =
       status: n.skip ? 'skipped' : 'queued', error: n.skip ? { message: n.skip, kind: 'plan' } : null
     });
   }
-  return { runId, done: drive(env, store, runId, { signal, onUpdate }) };
+  return { runId, done: drive(env, store, runId, { signal, onUpdate, projectId }) };
 }
 
 /** Pick a run up again: queued, running (a closed tab) and failed drafts
-    run again; nothing else is touched. → { runId, done } */
+    run again, and a child skipped only because its parent had not
+    finished; nothing else is touched. → { runId, done } */
 export async function resumeRun(projectId, runId, { signal, onUpdate, ...deps } = {}) {
   await assertUnlocked(deps.unlocked);
   const env = await envOf(deps);
   const store = env.drafts || openDrafts(projectId);
-  return { runId, done: drive(env, store, runId, { signal, onUpdate }) };
+  return { runId, done: drive(env, store, runId, { signal, onUpdate, projectId }) };
 }
 
 /** Mark a ready draft rejected (nothing is written). */
@@ -382,13 +427,38 @@ function madeOf(result, undo) {
  * Test-only extras (5th argument): tasks, ctxFor, drafts.
  */
 export async function acceptDraft(projectId, runId, key, selected, deps = {}) {
+  /* An Accept writes an AI answer into the film, so it is behind the same
+     Pro gate as a run (fails closed): a lapsed plan keeps its drafts to
+     look at and to reject, not to apply. */
+  await assertUnlocked(deps.unlocked);
   const env = await envOf(deps);
+  /* The task's apply writes through the store proxy, i.e. into whichever
+     film is open; a draft of film A must never land in film B. */
+  if (movedFrom(env, projectId)) throw new Error('These drafts belong to another film. Open that film to accept them.');
   const store = env.drafts || openDrafts(projectId);
   const rows = await store.getRun(runId);
   const byKey = new Map(rows.map((r) => [r.key, r]));
   const target = byKey.get(String(key));
   if (!target) throw new Error('That draft is no longer kept (drafts are kept for 14 days). Run it again.');
   if (target.status !== 'ready') throw new Error('That draft is ' + target.status + ', so there is nothing to accept.');
+  /* 'draft:<n>' is a POSITION in the parent's items. A parent refined in
+     the Desk after this draft was made has other items in other places,
+     so the old positions would map onto the wrong real shots. Such a
+     draft is marked failed ('stale'), which Resume runs again against
+     the parent as it is now. A draft stored before `parentRev` existed
+     cannot tell and is accepted as before. */
+  if (target.parentRev && typeof target.parentRev === 'object') {
+    const changed = (target.parents || []).filter((k) => {
+      const p = byKey.get(k);
+      return p && k in target.parentRev && (Number(target.parentRev[k]) || 0) !== (Number(p.rev) || 0);
+    });
+    if (changed.length) {
+      const names = changed.map((k) => (byKey.get(k) || {}).label || k).join(', ');
+      const message = names + ' was changed after this draft was made, so it no longer fits. Press Resume to draft it again.';
+      await store.update(runId, target.key, { status: 'failed', error: { message, kind: 'stale' } });
+      throw new Error(message);
+    }
+  }
 
   const order = [];
   const seen = new Set();
@@ -436,11 +506,22 @@ export async function acceptDraft(projectId, runId, key, selected, deps = {}) {
   const undo = async () => {
     if (undone) return false;
     undone = true;
+    /* A parent this Accept took along may since carry a LATER Accept: a
+       sibling (Blocking · Sc 2 after Sc 1) mapped onto the same real
+       shots. Undoing the parent would delete shots that later work points
+       at, so it stays accepted; only what nothing else leans on goes. */
+    const ours = new Set(done.map((x) => x.d.key));
+    let later = [];
+    try { later = (await store.getRun(runId)).filter((r) => r.status === 'accepted' && !ours.has(r.key)); } catch (e) { later = []; }
+    const leanedOn = (k) => later.some((r) => (r.parents || []).includes(k));
     let any = false;
+    const back = [];
     for (const x of done.slice().reverse()) {
+      if (x.d !== target && leanedOn(x.d.key)) continue;
       if (typeof x.undo === 'function') { const r = await x.undo(); if (r !== false) any = true; }
+      back.push(x);
     }
-    for (const x of done) await store.update(runId, x.d.key, { status: 'ready', made: {}, acceptedAt: null });
+    for (const x of back) await store.update(runId, x.d.key, { status: 'ready', made: {}, acceptedAt: null });
     return any;
   };
   return { undo, wrote };

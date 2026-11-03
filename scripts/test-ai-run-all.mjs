@@ -265,6 +265,117 @@ async function runWith(opts, project = full, ticks) {
   ok(!Object.keys(m).includes('memo'), 'map: the memo stays non-enumerable');
 }
 
+
+/* ================= review findings (3 Nov 2026) ================= */
+/* resume: a child skipped because its parent failed runs once the parent does */
+{
+  const t = await runWith({ fail: { 'shot-draft': { kind: 'server' } } }, full, ['shot-draft', 'blocking-draft']);
+  await t.done;
+  eq((await t.drafts.get(t.runId, 'blocking-draft:s1')).status, 'skipped', 'resume-parent: the child was skipped behind its failed parent');
+  for (const k of Object.keys(t.env.calls)) t.env.calls[k] = 0;
+  const keyOfCtx = (taskId, c) => (taskId === 'blocking-draft' ? 'blocking-draft:' + c.sceneId : taskId);
+  const ok2 = fakeEnv({});
+  const again = await R.resumeRun('p2', t.runId, { drafts: t.drafts, tasks: ok2.tasks, unlocked: () => true, retryDelayMs: 0,
+    ctxFor: (taskId, nodeCtx, o) => ({ ...nodeCtx, __key: keyOfCtx(taskId, nodeCtx) }) });
+  await again.done;
+  eq([(await t.drafts.get(t.runId, 'shot-draft')).status, (await t.drafts.get(t.runId, 'blocking-draft:s1')).status, (await t.drafts.get(t.runId, 'blocking-draft:s3')).status],
+    ['ready', 'ready', 'ready'], 'resume-parent: Resume re-runs the parent AND the children it had skipped');
+  ok(!ok2.calls['blocking-draft:s2'], 'resume-parent: a child that had already run is not re-run');
+}
+/* a project switch mid-run stops the run; nothing is drafted from the other film */
+{
+  let open = 'pM';
+  const env = fakeEnv({ delays: { 'shot-draft': 40, 'shoot-order': 40, 'recce-notes': 40, 'genre-comps': 40 } });
+  const drafts = D.openDrafts('pM', { backend: D.memoryBackend() });
+  const keyOfCtx = (taskId, c) => (taskId === 'blocking-draft' ? 'blocking-draft:' + c.sceneId : taskId);
+  const r = await R.startRun({ projectId: 'pM', project: full, ticks: ['shot-draft', 'shoot-order', 'recce-notes', 'genre-comps', 'blocking-draft', 'budget-estimate'],
+    drafts, tasks: env.tasks, unlocked: () => true, retryDelayMs: 0, projectNow: () => open,
+    ctxFor: (taskId, nodeCtx, o) => ({ ...nodeCtx, __key: keyOfCtx(taskId, nodeCtx) }) });
+  await new Promise((res) => setTimeout(res, 10));
+  open = 'pOther';
+  const out = await r.done;
+  const rows = await drafts.getRun(r.runId);
+  eq([out.stopped, out.moved], [true, true], 'moved: the run stops when another film is opened');
+  ok(rows.every((d) => d.status === 'queued' || d.status === 'skipped'), 'moved: nothing became ready from the other film (in flight → queued)');
+  ok(!env.log.some((l) => /start (blocking|budget)/.test(l)), 'moved: no wave-2 node started after the switch');
+  const acc = await R.acceptDraft('pM', r.runId, 'shot-draft', undefined, { drafts, tasks: env.tasks, unlocked: () => true, projectNow: () => 'pOther' }).catch((e) => e);
+  ok(acc instanceof Error && /another film/.test(acc.message), 'moved: Accept refuses while another film is open');
+}
+/* Accept follows the Pro gate */
+{
+  const drafts = D.openDrafts('pG', { backend: D.memoryBackend() });
+  await drafts.put({ runId: 'rg', key: 'scene-notes', taskId: 'scene-notes', status: 'ready', result: { items: [] } });
+  let applied = 0;
+  const tasks = new Map([['scene-notes', { id: 'scene-notes', kind: 'list', apply: () => { applied++; return () => {}; } }]]);
+  const e1 = await R.acceptDraft('pG', 'rg', 'scene-notes', undefined, { drafts, tasks, unlocked: () => false }).catch((e) => e);
+  eq([e1 && e1.kind, applied, (await drafts.get('rg', 'scene-notes')).status], ['locked', 0, 'ready'], 'gate: a locked account cannot Accept a draft (nothing applied)');
+}
+/* stale parent, sibling undo — fake tasks that log what they write */
+function acceptEnv() {
+  const shots = new Set();
+  const marks = new Map();   // child key → shot ids it points at
+  const tasks = new Map([
+    ['shot-draft', { id: 'shot-draft', kind: 'list', apply: (sel) => {
+      const made = sel.map((it, n) => [it.id, 'real' + it.id]);
+      made.forEach(([, r]) => shots.add(r));
+      const undo = () => { made.forEach(([, r]) => shots.delete(r)); };
+      undo.made = made;
+      return undo;
+    } }],
+    ['blocking-draft', { id: 'blocking-draft', kind: 'list', apply: (sel, ctx) => {
+      const k = 'blk:' + ctx.sceneId;
+      marks.set(k, sel.map((it) => it.shotId));
+      return () => { marks.delete(k); };
+    } }]
+  ]);
+  return { shots, marks, tasks, ctxFor: (taskId, c) => ({ ...c }), unlocked: () => true };
+}
+async function seedAccept(drafts, parentRev) {
+  await drafts.put({ runId: 'ra', key: 'shot-draft', taskId: 'shot-draft', order: 0, status: 'ready',
+    result: { items: [{ id: 'a', sceneId: 's1' }, { id: 'b', sceneId: 's2' }] } });
+  for (const [i, sc, n] of [[1, 's1', 0], [2, 's2', 1]]) {
+    await drafts.put({ runId: 'ra', key: 'blocking-draft:' + sc, taskId: 'blocking-draft', order: i, status: 'ready', ctx: { sceneId: sc },
+      parents: ['shot-draft'], needsParent: true, parentRev: parentRev ? { 'shot-draft': 0 } : undefined,
+      result: { items: [{ id: 'm' + n, shotId: 'draft:' + n }] } });
+  }
+}
+{
+  const E = acceptEnv();
+  const drafts = D.openDrafts('pA', { backend: D.memoryBackend() });
+  await seedAccept(drafts, true);
+  const a1 = await R.acceptDraft('pA', 'ra', 'blocking-draft:s1', undefined, { drafts, ...E });
+  eq(E.marks.get('blk:s1'), ['reala'], 'sibling: Sc 1 accepted its parent and mapped onto the real shot');
+  const a2 = await R.acceptDraft('pA', 'ra', 'blocking-draft:s2', undefined, { drafts, ...E });
+  eq(E.marks.get('blk:s2'), ['realb'], 'sibling: Sc 2 mapped through the accepted parent');
+  await a1.undo();
+  eq([E.marks.has('blk:s1'), E.marks.get('blk:s2'), [...E.shots].sort()], [false, ['realb'], ['reala', 'realb']],
+    'sibling: undoing Sc 1 keeps the shots Sc 2 points at (later work kept)');
+  eq([(await drafts.get('ra', 'shot-draft')).status, (await drafts.get('ra', 'blocking-draft:s1')).status, (await drafts.get('ra', 'blocking-draft:s2')).status],
+    ['accepted', 'ready', 'accepted'], 'sibling: the parent stays accepted, Sc 1 is ready again');
+  await a2.undo();
+  eq(E.marks.has('blk:s2'), false, 'sibling: Sc 2 undoes on its own');
+}
+{
+  const E = acceptEnv();
+  const drafts = D.openDrafts('pS', { backend: D.memoryBackend() });
+  await seedAccept(drafts, true);
+  /* the parent was refined in the Desk: its result replaced, rev bumped */
+  await drafts.update('ra', 'shot-draft', { result: { items: [{ id: 'b', sceneId: 's2' }, { id: 'a', sceneId: 's1' }] }, rev: 1 });
+  const e = await R.acceptDraft('pS', 'ra', 'blocking-draft:s1', undefined, { drafts, ...E }).catch((x) => x);
+  ok(e instanceof Error && /changed after this draft/.test(e.message), 'stale: a child drafted against an earlier parent refuses');
+  eq([E.shots.size, E.marks.size], [0, 0], 'stale: nothing was written (not even the parent)');
+  const row = await drafts.get('ra', 'blocking-draft:s1');
+  eq([row.status, row.error && row.error.kind], ['failed', 'stale'], 'stale: the child is marked failed (Resume drafts it again)');
+}
+{
+  const E = acceptEnv();
+  const drafts = D.openDrafts('pL', { backend: D.memoryBackend() });
+  await seedAccept(drafts, false);
+  await drafts.update('ra', 'shot-draft', { rev: 1 });
+  const a = await R.acceptDraft('pL', 'ra', 'blocking-draft:s1', undefined, { drafts, ...E });
+  ok(a && a.undo, 'stale: a draft stored before parentRev existed accepts as before');
+}
+
 /* ================= the real tasks over a faked model ================= */
 const { installFakeFetch } = await import('./fake-ai.mjs');
 const AI = await import('../src/lib/ai.js');
@@ -328,7 +439,7 @@ ok(blk.result.items.some((it) => it.shotId === 'draft:0') && blk.memo && blk.mem
 
 /* Accept the blocking: shots first, ids mapped, stamped, one undo */
 const shotsBefore = Shots.listShots().length;
-const acc = await R.acceptDraft('pR', runId, 'blocking-draft:r1', undefined, { drafts: store, tasks });
+const acc = await R.acceptDraft('pR', runId, 'blocking-draft:r1', undefined, { drafts: store, tasks, unlocked: () => true });
 const shots = Shots.listShots();
 const made = shots.filter((s) => s.sceneId === 'r1');
 eq([shots.length - shotsBefore, made.map((s) => s.number)], [2, ['1', '2']], 'accept: the parent shots were accepted first');
@@ -347,22 +458,33 @@ eq(JSON.stringify([...mem.entries()].sort()) === before, true, 'undo: one combin
 eq([(await store.get(runId, 'shot-draft')).status, (await store.get(runId, 'blocking-draft:r1')).status], ['ready', 'ready'], 'undo: both drafts are ready again');
 
 /* Accept the other blocking alone: real shots, no parent accepted */
-const acc2 = await R.acceptDraft('pR', runId, 'blocking-draft:r2', undefined, { drafts: store, tasks });
+const acc2 = await R.acceptDraft('pR', runId, 'blocking-draft:r2', undefined, { drafts: store, tasks, unlocked: () => true });
 eq(acc2.wrote.map((w) => w.key), ['blocking-draft:r2'], 'accept: a draft with no parent accepts alone');
 eq(Shots.listShots().filter((s) => s.sceneId === 'r1').length, 0, 'accept: the drafted shots of another scene were not written');
 await acc2.undo();
 eq(JSON.stringify([...mem.entries()].sort()) === before, true, 'undo: the lone accept undoes exactly');
 
 /* A later edit survives the combined undo (the tasks' own undo guards) */
-const acc3 = await R.acceptDraft('pR', runId, 'shot-draft', [], { drafts: store, tasks }).catch((e) => e);
+const acc3 = await R.acceptDraft('pR', runId, 'shot-draft', [], { drafts: store, tasks, unlocked: () => true }).catch((e) => e);
 ok(acc3 && (acc3.undo || acc3.message), 'accept: an empty selection is the task’s own answer (no write or a refusal)');
 if (acc3 && acc3.undo) await acc3.undo();
-const acc4 = await R.acceptDraft('pR', runId, 'blocking-draft:r1', undefined, { drafts: store, tasks });
+const acc4 = await R.acceptDraft('pR', runId, 'blocking-draft:r1', undefined, { drafts: store, tasks, unlocked: () => true });
 const someBlock = Shots.listBlocks().find((b) => b.sceneId === 'r1' && b.shotId);
 Shots.replaceBlock({ ...someBlock, note: 'Edited by me after Accept.' });
 await acc4.undo();
 ok(Shots.listBlocks().some((b) => b.note === 'Edited by me after Accept.'), 'undo: a diagram edited after Accept is kept');
-ok((await R.acceptDraft('pR', runId, 'nope', undefined, { drafts: store, tasks }).catch((e) => e)) instanceof Error, 'accept: a missing draft refuses');
+ok((await R.acceptDraft('pR', runId, 'nope', undefined, { drafts: store, tasks, unlocked: () => true }).catch((e) => e)) instanceof Error, 'accept: a missing draft refuses');
+
+/* board-frames: a frame for a shot that does not exist is never kept or uploaded */
+{
+  const said = [];
+  const board = tasks.get('board-frames');
+  const framesBefore = Shots.listFrames().length;
+  const r = await board.apply([{ shotId: 'draft:0', label: '1.1', blob: new Blob(['x'], { type: 'image/png' }) }],
+    { say: (m) => said.push(m) }, { items: [] }, { task: 'board-frames', model: 'm', run: 'air_x', at: new Date().toISOString() });
+  eq([r, Shots.listFrames().length - framesBefore], [null, 0], 'board: an unmapped draft:<n> frame writes nothing (no frame, no Drive upload)');
+  ok(said.some((m) => /left out/.test(m)), 'board: it says the frame was left out');
+}
 
 /* the headless ctx's pure halves */
 {

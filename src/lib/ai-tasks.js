@@ -2140,7 +2140,18 @@ const boardTask = {
   async apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
     const m = metaFor('board-frames', meta);
-    const picked = (selected || []).filter((it) => it && it.shotId && it.blob);
+    /* Only a shot that EXISTS gets a frame. A Run all draft names drafted
+       shots 'draft:<n>' until their shot division is accepted; one whose
+       parent was rejected, or accepted without that shot, still names a
+       draft id here, and addFrame would keep a frame for no shot (and the
+       picture would go to Drive for nothing). Such a frame is left out. */
+    const real = new Set(ShotsM.listShots().map((s) => String(s.id)));
+    const named = (selected || []).filter((it) => it && it.shotId && it.blob);
+    const picked = named.filter((it) => real.has(String(it.shotId)));
+    if (named.length > picked.length) {
+      call(c.say, plural(named.length - picked.length, 'frame was', 'frames were') + ' left out: '
+        + (named.length - picked.length === 1 ? 'its shot is' : 'their shots are') + ' not in the shot list (accept the shot division first).');
+    }
     if (!picked.length) return null;
     // Accept is a click, so this is the one place a lapsed token may be re-asked for.
     if (!DriveM.hasToken()) await DriveM.getToken({ interactive: true });

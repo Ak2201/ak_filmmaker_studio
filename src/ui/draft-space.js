@@ -90,6 +90,7 @@ export async function mountDraftSpace(host) {
   const pid = pidNow();
   const changed = pid !== S.pid;
   S.pid = pid;
+  if (changed) stopForeign();
   if (!S.E && !S.missing) {
     paint();
     S.E = await engine();
@@ -99,6 +100,13 @@ export async function mountDraftSpace(host) {
   if (changed || !S.loaded) { S.runs = []; S.loaded = false; paint(); await reload(); }
   else paint();
   estimate();
+}
+
+/* A run drives ONE film: the engine stops itself when the open project
+   moves (ai-run-all.js), and this stops it from here as well, the moment
+   the view sees another film, so two runs never overlap. */
+function stopForeign() {
+  if (S.live && S.live.pid !== pidNow()) { try { S.live.ctl.abort(); } catch (e) { /* gone */ } }
 }
 
 async function reload() {
@@ -183,7 +191,7 @@ function controls() {
     h('div.ds-act', {}, [
       keyless
         ? button({ label: 'Add your AI key in Settings →', href: 'settings.html#ai', variant: 'primary' })
-        : button({ label: live ? 'Breaking down…' : 'Break down everything', icon: 'auto_awesome', variant: 'primary', action: 'ds-start', disabled: live || !S.ticks.size }),
+        : button({ label: live ? 'Breaking down…' : 'Break down everything', icon: 'auto_awesome', variant: 'primary', action: 'ds-start', disabled: !!S.live || !S.ticks.size }),
       live ? button({ label: 'Stop', icon: 'stop', action: 'ds-stop' }) : null
     ])
   ];
@@ -203,6 +211,9 @@ function cardFor(runId, d, live) {
   const why = (d.status === 'failed' || d.status === 'skipped') && d.error ? String(d.error.message || d.error) : '';
   const busy = S.busy.has(runId + '|' + d.key);
   const ready = d.status === 'ready';
+  /* Review and Accept apply an AI answer, so they follow the Pro gate
+     (fails closed) like the run; Reject writes nothing and stays. */
+  const unlocked = PlanGate.aiUnlocked();
   const label = d.label || d.taskId;
   const waits = (d.parents || []).map((k) => S.runs.find((r) => r.runId === runId)?.rows.find((x) => x.key === k)).filter((p) => p && p.status === 'ready');
   return h('li.ds-card', { 'data-ds-key': d.key, 'data-ds-run': runId, 'data-ds-status': d.status, 'aria-busy': busy || d.status === 'running' ? 'true' : null }, [
@@ -212,10 +223,10 @@ function cardFor(runId, d, live) {
     ]),
     facts.length ? h('p.ds-facts', { text: facts.join(' · ') }) : null,
     why ? h('p.ds-why', { text: why }) : null,
-    ready && waits.length ? h('p.ds-facts', { text: 'Accepting it accepts ' + waits.map((p) => p.label || p.taskId).join(', ') + ' first.' }) : null,
+    ready && waits.length && unlocked ? h('p.ds-facts', { text: 'Accepting it accepts ' + waits.map((p) => p.label || p.taskId).join(', ') + ' first.' }) : null,
     ready ? h('div.ds-card-act', {}, [
-      button({ label: 'Review', variant: 'primary', size: 'sm', action: 'ds-review', disabled: busy, attrs: { 'aria-label': 'Review ' + label } }),
-      button({ label: 'Accept all', size: 'sm', action: 'ds-accept', disabled: busy, attrs: { 'aria-label': 'Accept all of ' + label } }),
+      unlocked ? button({ label: 'Review', variant: 'primary', size: 'sm', action: 'ds-review', disabled: busy, attrs: { 'aria-label': 'Review ' + label } }) : null,
+      unlocked ? button({ label: 'Accept all', size: 'sm', action: 'ds-accept', disabled: busy, attrs: { 'aria-label': 'Accept all of ' + label } }) : null,
       button({ label: 'Reject', variant: 'ghost', size: 'sm', action: 'ds-reject', disabled: busy, attrs: { 'aria-label': 'Reject ' + label } })
     ]) : null
   ]);
@@ -354,6 +365,17 @@ function pin(result, memo) {
   return out;
 }
 
+/* A storyboard picture is kept as its Blob; the 'blob:' URL stored beside
+   it died with the page that made it. The Desk draws `image`, so each
+   item with a Blob gets a fresh URL for this page. */
+function withLiveImages(result) {
+  if (!result || !Array.isArray(result.items) || typeof Blob === 'undefined') return result;
+  if (!result.items.some((it) => it && it.blob instanceof Blob)) return result;
+  const out = { ...result, items: result.items.map((it) => (it && it.blob instanceof Blob ? { ...it, image: URL.createObjectURL(it.blob) } : it)) };
+  if (result.memo !== undefined) Object.defineProperty(out, 'memo', { value: result.memo, enumerable: false, configurable: true });
+  return out;
+}
+
 function parentsResults(runId, d) {
   const out = {};
   for (const k of d.parents || []) {
@@ -407,6 +429,7 @@ function wire() {
   /* The plan arrives after the first paint (signed in, billing read):
      the Pro button and Resume follow it. Nothing is written. */
   Store.subscribe('plan:changed', () => { if (S.host && S.host.isConnected) { paint(); estimate(); } });
+  Store.subscribe('current:changed', stopForeign);
   delegate(document, 'change', '#drafts input[data-ds-tick]', (e, el) => {
     if (el.checked) S.ticks.add(el.dataset.dsTick); else S.ticks.delete(el.dataset.dsTick);
     const go = S.host.querySelector('[data-action="ds-start"]');
@@ -426,6 +449,7 @@ function wire() {
     if (S.live) { S.live.ctl.abort(); say('Stopping. What has finished is kept.'); }
   });
   delegate(document, 'click', '#drafts [data-action="ds-accept"]', (e, el) => press(el, async (runId, key) => {
+    if (!PlanGate.aiUnlocked()) throw new Error('Accepting a draft is one of the Pro plan’s AI tools. Nothing was written.');
     const d = rowOf(runId, key);
     const undo = await accept(runId, key);
     say(((d && d.label) || key) + ': accepted.');
@@ -446,19 +470,29 @@ async function review(runId, key) {
   const pid = S.pid;
   const d = rowOf(runId, key);
   if (!d || d.status !== 'ready') return;
+  /* openWithDraft fails closed and would end the press in silence: say it. */
+  if (!PlanGate.aiUnlocked()) throw new Error('Reviewing a draft is one of the Pro plan’s AI tools. Nothing was written.');
   await S.E.headless.headlessReady();
   const ctx = S.E.headless.headlessCtx(d.taskId, d.ctx || {}, { parentsResults: parentsResults(runId, d) });
   const Desk = await import('./ai-desk.js');
-  const stored = pin(d.result, d.memo);
-  await Desk.openWithDraft(d.taskId, ctx, stored, {
+  const stored = withLiveImages(pin(d.result, d.memo));
+  const opened = await Desk.openWithDraft(d.taskId, ctx, stored, {
     identity: runId + '|' + d.key + '|' + (d.endedAt || ''),
     run: d.aiRun || '', model: d.model || '',
     /* A refined version is the answer being accepted: it replaces the
        stored one first, so acceptDraft applies exactly what was shown. */
     accept: async (selected, result, info) => {
       if (info && info.version > 0) {
-        const plain = { ...(result || {}) };
-        await draftsOf(pid).update(runId, key, { result: JSON.parse(JSON.stringify(plain)), memo: result && result.memo !== undefined ? result.memo : null });
+        /* Stored as it is: IndexedDB keeps a Blob (a refined storyboard's
+           pictures), which a JSON round trip turns into {}. Only a result
+           the store cannot clone falls back to its JSON shape, as the
+           engine's own save does. `rev` tells a child drafted against the
+           earlier version that it no longer fits (acceptDraft). */
+        const memo = result && result.memo !== undefined ? result.memo : null;
+        const rev = (Number(d.rev) || 0) + 1;
+        const store = draftsOf(pid);
+        try { await store.update(runId, key, { result: { ...(result || {}) }, memo, rev }); }
+        catch (e) { await store.update(runId, key, { result: JSON.parse(JSON.stringify({ ...(result || {}) })), memo: JSON.parse(JSON.stringify(memo)), rev }); }
       }
       const undo = await accept(runId, key, selected);
       const inner = undo;
@@ -468,6 +502,7 @@ async function review(runId, key) {
     },
     onAccepted: () => { say(((d && d.label) || key) + ': accepted.'); if (pid === S.pid) reload(); }
   });
+  return opened;
 }
 
 export default { mountDraftSpace };

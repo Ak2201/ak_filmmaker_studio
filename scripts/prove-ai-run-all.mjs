@@ -308,6 +308,46 @@ try {
     ok((await statusOf(page, 'shot-draft')) === 'ready', 'Resume finished it', await cards(page));
   }
 
+  console.log('(i) a stored picture is drawn again after a reload');
+  await page.evaluate(async () => {
+    const pid = window.StudioStore.currentProjectId();
+    const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='), (c) => c.charCodeAt(0));
+    const blob = new Blob([png], { type: 'image/png' });
+    const db = await new Promise((res, rej) => { const r = indexedDB.open('fms-ai-drafts', 1); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    await new Promise((res, rej) => {
+      const t = db.transaction('drafts', 'readwrite');
+      t.objectStore('drafts').put({ projectId: pid, runId: 'run_zzproofpic', key: 'board-frames', taskId: 'board-frames', label: 'Storyboard frames',
+        ctx: {}, wave: 2, parents: [], status: 'ready', order: 0, createdAt: new Date(Date.now() + 60000).toISOString(), endedAt: new Date().toISOString(), ms: 10,
+        result: { items: [{ id: 'sc1-x', shotId: 'sc1-x', label: '1.1', blob, image: 'blob:' + location.origin + '/dead-0000', alt: 'Shot 1.1', text: 'Shot 1.1 · Pencil' }] }, error: null, model: 'img' });
+      t.oncomplete = res; t.onerror = () => rej(t.error);
+    });
+    db.close();
+  });
+  await openDrafts(page);
+  await page.click('#drafts [data-ds-run="run_zzproofpic"] [data-ds-key="board-frames"] [data-action="ds-review"]');
+  await page.waitForSelector('aside.ai-desk:not([hidden]) img.ai-desk-pic', { timeout: 8000 }).catch(() => {});
+  const pic = await page.evaluate(async () => {
+    const img = document.querySelector('aside.ai-desk img.ai-desk-pic');
+    if (!img) return null;
+    if (!img.complete) await new Promise((r) => { img.onload = img.onerror = r; });
+    return { src: img.src, w: img.naturalWidth };
+  });
+  ok(pic && /^blob:/.test(pic.src) && !/dead-0000/.test(pic.src) && pic.w > 0, 'Review after a reload draws the stored picture from its Blob (a fresh object URL)', pic);
+  await page.click('aside.ai-desk [data-action="ai-desk-skip"]').catch(() => {});
+  await page.waitForTimeout(300);
+
+  console.log('(j) a lapsed plan keeps its drafts, but cannot apply them');
+  aiScenario('no-ai', 'tok-amy');
+  await openDrafts(page);
+  const locked = await page.evaluate(() => {
+    const ready = [...document.querySelectorAll('#drafts .ds-card[data-ds-status="ready"]')];
+    return { ready: ready.length, accept: ready.filter((c) => c.querySelector('[data-action="ds-accept"],[data-action="ds-review"]')).length,
+      reject: ready.filter((c) => c.querySelector('[data-action="ds-reject"]')).length, notice: !!document.querySelector('#drafts .ds-locked') };
+  });
+  ok(locked.notice && locked.ready > 0 && locked.accept === 0 && locked.reject === locked.ready, 'locked: no Review or Accept all on a ready card, Reject stays', locked);
+  aiScenario('pro', 'tok-amy');
+  await openDrafts(page);
+
   console.log('(h) 390px');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(500);

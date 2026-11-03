@@ -77,6 +77,9 @@ export function openFailedSentence(err) {
 /** "This pass closes in …" for `ms` left. */
 export function expiryText(ms) {
   if (ms <= 0) return 'This pass has expired.';
+  /* Under a minute ROUNDS to 0, and "closes in 0 minutes" reads as
+     already closed while the room is still open (QA r3 G-4). */
+  if (ms < 60000) return 'This pass closes in less than a minute.';
   const m = Math.round(ms / 60000);
   if (m < 60) return `This pass closes in ${m} minute${m === 1 ? '' : 's'}.`;
   const hrs = Math.round(m / 60);

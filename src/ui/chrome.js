@@ -192,12 +192,45 @@ function ensureToastHost(assertive) {
   }
   host.setAttribute('aria-atomic', 'true');
   document.body.appendChild(host);
+  /* THE TWO HOSTS SHARE ONE CORNER, so the alert host stands on top of
+     the polite one instead of over it. Both are fixed at the same
+     bottom/right (and every override — the action bar, the AI Desk,
+     the notes dock — moves both alike), so without this an error
+     painted straight over an "Undo" toast in the polite host and the
+     only route back to a removed cut sat under it (QA r3 G-1). The
+     polite host's height is MEASURED, never assumed (a two-line toast
+     is taller), and published on <html> — outside the observed
+     subtree, so there is no loop. Read by chrome.css as the alert
+     host's margin-bottom, which composes with any bottom rule. */
+  if (!assertive && typeof ResizeObserver === 'function') {
+    const publish = () => {
+      const hgt = host.getBoundingClientRect().height;
+      const gap = parseFloat(getComputedStyle(host).rowGap) || 0;
+      document.documentElement.style.setProperty('--toast-polite-h', hgt > 0 ? (hgt + gap) + 'px' : '0px');
+    };
+    new ResizeObserver(publish).observe(host);
+  }
   return host;
 }
 
 StudioUI.toast = function (msg, opts) {
   opts = opts || {};
   const host = ensureToastHost(opts.type === 'error');
+  /* THE SAME NOTICE TWICE IS SHOWN ONCE. Pressing Add six times with a
+     bad timecode stacked six identical errors up the corner, over the
+     page and over any Undo beside them (QA r3 G-1). A plain notice
+     (no action) whose text and type match one still on screen restarts
+     that one's countdown instead of adding another. A toast with an
+     action is never merged: each Undo undoes its own change. */
+  if (!(opts.action && typeof opts.onAction === 'function')) {
+    const cls = 'toast' + (opts.type ? ' ' + opts.type : '');
+    for (const old of host.children) {
+      if (old._fmsAgain && old.className.replace(/\s*\bshow\b/, '') === cls &&
+          old.querySelector('.toast-msg')?.textContent === String(msg)) {
+        return old._fmsAgain();
+      }
+    }
+  }
   const t = document.createElement('div');
   t.className = 'toast' + (opts.type ? ' ' + opts.type : '');
   const ms = document.createElement('span');
@@ -238,6 +271,7 @@ StudioUI.toast = function (msg, opts) {
   function dismiss() {
     clearTimeout(timer);
     timer = null;
+    t._fmsAgain = null;           /* leaving: a repeat gets a fresh toast */
     t.classList.remove('show');
     setTimeout(() => { try { host.removeChild(t); } catch (e) {} }, 180);   /* --speed-exit + a frame */
   }
@@ -271,7 +305,18 @@ StudioUI.toast = function (msg, opts) {
   t.addEventListener('focusin', pause);
   t.addEventListener('focusout', start);
   start();
-  return { dismiss };
+  const handle = { dismiss };
+  /* The repeat: the full countdown again, unless the reader is on it
+     (paused), in which case leaving it restarts the full one. */
+  t._fmsAgain = () => {
+    const paused = !timer && remaining > 0 && t.matches(':hover, :focus-within');
+    clearTimeout(timer);
+    timer = null;
+    remaining = duration;
+    if (!paused) start();
+    return handle;
+  };
+  return handle;
 };
 
 StudioUI.toastSuccess = (m, o) => StudioUI.toast(m, Object.assign({ type: 'success' }, o || {}));

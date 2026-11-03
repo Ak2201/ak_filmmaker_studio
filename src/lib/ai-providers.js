@@ -92,7 +92,10 @@ export const PROVIDERS = [
     models: [
       { id: 'claude-sonnet-5', label: 'Sonnet 5', hint: 'quick — the default' },
       { id: 'claude-opus-5',   label: 'Opus 5',   hint: 'slower, more considered' }
-    ]
+    ],
+    /* Tried, in order, when the chosen model is overloaded or missing
+       (callModel in ai.js). Not offered in the picker. */
+    fallbackModels: []
   },
   {
     id: 'gemini',
@@ -124,6 +127,13 @@ export const PROVIDERS = [
        404 / "model not found", this id is the one line to change. */
     imageModels: [
       { id: 'gemini-2.5-flash-image', label: 'Gemini 2.5 Flash Image' }
+    ],
+    /* Tried, in order, when the chosen model answers 503 "overloaded"
+       (Google's capacity is per model, so the previous Flash is often
+       free while the newest is not — owner report, 4 Nov 2026: every
+       Run on 3.8 Flash said "overloaded"). Not offered in the picker. */
+    fallbackModels: [
+      { id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash' }
     ]
   }
 ];
@@ -237,6 +247,25 @@ export function imageModel(id) {
 export function imageModelLabel(id) {
   const list = provider(id).imageModels || [];
   return list.length ? list[0].label : '';
+}
+
+/** Models to try after `model`, in order: the provider's own fallbacks,
+    then the other models it lists. Never repeats `model`. */
+export function fallbackModels(model, id) {
+  const p = provider(id);
+  const seen = new Set([model]);
+  const out = [];
+  for (const m of [...(p.fallbackModels || []), ...(p.models || [])]) {
+    if (m && !seen.has(m.id)) { seen.add(m.id); out.push(m); }
+  }
+  return out;
+}
+
+/** The label a person reads for a model id (its own id if unknown). */
+export function modelLabel(model, id) {
+  const p = provider(id);
+  const m = [...(p.models || []), ...(p.fallbackModels || [])].find((x) => x.id === model);
+  return m ? m.label : String(model || '');
 }
 
 export function getModel(id) {

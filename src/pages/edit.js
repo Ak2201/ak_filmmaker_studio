@@ -48,6 +48,22 @@ import { mountStageGuide } from '../ui/stage-guide.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
 import { pageHeader, statCard, statStrip, notice, button, check, field, meter, panel, badge } from '../ui/kit/index.js';
 
+/* The no-AI twin (docs/RULES-BREAKDOWN.md lane B): a plain button that opens the
+   Desk on a `local: true` task. No key, no Pro, never aiUnlocked(): the page is
+   already walled by its own module. The ctx is read at the click. */
+const rulesCtx = new WeakMap();
+function rulesButton(label, task, ctx, icon, title) {
+  const b = button({ label, icon, size: 'sm', action: 'rules-desk', title });
+  b.dataset.rulesTask = task;
+  rulesCtx.set(b, ctx);
+  return b;
+}
+delegate(document, 'click', '[data-action="rules-desk"]', (e, el) => {
+  import('../ui/ai-desk.js')
+    .then((D) => D.openDesk(el.dataset.rulesTask, rulesCtx.get(el) || {}))
+    .catch((err) => console.warn('[rules] the Desk did not load', err));
+});
+
 const app = document.getElementById('app');
 
 /* Which rows are showing. In memory only, like shoot.js's open day:
@@ -514,9 +530,12 @@ function render(focus) {
   tools.append(nav);
   /* The AI Desk's 'edit-notes' task: drafts notes for scenes that have
      none; Accept fills only notes still empty, Undo takes back only those. */
+  const editCtx = () => ({ secondsOf: () => secondsByScene(Scenes.listScenes()), after: () => render(), say: (m) => StudioUI.toast(m) });
+  tools.append(rulesButton('Draft notes', 'edit-notes-rules', editCtx, 'edit_note',
+    'Notes for scenes that have none, from the set\u2019s marks and the logs, on this device. No AI.'));
   tools.append(aiPill({
-    label: 'Edit notes', tasks: ['edit-notes'],
-    ctx: () => ({ secondsOf: () => secondsByScene(Scenes.listScenes()), after: () => render(), say: (m) => StudioUI.toast(m) })
+    label: 'Enhance with AI', tasks: [{ id: 'edit-notes', label: 'Edit notes' }],
+    ctx: editCtx
   }));
   tools.append(button({
     label: 'Copy pick-up list', icon: 'content_copy',

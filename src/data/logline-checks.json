@@ -1,0 +1,41 @@
+{
+  "_about": "Word lists and bands for the no-AI logline checklist (src/lib/rules-story.js loglineCheck). English words only: a logline in another script is length-, sentence- and question-checked and the word checks say so. A checklist of the writer's own words, never a score. Add a word here, not in code.",
+  "bands": { "words": { "min": 15, "max": 40 }, "names": { "max": 2 }, "sentences": { "max": 1 }, "spanWords": 4 },
+  "roles": [
+    "detective", "cop", "officer", "inspector", "lawyer", "doctor", "nurse", "teacher", "professor", "student",
+    "mother", "father", "mom", "dad", "wife", "husband", "son", "daughter", "sister", "brother", "grandmother", "grandfather",
+    "girl", "boy", "woman", "man", "child", "kid", "teenager", "widow", "orphan", "farmer", "fisherman", "driver", "singer",
+    "actor", "actress", "director", "writer", "painter", "artist", "thief", "soldier", "journalist", "reporter", "priest",
+    "king", "queen", "prince", "princess", "warrior", "assassin", "gangster", "smuggler", "villager", "couple", "friends",
+    "family", "stranger", "survivor", "refugee", "worker", "clerk", "chef", "cook", "mechanic", "pilot", "captain", "ghost",
+    "hero", "heroine", "boxer", "athlete", "coach", "musician", "dancer", "scientist", "engineer", "banker", "politician"
+  ],
+  "goal": [
+    "must", "wants to", "want to", "needs to", "need to", "has to", "have to", "sets out to", "set out to", "tries to",
+    "try to", "determined to", "hopes to", "hope to", "decides to", "decide to", "vows to", "vow to", "fights to",
+    "fight to", "struggles to", "struggle to", "races to", "race to", "seeks to", "seek to", "dreams of", "longs to",
+    "long to", "plans to", "plan to", "sets out", "searches for", "search for", "looks for", "look for", "goes to",
+    "go to", "attempts to", "attempt to", "strives to", "strive to", "returns to", "return to", "wants", "needs"
+  ],
+  "obstacle": [
+    "but", "however", "until", "unless", "although", "though", "despite", "while", "when", "after", "forced to",
+    "force to", "forces", "blocks", "blocked", "stands in", "standing in", "against", "threatens", "threatened",
+    "only to", "faces", "face", "confronts", "confront", "must overcome", "stops", "stopped", "refuses", "refuse",
+    "betrays", "betrayed", "hunted by", "hunted", "trapped", "caught between", "opposed by", "opposes", "enemy",
+    "rival", "obstacle", "barrier", "standing between"
+  ],
+  "stakes": [
+    "or else", "or lose", "or die", "before it's too late", "before time runs out", "before", "lose", "loses", "lost",
+    "die", "dies", "death", "kill", "killed", "everything", "forever", "life", "lives", "survive", "survival", "save",
+    "saves", "rescue", "destroy", "destroyed", "doom", "ruin", "risk", "risks", "at stake", "last chance", "threat",
+    "future", "world", "home", "family", "love", "freedom", "honour", "honor", "dream", "dreams", "only chance",
+    "running out", "deadline", "ticking", "price"
+  ],
+  "phrases": [
+    "a story about", "the story of", "a story of", "this is a story", "this story is about", "a film about",
+    "a movie about", "this film is about", "this movie is about", "this film", "this movie", "a tale of", "the tale of"
+  ],
+  "properNameIgnore": [
+    "I", "I'm", "I'll", "I've", "I'd", "Mr", "Mrs", "Ms", "Dr", "Sir"
+  ]
+}

@@ -55,6 +55,22 @@ function loadLazy() {
 }
 import { toCSV, toSRT, REEL_MINUTES } from '../lib/dialogue-list.js';
 
+/* The no-AI twin (docs/RULES-BREAKDOWN.md lane B): a plain button that opens the
+   Desk on a `local: true` task. No key, no Pro, never aiUnlocked(): the page is
+   already walled by its own module. The ctx is read at the click. */
+const rulesCtx = new WeakMap();
+function rulesButton(label, task, ctx, icon, title) {
+  const b = button({ label, icon, size: 'sm', action: 'rules-desk', title });
+  b.dataset.rulesTask = task;
+  rulesCtx.set(b, ctx);
+  return b;
+}
+delegate(document, 'click', '[data-action="rules-desk"]', (e, el) => {
+  import('../ui/ai-desk.js')
+    .then((D) => D.openDesk(el.dataset.rulesTask, rulesCtx.get(el) || {}))
+    .catch((err) => console.warn('[rules] the Desk did not load', err));
+});
+
 const app = document.getElementById('app');
 
 /* In memory, like every other page's view state. */
@@ -374,7 +390,11 @@ function certificationPanel(build) {
   sec.append(h('p.dv-cert-disclaimer', { role: 'note', text: Cbfc.DISCLAIMER }));
   /* The AI Desk's 'cert-read' task: a read of the rules that fired, from
      rule ids and scene numbers only. A hint, not advice; it changes nothing. */
-  sec.append(h('p.dv-cert-ai', {}, [aiPill({ label: 'Certification read', tasks: ['cert-read'], ctx: () => ({}) })]));
+  sec.append(h('p.dv-cert-ai', {}, [
+    rulesButton('Read the flags', 'cert-read-rules', () => ({ say: (m) => StudioUI.toast(m) }), 'fact_check',
+      'The rating hint, each rule that fired with its own text and source, and what to have in place. A hint, not advice. No AI.'),
+    aiPill({ label: 'Enhance with AI', tasks: [{ id: 'cert-read', label: 'Certification read' }], ctx: () => ({}) })
+  ]));
 
   const scenes = listScenes();
   const elements = loadScript().elements;

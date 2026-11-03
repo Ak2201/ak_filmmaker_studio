@@ -82,9 +82,16 @@ function renderHeader(scenes) {
        + 'the sides, the shot list and the call sheet all read from this, so it '
        + 'is the only place any of it gets typed.',
     actions: scenes.length ? [
+      /* Leads with the rules: Auto-Tag reads the script on this device, no key
+         and no AI plan; the AI task beside it only enhances (docs/RULES-BREAKDOWN.md C4).
+         Follows its own module through plan-gate, never aiUnlocked(). */
+      PlanGate.isDisabledEverywhere('auto-tag') ? null : button({
+        label: 'Auto-Tag (no AI)', href: '#suggest', variant: 'primary', class: 'bd-autotag-lead',
+        title: 'Suggest the actors, props, vehicles, stunts and sounds from the script, on this device'
+      }),
       aiPill({
         label: 'AI Desk',
-        tasks: [{ id: 'scene-notes', label: 'Scene notes' }, { id: 'breakdown-tags', label: 'Breakdown tags' },
+        tasks: [{ id: 'scene-notes', label: 'Scene notes' }, { id: 'breakdown-tags', label: 'Enhance tags with AI' },
                 { id: 'genre-comps', label: 'Genre and comparables' }],
         ctx: { elements: () => loadScript().elements, after: () => render() }
       }),

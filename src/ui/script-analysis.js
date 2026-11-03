@@ -27,7 +27,7 @@
    ============================================================ */
 import '../styles/story-pacing.css';
 import '../styles/script-analysis.css';
-import { h } from '../lib/dom.js';
+import { h, delegate } from '../lib/dom.js';
 import { beatBasisText } from '../lib/beat-basis.js';
 import { formatPages } from '../lib/script.js';
 import { printedPages } from '../lib/paginate.js';
@@ -42,6 +42,23 @@ import { SIMULATED_LINE, SCORE_MIN, SCORE_MAX } from '../lib/audience-model.js';
 import { currentProject } from '../lib/store.js';
 import { panel, statStrip, table, notice, button, emptyState } from './kit/index.js';
 import { aiPill } from './ai-pill.js';
+import StudioUI from './chrome.js';
+
+/* The no-AI twin (docs/RULES-BREAKDOWN.md lane B): a plain button that opens the
+   Desk on a `local: true` task. No key, no Pro, never aiUnlocked(). The ctx is
+   read at the click. */
+const rulesCtx = new WeakMap();
+function rulesButton(label, task, ctx, icon, title) {
+  const b = button({ label, icon, size: 'sm', action: 'rules-desk', title });
+  b.dataset.rulesTask = task;
+  rulesCtx.set(b, ctx);
+  return b;
+}
+delegate(document, 'click', '[data-action="rules-desk"]', (e, el) => {
+  import('./ai-desk.js')
+    .then((D) => D.openDesk(el.dataset.rulesTask, rulesCtx.get(el) || {}))
+    .catch((err) => console.warn('[rules] the Desk did not load', err));
+});
 
 const NS = 'http://www.w3.org/2000/svg';
 const svgEl = (tag, attrs = {}) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
@@ -544,10 +561,13 @@ export function renderAnalysis(opts = {}) {
   try { story = loadStory(); } catch (e) { story = null; }
   const scenes = listScenes();
   const a = analyseScript({ elements, scenes, story, format: format(), targetPages: typeof opts.getTargetPages === 'function' ? opts.getTargetPages() : 0 });
+  const deskCtx = () => ({ getDoc: opts.getDoc, save: opts.save, elements: () => ((opts.getDoc && opts.getDoc()) || {}).elements, after: () => { if (typeof opts.refresh === 'function') opts.refresh(); } });
+  const measured = rulesButton('Measured notes', 'tension-notes-rules', () => ({ ...deskCtx(), say: (m) => StudioUI.toast(m) }), 'assessment',
+    'The measurements below, as notes you can keep. Worded as measurements, with their numbers. No AI.');
   const ai = aiPill({
-    label: 'AI',
+    label: 'Enhance with AI',
     tasks: [{ id: 'tension-notes', label: 'Notes on tension and arcs' }, { id: 'coverage', label: 'Coverage report' }, { id: 'scene-notes', label: 'Scene notes' }, { id: 'audience-test', label: 'Audience test' }],
-    ctx: () => ({ getDoc: opts.getDoc, save: opts.save, elements: () => ((opts.getDoc && opts.getDoc()) || {}).elements, after: () => { if (typeof opts.refresh === 'function') opts.refresh(); } })
+    ctx: deskCtx
   });
   const head = h('div.sa-head', {}, [
     h('div.sa-head-copy', {}, [
@@ -556,6 +576,7 @@ export function renderAnalysis(opts = {}) {
     ]),
     h('div.sa-head-acts', {}, [
       opts.onBreakdown ? button({ label: 'Break down everything', icon: 'auto_awesome', size: 'sm', action: 'sc-pipeline' }) : null,
+      measured,
       ai
     ].filter(Boolean))
   ]);

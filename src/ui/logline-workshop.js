@@ -28,9 +28,10 @@
    imports none of the model code: the pill loads the Desk at a click,
    and the Desk loads ai.js.
    ============================================================ */
-import { h } from '../lib/dom.js';
+import { h, delegate } from '../lib/dom.js';
 import { flushAutosave } from '../lib/autosave.js';
 import { aiPill } from './ai-pill.js';
+import { button } from './kit/index.js';
 import StudioUI from './chrome.js';
 import { loglineAltsOf } from '../lib/ai-writing-apply.js';
 import '../styles/coverage.css';
@@ -79,13 +80,27 @@ function renderAlts(s, opts) {
   return h('div.st-lw-kept', {}, [h('h4.st-sub', { text: 'Kept variants' }), list]);
 }
 
+const checkOpts = new WeakMap();   // button -> the options its panel was drawn with
+delegate(document, 'click', '[data-action="lw-check-rules"]', (e, btn) => {
+  const o = checkOpts.get(btn) || {};
+  flushAutosave();   // a debounced keystroke must not be missed by the read
+  import('./ai-desk.js')
+    .then((D) => D.openDesk('logline-rules', {
+      identity: 'logline-rules',
+      getLogline: () => liveLogline(o.getStory),
+      getStory: o.getStory,
+      format: o.format
+    }))
+    .catch((err) => console.warn('[logline-workshop] the Desk did not load', err));
+});
+
 /** The panel. `opts` { getStory, setLogline, setLoglineAlts, format } from story.js. */
 export function renderLoglineWorkshop(s, opts = {}) {
   const box = h('div.ai-panel.st-lw', { 'aria-label': 'Logline workshop' });
   box.append(h('div.ai-head', {}, [h('h3.ai-title', { text: 'Logline workshop' })]));
   box.append(h('p.st-muted', { text: 'A check of your logline for protagonist, goal, obstacle, stakes and irony — quoting only your words — and five variants to take or leave.' }));
   const pill = aiPill({
-    label: 'Workshop my logline',
+    label: 'Enhance with AI',
     tasks: ['logline'],
     ctx: () => {
       flushAutosave();   // a debounced keystroke must not land on top of a variant
@@ -99,7 +114,15 @@ export function renderLoglineWorkshop(s, opts = {}) {
       };
     }
   });
-  if (pill) box.append(h('div.ai-acts', {}, [pill]));
+  /* The rules twin (docs/RULES-BREAKDOWN.md C2): a checklist of the writer's
+     own words, no key and no plan, nothing sent. The local Desk task
+     `logline-rules`, opened at the click; never behind aiUnlocked(). */
+  const check = button({
+    label: 'Check without AI', size: 'sm', action: 'lw-check-rules', icon: 'rule',
+    title: 'Length, one sentence, protagonist, goal, obstacle, stakes, names: checked by rule against your own words'
+  });
+  checkOpts.set(check, opts);
+  box.append(h('div.ai-acts', {}, [check, pill].filter(Boolean)));
   const kept = renderAlts(s, opts);
   if (kept) box.append(kept);
   if (!String((s && s.logline) || '').trim()) {

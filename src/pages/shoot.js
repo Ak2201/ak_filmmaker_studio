@@ -71,6 +71,22 @@ import { pageHeader, statCard, statStrip, meter, button, chip, field, panel } fr
 import { sym } from '../ui/kit/util.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
 
+/* The no-AI twin (docs/RULES-BREAKDOWN.md lane B): a plain button that opens the
+   Desk on a `local: true` task. No key, no Pro, never aiUnlocked(): the page is
+   already walled by its own module. The ctx is read at the click. */
+const rulesCtx = new WeakMap();
+function rulesButton(label, task, ctx, icon, title) {
+  const b = button({ label, icon, size: 'sm', action: 'rules-desk', title });
+  b.dataset.rulesTask = task;
+  rulesCtx.set(b, ctx);
+  return b;
+}
+delegate(document, 'click', '[data-action="rules-desk"]', (e, el) => {
+  import('../ui/ai-desk.js')
+    .then((D) => D.openDesk(el.dataset.rulesTask, rulesCtx.get(el) || {}))
+    .catch((err) => console.warn('[rules] the Desk did not load', err));
+});
+
 const app = document.getElementById('app');
 
 /* The open day. Held in memory only: which day somebody is looking
@@ -357,7 +373,10 @@ function render(focus) {
     title: 'Day ' + pad(day.day) + '.',
     sub: day.date ? niceDate(day.date) : 'This day has no date yet — set one on the Plan’s calendar and the page can find it on the morning.',
     meta: isToday ? [h('span.sd-live', {}, [h('span.sd-dot.is-live', { 'aria-hidden': 'true' }), h('span', { text: 'Today' })])] : [],
-    actions: [aiPill({ label: 'Wrap summary', tasks: ['day-wrap-summary'], ctx: () => ({ day: day.day }) }), sheet
+    actions: [
+      rulesButton('Wrap note', 'day-wrap-summary-rules', () => ({ day: day.day, say: (m) => StudioUI.toast(m) }), 'rule',
+        'The day\u2019s marks, takes and floor notes as a wrap note, on this device. No AI.'),
+      aiPill({ label: 'Enhance with AI', tasks: [{ id: 'day-wrap-summary', label: 'Wrap summary' }], ctx: () => ({ day: day.day }) }), sheet
       ? button({ label: 'View call sheet', icon: 'description', href: 'contacts.html?sheet=' + encodeURIComponent(sheet.id) + '#call-sheets',
           attrs: { title: 'Open ' + (sheet.title || 'the call sheet') + ' on Call sheets' } })
       : button({ label: 'Make the call sheet', icon: 'description', variant: 'ghost', href: 'contacts.html?day=' + day.day + '#call-sheets' })]

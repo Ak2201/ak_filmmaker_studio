@@ -427,9 +427,13 @@ function renderControls() {
     h('div.sb-seg', {}, [h('span.sb-seg-lab', { text: 'Group by', 'aria-hidden': 'true' }), seg]),
     h('div.sb-acts.pdf-menu-host', {}, [
       button({ label: 'Schedule by location', icon: 'auto_awesome', action: 'sb-auto', class: 'sb-btn' }),
+      /* Plan days (shoot-order-rules, src/lib/local-tasks-preprod.js): the
+         no-AI plan, in the Desk's own tick list, with no key and no plan
+         check beyond this page's. Written only on Accept, by placeScene(). */
+      button({ label: 'Plan days', action: 'sb-plan-days', class: 'sb-btn', title: 'Plan shoot days by rules, no AI' }),
       /* The AI Desk's day order (shoot-order, src/lib/ai-tasks-preprod.js):
          a draft to tick, written only on Accept, by placeScene(). */
-      aiPill({ label: 'Suggest day order', tasks: ['shoot-order'], ctx: () => ({ say: (m) => toast(m), after: render }) }),
+      aiPill({ label: 'Enhance with AI', tasks: ['shoot-order'], ctx: () => ({ say: (m) => toast(m), after: render }) }),
       exportMenu,
       /* The destructive one stands apart from the action it undoes (it
          sat touching "Schedule by location"). It stays pressable when no
@@ -1041,6 +1045,10 @@ function fillLock() {
     ].filter(Boolean));
   }).catch((e) => console.warn('[stripboard] lock state', e));
 }
+
+delegate(document, 'click', '[data-action="sb-plan-days"]', () => {
+  import('../ui/ai-desk.js').then((D) => D.openDesk('shoot-order-rules', { say: (m) => toast(m), after: render }));
+});
 
 delegate(document, 'click', '[data-action="sb-unlock"]', async () => {
   let U;

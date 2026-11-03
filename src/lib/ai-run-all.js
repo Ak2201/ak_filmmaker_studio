@@ -55,6 +55,10 @@ const nap = (ms, signal) => new Promise((resolve) => {
 });
 
 /* ---- what the engine leans on, injectable for Node tests ----------- */
+async function readCareful() {
+  try { const P = await import('./chrome-prefs.js'); return !!P.readAiCareful(); } catch (e) { return false; }
+}
+
 async function envOf(deps = {}) {
   const tasks = deps.tasks
     || await import('./ai-tasks.js').then((m) => m.loadTasks());
@@ -66,7 +70,11 @@ async function envOf(deps = {}) {
     drafts: deps.drafts || null,
     concurrency: Math.max(1, Math.floor(Number(deps.concurrency)) || CONCURRENCY),
     retryDelayMs: deps.retryDelayMs == null ? RETRY_DELAY_MS : deps.retryDelayMs,
-    careful: !!deps.careful,
+    /* The Desk's Careful switch (L0's effort ladder, ai-effort.js
+       taskEffort): read ONCE per run, because effort is part of each
+       task's prompt-cache key and must not change between its batches.
+       Tests pass `careful` explicitly. */
+    careful: deps.careful == null ? await readCareful() : !!deps.careful,
     unlocked: deps.unlocked
   };
 }

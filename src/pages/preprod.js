@@ -191,6 +191,17 @@ function mountDrafts() {
   const load = () => import('../ui/draft-space.js').then((m) => m.mountDraftSpace(host))
     .catch((e) => { console.warn('[preprod] draft space', e); });
   if (draftsWatch) { draftsWatch.disconnect(); draftsWatch = null; }
+  /* No film open: nothing to draft, so no AI code is fetched at all and
+     the section says so itself (the same words draft-space.js prints).
+     This is also what keeps the engine out of the signed-out first
+     paint the gate budgets. */
+  let pid = '';
+  try { pid = String(Store.currentProjectId() || ''); } catch (e) { pid = ''; }
+  if (!pid && !draftsSeen) {
+    if (!host.querySelector('.ds-nofilm')) host.append(h('p.pp-facts.ds-nofilm', { text: 'Open a film first: its drafts appear here.' }));
+    return;
+  }
+  host.querySelector('.ds-nofilm')?.remove();
   if (draftsSeen || hashId() === 'drafts' || typeof IntersectionObserver !== 'function') { draftsSeen = true; load(); return; }
   draftsWatch = new IntersectionObserver((seen) => {
     if (!seen.some((x) => x.isIntersecting)) return;

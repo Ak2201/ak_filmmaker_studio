@@ -22,11 +22,9 @@
    the latest runs are listed again; a run that was cut short (the tab
    closed) shows Resume, which runs only what had not finished.
 
-   LAZY, and so are the engine modules. They are reached through
-   import.meta.glob, not a bare import(): a build without them (a lane
-   built before the engine was merged) still builds, and this section
-   then says that Run all is not in this build instead of failing.
-   Once they exist the glob is an ordinary lazy chunk.
+   LAZY, and so are the engine modules: a plain dynamic import(), so
+   the engine is its own chunk and stays out of preprod.html's first
+   paint (it was an import.meta.glob while the lanes built apart).
 
    Pro only: aiUnlocked() fails closed, and the engine asks again.
    ============================================================ */
@@ -39,17 +37,14 @@ import { button, badge } from './kit/index.js';
 import '../styles/ai.css';
 import '../styles/draft-space.css';
 
-const ENGINE = import.meta.glob([
-  '../lib/ai-run-all.js', '../lib/ai-run-all-model.js', '../lib/ai-drafts.js', '../lib/ai-headless-ctx.js'
-]);
 let engineP = null;
 function engine() {
   if (!engineP) {
-    const need = ['../lib/ai-run-all.js', '../lib/ai-run-all-model.js', '../lib/ai-drafts.js', '../lib/ai-headless-ctx.js'];
-    engineP = need.every((k) => typeof ENGINE[k] === 'function')
-      ? Promise.all(need.map((k) => ENGINE[k]())).then(([run, model, drafts, headless]) => ({ run, model, drafts, headless }))
-      : Promise.resolve(null);
-    engineP = engineP.catch((e) => { console.warn('[draft-space] the engine did not load', e); engineP = null; return null; });
+    engineP = Promise.all([
+      import('../lib/ai-run-all.js'), import('../lib/ai-run-all-model.js'),
+      import('../lib/ai-drafts.js'), import('../lib/ai-headless-ctx.js')
+    ]).then(([run, model, drafts, headless]) => ({ run, model, drafts, headless }))
+      .catch((e) => { console.warn('[draft-space] the engine did not load', e); engineP = null; return null; });
   }
   return engineP;
 }
@@ -160,7 +155,7 @@ function head() {
 
 function controls() {
   if (!S.pid) return [h('p.pp-facts', { text: 'Open a film first: its drafts appear here.' })];
-  if (S.missing) return [h('p.pp-facts', { text: 'Run all is not in this build yet.' })];
+  if (S.missing) return [h('p.pp-facts', { text: 'Run all could not load. Reload the page to try again.' })];
   if (!S.E) return [h('p.pp-facts', { text: 'Loading the AI tools…' })];
   if (!PlanGate.aiUnlocked()) {
     return [h('div.ds-locked', {}, [

@@ -115,6 +115,10 @@ function excerpt(t, n = 7) {
   const w = clean(t).split(' ');
   return '"' + w.slice(0, n).join(' ').replace(/[,;:—–-]+$/, '') + (w.length > n ? '…' : '') + '"';
 }
+/* A description that ends on a quoted excerpt takes a full stop only
+   when the quote did not already close a sentence: 'Ravi sleeps.'
+   must not print as "Ravi sleeps.". (QA r3 E-1). */
+const sentence = (s) => /[.!?…]["”]?$/.test(s) ? s : s + '.';
 const OFFSCREEN = /\((?:[^)]*\b(?:V\.?\s?O|O\.?\s?S|O\.?\s?C)\b[^)]*)\)/i;
 // Not \b: "RAGAVAN'S" must become "Ragavan's", not "Ragavan'S".
 const titleCase = (s) => s.toLowerCase().replace(/(^|[\s,(/-])(\p{L})/gu, (m, a, c) => a + c.toUpperCase());
@@ -310,13 +314,13 @@ export function shotsForScene(job) {
       moves++;
       push(P.move, '', {
         size: 'LS', movement: 'track',
-        description: 'Tracking with ' + (named || lastNamed || 'the action') + ' — ' + excerpt(text, 9) + '.'
+        description: sentence('Tracking with ' + (named || lastNamed || 'the action') + ' — ' + excerpt(text, 9))
       });
     } else if (moves < 2 && FIGHT.test(text)) {
       moves++;
       push(P.move, '', {
         size: 'MS', movement: 'handheld',
-        description: 'Handheld, in the fight — ' + excerpt(text, 9) + '.'
+        description: sentence('Handheld, in the fight — ' + excerpt(text, 9))
       });
     } else if (povs < 2 && LOOK.test(text) && !NO_LOOK.test(text.slice(0, text.match(LOOK).index))) {
       povs++;
@@ -327,8 +331,8 @@ export function shotsForScene(job) {
       push(P.pov, '', {
         size: 'MS',
         description: seen.split(' ').length >= 2 && !/^(it|him|her|them|me|us)\b/i.test(seen)
-          ? 'POV — what ' + who + ' sees: ' + excerpt(seen, 8) + '.'
-          : 'POV — from ' + excerpt(text, 9) + '.'
+          ? sentence('POV — what ' + who + ' sees: ' + excerpt(seen, 8))
+          : sentence('POV — from ' + excerpt(text, 9))
       });
     }
   }
@@ -356,8 +360,8 @@ export function shotsForScene(job) {
     const first = els.find((x) => x.type === 'action');
     const subject = cast[0] || lastNamed;
     push(P.filler, 'filler', subject
-      ? { size: 'MS', description: 'MS on ' + subject + (first ? ' — ' + excerpt(first.text, 9) : '') + '.' }
-      : { size: 'MS', description: 'Closer on the action' + (first ? ' — ' + excerpt(first.text, 9) : '') + '.' });
+      ? { size: 'MS', description: sentence('MS on ' + subject + (first ? ' — ' + excerpt(first.text, 9) : '')) }
+      : { size: 'MS', description: sentence('Closer on the action' + (first ? ' — ' + excerpt(first.text, 9) : '')) });
   }
 
   return clamp(out, capFor(job)).map((o) => o.shot);

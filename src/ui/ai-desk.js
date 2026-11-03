@@ -457,6 +457,7 @@ function answerSection(v) {
 /** A live card arrived: patch the answer in place. */
 function refreshAnswer() {
   if (!desk || !open || !sess) return;
+  if (historyOpen) return;   // the History is on screen: a card must not redraw it (it re-reads the project, and focus and scroll would go)
   const v = sess.versions[sess.current];
   const host = desk.querySelector('.ai-desk-answer');
   if (!v || !host) { render(); return; }

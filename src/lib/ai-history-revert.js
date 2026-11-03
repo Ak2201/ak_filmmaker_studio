@@ -34,7 +34,7 @@ const blankOf = (f) => (f in BLANK ? (Array.isArray(BLANK[f]) ? [] : BLANK[f]) :
 function blanked(rec, fields, run) {
   const out = { ...rec };
   for (const f of fields) out[f] = blankOf(f);
-  const left = unstampFill(out, run);
+  const left = unstampFill(out, run, { mode: 'fill', fields });
   if (left.aiFill) out.aiFill = left.aiFill; else delete out.aiFill;
   return out;
 }

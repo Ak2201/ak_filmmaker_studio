@@ -195,13 +195,15 @@ export function filterAI(entries, { stage, task, edited } = {}) {
 
 /** What undoing these entries would do.
     { remove: [{kind,id,run}], blank: [{kind,id,fields,run}], kept, notUndoable }
-    kept = changed since the run (or filled again by a later run), left as they are;
+    kept = changed since the run, left as they are;
+    held = NOT changed but left anyway (scene rows and script lines, which the
+           generation job owns; a record a later run filled again);
     notUndoable = append / replace / earlier drafts: listed, never undone from here. */
 export function revertPlan(entries) {
-  const plan = { remove: [], blank: [], kept: 0, notUndoable: 0 };
+  const plan = { remove: [], blank: [], kept: 0, held: 0, notUndoable: 0 };
   for (const e of entries || []) {
     if (e.mode === 'append' || e.mode === 'replace' || e.legacy || !e.run) { plan.notUndoable += 1; continue; }
-    if (!e.undoable) { plan.kept += 1; continue; }
+    if (!e.undoable) { if (e.edited) plan.kept += 1; else plan.held += 1; continue; }
     if (e.mode === 'new') plan.remove.push({ kind: e.kind, id: e.id, run: e.run });
     else plan.blank.push({ kind: e.kind, id: e.id, fields: e.fields.slice(), run: e.run });
   }

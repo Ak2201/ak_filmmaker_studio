@@ -141,10 +141,10 @@ export function mountHistory(el, opts = {}) {
     const n = plan.remove.length + plan.blank.length;
     if (!n) return;
     const stay = plan.kept;
-    const cannot = plan.notUndoable;
+    const cannot = plan.notUndoable + plan.held;
     const body = [
       stay ? plural(stay, 'item you have changed stays', 'items you have changed stay') + ' as ' + (stay === 1 ? 'it is.' : 'they are.') : '',
-      cannot ? plural(cannot, 'item was', 'items were') + ' added to or rewritten and stays as it is.' : ''
+      cannot ? plural(cannot, 'item', 'items') + ' cannot be undone from here and ' + (cannot === 1 ? 'stays' : 'stay') + ' as ' + (cannot === 1 ? 'it is.' : 'they are.') : ''
     ].filter(Boolean).join(' ');
     const yes = await ask({ title: 'Undo ' + plural(n, 'AI-written item', 'AI-written items') + ' from this run?', body, confirm: 'Undo', cancel: 'Keep them' });
     if (!yes) return;

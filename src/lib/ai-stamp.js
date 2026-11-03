@@ -134,10 +134,22 @@ export function stampFill(kind, record, meta, fields, mode = 'fill') {
   return { ...record, aiFill: prev.concat(entry).slice(-FILL_CAP) };
 }
 
-/** The same record without the fill entry of `run` (an Undo of the run). */
-export function unstampFill(record, run) {
+/** The same record without the fill entries of `run` (an Undo of the run).
+    `only` ({ mode, fields }) narrows it to the entry being reverted: a run that
+    both filled and appended (a note's flags and its text) keeps the stamp of the
+    half that stays. `fields` drops an entry only when it names one of them. */
+export function unstampFill(record, run, only) {
   if (!record || !Array.isArray(record.aiFill)) return record;
-  const left = record.aiFill.filter((f) => !(f && f.run === run));
+  const hit = (f) => {
+    if (!(f && f.run === run)) return false;
+    if (!only) return true;
+    if (only.mode && (f.mode || 'fill') !== only.mode) return false;
+    if (Array.isArray(only.fields) && only.fields.length) {
+      return Array.isArray(f.fields) && f.fields.some((x) => only.fields.includes(x));
+    }
+    return true;
+  };
+  const left = record.aiFill.filter((f) => !hit(f));
   if (left.length === record.aiFill.length) return record;
   const out = { ...record };
   if (left.length) out.aiFill = left; else delete out.aiFill;

@@ -190,9 +190,18 @@ function unstampNoteRows(changes, m) {
   ScenesM.saveScenes(ScenesM.listScenes().map((r) => {
     const c = by.get(r.id);
     if (!c) return r;
-    const back = String(r.readerNote || '') === c.before
-      && Object.entries(c.filled || {}).every(([k, f]) => r[k] === f.was);
-    return back ? Stamp.unstampFill(r, m.run) : r;
+    let out = r;
+    if (c.after !== c.before) {
+      /* The append is gone when its text is no longer in the note (undoAppend took
+         it out, even past a line the writer typed after it); equality with
+         `before` would leave a badge on a note with no AI text in it. */
+      const base = String(c.before || '').replace(/\s+$/, '');
+      const added = String(c.after || '').slice(base.length);
+      if (!added.trim() || !String(r.readerNote || '').includes(added)) out = Stamp.unstampFill(out, m.run, { mode: 'append' });
+    }
+    const keys = Object.keys(c.filled || {});
+    if (keys.length && keys.every((k) => r[k] === c.filled[k].was)) out = Stamp.unstampFill(out, m.run, { mode: 'fill' });
+    return out;
   }));
 }
 /* A document the store just wrote, stamped and saved again (the stores
@@ -1178,7 +1187,9 @@ const synopsisTask = {
   },
   apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
-    const mem0 = recall('synopsis-script', result);
+    /* THIS run's memory only: a stopped run's kept cards carry none, and the
+       last finished run's synopsis and logline are not theirs to write. */
+    const mem0 = result && result.memo;
     const m = metaFor('synopsis-script', meta, mem0 && mem0.model);
     const mem = mem0;
     if (!mem) fail('There is no beat sheet to keep. Run it first.');

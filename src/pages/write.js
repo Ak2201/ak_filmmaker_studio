@@ -2511,6 +2511,16 @@ async function breakIntoShots() {
         made.push(Shots.addShot(sceneId, stamped).id);
       }
     }
+    /* A batch the AI failed on left its scenes with no shots; they get the basic
+       breakdown (what a whole failure always did), so none is silently empty. */
+    const failedIds = new Set(byAI && Array.isArray(result.failed) ? result.failed : []);
+    const fallbackJobs = jobs.filter((j) => failedIds.has(j.sceneId) && !result.byScene.has(j.sceneId));
+    if (fallbackJobs.length) {
+      const basic = await basicShotDivision(fallbackJobs);
+      for (const [sceneId, list] of basic.byScene) {
+        for (const draft of list) made.push(Shots.addShot(sceneId, { ...draft, rules: true }).id);
+      }
+    }
     decorateShotCounts();
     if (!made.length) {
       say('No shots came back. Nothing was added.');
@@ -2520,6 +2530,7 @@ async function breakIntoShots() {
     const sceneIds = new Set(addedScenes);
     shotsToast(made.length + (made.length === 1 ? ' shot' : ' shots') + ' added'
       + (byAI ? ' by ' + result.model : '')
+      + (fallbackJobs.length ? ' · ' + fallbackJobs.length + (fallbackJobs.length === 1 ? ' scene' : ' scenes') + ' the AI missed got the basic breakdown' : '')
       + (sceneIds.size ? ' · ' + sceneIds.size + (sceneIds.size === 1 ? ' scene' : ' scenes') + ' added to the Breakdown' : ''),
     () => {
       Shots.saveShots(Shots.listShots().filter((s) => !shotIds.has(s.id)));

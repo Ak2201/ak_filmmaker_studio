@@ -207,7 +207,7 @@ const note = (id) => STAMPED.add(id);
   eq(plan.remove.map((x) => x.id), ['sh1'], 'revertPlan: only the unchanged created shot is removed');
   eq(plan.blank.map((x) => [x.kind, x.id, x.fields]), [['shot', 'shB', ['cam']], ['scene', 'sc2', ['cutCandidate']]], 'revertPlan: a fill is blanked, naming the fields');
   eq(plan.notUndoable, 1, 'revertPlan: the append is counted as not undoable');
-  eq(plan.kept, 2, 'revertPlan: the edited shot and the one a later run filled stay (counted)');
+  eq([plan.kept, plan.held], [1, 1], 'revertPlan: the edited shot is "changed" (kept); the one a later run filled is held, not called changed');
   const sup = H.collectAI({ scenes: [Stamp.stampFill('scene', Stamp.stampFill('scene', Scenes.blankScene({ id: 'q', cutCandidate: true }), { task: 'a', run: 'A', at: at(1) }, ['cutCandidate'], 'fill'), { task: 'b', run: 'B', at: at(2) }, ['cutCandidate'], 'fill')] });
   ok(sup.find((e) => e.run === 'A').superseded && !sup.find((e) => e.run === 'A').undoable && !sup.find((e) => e.run === 'A').edited, 'collect: an older fill a later run filled again is superseded (history, not an undo, not "edited")');
   ok(sup.find((e) => e.run === 'B').undoable, 'collect: the newest fill is undoable');
@@ -346,6 +346,24 @@ const freshStudio = () => { mem.clear(); AI.setProvider('anthropic'); AI.setKey(
   ok(!('aiFill' in row) && row.readerNote === '' && row.cutCandidate === false, 'scene-notes: Undo takes the words, the flag and the stamp');
   note('scene-notes');
 
+  /* the writer typed after the AI line, then Undo: the AI text is gone, so is its stamp */
+  seed();
+  const undo2 = sn.apply([{ i: 0, note: 'Establishes want.', scene: '1' }], ctx, null, meta('scene-notes', 'run-sn2'));
+  Scenes.saveScenes(Scenes.listScenes().map((r) => ({ ...r, readerNote: r.readerNote + '\nMy own line.' })));
+  undo2();
+  row = Scenes.listScenes()[0];
+  ok(row.readerNote.includes('My own line.') && !row.readerNote.includes('Establishes want.'), 'scene-notes: Undo past a later typed line takes only the AI text');
+  ok(!('aiFill' in row), 'scene-notes: …and no stamp is left on a note with no AI text');
+
+  /* a run that filled AND appended: reverting the fill from the History keeps the append's stamp */
+  {
+    let r = Stamp.stampFill('scene', Scenes.blankScene({ id: 'z', cutCandidate: true, readerNote: 'AI.' }), { task: 't', run: 'RZ', at: '2026-11-01T10:00:00.000Z' }, ['cutCandidate'], 'fill');
+    r = Stamp.stampFill('scene', r, { task: 't', run: 'RZ', at: '2026-11-01T10:00:00.000Z' }, ['readerNote'], 'append');
+    const left = Stamp.unstampFill(r, 'RZ', { mode: 'fill', fields: ['cutCandidate'] });
+    eq(left.aiFill.map((f) => f.mode), ['append'], 'unstampFill: reverting the fill leaves the append\'s stamp');
+    eq(Stamp.unstampFill(r, 'RZ') === r || !('aiFill' in Stamp.unstampFill(r, 'RZ')), true, 'unstampFill: with no filter it still drops the whole run');
+  }
+
   seed();
   const tg = reg.get('breakdown-tags');
   const tundo = tg.apply([{ i: 0, category: 'props', name: 'Coin' }], ctx, null, meta('breakdown-tags', 'run-tg'));
@@ -435,6 +453,10 @@ const freshStudio = () => { mem.clear(); AI.setProvider('anthropic'); AI.setKey(
   const back = StoryM.loadStory();
   ok(!('aiFill' in back) && back.logline === '', 'synopsis-script: Undo clears the logline and its stamp');
   ok(!('aiFill' in back.outline.find((x) => x.id === empty.id)), 'synopsis-script: …and the filled step\'s stamp');
+  /* kept cards of a stopped run carry no memory: an earlier run's must not be written */
+  let threw = false;
+  try { t.apply([{ id: 'set-up', text: 'x' }], {}, { items: [] }, meta('synopsis-script', 'run-syn2')); } catch (e) { threw = true; }
+  ok(threw, 'synopsis-script: a result with no memory of its own fails ("run it first"), never the last run\'s');
   note('synopsis-script');
 }
 

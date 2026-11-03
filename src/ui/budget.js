@@ -514,10 +514,16 @@ function renderCalculator() {
       h('div.calc-actions', {}, [
         button({ label: 'Add item', icon: 'add', size: 'sm', action: 'add-row' }),
         button({ label: 'Add 5', icon: 'add', size: 'sm', action: 'add-5' }),
+        /* Draft lines (budget-estimate-rules, no AI): new rows from the
+           schedule and breakdown, rates blank with the rate card's band
+           shown; the second button opts in to the band's midpoint, labelled
+           an estimate. Added on Accept, never an edit to a line that is there. */
+        button({ label: 'Draft lines', icon: 'add', size: 'sm', action: 'draft-lines' }),
+        button({ label: 'Draft lines with rate midpoints', size: 'sm', variant: 'ghost', action: 'draft-lines-mid' }),
         /* The AI Desk's first-pass lines (budget-estimate): new rows only,
            added on Accept, never an edit to a line that is there. */
         aiPill({
-          label: 'Estimate from my schedule', tasks: ['budget-estimate'],
+          label: 'Enhance with AI', tasks: ['budget-estimate'],
           ctx: () => ({ say: (m) => { if (window.StudioUI && StudioUI.toast) StudioUI.toast(m, { type: 'info', duration: 4000 }); }, after: redrawCalc })
         }),
         h('span.bud-spacer', { 'aria-hidden': 'true' }),
@@ -580,7 +586,13 @@ export function initBudget(root) {
   delegate(root, 'change', '.calc-row select[data-key]', () => { updateCalc(); saveCalc(); });
 }
 
+const draftLines = (midpoint) => import('./ai-desk.js').then((D) => D.openDesk('budget-estimate-rules', {
+  midpoint, say: (m) => { if (window.StudioUI && StudioUI.toast) StudioUI.toast(m, { type: 'info', duration: 4000 }); }, after: redrawCalc
+}));
+
 export const BUDGET_ACTIONS = {
+  'draft-lines': () => draftLines(false),
+  'draft-lines-mid': () => draftLines(true),
   'add-row': () => focusNewRow(addCalcRow(1)),
   'add-5': () => focusNewRow(addCalcRow(5)),
   reset: resetCalc,

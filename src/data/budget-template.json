@@ -1,0 +1,15 @@
+{
+  "_about": "The count-triggered template lines behind the no-AI budget draft (src/lib/rules-preprod.js proposeBudget, docs/RULES-BREAKDOWN.md A3). A line is proposed only when the schedule or the breakdown triggers it (needs), with its DAYS taken from the schedule; the rate is never typed here. A line named in `item` must be a preset in rates.chennai.2024.json (presets) so the rate card can show its band; a line with `custom` has no band and its rate stays blank. {count} is the scenes that triggered it (for example 2 scenes), {days} the days (for example 3 days).",
+  "midpointLabel": "rate card midpoint, an estimate — not a quote",
+  "lines": [
+    { "id": "camera", "custom": "Camera package", "days": "shootDays", "needs": { "shootDays": 1 }, "basis": "Every shoot day needs a camera; pick the body from the rate card." },
+    { "id": "sound", "item": "Sound recordist + kit", "days": "shootDays", "needs": { "shootDays": 1 }, "basis": "Every shoot day records sound." },
+    { "id": "led", "item": "LED panel kit", "days": "shootDays", "needs": { "shootDays": 1 }, "basis": "Light for every shoot day." },
+    { "id": "flags", "item": "Diffusion / flag kit", "days": "shootDays", "needs": { "shootDays": 1 }, "basis": "Grip for every shoot day." },
+    { "id": "gaffer", "item": "Gaffer", "days": "shootDays", "needs": { "shootDays": 1 }, "basis": "A gaffer runs the lights on every shoot day." },
+    { "id": "night", "item": "HMI 1.2K", "days": "nightDays", "needs": { "nightScenes": 1 }, "basis": "{count} at night, over {days}, need extra light." },
+    { "id": "vehicle", "item": "Production van", "days": "vehicleDays", "needs": { "vehicleScenes": 1 }, "basis": "{count} over {days} tag a vehicle." },
+    { "id": "stunt", "custom": "Stunts: coordinator and rigging", "days": "stuntDays", "needs": { "stuntScenes": 1 }, "basis": "{count} over {days} tag a stunt." },
+    { "id": "sfx", "custom": "Special effects (practical)", "days": "sfxDays", "needs": { "sfxScenes": 1 }, "basis": "{count} over {days} tag a special effect." }
+  ]
+}

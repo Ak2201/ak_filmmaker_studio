@@ -134,6 +134,8 @@ jobs:
       # The script lock end to end: bar, review, lock, held edits, change report, unlock, legacy lock.
       - run: npm run prove:script-lock
       - run: npm run prove:lock-extract
+      # The no-AI pre-production tasks: plan days, recce, budget lines, call sheet notes (docs/RULES-BREAKDOWN.md lane A).
+      - run: npm run prove:rules-preprod
       - run: npm run prove:story-coedit
       - run: npm run prove:visual
       - run: npm run prove:board-frames

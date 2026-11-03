@@ -224,8 +224,8 @@ export async function draftScenes(patch, { onStatus, signal, extra = '', onItems
 /**
  * Commit proposed scenes (all, or the ones the writer kept) to the
  * scene model and move the job to stage 3. Resolves to
- * { job, scenes, undo } — undo puts back the scene list and the job
- * exactly as they were.
+ * { job, scenes, undo } — undo takes back the rows this call added
+ * (while unedited) and the job, and returns { undone, message }.
  */
 export function applyScenes(patch, proposals, { replaceScenes = false, model, ai = null } = {}) {
   const prevJob = load();
@@ -297,15 +297,53 @@ export function applyScenes(patch, proposals, { replaceScenes = false, model, ai
   job.stage = 'pages';
   job.startedAt = new Date().toISOString();
   save(job);
+  /* UNDO TAKES BACK ONLY WHAT THIS ACCEPT WROTE (QA r2 K-2). It used to
+     put back the whole scene list as it was before Accept, so a scene
+     the writer added on the scene list since, and every edit to an
+     accepted row, went with it while the toast said "Undone.". Now:
+     a row this call added is removed only while it still reads back
+     exactly as written (an edited one is the writer's and stays); every
+     other row stays; with replaceScenes the rows Accept cleared come
+     back in front. The job goes back only while it is still the one
+     this call saved — once pages were written from these scenes, taking
+     them away would strand the script, so the Undo refuses and changes
+     nothing. Returns { undone, message } (message '' when it was a
+     plain, whole undo). */
+  const savedJob = JSON.stringify(load());
+  const addedIds = new Set(rows.map((r) => r.id));
+  const wrote = new Map(Scenes.listScenes().filter((s) => addedIds.has(s.id)).map((s) => [s.id, JSON.stringify(s)]));
   const undo = () => {
-    Scenes.saveScenes(prevScenes);
+    if (JSON.stringify(load()) !== savedJob) {
+      return { undone: false, message: 'The draft has moved on since these scenes were laid out, so nothing was undone.' };
+    }
+    const now = Scenes.listScenes();
+    let edited = 0;
+    const left = now.filter((s) => {
+      if (!wrote.has(s.id)) return true;
+      if (JSON.stringify(s) === wrote.get(s.id)) return false;
+      edited++;
+      return true;
+    });
+    let next = left;
+    if (replaceScenes) {
+      const have = new Set(left.map((s) => s.id));
+      next = prevScenes.filter((s) => !have.has(s.id)).concat(left);
+    }
+    Scenes.saveScenes(next);
     save(prevJob);
     if (createdIds.length) {
-      const now = Chars.loadCharacters();
+      const nowChars = Chars.loadCharacters();
       const gone = new Set(createdIds);
-      const left = now.filter((c) => !(gone.has(c.id) && untouchedCharacter(c, Chars.CHARACTER_FIELDS)));
-      if (left.length !== now.length) Chars.saveCharacters(left);
+      const keptChars = nowChars.filter((c) => !(gone.has(c.id) && untouchedCharacter(c, Chars.CHARACTER_FIELDS)));
+      if (keptChars.length !== nowChars.length) Chars.saveCharacters(keptChars);
     }
+    return {
+      undone: true,
+      message: edited
+        ? (edited === 1 ? '1 scene was edited since, so it is kept.' : edited + ' scenes were edited since, so they are kept.')
+          + ' The other scenes this Accept added are removed.'
+        : ''
+    };
   };
   return { job, scenes: rows.length, created: createdIds.length, undo };
 }
@@ -497,7 +535,6 @@ export function applyBatch(draft, keep = null, { ai = null } = {}) {
   }
   const job = { ...prevJob };
   const doc = Script.loadScript();
-  const prevDoc = JSON.parse(JSON.stringify(doc));
   const wanted = keep ? new Set(keep) : null;
 
   const written = [];
@@ -519,13 +556,19 @@ export function applyBatch(draft, keep = null, { ai = null } = {}) {
      A revision before the FIRST batch touches a non-empty script, and
      only then: one revision per run, not one per batch, or a feature
      would leave twenty-five of them behind. */
+  let revId = null;
   if (job.cursor === 0 && doc.elements.length) {
-    doc.revisions.push(Script.makeRevision(doc.elements, 'Before generated draft'));
+    const rev = Script.makeRevision(doc.elements, 'Before generated draft');
+    revId = rev.id;
+    doc.revisions.push(rev);
   }
+  const addedIds = new Set();
   for (const id of written) {
     for (const el of draft.byScene[id]) {
       const made = Script.blankElement({ type: el.type, text: el.text });
-      doc.elements.push(ai ? ai.create('element', made) : made);   // the history stamp (ai is a stamper)
+      const rec = ai ? ai.create('element', made) : made;   // the history stamp (ai is a stamper)
+      addedIds.add(String(rec.id));
+      doc.elements.push(rec);
     }
   }
   Script.saveScript(doc);
@@ -544,7 +587,38 @@ export function applyBatch(draft, keep = null, { ai = null } = {}) {
   if (job.cursor >= job.scenes.length) job.stage = 'done';
   save(job);
 
-  const undo = () => { Script.saveScript(prevDoc); save(prevJob); };
+  /* UNDO TAKES BACK ONLY WHAT THIS BATCH WROTE (QA r2 K-1). It used to
+     save the pre-Accept script back whole, which deleted every line the
+     writer typed or edited after Accept while the toast said "Undone.".
+     Now it removes exactly the lines this batch appended (and the one
+     "Before generated draft" revision it made), and leaves every other
+     line as it is now. It refuses and changes nothing when a line the
+     batch wrote was edited or deleted since (that line is the writer's
+     now, and putting the cursor back would have the next batch write
+     the scene a second time beside it), or when the job has moved on
+     (a later batch was kept). Returns { undone, message }. */
+  const savedJob = JSON.stringify(load());
+  const wroteEls = new Map(Script.loadScript().elements
+    .filter((e) => e && addedIds.has(String(e.id)))
+    .map((e) => [String(e.id), { type: e.type, text: e.text }]));
+  const undo = () => {
+    if (JSON.stringify(load()) !== savedJob) {
+      return { undone: false, message: 'The draft has moved on since this batch (a later batch was kept), so nothing was undone.' };
+    }
+    const now = Script.loadScript();
+    const byId = new Map(now.elements.filter(Boolean).map((e) => [String(e.id), e]));
+    for (const [id, w] of wroteEls) {
+      const e = byId.get(id);
+      if (!e || e.type !== w.type || e.text !== w.text) {
+        return { undone: false, message: 'A line this batch wrote was edited or removed since, so nothing was undone. Change the script by hand instead.' };
+      }
+    }
+    now.elements = now.elements.filter((e) => !(e && addedIds.has(String(e.id))));
+    if (revId) now.revisions = (now.revisions || []).filter((r) => !(r && r.id === revId));
+    Script.saveScript(now);
+    save(prevJob);
+    return { undone: true, message: '' };
+  };
   return {
     job,
     wrote: written.length,

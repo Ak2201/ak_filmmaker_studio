@@ -711,9 +711,17 @@ async function clickUndo(page) {
   ok(job && job.stage === 'pages' && job.cursor === 0 && job.scenes.length === want.length, 'the job is at stage "pages" with ' + want.length + ' scenes, cursor 0', job && { stage: job.stage, n: job.scenes.length, cursor: job.cursor });
   ok(job && job.scenes.every((s, i) => s.sceneId === got[i].id), "the job's scenes point at the scene rows written", job && job.scenes.map((s) => s.sceneId));
 
+  /* QA r2 K-2: a scene the writer adds after Accept survives the Undo
+     (it used to put back the pre-Accept list whole, and say "Undone."). */
+  await page.evaluate(() => {
+    const k = Object.keys(localStorage).find((x) => x.startsWith('fms_scenes_v1'));
+    const d = JSON.parse(localStorage.getItem(k));
+    d.scenes.push({ id: 'mine1', number: String(d.scenes.length + 1), intExt: 'INT', dayNight: 'DAY', location: 'MY OWN SCENE', synopsis: '', eighths: 8, elements: {} });
+    localStorage.setItem(k, JSON.stringify(d));
+  });
   await clickUndo(page);
   const undoneScenes = ((await stored(page, 'fms_scenes_v1')) || { scenes: [] }).scenes;
-  ok(undoneScenes.length === 0, 'Undo restores the previous scene list (empty)', undoneScenes.map((s) => s.location));
+  ok(JSON.stringify(undoneScenes.map((s) => s.location)) === JSON.stringify(['MY OWN SCENE']), 'Undo removes the accepted scenes and keeps one the writer added since', undoneScenes.map((s) => s.location));
   const undoneJob = await stored(page, 'fms_scriptgen_v1');
   ok(undoneJob && undoneJob.stage === 'beats' && undoneJob.scenes.length === 0 && undoneJob.beats.length === BEATS.length, 'and the job is back at stage "beats", beats intact', undoneJob && { stage: undoneJob.stage, scenes: undoneJob.scenes.length, beats: undoneJob.beats.length });
   ok(errors.length === 0, 'no page errors', errors);
@@ -784,9 +792,20 @@ async function clickUndo(page) {
   ok(job && job.cursor === BATCH - 1 && job.stage === 'pages', 'the cursor moved past the WRITTEN scenes only (0 → ' + (BATCH - 1) + ')', job && { cursor: job.cursor, stage: job.stage });
   ok(job && job.scenes[job.cursor] && job.scenes[job.cursor].sceneId === batch[dropAt].sceneId, 'the unticked scene is next in line, not skipped (' + batch[dropAt].sceneId + ')', job && job.scenes.map((s) => s.sceneId));
 
+  /* QA r2 K-1: a line the writer types after Accept survives the Undo
+     (it used to put back the pre-Accept script whole, and say "Undone."). */
+  await page.evaluate(() => {
+    const k = Object.keys(localStorage).find((x) => x.startsWith('fms_script_v1'));
+    const d = JSON.parse(localStorage.getItem(k));
+    d.elements.push({ id: 'late', type: 'action', text: 'A line I typed after accept.' });
+    localStorage.setItem(k, JSON.stringify(d));
+  });
   await clickUndo(page);
   const undone = await scriptDoc(page);
-  ok(JSON.stringify(undone.elements) === JSON.stringify(before.elements), 'Undo restores the script', undone.elements.length);
+  const lateKept = undone.elements.filter((e) => e.id === 'late').map((e) => e.text);
+  ok(JSON.stringify(lateKept) === JSON.stringify(['A line I typed after accept.']), 'Undo keeps a line typed after Accept', undone.elements.map((e) => e.text));
+  const strip = (els) => els.filter((e) => e.id !== 'late').map((e) => e.type + '|' + e.text);
+  ok(JSON.stringify(strip(undone.elements)) === JSON.stringify(strip(before.elements)), 'Undo restores the script (bar the line typed since)', undone.elements.length);
   const undoneJob = await stored(page, 'fms_scriptgen_v1');
   ok(undoneJob && undoneJob.cursor === 0 && undoneJob.stage === 'pages', 'and the cursor (back to 0)', undoneJob && undoneJob.cursor);
 

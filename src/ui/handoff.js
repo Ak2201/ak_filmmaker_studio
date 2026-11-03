@@ -90,10 +90,21 @@ export function newHeadings(elements, scenes) {
   return m.unmatchedHeadings.filter((sl) => !linked.has(ids[at.get(sl)]));
 }
 
-function binNote(k) {
-  return k === 1
+/* Only an entry whose heading left the script was "removed from the
+   screenplay". A scene binned by hand in the Breakdown is still in the
+   script (which is why the line above offers to add it back), so it is
+   counted under its own wording, as the bin list says it (QA r2). */
+function binNote(entries) {
+  const hand = entries.filter((e) => e && e.reason === 'hand').length;
+  const gone = entries.length - hand;
+  const out = [];
+  if (gone) out.push(gone === 1
     ? '1 scene removed from the screenplay is in the bin, with everything that was attached to it.'
-    : `${k} scenes removed from the screenplay are in the bin, with everything that was attached to them.`;
+    : `${gone} scenes removed from the screenplay are in the bin, with everything that was attached to them.`);
+  if (hand) out.push(hand === 1
+    ? '1 scene deleted in the Breakdown is in the bin, with everything that was attached to it.'
+    : `${hand} scenes deleted in the Breakdown are in the bin, with everything that was attached to them.`);
+  return out.join(' ');
 }
 
 function sentence(n, rows, held) {
@@ -112,7 +123,8 @@ function render() {
   const scenes = Scenes.listScenes();
   const fresh = newHeadings(doc.elements, scenes);
   const n = fresh.length;
-  const k = Bin.listBin().length;
+  const binned = Bin.listBin();
+  const k = binned.length;
   const held = isHeld(doc.numbering);
   const sig = n + '|' + k + (held ? '|held' : '');
   if ((!n && !k) || sig === dismissedAt) { if (old) old.remove(); return; }
@@ -124,7 +136,7 @@ function render() {
     copy.push(h('p.wx-handoff-msg', { text: sentence(n, scenes.length > 0, held) }));
     copy.push(h('p.wx-handoff-list', { text: fresh.slice(0, 3).map((s) => s.heading).join(' · ') + (n > 3 ? ' · …' : '') }));
   }
-  if (k) copy.push(h(n ? 'p.wx-handoff-list' : 'p.wx-handoff-msg', { text: binNote(k) }));
+  if (k) copy.push(h(n ? 'p.wx-handoff-list' : 'p.wx-handoff-msg', { text: binNote(binned) }));
   const acts = [];
   if (n && held) {
     // The lock decides what reaches the Breakdown: the writer reviews it there.

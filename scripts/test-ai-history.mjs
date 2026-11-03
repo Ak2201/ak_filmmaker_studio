@@ -492,8 +492,10 @@ const freshStudio = () => { mem.clear(); AI.setProvider('anthropic'); AI.setKey(
   ok(lines.every((e) => e.type === 'scene' || e.type === 'action'), 'gen-batch: the line text and type are exactly the drafted ones');
   const typed = Script.loadScript(); typed.elements[1].text = 'Body 1, retyped.'; Script.saveScript(typed);
   ok(Stamp.isEdited('element', Script.loadScript().elements[1], Script.loadScript().elements[1].ai), 'gen-batch: a retyped line reads edited');
+  /* QA r2 K: a line edited since Accept makes the Undo refuse and change
+     nothing, rather than take the writer's retyped words back. */
   undoB();
-  eq(Script.loadScript().elements.length, 0, 'gen-batch: Undo takes the lines back');
+  eq(Script.loadScript().elements.length, 4, 'gen-batch: Undo refuses after a retype and keeps every line');
   note('gen-batch');
 }
 

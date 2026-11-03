@@ -124,6 +124,7 @@
     "test:ai-fast": "node scripts/test-ai-fast.mjs",
     "test:ai-size": "node scripts/test-ai-size.mjs",
     "prove:ai-fast": "node scripts/prove-ai-fast.mjs",
+    "prove:ai-run-all": "node scripts/prove-ai-run-all.mjs",
     "test:ai-history": "node scripts/test-ai-history.mjs && node scripts/test-ai-history-backup.mjs",
     "prove:ai-history": "node scripts/prove-ai-history.mjs",
     "test:ai-everywhere": "node scripts/test-ai-everywhere.mjs && node scripts/test-ai-preprod.mjs && node scripts/test-ai-post.mjs && node scripts/test-ai-story.mjs",

@@ -185,8 +185,11 @@ function summaryBlock(res, opts, undoBtn) {
       h('p.pl-ai-copy', { text: opts.ai === 'lock'
         ? 'The rules did all of this, on this device. AI can read what they cannot and propose more, each one a review: nothing it proposes is written before you press Accept.'
         : 'Before AI, the rules did this. AI can add what they cannot read — every element the page calls for, a shot list from a director’s eye, the story beats, a coverage report and notes on tension — each one a review you accept or skip.' }),
-      ai
-    ]) : h('p.pl-ai-copy.pl-locknote', { text: 'Undo takes this run back; the script stays locked.' }),
+      ai,
+      /* After the lock, Run all is the one press for every AI tool; its
+         drafts wait in the draft space (preprod.html#drafts). */
+      opts.ai === 'lock' ? button({ label: 'Every AI tool at once: the draft space →', href: 'preprod.html#drafts', icon: 'auto_awesome', class: 'pl-drafts' }) : null
+    ].filter(Boolean)) : h('p.pl-ai-copy.pl-locknote', { text: 'Undo takes this run back; the script stays locked.' }),
     links,
     h('div.pl-foot', {}, [undoBtn])
   ]);

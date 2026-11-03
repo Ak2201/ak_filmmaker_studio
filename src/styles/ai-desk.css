@@ -212,6 +212,13 @@ html.ai-desk-open.ai-desk-open .toast-host {
   font-size: var(--t-small);
   color: var(--ink-muted);
 }
+/* How long the run took (and each batch): data, so tabular figures. */
+.ai-desk-timing {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
 
 .ai-hunk {
   display: grid;

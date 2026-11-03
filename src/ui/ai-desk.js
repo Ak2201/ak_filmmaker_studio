@@ -447,11 +447,25 @@ function answerSection(v) {
   const note = v.live
     ? 'Cards appear as each scene arrives. Nothing is written until you accept.'
     : (v.result.note ? String(v.result.note) : '');
+  const took = timingLine(v);
   return [
     h('div.ai-desk-answerhead', {}, [h('h3.ai-desk-label', { text: 'The answer' }), vers]),
     note ? h('p.ai-desk-note', { text: note }) : null,
+    took ? h('p.ai-desk-timing', { text: took }) : null,
     ...answer
   ];
+}
+
+/* "Took 6.2 s · 3 batches: 2.1 s, 1.9 s, 2.2 s". Shown, never stored. */
+const secs = (ms) => (ms / 1000).toFixed(1) + '\u00a0s';
+function timingLine(v) {
+  const per = (v.batchMs || []).filter((x) => x >= 0);
+  const batches = per.length > 1 || (v.batchMs || []).length > 1
+    ? per.length + (per.length === 1 ? ' batch' : ' batches') + ': ' + per.map(secs).join(', ')
+    : '';
+  if (v.live) return batches ? 'So far · ' + batches : '';
+  if (!(v.ms >= 0)) return '';
+  return 'Took ' + secs(v.ms) + (batches ? ' · ' + batches : '');
 }
 
 /** A live card arrived: patch the answer in place. */
@@ -642,12 +656,17 @@ async function run(refineWith) {
   own.status = refineWith ? 'Refining\u2026' : 'Sending\u2026';
   const runId = newId('air');
   const careful = readAiCareful();          // read once: fixed for the whole run
+  /* TIMING, shown and never stored: how long the run took, and each batch
+     of a batched task. In memory on the version, gone with the page. */
+  const t0 = Date.now();
+  const batchMs = [];
   const previous = refineWith ? own.versions[own.current].result : undefined;
   let live = null;
   if (myTask.stream && !isLocal(myTask)) {
     live = makeVersion(myTask, { items: [] });
     live.live = true;
     live.run = runId;
+    live.batchMs = batchMs;
     own.versions.push(live);
     own.current = own.versions.length - 1;
   }
@@ -657,7 +676,12 @@ async function run(refineWith) {
     let result = await myTask.run(own.input, {
       onStatus: (m) => { if (own.run === ctl) setStatus(m, own); },
       signal: ctl.signal, ctx: myCtx, refine, careful,
-      onItems: live ? (items) => { if (own.run === ctl) addLive(own, live, items); } : undefined
+      onItems: live ? (items) => { if (own.run === ctl) addLive(own, live, items); } : undefined,
+      onBatchTime: ({ index, ms } = {}) => {
+        if (own.run !== ctl || !Number.isInteger(index) || !(ms >= 0)) return;
+        batchMs[index] = ms;
+        if (live && open && sess === own && own.versions[own.current] === live) refreshAnswer();
+      }
     });
     const stopped = ctl.signal.aborted;
     if (stopped && !(live && result && Array.isArray(result.items) && result.items.length)) {
@@ -677,6 +701,8 @@ async function run(refineWith) {
       own.versions.push(v);
       own.current = own.versions.length - 1;
     }
+    v.ms = Date.now() - t0;
+    v.batchMs = batchMs;
     own.status = stopped ? 'Stopped. Nothing is written until you accept.' : 'v' + own.versions.length + ' is ready.';
   } catch (e) {
     const stopped = (e && (e.kind === 'aborted' || e.code === 'aborted' || e.name === 'AbortError')) || ctl.signal.aborted;
@@ -689,6 +715,7 @@ async function run(refineWith) {
           : 'The run ended early (' + msg + ') — the scenes below arrived. Nothing is written until you accept.'
       };
       live.live = false;
+      live.ms = Date.now() - t0;
       own.status = stopped ? 'Stopped. Nothing is written until you accept.' : '';
       own.error = stopped ? '' : msg;
     } else {

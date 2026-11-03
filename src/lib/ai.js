@@ -57,7 +57,7 @@
 import { bumpUsage } from './usage.js';
 import { runBatches } from './ai-batches.js';
 import { arrayStream } from './ai-stream-json.js';
-import { draftEffort } from './ai-effort.js';
+import { draftEffort, taskEffort, geminiThinkingLevel } from './ai-effort.js';
 import { SHOT_SIZES, SHOT_ANGLES, SHOT_MOVEMENTS } from './shots.js';
 import { formatEighths, INT_EXT, DAY_NIGHT } from './scenes.js';
 import { GEOMETRY } from './screenplay-export.js';
@@ -97,6 +97,12 @@ export { refineBlock, withRefine } from './ai-refine.js';
 /* The one request path, for a Desk task that needs a prompt no
    existing job builds. Same callModel(), so the same key handling. */
 export { callModel as callModelForTask };
+/* The one effort table (ai-effort.js), for a task that fixes its effort
+   once for a whole batched run. */
+export { taskEffort, TASK_EFFORT } from './ai-effort.js';
+/* The batch runner (ai-batches.js), for a task that runs its own jobs
+   through it (the storyboard's frames) without a second import. */
+export { runBatches as runBatchesFor };
 
 const API_VERSION = '2023-06-01';
 
@@ -176,6 +182,7 @@ function schemaFor() {
     properties: {
       scenes: {
         type: 'array',
+        maxItems: SHOT_BATCH,        // a constant, never the batch's length: the schema is part of the cache key
         items: {
           type: 'object',
           additionalProperties: false,
@@ -184,6 +191,7 @@ function schemaFor() {
             sceneId: { type: 'string', description: 'the id given for this scene, copied exactly' },
             shots: {
               type: 'array',
+              maxItems: SHOTS_PER_SCENE_MAX,
               items: {
                 type: 'object',
                 additionalProperties: false,
@@ -346,6 +354,29 @@ async function readStream(res, read, onText) {
    is byte-identical, so a caller keeps timestamps, cursors and batch
    numbers in `user`, never in `system` or `shared`. A prefix under the
    model's minimum simply does not cache: no error, nothing to handle. */
+/* PRECISE RESPONSES (3 Nov 2026). A schema here may carry `maxItems`
+   (and `maxLength`) to keep an answer short: Gemini's responseJsonSchema
+   honours them; Anthropic's structured outputs REFUSE them with a 400
+   (only minItems 0/1 is supported there). So the Anthropic wire moves
+   each limit into the field's description, where it still steers the
+   model, and the code that reads the reply caps the count anyway. Pure
+   and deterministic, so the schema bytes stay identical across a run's
+   batches (the prompt cache is keyed on them). */
+export function anthropicSchema(node) {
+  if (Array.isArray(node)) return node.map(anthropicSchema);
+  if (!node || typeof node !== 'object') return node;
+  const out = {};
+  const notes = [];
+  for (const [k, v] of Object.entries(node)) {
+    if (k === 'maxItems' && typeof v === 'number') { notes.push('at most ' + v + ' items'); continue; }
+    if (k === 'maxLength' && typeof v === 'number') { notes.push('at most ' + v + ' characters'); continue; }
+    if (k === 'minItems' && typeof v === 'number' && v > 1) continue;
+    out[k] = anthropicSchema(v);
+  }
+  if (notes.length) out.description = (out.description ? out.description + ' ' : '') + '(' + notes.join(', ') + ')';
+  return out;
+}
+
 export function anthropicRequest(prov, { model, system, user, shared, schema, maxTokens, effort, cache = true }) {
   const mark = { type: 'ephemeral' };
   const sysBlock = cache ? [{ type: 'text', text: system, cache_control: mark }] : system;
@@ -368,7 +399,7 @@ export function anthropicRequest(prov, { model, system, user, shared, schema, ma
       thinking: { type: 'adaptive' },
       output_config: {
         effort,
-        format: { type: 'json_schema', schema }
+        format: { type: 'json_schema', schema: anthropicSchema(schema) }
       },
       system: sysBlock,
       messages: [{ role: 'user', content }]
@@ -389,7 +420,9 @@ export function geminiRequest(prov, { model, system, user, shared, schema, maxTo
      `maxOutputTokens` INCLUDES thinking tokens on this API, which
      is why the ceilings each job passes are the budget for both
      halves and not just the answer. `thinkingLevel` takes the same
-     words the Anthropic effort does, so one argument serves both. */
+     words the Anthropic effort does, so one argument serves both —
+     through geminiThinkingLevel() (ai-effort.js), which rounds a word
+     the chosen model would refuse UP rather than sending a 400. */
   return {
     url: prov.origin + '/v1beta/models/' + encodeURIComponent(model)
        + ':streamGenerateContent?alt=sse',
@@ -405,7 +438,7 @@ export function geminiRequest(prov, { model, system, user, shared, schema, maxTo
         responseMimeType: 'application/json',
         responseJsonSchema: schema,
         maxOutputTokens: maxTokens,
-        thinkingConfig: { thinkingLevel: effort }
+        thinkingConfig: { thinkingLevel: geminiThinkingLevel(effort, model) }
       }
     }
   };
@@ -553,9 +586,15 @@ async function send(prov, req, auth, signal) {
 }
 
 async function callModel({
-  system, user, schema, maxTokens = 32000, effort = 'medium',
+  system, user, schema, maxTokens = 8000, effort, task,
   onStatus, signal, progress, shared, onText, cache = true
 }) {
+  /* `task` names the Desk task this request serves, so its effort comes
+     from the ONE table (ai-effort.js TASK_EFFORT) when the caller did not
+     fix one for the run. The ceiling default is 8000, not 32000: every
+     job that needs more says so beside its schema, and a small job with
+     a huge ceiling only lets a runaway answer run longer. */
+  if (!effort) effort = task ? taskEffort(task) : 'medium';
   const prov = provider();
   const model = getModel();
   const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
@@ -679,6 +718,14 @@ const str = (v, max) => String(v ?? '').trim().slice(0, max);
 
 /** Scenes per shot-division request, and how many requests run at once. */
 export const SHOT_BATCH = 3;
+/** The schema's cap on shots per scene (the system prompt says three to
+    eight is normal and more than twelve needs a reason). */
+export const SHOTS_PER_SCENE_MAX = 16;
+/** The output ceiling for one shot batch: ~1,600 tokens a scene covers
+    sixteen one-line shots with room for low-effort thinking (Gemini
+    counts thinking inside maxOutputTokens). A cut-off reply still reads
+    as `truncated`, never as a silent loss. */
+export const shotBatchTokens = (n) => Math.min(8000, 1200 + Math.max(1, n) * 1600);
 export const SHOT_CONCURRENCY = 3;
 
 /**
@@ -689,6 +736,7 @@ export const SHOT_CONCURRENCY = 3;
  *   signal    an AbortSignal, so Stop actually stops
  *   onItems   called with [{ sceneId, shots }] the moment a scene is whole
  *   careful   raise the effort (ai-effort.js); default is the pref
+ *   onBatchTime({ index, ms, total }) — a batch settled; the Desk shows it
  *
  * The scenes go in SHOT_BATCH-sized requests, SHOT_CONCURRENCY at a time
  * (ai-batches.js). One failed batch loses only its own scenes; Stop keeps
@@ -699,7 +747,7 @@ export const SHOT_CONCURRENCY = 3;
  *               stopped }.
  * It writes nothing: the caller decides what to keep.
  */
-export async function draftShotDivision(jobs, { onStatus, signal, onItems, careful } = {}) {
+export async function draftShotDivision(jobs, { onStatus, signal, onItems, careful, onBatchTime } = {}) {
   if (!jobs || !jobs.length) throw new AIError('No scenes selected.', 'noscenes');
   const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
   say('Sending ' + jobs.length + (jobs.length === 1 ? ' scene' : ' scenes')
@@ -720,7 +768,7 @@ export async function draftShotDivision(jobs, { onStatus, signal, onItems, caref
     const stream = arrayStream('scenes');
     let started = false;
     const { parsed, truncated, model } = await callModel({
-      system, user: buildPrompt(batch), schema, maxTokens: 8000, effort, signal: sig,
+      system, user: buildPrompt(batch), schema, maxTokens: shotBatchTokens(SHOT_BATCH), effort, signal: sig,
       onText: (sofar) => {
         if (!started) { started = true; if (onStart) onStart(); }
         const fresh = stream.feed(sofar).map((e) => cleanShotScene(e, wanted)).filter(Boolean);
@@ -740,7 +788,10 @@ export async function draftShotDivision(jobs, { onStatus, signal, onItems, caref
       say('Drafting… ' + arrived + ' of ' + jobs.length + ' scenes' + (failedBatches ? ' · ' + failedBatches + ' failed' : ''));
       if (onItems) onItems(items);
     },
-    onBatch: ({ failed }) => { failedBatches = failed; }
+    onBatch: ({ failed, index, ms, total }) => {
+      failedBatches = failed;
+      if (onBatchTime) { try { onBatchTime({ index, ms, total }); } catch (e) { /* UI */ } }
+    }
   });
 
   /* A scene may arrive twice (a retried batch, a stream the final parse
@@ -838,7 +889,7 @@ export async function draftBlocking(job, { refine, signal, onStatus } = {}) {
     system: Blocking.DRAFT_SYSTEM,
     user: Blocking.buildDraftPrompt({ ...job, refine: blockingRefine(refine) }),
     schema: Blocking.draftSchema(charIds, shotIds),
-    maxTokens: 16000, effort: 'medium',
+    maxTokens: 16000, task: 'blocking-draft',
     onStatus, signal,
     progress: (sofar) => {
       const n = (sofar.match(/"kind"/g) || []).length;
@@ -861,7 +912,7 @@ export async function enhanceBlocking(job, { refine, signal, onStatus } = {}) {
     system: Blocking.ENHANCE_SYSTEM,
     user: Blocking.buildEnhancePrompt({ ...job, refine: blockingRefine(refine) }),
     schema: Blocking.enhanceSchema(charIds, markIds, { shot: !!job.block.shotId }),
-    maxTokens: 12000, effort: 'medium',
+    maxTokens: 12000, task: 'blocking-enhance',
     onStatus, signal,
     progress: (sofar) => {
       const n = (sofar.match(/"type"/g) || []).length;
@@ -1025,7 +1076,8 @@ export async function dialoguePass(job, { onStatus, signal } = {}) {
     system: DIALOGUE_SYSTEM,
     user: buildDialoguePrompt(job),
     schema: dialogueSchema(),
-    maxTokens: 8000,
+    maxTokens: 6000,          // three takes of one speech
+    task: 'dialogue-pass',
     onStatus, signal,
     progress: (sofar) => {
       const n = (sofar.match(/"text"/g) || []).length;
@@ -1171,7 +1223,8 @@ export async function beatCritique(job, { onStatus, signal } = {}) {
     system: CRITIQUE_SYSTEM,
     user: buildCritiquePrompt({ ...job, answers }),
     schema: critiqueSchema(),
-    maxTokens: 8000,
+    maxTokens: 6000,          // a handful of notes on one step
+    task: 'beat-critique',
     onStatus, signal,
     progress: (sofar) => {
       const n = (sofar.match(/"problem"/g) || []).length;
@@ -1610,6 +1663,16 @@ export async function draftSceneList(job, { onStatus, signal, onItems, careful }
    Per script does not fit; per scene pays the context cost once
    per scene and loses the rhythm between them. A batch gets the
    scenes around it as context and writes only its own. */
+/* The output ceiling for a batch of screenplay pages, from the pages
+   asked for: ~3,000 tokens a page (Tamil runs at three to six tokens a
+   word) plus room for thinking, never under one page a scene, capped at
+   the old 32,000. A cut-off reply is still `truncated` and its scenes
+   stay pending (applyBatch writes only what arrived whole). */
+export function pagesTokens(scenes) {
+  const pages = (Array.isArray(scenes) ? scenes : []).reduce((n, s) => n + Math.max(1, (Number(s && s.eighths) || 8) / 8), 0);
+  return Math.min(32000, 4000 + Math.ceil(Math.max(1, pages) * 3000));
+}
+
 const PAGE_ELEMENT_TYPES = ['scene', 'action', 'character', 'paren', 'dialogue', 'transition'];
 
 function pagesSchema(sceneIds) {
@@ -1777,7 +1840,7 @@ export async function draftScenePages(job, { onStatus, signal, onItems, careful,
     user: lines.join('\n'),
     shared: shared || undefined,
     schema: pagesSchema(Array.isArray(runIds) && runIds.length ? runIds.map(String) : ids),
-    maxTokens: 32000,
+    maxTokens: pagesTokens(scenes),
     effort: draftEffort(careful),
     onStatus,
     signal,
@@ -1873,7 +1936,7 @@ export async function draftBeatMap(job, { onStatus, signal } = {}) {
     user: lines.join('\n'),
     schema: beatMapSchema(ids),
     maxTokens: 8000,
-    effort: 'medium',
+    task: 'story-map',
     onStatus,
     signal,
     progress: (sofar) => {
@@ -1960,7 +2023,7 @@ export async function draftOutlineSteps(job, { onStatus, signal } = {}) {
     user: lines.join('\n'),
     schema: outlineStepsSchema(),
     maxTokens: 2000,
-    effort: 'medium',
+    task: 'story-steps',
     onStatus,
     signal,
     progress: () => 'Thinking about ' + (beat.label || 'this beat') + '…'
@@ -2080,7 +2143,7 @@ export async function draftSceneStory(job, { onStatus, signal } = {}) {
     user: buildSceneStoryPrompt({ ...job, scenes }),
     schema: sceneStorySchema(beatIds),
     maxTokens: Math.min(32000, 1200 + scenes.length * 220),
-    effort: 'medium',
+    task: 'scene-story',
     onStatus, signal,
     progress: (sofar) => {
       const n = (sofar.match(/"sceneId"/g) || []).length;
@@ -2351,7 +2414,7 @@ export async function coverageBatch(job, { onStatus, signal } = {}) {
     user: buildCoverageBatchPrompt({ ...job, scenes }),
     schema: coverageBatchSchema(),
     maxTokens: 8000,
-    effort: 'medium',
+    task: 'coverage',
     onStatus, signal,
     progress: (sofar) => {
       const n = (sofar.match(/"summary"/g) || []).length;
@@ -2766,7 +2829,7 @@ export async function runAudienceTest(job, { onStatus, onCheckpoint, signal, bat
           states: sofar.states, walkedOut, context: job.context }),
         schema: Audience.partSchema(),
         maxTokens: Audience.partMaxTokens(watching.length, scenes.length),
-        effort: 'medium',
+        task: 'audience-test',
         onStatus, signal,
         progress: (text) => {
           const n = (text.match(/"viewer"/g) || []).length;
@@ -2799,7 +2862,7 @@ export async function runAudienceTest(job, { onStatus, onCheckpoint, signal, bat
       user: Audience.buildSynthPrompt({ panel, run, scenes: plan.scenes, title: job.title, refine: job.refine }),
       schema: Audience.synthSchema(),
       maxTokens: Math.min(16000, 3000 + panel.length * 600),
-      effort: 'medium',
+      task: 'audience-test',
       onStatus, signal,
       progress: (text) => 'The panel is giving its verdicts — ' + Math.min((text.match(/"verdict"/g) || []).length, panel.length) + ' of ' + panel.length
     });
@@ -2866,7 +2929,7 @@ export async function runAudienceQuick(job, { onStatus, signal } = {}) {
       user: buildAudienceQuickPrompt({ panel, units, unit, synopsis, title: job.title, context: job.context, refine: job.refine }),
       schema: Audience.quickSchema(),
       maxTokens: Math.min(16000, Audience.partMaxTokens(panel.length, units.length) + panel.length * 300),
-      effort: 'medium',
+      task: 'audience-quick',
       onStatus, signal,
       progress: (text) => line + ' — ' + Math.min((text.match(/"viewer"/g) || []).length, panel.length) + ' of ' + panel.length + ' viewers answered'
     });
@@ -2912,7 +2975,7 @@ export async function askAudienceViewer(job, { onStatus, signal } = {}) {
       user: Audience.buildAskPrompt({ res, viewer: named.id, question, title: job.title, refine: job.refine, headings: job.headings }),
       schema: Audience.askSchema(),
       maxTokens: 2000,
-      effort: 'low',
+      task: 'audience-ask',
       onStatus, signal,
       progress: () => named.label + ' is answering…'
     });
@@ -3023,7 +3086,7 @@ export async function loglineWorkshop(job, { onStatus, signal } = {}) {
     user: buildLoglinePrompt({ ...job, logline, idea: str(job.idea, 1200), synopsis: str(job.synopsis, 6000) }),
     schema: loglineSchema(),
     maxTokens: 4000,
-    effort: 'medium',
+    task: 'logline',
     onStatus, signal,
     progress: (sofar) => {
       const n = (sofar.match(/"angle"/g) || []).length;
@@ -3236,7 +3299,7 @@ export async function voiceCheck(job, { onStatus, signal, batchChars } = {}) {
       user: buildVoicePrompt({ character, lines: batch, sample, part: b + 1, parts: plan.batches.length, context: job.context }),
       schema: voiceSchema(),
       maxTokens: 8000,
-      effort: 'medium',
+      task: 'voice-check',
       onStatus, signal,
       progress: (sofar) => {
         const n = (sofar.match(/"why"/g) || []).length;
@@ -3371,7 +3434,7 @@ export async function genreComps(job, { onStatus, signal } = {}) {
     user: buildGenrePrompt({ ...job, scenes }),
     schema: genreSchema(),
     maxTokens: 4000,
-    effort: 'medium',
+    task: 'genre-comps',
     onStatus, signal,
     progress: () => 'Placing the script…'
   });
@@ -3408,17 +3471,41 @@ export async function genreComps(job, { onStatus, signal } = {}) {
   };
 }
 
-/* ---- scene notes and breakdown tags: one scene-batched read ---- */
+/* ---- scene notes and breakdown tags: one scene-batched read ----
+   FAST AND PRECISE (3 Nov 2026). These two are extraction work, so they
+   run at LOW effort (ai-effort.js) in SMALL batches — SCENE_READ_BATCH_CHARS,
+   a third of a coverage batch — three at a time through runBatches
+   (warm-first, so the shared prefix is cached before the rest go out).
+   Each request is split for the prompt cache: the fixed SYSTEM line and
+   the run's `shared` block (the blueprint, the rules, the categories)
+   are byte-identical across the run; only the part line and that
+   batch's scenes are per request. */
 
 const SCENE_READ_OVERHEAD = 1800;
+/** Characters of script per scene-read request (~3,000 tokens in). */
+export const SCENE_READ_BATCH_CHARS = 12000;
+export const SCENE_READ_CONCURRENCY = 3;
 
-/** The cost of reading the whole script in coverage-sized batches, for
+/** The cost of reading the whole script in scene-read batches, for
     the Desk's input panel: no summary pass, so one request per batch. */
-export function planSceneRead(elements, opts) {
-  const plan = planCoverage(elements, opts);
+export function planSceneRead(elements, opts = {}) {
+  const plan = planCoverage(elements, { batchChars: SCENE_READ_BATCH_CHARS, ...opts });
   const inChars = plan.chars + plan.batches.length * SCENE_READ_OVERHEAD;
   return { ...plan, requests: plan.batches.length, tokensIn: Math.ceil(inChars / 4) };
 }
+
+/** The output ceiling for a scene read: a base for thinking plus a
+    per-scene allowance, capped. A cut-off reply is `truncated`. */
+export const sceneReadTokens = (perScene, scenes, cap) => Math.min(cap, 1500 + Math.max(1, scenes) * perScene);
+
+const SCENE_NOTES_SYSTEM = 'You are a script reader writing one note per scene. Every note rests on a quote copied character for character from that scene; you do not invent plot.';
+const BREAKDOWN_SYSTEM = 'You are a first assistant director doing a script breakdown. You list what the page calls for, each with the words that call for it, and nothing else.';
+
+/* The longest a scene note may be, and the most elements a scene may be
+   tagged with in one answer: the schema says so (Gemini enforces it, the
+   Anthropic wire turns it into a description) and the reader caps it. */
+const NOTE_MAX = 300;
+const TAGS_PER_BATCH_MAX = 400;
 
 function sceneNotesSchema() {
   return {
@@ -3433,10 +3520,10 @@ function sceneNotesSchema() {
           additionalProperties: false,
           required: ['scene', 'note', 'cut', 'quote'],
           properties: {
-            scene: { type: 'string', description: 'the scene number given, copied exactly' },
-            note: { type: 'string', description: 'one sentence a script reader would write: what the scene does, or what is weak in it' },
-            cut: { type: 'boolean', description: 'true only if the story loses nothing without this scene' },
-            quote: { type: 'string', description: 'a short span copied VERBATIM from that scene that the note rests on' }
+            scene: { type: 'string', description: 'scene number, exactly as given' },
+            note: { type: 'string', description: 'one sentence: what the scene does, or what is weak in it' },
+            cut: { type: 'boolean', description: 'true only if the story loses nothing without it' },
+            quote: { type: 'string', description: 'a short span copied VERBATIM from that scene' }
           }
         }
       }
@@ -3444,37 +3531,52 @@ function sceneNotesSchema() {
   };
 }
 
-export function buildSceneNotesPrompt(job) {
+/** The part of a scene-notes request every batch of a run shares. */
+export function buildSceneNotesShared(job) {
   const parts = [];
   const ctx = contextBlock(job.context);
   if (ctx) parts.push(ctx);
-  parts.push('Part ' + job.part + ' of ' + job.parts + ' of the screenplay' + (job.title ? ' "' + job.title + '"' : '') + '.');
+  parts.push('Screenplay' + (job.title ? ' "' + job.title + '"' : '') + '.');
   parts.push('Write ONE note for EVERY scene below, keyed by its scene number. Each note is a single sentence');
   parts.push('and rests on a short quote copied VERBATIM from that scene. Set `cut` to true only when the story');
   parts.push('genuinely loses nothing without the scene; most scenes are false. Be specific and fair.');
-  parts.push('');
+  return parts.join('\n');
+}
+
+/* One batch's own text: which part, then its scenes. */
+function sceneBatchText(job) {
+  const parts = ['Part ' + job.part + ' of ' + job.parts + '.', ''];
   for (const sc of job.scenes) { parts.push('--- SCENE ' + sc.n + ' ---'); parts.push(sc.text); parts.push(''); }
   return parts.join('\n');
 }
 
+/** The whole prompt as one text (what a person is shown; shared + batch). */
+export function buildSceneNotesPrompt(job) {
+  return buildSceneNotesShared(job) + '\n\n' + sceneBatchText(job);
+}
+
 /**
- * One batch. job { scenes:[{n, heading, text}], part, parts, title, context }
+ * One batch. job { scenes:[{n, heading, text}], part, parts, title, context, shared? }
  * Resolves to { notes:[{scene, note, cut, quote}], removed, truncated, model }.
  * A note whose quote is not in its scene keeps its words but loses the
  * quote and cannot set `cut`: a cut recommendation needs evidence.
+ * opts.effort fixes the effort for a run (runSceneBatches reads it once).
  */
-export async function sceneNotesBatch(job, { onStatus, signal } = {}) {
+export async function sceneNotesBatch(job, { onStatus, signal, effort, onStart } = {}) {
   const scenes = (job && Array.isArray(job.scenes) ? job.scenes : []).filter((sc) => sc && sc.text);
   if (!scenes.length) throw new AIError('There are no scenes in this part to read.', 'noscenes');
   const checkers = new Map(scenes.map((sc) => [String(sc.n), quoteChecker(sc.text)]));
   const known = new Set(checkers.keys());
+  let started = false;
   const { parsed, truncated, model } = await callModel({
-    system: 'You are a script reader writing one note per scene. Every note rests on a quote copied character for character from that scene; you do not invent plot.',
-    user: buildSceneNotesPrompt({ ...job, scenes }),
+    system: SCENE_NOTES_SYSTEM,
+    shared: job.shared || buildSceneNotesShared(job),
+    user: sceneBatchText({ ...job, scenes }),
     schema: sceneNotesSchema(),
-    maxTokens: 8000,
-    effort: 'medium',
+    maxTokens: sceneReadTokens(160, scenes.length, 8000),
+    task: 'scene-notes', effort,
     onStatus, signal,
+    onText: onStart ? () => { if (!started) { started = true; onStart(); } } : undefined,
     progress: (sofar) => 'Reading part ' + job.part + ' of ' + job.parts + ' — ' + (sofar.match(/"note"/g) || []).length + ' of ' + scenes.length + ' scenes'
   });
   let removed = 0;
@@ -3483,7 +3585,7 @@ export async function sceneNotesBatch(job, { onStatus, signal } = {}) {
   for (const n of Array.isArray(parsed.notes) ? parsed.notes : []) {
     if (!n || typeof n !== 'object') continue;
     const scene = String(n.scene ?? '').trim();
-    const note = str(n.note, 300);
+    const note = str(n.note, NOTE_MAX);
     if (!known.has(scene) || !note || seen.has(scene)) continue;
     seen.add(scene);
     let quote = unwrapQuote(str(n.quote, 300));
@@ -3502,15 +3604,16 @@ function breakdownTagsSchema(categoryIds) {
     properties: {
       elements: {
         type: 'array',
+        maxItems: TAGS_PER_BATCH_MAX,
         items: {
           type: 'object',
           additionalProperties: false,
           required: ['scene', 'category', 'name', 'quote'],
           properties: {
-            scene: { type: 'string', description: 'the scene number given, copied exactly' },
+            scene: { type: 'string', description: 'scene number, exactly as given' },
             category: { type: 'string', enum: categoryIds.slice() },
-            name: { type: 'string', description: 'the element, as a production would list it: "kettle", "red saree", "auto-rickshaw"' },
-            quote: { type: 'string', description: 'the words in that scene that call for it, copied VERBATIM' }
+            name: { type: 'string', description: 'short name as a production lists it: "kettle", "red saree"' },
+            quote: { type: 'string', description: 'the words that call for it, copied VERBATIM' }
           }
         }
       }
@@ -3518,11 +3621,12 @@ function breakdownTagsSchema(categoryIds) {
   };
 }
 
-export function buildBreakdownTagsPrompt(job) {
+/** The part of a breakdown request every batch of a run shares. */
+export function buildBreakdownTagsShared(job) {
   const parts = [];
   const ctx = contextBlock(job.context);
   if (ctx) parts.push(ctx);
-  parts.push('Part ' + job.part + ' of ' + job.parts + ' of the screenplay' + (job.title ? ' "' + job.title + '"' : '') + '.');
+  parts.push('Screenplay' + (job.title ? ' "' + job.title + '"' : '') + '.');
   parts.push('Break each scene down as a first assistant director would. List every element the scene');
   parts.push('CALLS FOR in these categories:');
   for (const c of job.categories) parts.push('· ' + c.id + ' — ' + c.label);
@@ -3531,29 +3635,35 @@ export function buildBreakdownTagsPrompt(job) {
   parts.push('that call for it, copied VERBATIM. An element with no words on the page behind it is invented');
   parts.push('and will be removed. Do not list the same element twice for one scene. `cast` is a speaking or');
   parts.push('named character; `extras` is background people by group ("crowd at the bus stop").');
-  parts.push('');
-  for (const sc of job.scenes) { parts.push('--- SCENE ' + sc.n + ' ---'); parts.push(sc.text); parts.push(''); }
   return parts.join('\n');
 }
 
+/** The whole prompt as one text (what a person is shown; shared + batch). */
+export function buildBreakdownTagsPrompt(job) {
+  return buildBreakdownTagsShared(job) + '\n\n' + sceneBatchText(job);
+}
+
 /**
- * One batch. job { scenes, part, parts, title, context, categories:[{id,label}] }
+ * One batch. job { scenes, part, parts, title, context, categories:[{id,label}], shared? }
  * Resolves to { elements:[{scene, category, name, quote}], removed, truncated, model }.
  */
-export async function breakdownTagsBatch(job, { onStatus, signal } = {}) {
+export async function breakdownTagsBatch(job, { onStatus, signal, effort, onStart } = {}) {
   const scenes = (job && Array.isArray(job.scenes) ? job.scenes : []).filter((sc) => sc && sc.text);
   const cats = (job && Array.isArray(job.categories) ? job.categories : []).filter((c) => c && c.id);
   if (!scenes.length) throw new AIError('There are no scenes in this part to read.', 'noscenes');
   if (!cats.length) throw new AIError('No breakdown categories were given.', 'nocontent');
   const checkers = new Map(scenes.map((sc) => [String(sc.n), quoteChecker(sc.text)]));
   const ids = new Set(cats.map((c) => c.id));
+  let started = false;
   const { parsed, truncated, model } = await callModel({
-    system: 'You are a first assistant director doing a script breakdown. You list what the page calls for, each with the words that call for it, and nothing else.',
-    user: buildBreakdownTagsPrompt({ ...job, scenes, categories: cats }),
+    system: BREAKDOWN_SYSTEM,
+    shared: job.shared || buildBreakdownTagsShared({ ...job, categories: cats }),
+    user: sceneBatchText({ ...job, scenes }),
     schema: breakdownTagsSchema([...ids]),
-    maxTokens: 12000,
-    effort: 'medium',
+    maxTokens: sceneReadTokens(700, scenes.length, 12000),
+    task: 'breakdown-tags', effort,
     onStatus, signal,
+    onText: onStart ? () => { if (!started) { started = true; onStart(); } } : undefined,
     progress: (sofar) => 'Reading part ' + job.part + ' of ' + job.parts + ' — ' + (sofar.match(/"name"/g) || []).length + ' elements'
   });
   let removed = 0;
@@ -3575,18 +3685,50 @@ export async function breakdownTagsBatch(job, { onStatus, signal } = {}) {
   return { elements, removed, truncated, model };
 }
 
-/** Run a scene-batched job across the whole script, sequentially, and
-    stop cleanly on abort. `step(scenes, part, parts)` does one batch. */
-export async function runSceneBatches(elements, step, { onStatus, signal, batchChars } = {}) {
-  const plan = planSceneRead(elements, { batchChars });
+/** Run a scene-batched job across the whole script and stop cleanly on
+    abort. `step(scenes, part, parts, opts)` does one batch; opts carries
+    { signal, onStart } — pass onStart to the batch job so the warm-first
+    release happens on the first streamed text, not on the whole reply.
+
+    Batches run SCENE_READ_CONCURRENCY at a time (ai-batches.js), the
+    first alone until its prefix is cached. Parts come back in SCRIPT
+    order whatever order they finished in. A failed batch loses only its
+    own scenes (`failed` lists them); a run in which every batch failed
+    throws the first batch's error, and Stop throws 'aborted' (nothing is
+    written by any of this, so there is nothing half-done to keep).
+    opts.onPart(part, index) — a part arrived (the Desk shows its cards);
+    opts.onBatchTime({ index, ms, total }) — how long a batch took. */
+export async function runSceneBatches(elements, step, { onStatus, signal, batchChars, onPart, onBatchTime, concurrency = SCENE_READ_CONCURRENCY } = {}) {
+  const plan = planSceneRead(elements, batchChars ? { batchChars } : {});
   if (!plan.batches.length) {
     throw new AIError('There are no scene headings in the script yet, so there is nothing to read.', 'noscenes');
   }
-  const out = [];
-  for (let b = 0; b < plan.batches.length; b++) {
-    if (signal && signal.aborted) throw new AIError('Stopped. Nothing was changed.', 'aborted');
-    if (onStatus) { try { onStatus('Reading part ' + (b + 1) + ' of ' + plan.batches.length + '…'); } catch (e) { /* UI */ } }
-    out.push(await step(plan.batches[b].map((i) => plan.scenes[i]), b + 1, plan.batches.length));
-  }
-  return { parts: out, scenes: plan.scenes, requests: plan.batches.length };
+  if (signal && signal.aborted) throw new AIError('Stopped. Nothing was changed.', 'aborted');
+  const total = plan.batches.length;
+  let done = 0;
+  const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
+  say('Reading ' + total + (total === 1 ? ' part' : ' parts') + (total > 1 ? ', ' + Math.min(concurrency, total) + ' at a time…' : '…'));
+  const jobs = plan.batches.map((idx, b) => ({ b, scenes: idx.map((i) => plan.scenes[i]) }));
+  const out = await runBatches(jobs, {
+    size: 1, concurrency, signal,
+    run: async ([job], { signal: sig, onStart }) => {
+      const t0 = Date.now();
+      const part = await step(job.scenes, job.b + 1, total, { signal: sig, onStart });
+      const ms = Date.now() - t0;
+      if (onBatchTime) { try { onBatchTime({ index: job.b, ms, total }); } catch (e) { /* UI */ } }
+      if (onPart) { try { onPart(part, job.b); } catch (e) { /* UI */ } }
+      return { items: [{ b: job.b, part }], truncated: !!(part && part.truncated), model: (part && part.model) || '' };
+    },
+    onBatch: ({ done: d, failed }) => { done = d; say('Read ' + done + ' of ' + total + (total === 1 ? ' part' : ' parts') + (failed ? ' · ' + failed + ' failed' : '')); }
+  });
+  if (out.stopped) throw new AIError('Stopped. Nothing was changed.', 'aborted');
+  if (!out.items.length && out.failed.length) throw out.failed[0].error;
+  const parts = out.items.map((x) => x.part);
+  const failed = out.failed.map((f) => ({
+    part: f.index + 1,
+    scenes: f.jobs[0].scenes.map((sc) => sc.n),
+    kind: (f.error && f.error.kind) || 'unknown',
+    message: (f.error && f.error.message) || ''
+  }));
+  return { parts, scenes: plan.scenes, requests: total, failed, model: out.model || '' };
 }

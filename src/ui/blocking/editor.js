@@ -1058,7 +1058,12 @@ delegate(document, 'click', '[data-action="blk-add-mark"]', (e, el) => {
   if (!before) return;
   History.record(before);
   const m = Shots.addMark(B, el.dataset.kind);
-  if (!m) return;
+  if (!m) {
+    if (el.dataset.kind === 'camera' && Shots.hasShotCamera(before)) {
+      StudioUI.toast('This diagram already holds this shot\u2019s camera. Move or turn it, or give the other angle its own shot.', { type: 'info' });
+    }
+    return;
+  }
   select(B, [m.id]);
   afterWrite(B, before, Shots.getBlock(B), { focus: itemSel(B, m.id) });
 });

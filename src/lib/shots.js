@@ -1016,10 +1016,17 @@ export function removeBlock(id) {
   return blocks;
 }
 
+/** True for a SHOT diagram that already holds its one camera. */
+export const hasShotCamera = (block) => !!(block && block.shotId && (block.marks || []).some((m) => m.kind === 'camera'));
+
 export function addMark(blockId, kind, patch = {}) {
   const blocks = listBlocks();
   const block = blocks.find((b) => b.id === blockId);
   if (!block) return null;
+  /* ONE camera per shot diagram (item 85): the AI's draft, enhance and
+     apply enforce it, and so must a hand add, or shot.cam names one of
+     two cameras and the shot's camera link is ambiguous (QA r2). */
+  if (kind === 'camera' && hasShotCamera(block)) return null;
   /* The label and the spot are the first FREE ones, never a count: after
      a delete a count hands out a label already in use and the spot of a
      mark still on the map (the count-after-delete flaw shot numbers had). */
@@ -1092,7 +1099,10 @@ export function duplicateMarks(blockId, markIds, dx = 4, dy = 4) {
   if (!block) return [];
   const want = new Set(markIds || []);
   const made = [];
+  let cam = hasShotCamera(block);
   for (const m of block.marks.filter((x) => want.has(x.id))) {
+    // A copy of a shot diagram's camera would be its second (see addMark).
+    if (m.kind === 'camera' && block.shotId) { if (cam) continue; cam = true; }
     const label = DEFAULT_LABEL.test(m.label) ? freeLabel(block.marks.concat(made), m.kind) : m.label;
     made.push(cleanMark({ ...offsetMark(m, dx, dy), id: uid('mk'), label }));
   }
@@ -1516,7 +1526,7 @@ export default {
   sceneCameras, camOf, shotsOfCamera,
   BLOCK_W, BLOCK_H, BLOCK_KINDS, clampPoint, blockScale, blockCallouts, formatMetres, shotStatus, coverageOf, blankMark, blankBlock, listBlocks, saveBlocks, blocksOfScene,
   floorWidthError,
-  addBlock, updateBlock, removeBlock, restoreBlock, addMark, updateMark, removeMark,
+  addBlock, updateBlock, removeBlock, restoreBlock, addMark, hasShotCamera, updateMark, removeMark,
   SET_KINDS, SET_SIZE, PATH_MAX, offsetMark, blankSetPiece, cleanSetPiece, cleanAxis, cleanBlock, getBlock, addSetPiece,
   updateSetPiece, removeSetPiece, setAxis, replaceBlock, duplicateMarks, lensFov, cameraFov, axisSides,
   floorOf, blockOfShot, isOrphanBlock, shotBlockName, ensureShotBlock, sceneAxisSides, writeBlocking, undoBlocking, planSplit, splitBlock,

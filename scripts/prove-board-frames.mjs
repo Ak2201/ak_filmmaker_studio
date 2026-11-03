@@ -563,13 +563,25 @@ for (const width of [1280, 390]) {
           c.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
           const need = Math.max(...[...sel.options].map((o) => c.measureText(o.text).width));
           return sel.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - need;
-        })() };
+        })(),
+        /* The same for the angle and move pickers: at 5.5rem they read
+           "eye lev" and "handh" (QA r2). Every option, not only the
+           chosen one, has to fit. */
+        pickRoom: Object.fromEntries(['angle', 'movement'].map((f) => {
+          const s = document.querySelector('[data-shot="h1"] select[data-shot-field="' + f + '"]');
+          const cs = getComputedStyle(s);
+          const c = document.createElement('canvas').getContext('2d');
+          c.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+          const need = Math.max(...[...s.options].map((o) => c.measureText(o.text).width));
+          return [f, Math.round(s.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - need)];
+        })) };
     });
     ok(lay.fits, 'the list fits its panel at 1280 with every default column', lay);
     ok(lay.desc >= 200 && lay.widest && lay.clip <= 1, '"What we see" is the widest column and shows its whole text', lay);
     ok(lay.rig, 'Light / rig shows by default', lay);
     ok(lay.size === 'EWS' && /extreme wide/.test(lay.title), 'the size select shows its code, the words in its title', lay);
     ok(lay.sizeRoom >= 0, 'the size select has room for its widest code', lay.sizeRoom);
+    ok(lay.pickRoom.angle >= 0 && lay.pickRoom.movement >= 0, 'the angle and move selects have room for their widest value', lay.pickRoom);
     ok(await overflow(page) <= 0, 'no sideways overflow');
     ok(errors.length === 0, 'no page errors', errors);
   } catch (e) { ok(false, 'the scenario stopped: ' + String(e && e.message || e).split('\n')[0]); }

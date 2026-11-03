@@ -294,9 +294,9 @@ function renderShotList(scenes, shots) {
     const time = Shots.formatMinutes(Shots.minutesOf(shots).total);
     wrap.append(h('div.vz-tools.pdf-menu-host', {}, [
       h('span.vz-tools-lab', {
-        text: shots.length + (shots.length === 1 ? ' shot' : ' shots')
-            + ' across ' + sceneSpread(shots)
-            + ' scenes' + (time ? ' · ' + time + ' estimated' : '')
+        text: plural(shots.length, 'shot', 'shots')
+            + ' across ' + plural(sceneSpread(shots), 'scene', 'scenes')
+            + (time ? ' · ' + time + ' estimated' : '')
       }),
       h('span.vz-tools-gap'),
       segmented({

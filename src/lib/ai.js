@@ -76,7 +76,8 @@ import Providers, {
   GEMINI_KEY, GEMINI_MODEL_KEY, AI_PROVIDER_KEY,
   getProviderId, provider, setProvider, providerLabel, apiName, apiHost, apiOrigin,
   getKey, hasKey, viaGoogle, credential, setKey, clearKey, maskKey, looksLikeKey,
-  models, defaultModel, getModel, setModel, imageModel, imageModelLabel
+  models, defaultModel, getModel, setModel, imageModel, imageModelLabel,
+  fallbackModels, modelLabel
 } from './ai-providers.js';
 
 /* Re-exported so a caller that only wants "is there a key" or
@@ -282,6 +283,11 @@ function errorForStatus(status, body, prov) {
   if (status === 529 || status === 503) {
     return new AIError('The API is overloaded right now. Try again shortly — nothing was changed.', 'overloaded');
   }
+  /* 404 on a model path is "that model id is not served (any more)":
+     callModel falls back to the next model rather than stopping. */
+  if (status === 404) {
+    return new AIError('The API does not serve this model' + (detail ? ': ' + detail : '.'), 'nomodel');
+  }
   if (status >= 500) {
     return new AIError('The API had a server error (' + status + '). Nothing was changed.', 'server');
   }
@@ -331,7 +337,7 @@ async function readStream(res, read, onText) {
         try { evt = JSON.parse(payload); } catch (e) { continue; }
         const part = read(evt);
         if (!part) continue;
-        if (part.error) throw new AIError(part.error, 'stream');
+        if (part.error) throw new AIError(part.error, part.kind || 'stream');
         if (part.stop) stop = part.stop;
         if (part.text) { text += part.text; if (onText) onText(text); }
       }
@@ -487,9 +493,17 @@ const GEMINI_STOP = {
     broken". */
 function geminiFrame(evt) {
   if (evt.error) {
+    /* Gemini can answer 200 and then send UNAVAILABLE (503) or
+       RESOURCE_EXHAUSTED (429) as an SSE event. Name it as the status
+       would have, so callModel retries / falls back the same way. */
+    const e = evt.error;
+    const tag = String(e.status || '') + ' ' + String(e.message || '');
+    const kind = (e.code === 503 || /UNAVAILABLE|overload/i.test(tag)) ? 'overloaded'
+      : (e.code === 429 || /RESOURCE_EXHAUSTED/i.test(tag)) ? 'rate' : 'stream';
     return {
-      error: evt.error.message
-        ? String(evt.error.message) : 'The API ended the stream with an error.'
+      kind,
+      error: kind === 'overloaded' ? 'The API is overloaded right now. Try again shortly — nothing was changed.'
+        : e.message ? String(e.message) : 'The API ended the stream with an error.'
     };
   }
   const blocked = evt.promptFeedback && evt.promptFeedback.blockReason;
@@ -585,18 +599,79 @@ async function send(prov, req, auth, signal) {
   return res;
 }
 
-async function callModel({
-  system, user, schema, maxTokens = 8000, effort, task,
-  onStatus, signal, progress, shared, onText, cache = true
-}) {
+/* ---- busy models: retry, then the next model ----------------
+   Owner report (4 Nov 2026): every Run on Gemini 3.8 Flash said "The
+   API is overloaded". Google's 503 is capacity PER MODEL, so the same
+   request usually succeeds a few seconds later or on the previous
+   Flash. Two short retries on the chosen model, then each fallback
+   model once (ai-providers.js `fallbackModels`, then the others it
+   lists). Only while NOTHING has streamed yet: once text has reached
+   the page (live cards), a retry would re-stream it, so that failure
+   goes up as it is (runBatches retries a whole batch on its own).
+   Every wait ends early on Stop. The answer says which model replied. */
+const BUSY = new Set(['overloaded', 'rate', 'nomodel']);
+export const RETRY_MS = [1500, 4000];   // exported so test:ai-retry can shorten them
+const wait = (ms, signal) => new Promise((resolve) => {
+  if (signal && signal.aborted) return resolve();
+  const t = setTimeout(done, ms + Math.floor(Math.random() * 400));
+  function done() { clearTimeout(t); if (signal) signal.removeEventListener('abort', done); resolve(); }
+  if (signal) signal.addEventListener('abort', done, { once: true });
+});
+
+async function callModel(raw) {
   /* `task` names the Desk task this request serves, so its effort comes
      from the ONE table (ai-effort.js TASK_EFFORT) when the caller did not
      fix one for the run. The ceiling default is 8000, not 32000: every
      job that needs more says so beside its schema, and a small job with
-     a huge ceiling only lets a runaway answer run longer. */
-  if (!effort) effort = task ? taskEffort(task) : 'medium';
+     a huge ceiling only lets a runaway answer run longer. The same effort
+     and ceiling go to every retry and fallback model. */
+  const opts = { ...raw,
+    effort: raw.effort || (raw.task ? taskEffort(raw.task) : 'medium'),
+    maxTokens: raw.maxTokens || 8000 };
+  const { onStatus, signal } = opts;
   const prov = provider();
-  const model = getModel();
+  const chosen = getModel();
+  const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
+  const plan = [chosen, chosen, chosen, ...fallbackModels(chosen, prov.id).map((m) => m.id)];
+  let last = null;
+  for (let i = 0; i < plan.length; i++) {
+    const model = plan[i];
+    if (i > 0) {
+      if (signal && signal.aborted) throw new AIError('Stopped. Nothing was changed.', 'aborted');
+      if (model === chosen) {
+        say(modelLabel(chosen, prov.id) + ' is busy. Trying again (' + (i + 1) + ' of 3)…');
+        await wait(RETRY_MS[i - 1] || 4000, signal);
+      } else {
+        say(modelLabel(plan[i - 1], prov.id) + ' is busy. Trying ' + modelLabel(model, prov.id) + '…');
+      }
+      if (signal && signal.aborted) throw new AIError('Stopped. Nothing was changed.', 'aborted');
+    }
+    // A 404 means the model is not served: retrying the SAME id is pointless.
+    /* A 404 (model not served) or a 429 (this model's quota) gains nothing
+       from asking the SAME id again; go to the next model at once. */
+    if (i > 0 && model === chosen && last && (last.kind === 'nomodel' || last.kind === 'rate')) continue;
+    const streamed = { any: false };
+    try {
+      const out = await callOnce({ ...opts, model, prov, streamed });
+      if (model !== chosen) out.fellBackFrom = chosen;
+      return out;
+    } catch (e) {
+      if (!(e && BUSY.has(e.kind)) || streamed.any) throw e;
+      last = e;
+    }
+  }
+  const tried = [...new Set(plan)].map((m) => modelLabel(m, prov.id)).join(', ');
+  const kind = last ? last.kind : 'overloaded';
+  const what = kind === 'nomodel' ? 'None of these models is available: '
+    : kind === 'rate' ? 'Every model hit its rate limit: ' : 'Every model was busy: ';
+  throw new AIError(what + tried + '. This is on ' + prov.label + '’s side, and nothing was changed. '
+    + 'Try again in a minute, or pick another model in Settings → AI.', kind);
+}
+
+async function callOnce({
+  system, user, schema, maxTokens = 8000, effort = 'medium',
+  onStatus, signal, progress, shared, onText, cache = true, model, prov, streamed
+}) {
   const say = (m) => { if (onStatus) { try { onStatus(m); } catch (e) { /* UI */ } } };
 
   const wire = WIRE[prov.id] || WIRE[DEFAULT_PROVIDER];
@@ -614,6 +689,7 @@ async function callModel({
     ({ text, stop } = await readStream(res, wire.frame, (progress || onText) ? (sofar) => {
       /* The raw text first (a caller reading it scene by scene, ai-stream-json.js),
          then the one-line progress. A throw in either is the UI's, not the request's. */
+      if (sofar) streamed.any = true;
       if (onText) { try { onText(sofar); } catch (e) { /* UI */ } }
       if (progress) { const line = progress(sofar); if (line) say(line); }
     } : null));

@@ -554,6 +554,28 @@ const CROWD_WORDS = new Set(['crowd', 'crowds', 'mob']);
 const CROWD_OF_NOUN = new RegExp('^\\s+of\\s+(?:[\\p{L}\\p{N},\'’-]+\\s+){0,3}?(?:'
   + [...(lexicon.extras || [])].sort((a, b) => b.length - a.length).map(escRe).join('|') + ')\\b', 'iu');
 const crowdOfNoun = (t, end) => CROWD_OF_NOUN.test(t.slice(end));
+/* "Ravi falls asleep" is not a fall (QA r3): a verb followed by one of
+   `notBefore` is not an action. */
+const NOT_BEFORE = ((lexicon.verbs && lexicon.verbs.notBefore) || []).map((w) => w.toLowerCase());
+const verbIdiom = (t, end) => {
+  const rest = t.slice(end).toLowerCase();
+  return NOT_BEFORE.some((w) => new RegExp('^\\s+' + escRe(w) + '\\b', 'u').test(rest));
+};
+/* "They watch the bus" is not a prop (QA r3): a thing word that is also an
+   everyday verb counts only when its neighbours do not make it the verb.
+   See `nounVerbs` in the lexicon. */
+const NV = lexicon.nounVerbs || {};
+const NV_WORDS = new Set((NV.words || []).map((w) => w.toLowerCase()));
+const NV_DET = new Set((NV.determiners || []).map((w) => w.toLowerCase()));
+const NV_BEFORE = new Set((NV.before || []).map((w) => w.toLowerCase()));
+const NV_AFTER = new Set((NV.after || []).map((w) => w.toLowerCase()));
+const usedAsVerb = (t, at, end) => {
+  const prev = (t.slice(0, at).match(/([\p{L}'’]+)\s*$/u) || [])[1];
+  const next = (t.slice(end).match(/^\s+([\p{L}'’]+)/u) || [])[1];
+  const p = prev ? prev.toLowerCase().replace(/’/g, "'") : '';
+  if (p && NV_DET.has(p)) return false;
+  return (!!p && NV_BEFORE.has(p)) || (!!next && NV_AFTER.has(next.toLowerCase()));
+};
 const subjectIsThing = (t, at) => {
   const m = t.slice(0, at).match(/([\p{L}'’]+)\s+$/u);
   return !!m && THING_WORDS.has(m[1].toLowerCase());
@@ -605,7 +627,9 @@ export function suggestElements(scene, slice) {
       while ((m = RE[cat].exec(t))) {
         // Sound words in lower case are often prose ("the rain"); keep
         // them, but a capitalised cue is the stronger signal below.
-        if (VERBS.has(m[1].toLowerCase()) && subjectIsThing(t, m.index)) continue;
+        const w = m[1].toLowerCase(), end = m.index + m[1].length;
+        if (VERBS.has(w) && (subjectIsThing(t, m.index) || verbIdiom(t, end))) continue;
+        if (NV_WORDS.has(w) && usedAsVerb(t, m.index, end)) continue;
         if (cat === 'extras' && CROWD_WORDS.has(m[1].toLowerCase()) && crowdOfNoun(t, m.index + m[1].length)) continue;
         add(cat, m[1].toLowerCase(), t);
       }

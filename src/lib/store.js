@@ -697,8 +697,9 @@ export function createProject(meta) {
   if (meta.region === 'IN' || meta.region === 'INT') project.region = meta.region;
   /* A sample film is stamped with its sample id (src/lib/sample-project.js):
      the sync layer skips entries carrying it and no others. A field on the
-     entry, no key; only hub.js's openSampleProject() passes it, and the
-     backup importer and Duplicate never do. */
+     entry, no key; hub.js's openSampleProject() passes it, and so does
+     the backup importer (a restored sample is still a sample, whatever
+     its title became); Duplicate never does. */
   if (typeof meta.sample === 'string' && /^[a-z0-9-]{1,40}$/.test(meta.sample)) project.sample = meta.sample;
   arr0.push(project);
   saveAllProjects(arr0);

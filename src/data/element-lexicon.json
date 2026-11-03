@@ -17,7 +17,7 @@
   "stunts": [
     "fight", "fights", "fighting", "punch", "punches", "punched", "kick", "kicks", "kicked", "slap", "slaps", "slapped",
     "falls", "fell", "jumps", "jumped", "leaps", "crash", "crashes", "crashed", "collides", "chase", "chases", "chased",
-    "stabs", "stabbed", "shoots", "shot", "explodes", "explosion", "blast", "brawl", "tackles", "thrown", "throws him",
+    "stabs", "stabbed", "shoots", "shot", "explodes", "brawl", "tackles", "thrown", "throws him",
     "hangs from", "dives", "rolls", "skids", "overturns", "set on fire", "on fire", "drowns", "drowning"
   ],
   "sound": [
@@ -68,10 +68,18 @@
               "BUZZ", "BUZZES", "HONK", "HONKS", "KNOCK", "KNOCKS", "SCREAM", "SCREAMS", "THUD", "SHATTERS", "EXPLODES",
               "EXPLOSION", "WHISTLE", "WHISTLES", "SIREN", "SIRENS", "THUNDER", "CLICK", "CLICKS", "CREAKS", "BOOM"]
   },
+  "nounVerbs": {
+    "_about": "Thing words that are also everyday VERBS (\"they watch the bus\", \"he notes the time\", \"they ring the bell\"). Such a word is the thing only when it is not a verb by its neighbours: kept when the word before is one of `determiners`; otherwise dropped when the word before is one of `before` (a subject pronoun, `to`, a modal) or the word after is one of `after` (an object word that a noun cannot take: \"watch the bus\"). \"His watch\", \"a gold watch\", \"checks the watch\" stay props (QA r3). An object, not a list, so it is not a category.",
+    "words": ["watch", "file", "ring", "stick", "notes"],
+    "determiners": ["a", "an", "the", "his", "her", "their", "my", "your", "our", "its", "this", "that", "gold", "silver", "old", "new"],
+    "before": ["i", "you", "he", "she", "we", "they", "it", "to", "will", "would", "can", "could", "must", "should", "shall", "may", "might", "all", "both", "just", "still", "and", "don't", "won't", "can't", "let's"],
+    "after": ["the", "a", "an", "him", "her", "them", "me", "us", "it", "his", "their", "my", "your", "our", "its", "this", "that", "these", "those", "out", "over", "as", "closely", "intently", "together", "each"]
+  },
   "verbs": {
-    "_about": "Lexicon words that are VERBS, not things. A verb names an element only when its subject is a person or a vehicle (\"Ravi falls\", \"the car rolls\"). When the word just before it is already a word of a thing list (`thingCategories`: \"a phone rings\", \"rain falls\") or one of `notAfter` (\"night falls\"), the subject is the element and the verb is dropped, so a breakdown is never offered a \"falls\" stunt or a \"rings\" sound for it (QA r2). A verb in CAPITALS is still a sound cue through soundCaps. An object, not a list, so it is not a category.",
-    "words": ["falls", "fell", "rings", "ringing", "honks", "knocks", "beeps", "vibrates", "rolls", "glows", "floats", "disappears", "vanishes"],
+    "_about": "Lexicon words that are VERBS, not things. A verb names an element only when its subject is a person or a vehicle (\"Ravi falls\", \"the car rolls\"). When the word just before it is already a word of a thing list (`thingCategories`: \"a phone rings\", \"rain falls\") or one of `notAfter` (\"night falls\"), the subject is the element and the verb is dropped, so a breakdown is never offered a \"falls\" stunt or a \"rings\" sound for it (QA r2). A verb in CAPITALS is still a sound cue through soundCaps. A verb followed by one of `notBefore` (\"falls asleep\", \"falls silent\") is not an action at all and is dropped too (QA r3). An object, not a list, so it is not a category.",
+    "words": ["falls", "fell", "rings", "ringing", "honks", "knocks", "beeps", "vibrates", "rolls", "glows", "floats", "disappears", "vanishes", "burns"],
     "thingCategories": ["props", "setdressing", "wardrobe", "sound", "sfx", "vfx"],
+    "notBefore": ["asleep", "silent", "quiet", "still", "apart", "ill", "sick", "in love", "short", "behind", "into place", "for"],
     "notAfter": ["night", "darkness", "dark", "silence", "quiet", "hush", "dusk", "dawn", "light", "sunlight", "moonlight", "shadow", "shadows", "tear", "tears", "leaf", "leaves", "curtain"]
   }
 }

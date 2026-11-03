@@ -37,6 +37,11 @@ for (const f of html) {
   for (const img of s.match(/<img\b[^>]*>/g) || []) ok(/\balt=/.test(img), f + ': <img> has alt: ' + img.slice(0, 80));
   ok(!s.includes('vercel.app'), f + ': names no vercel.app URL');
   if (s.includes('id="app"') && f !== 'index.html') ok(noindex(s), f + ': a studio shell (#app) is noindex');
+  /* A public skip link must MOVE FOCUS (QA r2, 3 Nov 2026): a fragment
+     jump focuses its target only if the target is focusable, so the
+     static <main id="main"> carries tabindex="-1" (the studio pages
+     get theirs from fragments.js moveFocus() at run time). */
+  if (/class="mk-skip" href="#main"/.test(s)) ok(/<main\b[^>]*\bid="main"[^>]*\btabindex="-1"|<main\b[^>]*\btabindex="-1"[^>]*\bid="main"/.test(s), f + ': the skip link\'s <main id="main"> is focusable (tabindex="-1")');
   if (noindex(s)) continue;
   indexable++;
   const t = (s.match(/<title>([^<]*)<\/title>/) || [])[1] || '';

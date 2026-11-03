@@ -168,8 +168,14 @@ const livePre = (els) => {
    part of the scene above. That scene has no op of its own, so it was never
    reported, and its pages, shots, sides and call sheet changed with no item
    saying so (QA r2). Each such scene gets a group here, its count of
-   `added` being the lines it absorbed, in script order. */
-function withAbsorbed(diff, els) {
+   `added` being the lines it absorbed, in script order.
+   The mirror case (QA r3): a heading INSERTED mid-scene takes the lines
+   below it out of the scene they were in. Those lines are 'same' ops under
+   the new heading, so the scene that lost them had no op either, and its
+   sides silently dropped dialogue. That scene is reported with its lost
+   lines as `removed`, and the new scene counts the lines it took as
+   `moved` (they were already in the script, just under another heading). */
+function withAbsorbed(diff, els, baseEls) {
   const ops = (diff && diff.ops) || [];
   const groups = groupByScene(diff);
   const at = new Map(ops.map((o, i) => [o, i]));
@@ -186,7 +192,36 @@ function withAbsorbed(diff, els) {
       absorbed.set(h.id, (absorbed.get(h.id) || 0) + (norm(o.b.text) ? 1 : 0));
     }
   }
-  const out = groups.map((g) => ({ g, i: at.get(g.ops[0]) ?? 0 }));
+  const lost = new Map();       // live heading id -> lines taken by a new heading
+  const took = new Map();       // the new heading's group -> lines it took
+  const A = (baseEls || []).filter(Boolean);
+  for (const g of groups) {
+    if (g.headingOp !== 'added') continue;
+    for (const o of g.ops) {
+      if (!o.a || !o.b || o.op === 'removed' || o.op === 'moved' || !norm(o.b.text)) continue;
+      if (o.a.type === 'scene' && norm(o.a.text)) continue;
+      let ai = typeof o.ai === 'number' ? o.ai : A.findIndex((e) => e.id === o.a.id);
+      let bh = null;
+      for (let k = ai - 1; k >= 0 && !bh; k--) if (A[k] && A[k].type === 'scene' && norm(A[k].text)) bh = A[k];
+      if (!bh) continue;
+      const live = ops.find((x) => x.a && x.a.id === bh.id && x.b && x.op !== 'removed');
+      if (!live || live.b.id === g.headingId) continue;
+      lost.set(live.b.id, (lost.get(live.b.id) || 0) + 1);
+      took.set(g, (took.get(g) || 0) + 1);
+    }
+  }
+  const bump = (g) => {
+    const t = took.get(g) || 0, l = g.headingId ? lost.get(g.headingId) || 0 : 0;
+    if (g.headingId) lost.delete(g.headingId);
+    return t || l ? { ...g, counts: { ...g.counts, moved: g.counts.moved + t, removed: g.counts.removed + l } } : g;
+  };
+  const out = groups.map((g) => ({ g: bump(g), i: at.get(g.ops[0]) ?? 0 }));
+  for (const [hid, n] of lost) {
+    const i = ops.findIndex((o) => o.b && o.b.id === hid);
+    if (i < 0 || absorbed.has(hid)) continue;
+    out.push({ i, g: { heading: norm(ops[i].b.text), headingId: hid, headingOp: ops[i].op, ops: [ops[i]],
+      counts: { changed: 0, moved: 0, added: 0, removed: n } } });
+  }
   for (const [hid, n] of absorbed) {
     if (!n) continue;
     const i = ops.findIndex((o) => o.b && o.b.id === hid);
@@ -224,7 +259,7 @@ export function changeReport(doc, { scenes = [], shots = [], callSheets = [] } =
   const pending = reconcile(els, rows, { held: true, numbering: n }).pending;
 
   const items = [];
-  for (const g of withAbsorbed(diff, els)) {
+  for (const g of withAbsorbed(diff, els, baseRev.elements || [])) {
     const op = g.ops[0] || {};
     const pre = !g.heading && !g.headingId && !(op.a && op.a.type === 'scene') && !(op.b && op.b.type === 'scene');
     let kind = 'changed';

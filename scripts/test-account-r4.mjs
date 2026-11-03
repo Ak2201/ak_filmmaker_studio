@@ -13,7 +13,7 @@ globalThis.document = document; globalThis.window = window; globalThis.location 
 class Storage { constructor() { this.m = new Map(); } getItem(k) { return this.m.has(k) ? this.m.get(k) : null; } setItem(k, v) { this.m.set(k, String(v)); } removeItem(k) { this.m.delete(k); } key(i) { return [...this.m.keys()][i] ?? null; } get length() { return this.m.size; } clear() { this.m.clear(); } }
 globalThis.Storage = Storage; globalThis.localStorage = new Storage(); globalThis.sessionStorage = new Storage();
 const { errorSentence } = await import('../src/lib/gate.js');
-const { openFailedSentence } = await import('../src/lib/screening-model.js');
+const { openFailedSentence, expiryText } = await import('../src/lib/screening-model.js');
 const { capState } = await import('../src/ui/plan-cards.js');
 const { readFileSync } = await import('node:fs');
 
@@ -29,6 +29,10 @@ ok(/\.$/.test(sc) && /invite page/.test(sc), 'the screening refusal points an in
 ok(errorSentence(new Error('That is a screening pass — open it in the screening room'), 'x') === 'That is a screening pass — open it in the screening room', 'the screening-pass-in-the-invite-box sentence is untouched');
 
 /* seats at their cap */
+// QA r3 G-4: under a minute must not read "closes in 0 minutes".
+ok(expiryText(20000) === 'This pass closes in less than a minute.', 'under a minute says less than a minute: ' + expiryText(20000));
+ok(expiryText(59999) === 'This pass closes in less than a minute.' && expiryText(60000) === 'This pass closes in 1 minute.', 'one minute is the first minute figure');
+ok(expiryText(0) === 'This pass has expired.', 'zero left has expired');
 ok(capState('seats', 1, 1) === 'seats', 'one seat of one is not a warning');
 ok(capState('projects', 3, 3) === 'full', 'three films of three still warns');
 ok(capState('seats', 0, 1) === null && capState('projects', 9, null) === null, 'under the cap, or no cap, says nothing');

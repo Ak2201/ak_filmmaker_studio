@@ -116,6 +116,19 @@ const GOLDEN = {
 }
 
 ok(P && typeof P.paginate === 'function', 'src/lib/paginate.js exports paginate()');
+
+/* THE PAGE COUNT TO QUOTE (QA r3 B-2). One figure for the script's length
+   across the studio: the sheets it prints, the writer's strip's number —
+   not the 55-line estimate, which read 106.5 on the dashboard, the
+   analysis and Story beside the writer's 115. */
+ok(P && typeof P.printedPages === 'function', 'paginate.js exports printedPages()');
+if (P && P.printedPages) {
+  eq(P.printedPages(sample), P.paginate(sample).length, 'printedPages is the sheet count paginate() lays out');
+  eq(P.printedPages(sample), X.paginateDoc({ elements: sample }).length, 'and the editor\'s paginateDoc() agrees on an unlocked script');
+  ok(P.printedPages(sample) !== S.pageCount(sample), 'it is not the 55-line estimate (the Dragon sample differs by pages)');
+  eq(P.printedPages([]), 0, 'no script prints no pages');
+  eq(P.printedPages([{ id: 'b', type: 'action', text: '  ' }]), 0, 'a blank line prints no pages');
+}
 ok(P && X.paginate === P.paginate && X.wrapText === P.wrapText && X.GEOMETRY === P.GEOMETRY,
   'screenplay-export.js re-exports the SAME functions (one paginator, not two)');
 {

@@ -986,7 +986,8 @@ function batchPanel(scenes) {
    the typing, not the judgement. */
 const SUGGEST_CATS = SUGGEST_CATEGORIES;
 /* ADD ALL takes only the five tight categories (BULK_CATS in
-   src/lib/breakdown-model.js); the looser ones are one chip at a time. */
+   src/lib/breakdown-model.js); the looser ones take their own Accept all,
+   a scene or a chip. */
 function renderSuggestions(scenes) {
   const wrap = h('section.bd-suggest', { id: 'suggest' });
   wrap.append(h('h2.bd-h2', { text: 'Auto-Tag' }),

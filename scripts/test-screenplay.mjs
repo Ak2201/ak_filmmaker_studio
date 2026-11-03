@@ -254,8 +254,22 @@ eq(wide.special.map((x) => x.name), ['drone'], 'special equipment is suggested')
   eq(A.suggestElements({ elements: {} }, { elements: [el('action', 'The crowd turns.')] }).extras.map((x) => x.name), ['crowd'], 'a bare crowd is still offered');
   eq(A.suggestElements({ elements: {} }, { elements: [el('action', 'The phone RINGS.')] }).sound.map((x) => x.name), ['rings'], 'a capitalised RINGS is still a sound cue');
 }
+{
+  // QA r3: a verb is not a prop, one explosion is one SFX, an idiom is not a stunt.
+  const S = (t) => A.suggestElements({ elements: {} }, { elements: [el('action', t)] });
+  eq(S('They watch the bus.').props, [], '"they watch the bus": watch is a verb, not a prop');
+  eq(S('He checks his watch.').props.map((x) => x.name), ['watch'], '"his watch" is still a prop');
+  eq([S('An explosion rocks the street.').stunts, S('An explosion rocks the street.').sfx.map((x) => x.name)], [[], ['explosion']], 'an explosion is SFX, not also a stunt');
+  eq([S('The blast throws him.').stunts.map((x) => x.name), S('The blast throws him.').sfx.map((x) => x.name)], [['throws him'], ['blast']], 'a blast is SFX; the throw is the stunt');
+  eq(S('Ravi falls asleep.').stunts, [], '"falls asleep" is not a stunt');
+  eq(S('A fire burns.').sfx.map((x) => x.name), ['fire'], '"a fire burns": one SFX, not fire and burns');
+}
 eq(A.suggestElements({ elements: {} }, { elements: [el('action', 'He wears a scarf and runs a business.')] }).vehicles, [], 'whole words only: scarf is not car, business is not bus');
 eq(A.suggestElements({ elements: {} }, { elements: [el('character', "RAGAVAN'S FATHER")] }).cast.map((x) => x.name), ["Ragavan's Father"], 'a cue with a possessive is title-cased without a capital after the apostrophe');
+// QA r3 F: the lock stores this as the scene cast, and a lower-cased cue had
+// lost the capitals the initialism rule needs ("Hr Manager" on the contact).
+eq(A.suggestElements({ elements: {} }, { elements: ['HR MANAGER', 'DR. A.P.J. KUMAR-SMITH III', 'MCDONALD', "O'BRIEN (V.O.)"].map((t) => el('character', t)) }).cast.map((x) => x.name),
+  ['HR Manager', 'Dr. A.P.J. Kumar-Smith III', 'McDonald', "O'Brien"], 'cast from a cue keeps its initialisms, dotted initials and numerals');
 {
   const one = A.suggestElements({ elements: {} }, { elements: [el('action', 'Rows of folding chairs. A watchman folds a chair.')] });
   eq(one.setdressing.filter((x) => /^chairs?$/.test(x.name)).length, 1, 'chair and chairs are one suggestion, not two');

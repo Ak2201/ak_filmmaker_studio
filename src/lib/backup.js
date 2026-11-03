@@ -594,7 +594,14 @@ function applyV2(all, shape, opts) {
       format: meta.format,
       fav:    meta.fav,
       subtitle: meta.subtitle,
-      region: meta.region     // createProject() keeps 'IN' / 'INT' only
+      region: meta.region,    // createProject() keeps 'IN' / 'INT' only
+      /* The sample stamp travels with the entry. Without it a restored
+         Dragon is decided by title + seeded scene ids alone, and
+         'Dragon (imported)' (or a renamed sample) matches neither, so a
+         signed-in studio synced a sample that must never sync.
+         createProject() checks the spelling; sampleIdOf() ignores an id
+         that names no sample. */
+      sample: meta.sample
     });
     writeBucket(created.id, bucket);
     taken.push(created.id);

@@ -26,6 +26,10 @@
                       cursor moves past the written ones only, and the
                       unticked scene is next in line; a batch that wrote
                       nothing changes nothing;
+     · QA r2 K        gen-batch / gen-scenes / synopsis-script Undo takes
+                      back only what Accept wrote: a line or scene typed
+                      since survives; an edited generated line, or a job
+                      that moved on, refuses and says so;
      · voice-check    with no addTake port the Accept says the Coverage
                       view must be open (never "no longer in the script").
    ============================================================ */
@@ -270,6 +274,85 @@ await Tasks.registerAll((t) => reg.set(t.id, t));
   eq([none.wrote, Gen.load().cursor, Script.loadScript().elements.length], [0, 0, 0], 'gen-batch: a batch that wrote nothing moves nothing (the bulk run stops on it)');
   const done = Gen.applyBatch({ cursor: 0, batch: [1, 2, 3, 4].map(sc), byScene: { g1: els(1), g2: els(2), g3: els(3), g4: els(4) }, model: 'm' }, null);
   eq([done.wrote, Gen.load().cursor, Gen.load().scenes.map((s) => s.sceneId)], [4, 4, ['g1', 'g2', 'g3', 'g4', 'g5']], 'gen-batch: a whole batch written keeps the order and moves past it');
+}
+
+/* ---- QA r2 K: an Undo keeps what was typed after Accept ---------- */
+{
+  // gen-batch: the writer's own lines (edited and added) survive Undo.
+  mem.clear();
+  const own = Script.blankElement({ type: 'action', text: 'My own line.' });
+  Script.saveScript({ elements: [own], revisions: [], documents: [] });
+  const sc = (n) => ({ sceneId: 'k' + n, slug: 'INT. ROOM ' + n + ' - DAY', synopsis: 'S' + n });
+  Gen.save({ ...Gen.load(), stage: 'pages', cursor: 0, scenes: [1, 2].map(sc) });
+  const els = (n) => [{ type: 'scene', text: 'INT. ROOM ' + n + ' - DAY' }, { type: 'action', text: 'Body ' + n + '.' }];
+  const draft = { cursor: 0, batch: [1, 2].map(sc), byScene: { k1: els(1), k2: els(2) }, model: 'm', truncated: false };
+  const t = reg.get('gen-batch');
+  const said = [];
+  const undo = t.apply([{ id: 'k1', draft }, { id: 'k2', draft }], { say: (m) => said.push(m) });
+  eq(Script.loadScript().revisions.length, 1, 'gen-batch r2: a revision before the first batch');
+  const d = Script.loadScript();
+  d.elements[0].text = 'My own line EDITED.';
+  d.elements.push(Script.blankElement({ type: 'action', text: 'A line I typed after accept.' }));
+  Script.saveScript(d);
+  const ret = undo();
+  eq(Script.loadScript().elements.map((e) => e.text), ['My own line EDITED.', 'A line I typed after accept.'], 'gen-batch r2: Undo removes only the batch\'s lines and keeps words typed since');
+  eq([Gen.load().cursor, Gen.load().stage, Script.loadScript().revisions.length], [0, 'pages', 0], 'gen-batch r2: Undo puts the job back and drops its own revision');
+  ok(ret !== false && !said.length, 'gen-batch r2: a clean Undo says nothing of its own', said);
+
+  // gen-batch: a generated line edited since → refuse, change nothing.
+  mem.clear();
+  Script.saveScript({ elements: [Script.blankElement({ type: 'action', text: 'My own line.' })], revisions: [], documents: [] });
+  Gen.save({ ...Gen.load(), stage: 'pages', cursor: 0, scenes: [1, 2].map(sc) });
+  const said2 = [];
+  const undo2 = t.apply([{ id: 'k1', draft }, { id: 'k2', draft }], { say: (m) => said2.push(m) });
+  const d2 = Script.loadScript();
+  d2.elements[2].text = 'TYPED AFTER ACCEPT';
+  Script.saveScript(d2);
+  const before2 = Script.loadScript().elements.map((e) => e.text);
+  const ret2 = undo2();
+  eq(Script.loadScript().elements.map((e) => e.text), before2, 'gen-batch r2: an edited generated line → Undo changes nothing');
+  eq(Gen.load().cursor, 2, 'gen-batch r2: … and the job is left where it is');
+  ok(ret2 === false && said2.length === 1 && /nothing was undone/.test(said2[0]), 'gen-batch r2: … and says so (no "Undone.")', said2);
+
+  // gen-scenes: a scene the writer added, and an edited accepted row, survive.
+  mem.clear();
+  Gen.save({ ...Gen.load(), stage: 'beats', beats: [{ id: 'catalyst', label: 'Catalyst', happens: 'x' }] });
+  const gs = reg.get('gen-scenes');
+  const props = [1, 2].map((n) => ({ intExt: 'INT', location: 'Place ' + n, dayNight: 'DAY', synopsis: 'S' + n + '.', eighths: 8, cast: [], beat: 'catalyst' }));
+  const said3 = [];
+  const undo3 = gs.apply(props.map((p, i) => ({ id: 'p' + i, proposal: p, model: 'm' })), { patch: () => ({}), replaceScenes: () => false, say: (m) => said3.push(m) });
+  const rows = ScenesM.listScenes();
+  rows[0].location = 'MY TYPED LOCATION';
+  rows.push(ScenesM.blankScene({ number: '3', location: 'MY OWN SCENE' }));
+  ScenesM.saveScenes(rows);
+  const ret3 = undo3();
+  eq(ScenesM.listScenes().map((r) => r.location), ['MY TYPED LOCATION', 'MY OWN SCENE'], 'gen-scenes r2: Undo removes the untouched accepted row only; the writer\'s scene and edit stay');
+  eq(Gen.load().stage, 'beats', 'gen-scenes r2: Undo puts the job back');
+  ok(ret3 !== false && said3.length === 1 && /edited since/.test(said3[0]), 'gen-scenes r2: … and says an edited row was kept', said3);
+
+  // gen-scenes: pages written from the scenes since → refuse, change nothing.
+  mem.clear();
+  Gen.save({ ...Gen.load(), stage: 'beats', beats: [{ id: 'catalyst', label: 'Catalyst', happens: 'x' }] });
+  const said4 = [];
+  const undo4 = gs.apply(props.map((p, i) => ({ id: 'p' + i, proposal: p, model: 'm' })), { patch: () => ({}), replaceScenes: () => false, say: (m) => said4.push(m) });
+  Gen.save({ ...Gen.load(), cursor: 1 });
+  const ret4 = undo4();
+  eq(ScenesM.listScenes().length, 2, 'gen-scenes r2: once the job moved on, Undo leaves the scenes');
+  ok(ret4 === false && said4.length === 1 && /nothing was undone/.test(said4[0]), 'gen-scenes r2: … and says so', said4);
+
+  // synopsis-script: the job is not rolled back once the writer moved on.
+  mem.clear();
+  Gen.save({ ...Gen.load(), format: 'feature' });
+  const ss = reg.get('synopsis-script');
+  const vocab = await Gen.beatVocabulary();
+  const said5 = [];
+  const undo5 = ss.apply([{ id: 'catalyst', text: 'A key arrives.' }], { say: (m) => said5.push(m) },
+    withMemo({ items: [] }, { synopsis: 'A synopsis.', logline: 'LL.', model: 'm', vocab }));
+  Gen.save({ ...Gen.load(), stage: 'pages', scenes: [sc(1)], cursor: 0 });
+  undo5();
+  eq(Gen.load().stage, 'pages', 'synopsis r2: Undo after the writer moved on keeps the later stage');
+  eq(StoryM.loadStory().logline, '', 'synopsis r2: … while the Story fills are still taken back');
+  ok(said5.length === 1 && /moved on/.test(said5[0]), 'synopsis r2: … and says so', said5);
 }
 
 /* ---- the bulk run is the Desk's now: nothing unreviewed ---------- */

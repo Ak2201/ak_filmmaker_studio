@@ -160,7 +160,7 @@ export function inviteSection(section, st) {
        27 Oct 2026): the offer page says what is on offer today. */
     sec.append(h('p.gt-meta', {}, [h('a', { href: 'invite.html', text: 'No code? See how to come in →' })]));
   }
-  sec.append(h('p.gt-meta', {}, [h('a', { href: 'start.html', text: 'What is this? About ' + BRAND.name + ' →' })]));   // the public landing page, outside the gate
+  sec.append(h('p.gt-meta', {}, [h('a.gt-about', { href: 'start.html', text: 'What is this? About ' + BRAND.name + ' →' })]));   // the public landing page, outside the gate
   return sec;
 }
 

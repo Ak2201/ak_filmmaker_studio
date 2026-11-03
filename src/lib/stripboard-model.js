@@ -290,8 +290,9 @@ export function lockPreset(scenes) {
 /** The export's subtitle: scenes, pages, shoot days. */
 export function boardSummary(scenes) {
   const days = shootDays(scenes).length;
+  const e = totalEighths(scenes);
   return `${scenes.length} ${scenes.length === 1 ? 'scene' : 'scenes'} · `
-       + `${formatEighths(totalEighths(scenes))} pages · `
+       + `${formatEighths(e)} ${e === 8 ? 'page' : 'pages'} · `
        + `${days} ${days === 1 ? 'shoot day' : 'shoot days'}`;
 }
 

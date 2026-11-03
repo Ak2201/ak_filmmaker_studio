@@ -1081,6 +1081,9 @@ function renderGenBeats() {
           return {
             patch: () => { readGenBeats(); return { beats: gen.beats }; },
             replaceScenes: () => genReplaceScenes,
+            /* A refused Undo says why through this; without it the
+               refusal was silent and Undo looked dead (QA r3 K-1). */
+            say: (m) => say(m),
             after: () => { gen = Scriptgen.load(); genError = ''; genStatus = ''; render(); }
           };
         }
@@ -1103,6 +1106,8 @@ function genDeskCtx(extra) {
   return {
     before: flushDoc,
     after: () => { reloadDoc(); gen = Scriptgen.load(); genError = ''; genStatus = ''; render(); },
+    /* undoGen() sends a refused Undo's reason here (QA r3 K-1). */
+    say: (m) => say(m),
     ...(extra || {})
   };
 }

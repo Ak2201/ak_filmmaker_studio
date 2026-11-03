@@ -398,5 +398,16 @@ eq(R.basicJobs(guessed, gEls, { only: new Set(['c']) }).map((j) => j.sceneId), [
   mem.delete(M.SHOTS_KEY);
 }
 
+/* ---- QA r3 E-1: a quoted sentence keeps ONE full stop ---------- */
+{
+  const d = R.shotsForScene(job('q', [el('action', 'Ravi sleeps.')])).map((s) => s.description);
+  ok(d.includes('Closer on the action — "Ravi sleeps."'), 'filler ends on the quote, no doubled stop — got ' + JSON.stringify(d));
+  ok(d.every((x) => !/[.!?…]["”]\.$/.test(x)), 'no description ends .". — got ' + JSON.stringify(d));
+  const r = R.shotsForScene(job('r', [el('action', 'RAVI runs down the road and the rain does not stop for anybody.')])).map((s) => s.description);
+  ok(r.some((x) => /^Tracking with .*…"$/.test(x)), 'a cut excerpt ends on the ellipsis, no stop after it — got ' + JSON.stringify(r));
+  const n = R.shotsForScene(job('n', [el('action', 'RAVI runs down the road')])).map((s) => s.description);
+  ok(n.some((x) => x.endsWith('road".')), 'an unfinished line still gets its stop — got ' + JSON.stringify(n));
+}
+
 console.log(`\ntest:shots — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

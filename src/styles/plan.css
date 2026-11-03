@@ -604,3 +604,9 @@
   letter-spacing: 0;
   border-bottom: 1px solid var(--rule-hair);
 }
+
+/* The map pin's refusal line (QA r3 D-3): visible text, not a tooltip.
+   --danger-deep, because a fill is not a text colour. */
+.pl-invalid { font-size: var(--t-tiny); color: var(--danger-deep); }
+.pl-invalid[hidden] { display: none; }
+@media print { .pl-invalid { display: none; } }

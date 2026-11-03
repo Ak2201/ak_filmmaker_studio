@@ -515,6 +515,23 @@ const mirrorPrint = (e, el) => {
 delegate(document, 'input', '.pl-input', mirrorPrint);
 delegate(document, 'change', '.pl-input', mirrorPrint);
 
+/** The pin field's refusal line: shown, announced, and described-by. */
+function pinHint(el, problem) {
+  let line = el.parentNode && el.parentNode.querySelector('.pl-invalid');
+  if (!line && problem) {
+    line = h('span.pl-invalid', { 'aria-live': 'polite', id: 'pl-pin-' + Math.random().toString(36).slice(2, 9) });
+    el.after(line);
+  }
+  if (line) { line.textContent = problem; line.hidden = !problem; }
+  if (problem) {
+    el.setAttribute('aria-invalid', 'true');
+    el.setAttribute('aria-describedby', line.id);
+  } else {
+    el.removeAttribute('aria-invalid');
+    el.removeAttribute('aria-describedby');
+  }
+}
+
 function pinField(recce) {
   const pin = Geo.coordsOf(recce);
   const el = h('input.pl-input', {
@@ -842,14 +859,17 @@ delegate(document, 'change', '[data-recce-geo]', (e, el) => {
   const name = locNameOf(el);
   if (!name) return;
   const text = el.value.trim();
-  if (!text) { Locations.setRecce(name, { lat: '', lng: '' }); el.removeAttribute('aria-invalid'); patchLight(); return; }
+  if (!text) { Locations.setRecce(name, { lat: '', lng: '' }); pinHint(el, ''); patchLight(); return; }
   const at = Geo.parseLatLng(text);
   if (!at) {
-    el.setAttribute('aria-invalid', 'true');
-    el.title = pinRefusal(text);
+    /* QA r3 D-3: said only by a title tooltip, which a thumb or a
+       keyboard never sees. A visible line under the field, tied to it by
+       aria-describedby, as the call sheet's reach fields do. */
+    const kept = Geo.coordsOf(Locations.getRecce(name) || {});
+    pinHint(el, pinRefusal(text) + (kept ? ' The saved pin is unchanged.' : ''));
     return;
   }
-  el.removeAttribute('aria-invalid'); el.removeAttribute('title');
+  pinHint(el, '');
   Locations.setRecce(name, { lat: String(at.lat), lng: String(at.lng) });
   el.value = at.lat + ', ' + at.lng;
   patchLight();

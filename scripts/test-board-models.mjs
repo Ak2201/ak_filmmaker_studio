@@ -115,6 +115,8 @@ eq(S.sceneHeadings({ elements: [{ type: 'scene', text: 'INT. X' }, { type: 'scen
 eq(S.latestDraft({ revisions: [{ name: 'a' }, { name: 'b' }] }), { latest: { name: 'b' }, count: 2 }, 'latest draft');
 eq([...S.lockPreset([{ scriptElId: 'e1', number: 3 }, { scriptElId: 'e2', number: '' }])], [['e1', '3']], 'lock preset');
 eq(S.boardSummary(board.map((x) => ({ ...x, eighths: 8 }))), '4 scenes · 4 pages · 3 shoot days', 'board summary');
+/* QA r3 D-1: one page is "1 page", never "1 pages". */
+eq(S.boardSummary([{ ...board[0], eighths: 8 }]), '1 scene · 1 page · 1 shoot day', 'board summary, one page');
 
 /* ---- shoot day ---- */
 eq(D.slug(sc('1', { intExt: 'EXT', location: 'Beach', dayNight: 'NIGHT' })), 'EXT Beach — NIGHT', 'slug');

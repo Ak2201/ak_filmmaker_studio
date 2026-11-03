@@ -84,10 +84,37 @@ let openDay = (() => {
 })();
 let rosterFilter = 'all';   // 'all' | 'incomplete' — the roster's view, never stored
 /* The floor note being edited, and what has been typed into it so far.
-   Memory only: a draft is not a fact about the film until Save, and a
-   re-render caused by a tap on another card must not lose it. */
+   Memory only while the page is open: a draft is not a fact about the
+   film until Save, and a re-render caused by a tap on another card must
+   not lose it. Leaving the page writes it (below). */
 let noteOpen = '';
 const noteDraft = new Map();
+/* QA r3 D-2: a draft still open when the page goes away (a reload, a
+   link, the phone discarding a background tab) is WRITTEN, not lost —
+   this is the on-set phone page, and every other typed field in the
+   app autosaves. visibilitychange 'hidden' is the last reliable moment
+   on a phone; pagehide covers a desktop navigation. Cancel afterwards
+   still means Cancel: what the flush replaced is kept here and put back,
+   but only while the stored note is still what the flush wrote. */
+const noteFlushed = new Map();   // id -> { was, wrote }
+function flushNoteDrafts() {
+  for (const [id, text] of noteDraft) {
+    const before = Shoot.floorNoteOf(Scenes.listScenes().find((x) => x.id === id));
+    const saved = Shoot.setFloorNote(id, text);
+    if (!saved) continue;
+    const wrote = Shoot.floorNoteOf(saved);
+    if (wrote === before) continue;
+    const f = noteFlushed.get(id);
+    noteFlushed.set(id, { was: f ? f.was : before, wrote });
+  }
+}
+function undoNoteFlush(id) {
+  const f = noteFlushed.get(id);
+  noteFlushed.delete(id);
+  if (!f) return;
+  const now = Shoot.floorNoteOf(Scenes.listScenes().find((x) => x.id === id));
+  if (now === f.wrote) Shoot.setFloorNote(id, f.was);
+}
 
 /* ---- pieces -------------------------------------------------- */
 
@@ -128,8 +155,9 @@ function needsBlock(scene, ctx) {
 }
 
 /* The floor note: read as a box with the note in it, edited in place.
-   Nothing is written until Save; Cancel and a re-render keep the
-   draft only in memory. */
+   Nothing is written until Save or until the page is left with the
+   editor open (flushNoteDrafts); Cancel and a re-render keep the draft
+   only in memory. */
 function noteBlock(scene) {
   const note = Shoot.floorNoteOf(scene);
   const id = scene.id;
@@ -616,10 +644,13 @@ delegate(document, 'click', '[data-shoot-action]', (e, el) => {
     }
     if (act === 'note-save') {
       const box = document.querySelector('[data-shoot-note="' + CSS.escape(id) + '"]');
-      const was = Shoot.floorNoteOf(Scenes.listScenes().find((x) => x.id === id));
+      const fl = noteFlushed.get(id);
+      const was = fl ? fl.was : Shoot.floorNoteOf(Scenes.listScenes().find((x) => x.id === id));
       const saved = Shoot.setFloorNote(id, box ? box.value : noteDraft.get(id));
       if (saved && Shoot.floorNoteOf(saved) !== was) StudioUI.toast(Shoot.floorNoteOf(saved) ? 'Floor note saved.' : 'Floor note cleared.');
     }
+    if (act === 'note-cancel') undoNoteFlush(id);
+    else noteFlushed.delete(id);
     noteOpen = '';
     noteDraft.delete(id);
     render(sel('note-edit'));
@@ -681,5 +712,8 @@ delegate(document, 'keydown', '[data-shoot-note]', (e, el) => {
 delegate(document, 'input', '[data-shoot-note]', (e, el) => {
   noteDraft.set(el.getAttribute('data-shoot-note'), el.value);
 });
+
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushNoteDrafts(); });
+window.addEventListener('pagehide', flushNoteDrafts);
 
 render();

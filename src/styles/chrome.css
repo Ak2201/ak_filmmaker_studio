@@ -714,6 +714,9 @@ a:focus-visible { outline-offset: 3px; }
   max-width: min(90vw, 360px);
   pointer-events: none;
 }
+/* The alert host stands on the polite one (chrome.js measures it), so
+   an error never covers an Undo. */
+#toastHostAlert { margin-bottom: var(--toast-polite-h, 0px); }
 .toast {
   display: flex;
   align-items: flex-start;

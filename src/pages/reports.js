@@ -56,6 +56,8 @@ import {
 /* Every date these documents print follows the FILM's style (Indian or
    US, docs/US-MARKET-PLAN.md §A4) — derived per call, stored nowhere. */
 const filmPrefs = () => PDF.filmPrefs();
+/* One page is "1 page" (QA r3 D-1), as the Stripboard, Shoot Day and DPR say. */
+const pagesOf = (e) => formatEighths(e) + (Number(e) === 8 ? ' page' : ' pages');
 const shortDate = (iso, long) => shortDateIn(iso, long, filmPrefs());
 const kitTitle = (day, tally) => kitTitleIn(day, tally, filmPrefs());
 const dayPdfSubtitle = (scope, day, shootDays, pages) => dayPdfSubtitleIn(scope, day, shootDays, pages, filmPrefs());
@@ -344,7 +346,7 @@ function sidesBody(scenes, numbers) {
   const out = [h('div.rp-sides-head', {}, [
     h('span.rp-sides-title', { text: 'Sides' }),
     h('span.rp-sides-meta', {
-      text: plural(chosen.length, 'scene', 'scenes') + ' · ' + formatEighths(totalEighths(chosen)) + ' pages'
+      text: plural(chosen.length, 'scene', 'scenes') + ' · ' + pagesOf(totalEighths(chosen))
     })
   ])];
   let doc = null;
@@ -424,7 +426,7 @@ function pdfReports() {
   PDF.exportPDF({
     scope: 'reports',
     subtitle: plural(scenes.length, 'scene', 'scenes')
-            + ' · ' + formatEighths(totalEighths(scenes)) + ' pages'
+            + ' · ' + pagesOf(totalEighths(scenes))
   });
 }
 
@@ -434,7 +436,7 @@ function pdfSides() {
   PDF.exportPDF({
     scope: 'sides',
     subtitle: plural(chosen.length, 'scene', 'scenes')
-            + ' · ' + formatEighths(totalEighths(chosen)) + ' pages'
+            + ' · ' + pagesOf(totalEighths(chosen))
   });
 }
 
@@ -506,7 +508,7 @@ function renderOneLiner(scenes) {
 
   const table = h('table.scene-table.rp-table.rp-ol');
   table.append(h('caption.rp-caption', {
-    text: `${plural(ol.days.length, 'shoot day', 'shoot days')} · ${formatEighths(ol.eighths)} pages · cast by number, key below`
+    text: `${plural(ol.days.length, 'shoot day', 'shoot days')} · ${pagesOf(ol.eighths)} · cast by number, key below`
   }));
   table.append(h('thead', {}, [h('tr', {}, [
     th('Day'), th('Date'), th('Sc'), th('I/E'), th('D/N'), th('Set'), th('Pages', 'numeric'), th('Cast')

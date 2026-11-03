@@ -161,6 +161,13 @@
 .bud-est .calc-row .calc-note { font-family: var(--f-body); font-size: var(--t-tiny); line-height: var(--lh-snug); color: var(--ink-muted); }
 .bud-est .calc-row .calc-note:empty { display: none; }
 .bud-est .calc-row .calc-note a { color: var(--accent-deep); text-decoration: underline; }
+/* The rate note's "source" link was 16px tall on a touch screen (QA r2,
+   3 Nov 2026). It sits inside a line of tiny text, so the hit area is
+   grown with padding on the INLINE box, which reaches 44px without
+   changing the line's height or reflowing the note. */
+@media (pointer: coarse) {
+  .bud-est .calc-row .calc-note a { padding-block: calc((var(--tap-min, 44px) - 1lh) / 2); }
+}
 
 /* The narrow row, compact: the item across, days beside rate, the
    subtotal as one labelled line. The custom-name label is spoken,

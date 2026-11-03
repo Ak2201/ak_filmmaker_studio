@@ -169,6 +169,22 @@ const edited = () => {
   ok(L.changeReport(marked, inject).items.find((i) => i.key === '2').reviewed, 'and it can be marked reviewed');
 }
 
+{
+  // QA r3: INSERTING a heading mid-scene takes the lines below it out of
+  // that scene. The scene that lost them is reported as changed, and the
+  // new scene says it took them (moved), not only its heading.
+  const d = script();
+  d.elements.splice(4, 0, el('character', 'MAYA', 'c2'), el('dialogue', 'Wait!', 'd2'));
+  L.takeLock(d, rows());
+  const at = d.elements.findIndex((x) => x.id === 'a2') + 1;
+  d.elements.splice(at, 0, el('scene', 'INT. SHOP - DAY', 'hN'));
+  Script.saveScript(d);
+  const rep = L.changeReport(d, inject);
+  eq(rep.items.map((i) => [i.key, i.kind]), [['2', 'changed'], ['2A', 'added']], 'the scene that lost lines is changed, beside the new one');
+  eq([rep.items[0].sceneId, rep.items[0].counts.removed, rep.items[0].impact.shots, rep.items[0].impact.sides], ['s2', 2, 2, true], 'it carries its row, the lines lost and its shots and sides');
+  eq([rep.items[1].counts.added, rep.items[1].counts.moved], [1, 2], 'the new scene: its heading added, two lines taken');
+}
+
 /* ---- 5. markReviewed --------------------------------------------- */
 {
   const d = edited();

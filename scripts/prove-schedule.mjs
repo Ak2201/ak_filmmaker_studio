@@ -168,6 +168,23 @@ await settle(page);
 const pgs = await page.$$eval('.sd-pgs', (ps) => ps.map((p) => p.textContent));
 ok(pgs.includes('1 page') && !pgs.includes('1 pages'), '4  a one-page scene reads "1 page"', pgs);
 
+/* ---- QA r3 D-2: a floor note left unsaved survives a reload ---- */
+{
+  const sid = day1[0].id;
+  await page.click(`[data-shoot-action="note-edit"][data-scene="${sid}"]`);
+  await page.fill(`[data-shoot-note="${sid}"]`, 'insert still owed — காற்று');
+  await page.reload({ waitUntil: 'networkidle' });
+  await settle(page);
+  const kept = (await scenes()).find((x) => x.id === sid).floorNote;
+  ok(kept === 'insert still owed — காற்று', 'D2 a floor note typed and not saved is written when the page is left', kept);
+  await page.click(`[data-shoot-action="note-edit"][data-scene="${sid}"]`);
+  await page.fill(`[data-shoot-note="${sid}"]`, 'changed');
+  await page.evaluate(() => { Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true }); });
+  await page.click(`[data-shoot-action="note-cancel"][data-scene="${sid}"]`);
+  const back = (await scenes()).find((x) => x.id === sid).floorNote;
+  ok(back === 'insert still owed — காற்று', 'D2 Cancel after a background flush puts the old note back', back);
+}
+
 /* ---- 9 shoot print -------------------------------------------- */
 await page.emulateMedia({ media: 'print' });
 const sp = await page.evaluate(() => ({

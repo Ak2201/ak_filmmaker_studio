@@ -529,3 +529,22 @@ export function pageIndex(pages) {
   });
   return out;
 }
+
+/* ------------------------------------------------------------
+   THE PAGE COUNT TO QUOTE
+   ------------------------------------------------------------
+   The number of sheets the script prints: what the Screenplay
+   Writer's strip, its page view, Statistics and the PDF all say.
+   The studio held three page counts for one script — this, the
+   55-line estimate (script.js pageCount(), still the arithmetic
+   for running time and beat positions) and the scene list's
+   eighths (the schedule's measure) — and the dashboard printed two
+   of them side by side as "105 pages · 106.5 script pp" while the
+   writer said 115 (QA r3 B-2). A figure that calls itself the
+   script's length reads this one. The editor adds its own options
+   (the automatic CONT'D, a page lock's A-pages); with neither set,
+   which is the default, the two agree exactly. */
+export function printedPages(elements) {
+  const els = elements || [];
+  return els.some((e) => e && String(e.text || '').trim()) ? paginate(els).length : 0;
+}

@@ -308,6 +308,13 @@ ${s.ids.map((id) => `              <li>${toolLink(site, pages, id, current)}</li
      menu's last column, so the bar itself holds four things: Product,
      Pricing, and the one Continue with Google button (31 Oct 2026). */
   const cur = (k) => (current === k ? ' aria-current="page"' : '');
+  /* The skip link's target, `<main id="main" tabindex="-1">`, must stay
+     focusable (QA r2, 3 Nov 2026): a fragment jump focuses its target
+     only when the target can take focus, so without the tabindex
+     "Skip to content" scrolled and left focus on <body> and a screen
+     reader announced nothing. -1 is script/fragment focus only, never a
+     Tab stop (the studio's fragments.js moveFocus() does the same). The
+     hand-written legal pages carry the same attribute. */
   const resources = `
           <div class="mk-mega-col mk-mega-col--more">
             <p class="mk-mega-h">${esc(u.resources)}</p>
@@ -503,7 +510,7 @@ ${ldScripts([softwareLd('product-' + id), crumbsLd([{ name: 'Home', slug: 'start
      src/pages/marketing.js adds the header's scroll state, the mega-menu, the
      sign-up modal and the step slot, and nothing else. -->
 ${header(site, pages, id)}
-<main id="main" class="mk ${stage.hue}">
+<main id="main" tabindex="-1" class="mk ${stage.hue}">
 ${passBand(site)}
 ${hero}
 ${value}
@@ -692,7 +699,7 @@ ${g.items.map((it) => { const t = it.pass ? ' data-pass-faq' : (it.modes ? ' dat
      adds the scheduled price rise and the buy hand-off; marketing.js fills the
      launch pass's slots from the server. -->
 ${header(site, pages, 'pricing')}
-<main id="main" class="mk mk-pricing">
+<main id="main" tabindex="-1" class="mk mk-pricing">
 ${passBand(site)}
 ${hero}
 ${plans}
@@ -1072,7 +1079,7 @@ ${fq.items.map((it) => `      <details class="st-faq-item" id="faq-${esc(it.id)}
      the button straight to purchase.html?buy=<id>). Every figure is an fms stamp
      (vite.config.js startFigures()), never typed. -->
 ${header(site, pages, 'home')}
-<main id="main" class="mk st">
+<main id="main" tabindex="-1" class="mk st">
 ${hero}
 ${stages}
 ${value}
@@ -1253,7 +1260,7 @@ ${field('message', f.message, `<textarea class="co-input co-area" id="co-message
 </section>`;
   return `${companyHead({ title: c.meta.title, description: c.meta.description, slug: 'contact' })}
 ${header(site, pages, 'contact')}
-<main id="main" class="mk mk-company co-page">
+<main id="main" tabindex="-1" class="mk mk-company co-page">
 ${companyHero(company, c.hero.h1, c.hero.sub, { href: '#write', label: c.hero.cta || 'Write to us' })}
 ${form}
 ${companyCta(company, c.close.h2)}
@@ -1304,7 +1311,7 @@ ${a.principles.items.map((it) => `      <li>${sym(it.sym)}<div><b>${esc(it.title
 </section>`;
   return `${companyHead({ title: a.meta.title, description: a.meta.description, slug: 'about' })}
 ${header(site, pages, 'about')}
-<main id="main" class="mk mk-company co-page">
+<main id="main" tabindex="-1" class="mk mk-company co-page">
 ${companyHero(company, a.hero.h1, a.hero.sub)}
 ${why}
 ${does}
@@ -1612,7 +1619,7 @@ ${x.sources.map((sc) => `      <li><a class="mk-link mk-link--inline" href="${es
   return `${publicHead({ title: x.metaTitle, description: x.metaDescription, slug, ld })}
 ${genNote(GUIDES_COPY)}
 ${header(site, pages, 'guides')}
-<main id="main" class="mk mk-guide ${x.hue}">
+<main id="main" tabindex="-1" class="mk mk-guide ${x.hue}">
 ${passBand(site)}
 ${articleHero(x.h1, x.sub, [{ name: g.ui.breadcrumbHome, href: 'start.html' }, { name: g.ui.breadcrumbGuides, href: 'guides.html' }, { name: x.label }])}
 <section class="mk-sec mk-band-a mk-article" id="guide" aria-label="${esc(x.label)}">
@@ -1661,7 +1668,7 @@ export function renderGuidesIndex({ site, pages, guides: g, versus: c }) {
   return `${publicHead({ title: ix.metaTitle, description: ix.metaDescription, slug: 'guides', ld })}
 ${genNote(GUIDES_COPY + ', ' + COMPARE_COPY)}
 ${header(site, pages, 'guides')}
-<main id="main" class="mk mk-guides">
+<main id="main" tabindex="-1" class="mk mk-guides">
 ${passBand(site)}
 ${articleHero(ix.h1, ix.sub, null)}
 <section class="mk-sec mk-band-b" id="guides" aria-labelledby="mkGuidesH">
@@ -1743,7 +1750,7 @@ ${read.map((r) => `          <tr>
   return `${publicHead({ title: p.metaTitle, description: p.metaDescription, slug, ld })}
 ${genNote(COMPARE_COPY)}
 ${header(site, pages, 'compare')}
-<main id="main" class="mk mk-guide mk-compare">
+<main id="main" tabindex="-1" class="mk mk-guide mk-compare">
 ${passBand(site)}
 ${articleHero(p.h1, p.sub, [{ name: g.ui.breadcrumbHome, href: 'start.html' }, { name: g.index.compareH, href: 'guides.html#compare' }, { name: p.label }])}
 <section class="mk-sec mk-band-a mk-article" id="guide" aria-label="${esc(p.label)}">
@@ -1797,7 +1804,7 @@ ${s.body.map((b) => `    <p class="mk-body">${esc(b)}</p>`).join('\n')}${s.check
   return `${publicHead({ title: t.metaTitle, description: t.metaDescription, slug: 'trust', ld })}
 ${genNote(COMPARE_COPY)}
 ${header(site, pages, 'trust')}
-<main id="main" class="mk mk-trust">
+<main id="main" tabindex="-1" class="mk mk-trust">
 ${passBand(site)}
 ${articleHero(t.h1, t.sub, null, toc)}
 ${secs}

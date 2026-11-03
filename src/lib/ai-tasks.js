@@ -233,6 +233,18 @@ function withNote(undo, parts) {
   return undo;
 }
 
+/* A scriptgen Accept's Undo (gen-scenes, gen-batch): scriptgen takes
+   back only what is still as it wrote it and says why when it cannot.
+   That sentence goes to the page; a refusal returns false so the Desk
+   does not also say "Undone." (ai-desk-outcome.js). */
+function undoGen(r, c) {
+  const o = r.undo() || {};
+  if (o.message) call(c.say, o.message);
+  if (o.undone === false) return false;
+  call(c.after, null);
+  return undefined;
+}
+
 /** The refine block, as ai.js writes it, or ''. */
 function refineText(refine) {
   if (!refine) return '';
@@ -1217,9 +1229,27 @@ const synopsisTask = {
     job.model = mem.model || job.model;
     job.stage = 'beats';
     Gen.save(job);
+    /* The job goes back only while it is still the one this Accept saved
+       (QA r2 K-2): once the writer has laid out scenes or written pages
+       from it, putting the old job back would throw that stage away. The
+       Story page fills are still taken back where they are unchanged. */
+    const savedJob = JSON.stringify(Gen.load());
     const filled = fillStoryFromBeats(job, m);
     call(c.after, job);
-    return () => { Gen.save(prev); undoStoryFromBeats(filled, m.run); call(c.after, prev); };
+    return () => {
+      const moved = JSON.stringify(Gen.load()) !== savedJob;
+      if (!moved) Gen.save(prev);
+      undoStoryFromBeats(filled, m.run);
+      if (moved) {
+        call(c.say, filled
+          ? 'The draft has moved on since this beat sheet, so it is kept. The Story page fills it made are taken back where unchanged.'
+          : 'The draft has moved on since this beat sheet, so nothing was undone.');
+        call(c.after, Gen.load());
+        return filled ? undefined : false;
+      }
+      call(c.after, prev);
+      return undefined;
+    };
   }
 };
 
@@ -1285,9 +1315,11 @@ function fingerprint(s) {
    job to stage 3. `replaceScenes()` is the page's checkbox, read at
    the moment of Accept. Each row keeps the beat it serves (`beatId`)
    and its cast joined to the Characters records, a record made only
-   for a name nobody has (scriptgen.js applyScenes). Undo puts back the
-   scene list and the job, and removes the records it made that are
-   still blank.
+   for a name nobody has (scriptgen.js applyScenes). Undo removes the
+   rows it added that are unedited (a scene typed or edited since
+   stays), puts the job back unless pages were written from it since
+   (then it refuses and says so), and removes the records it made that
+   are still blank.
    ============================================================ */
 const sceneSlug = (p) => (p.intExt || 'INT') + '. ' + String(p.location || 'Location TBC').toUpperCase() + ' — ' + (p.dayNight || 'DAY');
 
@@ -1352,7 +1384,7 @@ const genScenesTask = {
     const model = ((selected || []).find((it) => it && it.model) || {}).model || (last.get('gen-scenes') || {}).model;
     const r = Gen.applyScenes(call(c.patch) || {}, kept, { replaceScenes: !!call(c.replaceScenes), model, ai: Stamp.stamper(metaFor('gen-scenes', meta, model)) });
     call(c.after, r.job);
-    return () => { r.undo(); call(c.after, null); };
+    return () => undoGen(r, c);
   }
 };
 
@@ -1480,7 +1512,7 @@ const genBatchTask = {
     call(c.before);
     const r = Gen.applyBatch(draft, chosen.map((it) => it.id), { ai: Stamp.stamper(metaFor('gen-batch', meta, draft.model)) });
     call(c.after, r.job);
-    return () => { r.undo(); call(c.after, null); };
+    return () => undoGen(r, c);
   }
 };
 

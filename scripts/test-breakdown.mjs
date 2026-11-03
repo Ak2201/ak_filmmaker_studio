@@ -221,6 +221,7 @@ eq(r2.totals, r1.totals, 'and the totals are the same');
   const line = M.suggestCountText({ total: 257, scenes: 36, guessed: 0, labelOf: label });
   ok(/ADD ALL takes CAST, PROPS, VEHICLES, STUNTS, SOUND/.test(line), 'the count line names what ADD ALL takes');
   ok(!/paired by position/.test(line), 'and says nothing of position pairs when there are none');
+  ok(/left to their own Accept all/.test(line) && !/one chip or one scene at a time/.test(line), 'and does not deny the per-category Accept all buttons (QA r3)');
   ok(/leaves out the 2 paired by position only/.test(M.suggestCountText({ total: 1, scenes: 1, guessed: 2, labelOf: label })), 'the position note stays');
   eq(M.scopeSelector('[data-scene="a"] ', '.t, .g'), '[data-scene="a"] .t, [data-scene="a"] .g', 'every comma alternative is scoped to the scene');
   const P = await import('../src/lib/breakdown-paper.js');

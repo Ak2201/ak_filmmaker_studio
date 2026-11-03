@@ -23,7 +23,7 @@ import {
 import {
   readCalcData, saveCalcData, maxRowIndex, itemNameOf, scheduleFacts, budgetCurrency
 } from './budget-model.js';
-import { castMatrix, matchScenes, isConfident, cueName } from './screenplay-analysis.js';
+import { castMatrix, matchScenes, isConfident, cueName, niceName } from './screenplay-analysis.js';
 import { readAll as readCosts } from './costs.js';
 import { highestLineIndex } from './budget-line-ids.js';
 import { firstFreeRow } from './ai-preprod-model.js';
@@ -41,27 +41,11 @@ function stable(v) {
   return JSON.stringify(v === undefined ? null : v);
 }
 
-/** A cue's capitals read as "Ravi"; a name already in mixed case is left.
-    Two readings the plain "capital after a break" rule got wrong (QA r1 F):
-    a possessive or contraction tail after an apostrophe stays lower
-    ("RAGAVAN'S" is "Ragavan's", not "Ragavan'S"; "O'BRIEN" still reads
-    "O'Brien"), and a word with no vowel is an initialism and keeps its
-    capitals ("HR MANAGER" is "HR Manager", "DJ", "TV") — bar the honorifics
-    that also have none (Mr, Mrs, Ms, Dr, St, Jr, Sr). */
-const NO_VOWEL_TITLES = new Set(['mr', 'mrs', 'ms', 'dr', 'st', 'jr', 'sr']);
-export function niceName(name) {
-  const s = String(name || '').trim();
-  if (/[a-z]/.test(s)) return s;
-  return s.split(/(\s+|-)/).map((w) => {
-    const low = w.toLowerCase();
-    const letters = low.replace(/[^a-z]/g, '');
-    if (letters.length >= 2 && !/[aeiouy]/.test(letters) && !NO_VOWEL_TITLES.has(letters)) return w;
-    return low.replace(/(^|['’])([a-z]+)/g, (m, a, b) => {
-      if (a && /^(s|t|d|m|ll|re|ve)$/.test(b)) return a + b;
-      return a + b[0].toUpperCase() + b.slice(1);
-    }).replace(/^([^a-zA-Z]*)([a-z])/, (m, a, b) => a + b.toUpperCase());
-  }).join('');
-}
+/* niceName lives in screenplay-analysis.js now (QA r3 F), because the
+   lock's auto-tag step stores the scene cast BEFORE this module reads it:
+   a cue lower-cased there had already lost the capitals the initialism
+   rule needs ("Hr Manager"). Re-exported so callers and tests keep it. */
+export { niceName };
 
 /* ---- cast contacts -------------------------------------------- */
 
@@ -274,7 +258,7 @@ function lineList(scenes, elements, data) {
   }));
   vehicles.forEach((v) => lines.push({ custom: 'Vehicle: ' + v.name, days: daysOf(v.scenes) }));
 
-  locationIndex(list).forEach((row) => lines.push({ custom: 'Location: ' + row.name, days: row.days.length }));
+  locationIndex(list).forEach((row) => lines.push({ custom: 'Location: ' + niceName(row.name), days: row.days.length }));
 
   const have = new Set();
   Object.keys(data).forEach((k) => {

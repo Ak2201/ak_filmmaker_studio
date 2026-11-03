@@ -128,7 +128,9 @@ eq(P.extractExtras({ elements: [{ type: 'action', text: 'A crowd of 40 at the ga
 {
   const cases = [["RAGAVAN'S FATHER", "Ragavan's Father"], ['HR MANAGER', 'HR Manager'], ["O'BRIEN", "O'Brien"],
     ['MR. SHARMA', 'Mr. Sharma'], ['DR RAO', 'Dr Rao'], ['JEAN-LUC', 'Jean-Luc'], ['DJ', 'DJ'],
-    ['RAVI', 'Ravi'], ['Priya Rao', 'Priya Rao'], ["DON'T", "Don't"]];
+    ['RAVI', 'Ravi'], ['Priya Rao', 'Priya Rao'], ["DON'T", "Don't"],
+    ['DR. A.P.J. KUMAR-SMITH III', 'Dr. A.P.J. Kumar-Smith III'], ['MCDONALD', 'McDonald'], ['GUARD/DRIVER', 'Guard/Driver'],
+    ["D'SOUZA", "D'Souza"], ['KITCHEN', 'Kitchen'], ['MAC', 'Mac']];
   cases.forEach(([inp, want]) => eq(S.niceName(inp), want, `niceName(${inp})`));
 }
 
@@ -249,6 +251,11 @@ const TYPED = { ci_1_item: 'DOP', ci_1_rate: '20000', ci_2_custom: 'Production v
   eq(matchScenes(rows, elements).pairs.map((p) => p.how), ['heading', 'position', 'heading'], 'fixture: the middle scene is a position-only pair');
   eq(S.seedCastContacts({ scenes: rows, elements }).made.map((m) => m.role), ['Maya'], 'a speaker heard only in a position-only pair gets no contact');
   ok(!S.seedBudgetLines({ scenes: rows, elements }).made.some((m) => /Stranger/i.test(m.custom)), 'and no Cast: line');
+}
+{
+  fresh();
+  const locs = S.seedBudgetLines({ scenes: scenes(), elements }).made.map((m) => m.custom).filter((c) => /^Location: /.test(c));
+  ok(locs.length > 0 && locs.every((c) => /[a-z]/.test(c)), 'Location lines read like the Cast lines, not in capitals (QA r3 F): ' + locs.join(', '));
 }
 {
   fresh();

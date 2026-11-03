@@ -589,6 +589,40 @@ export const titleCase = (s) => String(s)
   .replace(/(^|[\s\-/(])(\p{L})/gu, (m, pre, c) => pre + c.toUpperCase())
   .replace(/(^|[\s\-/(])([OoDd])(['’])(\p{L})/gu, (m, pre, o, q, c) => pre + o.toUpperCase() + q + c.toUpperCase());
 
+/** A cue's capitals read as "Ravi"; a name already in mixed case is left.
+    Two readings the plain "capital after a break" rule got wrong (QA r1 F):
+    a possessive or contraction tail after an apostrophe stays lower
+    ("RAGAVAN'S" is "Ragavan's", not "Ragavan'S"; "O'BRIEN" still reads
+    "O'Brien"), and a word with no vowel is an initialism and keeps its
+    capitals ("HR MANAGER" is "HR Manager", "DJ", "TV") — bar the honorifics
+    that also have none (Mr, Mrs, Ms, Dr, St, Jr, Sr).
+
+    It lives HERE, not in lock-seed.js, because it must see the cue's
+    ORIGINAL capitals (QA r3 F): the lock's auto-tag step used to store
+    titleCase(cue.toLowerCase()) on the scene, and once "HR MANAGER" is
+    "Hr Manager" no later rule can know HR was an initialism — the contact
+    and the budget line inherited "Hr Manager". Auto-tag now names cast
+    through this, so the scene, the contact and the budget agree. Also kept
+    in capitals: dotted initials ("A.P.J."), a regnal numeral ("III") and
+    a Mc prefix reads "McDonald". */
+const NO_VOWEL_TITLES = new Set(['mr', 'mrs', 'ms', 'dr', 'st', 'jr', 'sr']);
+const ROMAN = /^(ii|iii|iv|vi|vii|viii|ix|xi|xii)$/;
+export function niceName(name) {
+  const s = String(name || '').trim();
+  if (/[a-z]/.test(s)) return s;
+  return s.split(/(\s+|[-/])/).map((w) => {
+    const low = w.toLowerCase();
+    const letters = low.replace(/[^a-z]/g, '');
+    if (letters.length >= 2 && !/[aeiouy]/.test(letters) && !NO_VOWEL_TITLES.has(letters)) return w;
+    if (/^(?:[a-z]\.){2,}$/.test(low) || ROMAN.test(low)) return w;
+    return low.replace(/(^|['’])([a-z]+)/g, (m, a, b) => {
+      if (a && /^(s|t|d|m|ll|re|ve)$/.test(b)) return a + b;
+      return a + b[0].toUpperCase() + b.slice(1);
+    }).replace(/^([^a-zA-Z]*)([a-z])/, (m, a, b) => a + b.toUpperCase())
+      .replace(/^Mc([a-z])(?=[a-z])/, (m, c) => 'Mc' + c.toUpperCase());
+  }).join('');
+}
+
 /** What a scene's script text suggests should be on its breakdown,
  *  minus what is already tagged. Each suggestion carries `from`, the
  *  line it was read off, so the user decides with the evidence. */
@@ -618,9 +652,9 @@ export function suggestElements(scene, slice) {
   };
   for (const el of slice.elements) {
     const t = String(el.text || '');
-    if (el.type === 'character') { const n = cueName(t); if (n) add('cast', titleCase(n.toLowerCase()), t); continue; }
+    if (el.type === 'character') { const n = cueName(t); if (n) add('cast', niceName(n), t); continue; }
     if (el.type !== 'action') continue;
-    for (const n of capsIntros(t)) add('cast', titleCase(n.toLowerCase()), t);
+    for (const n of capsIntros(t)) add('cast', niceName(n), t);
     for (const cat of LEX_CATS) {
       RE[cat].lastIndex = 0;
       let m;

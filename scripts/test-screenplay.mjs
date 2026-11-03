@@ -266,6 +266,10 @@ eq(wide.special.map((x) => x.name), ['drone'], 'special equipment is suggested')
 }
 eq(A.suggestElements({ elements: {} }, { elements: [el('action', 'He wears a scarf and runs a business.')] }).vehicles, [], 'whole words only: scarf is not car, business is not bus');
 eq(A.suggestElements({ elements: {} }, { elements: [el('character', "RAGAVAN'S FATHER")] }).cast.map((x) => x.name), ["Ragavan's Father"], 'a cue with a possessive is title-cased without a capital after the apostrophe');
+// QA r3 F: the lock stores this as the scene cast, and a lower-cased cue had
+// lost the capitals the initialism rule needs ("Hr Manager" on the contact).
+eq(A.suggestElements({ elements: {} }, { elements: ['HR MANAGER', 'DR. A.P.J. KUMAR-SMITH III', 'MCDONALD', "O'BRIEN (V.O.)"].map((t) => el('character', t)) }).cast.map((x) => x.name),
+  ['HR Manager', 'Dr. A.P.J. Kumar-Smith III', 'McDonald', "O'Brien"], 'cast from a cue keeps its initialisms, dotted initials and numerals');
 {
   const one = A.suggestElements({ elements: {} }, { elements: [el('action', 'Rows of folding chairs. A watchman folds a chair.')] });
   eq(one.setdressing.filter((x) => /^chairs?$/.test(x.name)).length, 1, 'chair and chairs are one suggestion, not two');

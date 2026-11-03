@@ -69,7 +69,6 @@ import { filmRegion, setFilmRegion } from '../lib/film-region.js';   // = region
 import '../ui/india-content.js';   // the India-only switch follows this film's region
 
 import { formatEighths } from '../lib/scenes.js';
-import { formatPages } from '../lib/script.js';
 /* Derived, never stored — see the header of readiness.js. */
 import { readiness } from '../lib/readiness.js';
 import { openChangelog, unseen as changelogUnseen, hasEntries as changelogHasEntries } from '../ui/changelog.js';
@@ -327,7 +326,11 @@ function renderStats(snap) {
   return statStrip([
     stat(String(sc), sc === 1 ? 'scene' : 'scenes', 'Scenes', sc ? sceneTagged(snap) + ' broken down' : ''),
     stat(formatEighths(snap.eighths), snap.eighths === 8 ? 'page' : 'pages', 'Page count',
-      snap.scriptPages ? formatPages(snap.scriptPages) + ' script pp' : ''),
+      /* Two measures, each named: the value is the scene list's eighths
+         (what the schedule counts), the note the pages the script prints
+         (the writer's own figure). "105 pages · 106.5 script pp" gave a
+         producer two numbers and no way to tell which to quote (QA r3). */
+      snap.scriptPages ? 'in the scene list · ' + snap.scriptPages + ' printed in the script' : ''),
     stat(snap.days.length ? String(snap.days.length) : '—', snap.days.length === 1 ? 'day' : 'days', 'Shoot days',
       nextShootNote(snap)),
     stat(snap.contacts.length ? String(snap.contacts.length) : '—', 'people', 'Crew & cast', crewCastNote(snap)),

@@ -18,6 +18,19 @@ import '../styles/story-pacing.css';
 import { h } from '../lib/dom.js';
 import * as Story from '../lib/story.js';
 import Pacing from '../lib/story-pacing.js';
+import { printedPages } from '../lib/paginate.js';
+
+/* The length this page quotes. From the script it is the pages the script
+   PRINTS, the Screenplay Writer's own figure; "106 pages in the script"
+   here against "Pages: 115" there was the same script measured twice (QA
+   r3 B-2). The deck's own total (the 55-line estimate) still places the
+   beats; only the quoted length changes. From the scene list it is the
+   eighths, rounded, as before. */
+function quotedPages(deck, elements) {
+  if (!deck.pages.total) return 0;
+  if (deck.pages.source === 'script') return printedPages(elements) || Math.round(deck.pages.total);
+  return Math.round(deck.pages.total);
+}
 import { panel, badge, meter, button, statStrip } from './kit/index.js';
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -211,7 +224,7 @@ export function renderDeck(s, { scenes = [], elements = [], act = '', closed = n
   sec.append(h('div.pc-deck-head', {}, [
     h('h3.pc-deck-title#pcDeckH', { text: `The ${n} beats` }),
     h('span.pc-deck-meta.k-mono', { text: `${tagged} of ${n} tagged · ${served} with a scene` +
-      (deck.pages.total ? ` · ${Math.round(deck.pages.total)} pages ${deck.pages.source === 'script' ? 'in the script' : 'in the scene list'}` : '') })
+      (deck.pages.total ? ` · ${quotedPages(deck, elements)} pages ${deck.pages.source === 'script' ? 'in the script' : 'in the scene list'}` : '') })
   ]));
   /* Filter by act, and fold or unfold what is shown. */
   sec.append(h('div.pc-filter', {}, [
@@ -245,7 +258,7 @@ export function renderStats(s, { scenes = [], elements = [], characters = 0 } = 
     { label: 'Beats tagged', value: `${tagged} / ${n}`, note: tagged === n ? 'Every beat has a passage' : (n - tagged) + ' still to tag', noteTone: tagged === n ? 'ok' : '' },
     { label: 'Characters', value: characters ? String(characters) : '—', note: characters ? 'in the Story Bible' : 'add them in the Story Bible', class: characters ? '' : 'is-empty' },
     { label: 'Peak tension', value: peak ? String(peak.tension) : '—', unit: peak ? '/ 10' : '', note: peak ? peak.beat.label : '' },
-    { label: 'Pages', value: deck.pages.total ? String(Math.round(deck.pages.total)) : '—', note: deck.pages.total ? (deck.pages.source === 'script' ? 'in the script' : 'in the scene list') : 'from the script or the scene list', class: deck.pages.total ? '' : 'is-empty' },
+    { label: 'Pages', value: deck.pages.total ? String(quotedPages(deck, elements)) : '—', note: deck.pages.total ? (deck.pages.source === 'script' ? 'in the script' : 'in the scene list') : 'from the script or the scene list', class: deck.pages.total ? '' : 'is-empty' },
     { label: 'Beat sheet', value: deck.fw.short, note: `${n} beats` }
   ];
   return statStrip(cards, { class: 'st-stats', label: 'The story in numbers' });

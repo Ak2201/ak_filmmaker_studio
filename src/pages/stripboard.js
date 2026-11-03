@@ -153,7 +153,10 @@ function renderHeader(scenes, rows) {
   const cards = [
     strips,
     statCard({
-      label: 'Script pages', value: scenes.length ? formatEighths(eighths) : '—',
+      /* The scene list's eighths, which is what a schedule counts; the
+         script's printed length is the writer's figure and can differ
+         (QA r3 B-2: this said "Script pages 105" beside a 115-page script). */
+      label: 'Scene pages', value: scenes.length ? formatEighths(eighths) : '—',
       unit: scenes.length ? (eighths === 8 ? 'page' : 'pages') : '',
       note: pace ? `avg ${formatEighths(pace.avg)} pp / shoot day` : (scenes.length ? 'no shoot days yet' : ''),
       class: 'sb-kpi-pages'

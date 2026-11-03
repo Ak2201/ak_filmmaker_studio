@@ -20,7 +20,8 @@ import Scenes, { totalEighths } from './scenes.js';
 import Locations from './locations.js';
 import Contacts from './contacts.js';
 import Shots from './shots.js';
-import { loadScript, pageCount } from './script.js';
+import { loadScript } from './script.js';
+import { printedPages } from './paginate.js';
 import { sceneLabel } from './readiness.js';
 import { readText } from './prefs.js';
 import { LIB_CALC_KEY, ACTIVITY_KEY } from './hub-keys.js';
@@ -135,7 +136,8 @@ export function snapshot(project) {
   const locationCount = new Set(
     scenes.map((s) => String(s.location || '').trim().toLowerCase()).filter(Boolean)
   ).size;
-  const scriptPages = pageCount(script.elements);
+  /* The pages the script PRINTS, as the writer's strip says (QA r3 B-2). */
+  const scriptPages = printedPages(script.elements);
   const datedDays = days.filter((d) => d.date).length;
 
   const snap = {

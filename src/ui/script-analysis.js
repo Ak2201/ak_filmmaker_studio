@@ -30,6 +30,7 @@ import '../styles/script-analysis.css';
 import { h } from '../lib/dom.js';
 import { beatBasisText } from '../lib/beat-basis.js';
 import { formatPages } from '../lib/script.js';
+import { printedPages } from '../lib/paginate.js';
 import { analyseScript, pagesOf, readableName, sceneSpan } from '../lib/script-analysis-model.js';
 import { smoothPath } from '../lib/story-pacing.js';
 import { formatDuration } from '../lib/screenplay-analysis.js';
@@ -481,7 +482,7 @@ function structurePanel(a) {
   const t = table({ label: 'Beats against the pages', columns: cols, rows });
   return panel({
     eyebrow: ['Structure', s.framework.short],
-    meta: formatPages(s.pages) + ' pages, estimated' + (s.linked ? ' · ' + plural(s.linked, 'beat') + ' linked to scenes' : ''),
+    meta: formatPages(s.pages) + ' pages at 55 lines a page' + (s.linked ? ' · ' + plural(s.linked, 'beat') + ' linked to scenes' : ''),
     body: [t, h('p.pc-note.sa-basis', { text: beatBasisText(s.basis, formatPages(s.pages)) }), h('p.pc-note', { text: 'Where each beat of ' + s.framework.label + ' conventionally falls, as a page of this script, and the scene that is on that page. Link scenes to beats on the Story page and it also says where each beat really opens.' })]
   });
 }
@@ -566,7 +567,11 @@ export function renderAnalysis(opts = {}) {
       aud ? tensionPanel(a, aud, elements) : null].filter(Boolean));
   }
   const stats = statStrip([
-    { label: 'Scenes', value: a.totals.scenes, note: a.totals.pages + ' pages, estimated' },
+    /* The script's length is the pages it PRINTS, the figure the writer's
+       strip shows one tab away; "106.5 pages, estimated" sat beside
+       "Pages: 115" (QA r3 B-2). The 55-line estimate stays the arithmetic
+       under the per-scene, per-act and beat figures, named as such. */
+    { label: 'Scenes', value: a.totals.scenes, note: printedPages(elements) + ' printed pages' },
     { label: 'Running time', value: formatDuration(a.totals.seconds), note: 'estimated' },
     { label: 'Characters', value: a.cast.characters.length, note: 'with a cue' },
     { label: 'Mean tension', value: a.tension.mean, note: 'estimated, 1–10' },

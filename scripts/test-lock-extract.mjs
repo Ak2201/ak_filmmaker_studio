@@ -76,6 +76,9 @@ eq(P.firstSentence(''), '', 'firstSentence of nothing is nothing');
 eq(P.extractExtras({ elements: [{ type: 'action', text: 'They crowd the door.' }] }), [], 'a bare verb "crowd" yields nothing');
 eq(P.extractExtras({ elements: [{ type: 'action', text: 'The crowd turns.' }] }).map((x) => x.text), ['Crowd'], 'an article before "crowd" makes it a noun');
 eq(P.extractExtras(sliceOf('e0')), [], 'the kitchen has no extras');
+eq(P.extractExtras({ elements: [{ type: 'action', text: 'A crowd of 40 villagers watches. Twenty students run past.' }] }).map((x) => x.text),
+  ['Villagers (40)', 'Students (20)'], 'QA r2: "a crowd of 40 villagers" is one group of 40, never also Crowd (40)');
+eq(P.extractExtras({ elements: [{ type: 'action', text: 'A crowd of 40 at the gate.' }] }).map((x) => x.text), ['Crowd (40)'], 'a crowd of 40 with no noun is still Crowd (40)');
 
 /* ---- 3. planExtras and the tag counts -------------------------- */
 {

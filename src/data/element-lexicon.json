@@ -67,5 +67,11 @@
     "words": ["RINGS", "RING", "BANG", "BANGS", "SLAM", "SLAMS", "CRASH", "CRASHES", "GUNSHOT", "GUNSHOTS", "BEEP", "BEEPS",
               "BUZZ", "BUZZES", "HONK", "HONKS", "KNOCK", "KNOCKS", "SCREAM", "SCREAMS", "THUD", "SHATTERS", "EXPLODES",
               "EXPLOSION", "WHISTLE", "WHISTLES", "SIREN", "SIRENS", "THUNDER", "CLICK", "CLICKS", "CREAKS", "BOOM"]
+  },
+  "verbs": {
+    "_about": "Lexicon words that are VERBS, not things. A verb names an element only when its subject is a person or a vehicle (\"Ravi falls\", \"the car rolls\"). When the word just before it is already a word of a thing list (`thingCategories`: \"a phone rings\", \"rain falls\") or one of `notAfter` (\"night falls\"), the subject is the element and the verb is dropped, so a breakdown is never offered a \"falls\" stunt or a \"rings\" sound for it (QA r2). A verb in CAPITALS is still a sound cue through soundCaps. An object, not a list, so it is not a category.",
+    "words": ["falls", "fell", "rings", "ringing", "honks", "knocks", "beeps", "vibrates", "rolls", "glows", "floats", "disappears", "vanishes"],
+    "thingCategories": ["props", "setdressing", "wardrobe", "sound", "sfx", "vfx"],
+    "notAfter": ["night", "darkness", "dark", "silence", "quiet", "hush", "dusk", "dawn", "light", "sunlight", "moonlight", "shadow", "shadows", "tear", "tears", "leaf", "leaves", "curtain"]
   }
 }

@@ -50,6 +50,22 @@ import {
   draftPdfMeta, draftPdfTitles
 } from '../lib/screenplay-drafts-model.js';
 
+/* The no-AI twin (docs/RULES-BREAKDOWN.md lane B): a plain button that opens the
+   Desk on a `local: true` task. No key, no Pro, never aiUnlocked(): the page is
+   already walled by its own module. The ctx is read at the click. */
+const rulesCtx = new WeakMap();
+function rulesButton(label, task, ctx, icon, title) {
+  const b = button({ label, icon, size: 'sm', action: 'rules-desk', title });
+  b.dataset.rulesTask = task;
+  rulesCtx.set(b, ctx);
+  return b;
+}
+delegate(document, 'click', '[data-action="rules-desk"]', (e, el) => {
+  import('../ui/ai-desk.js')
+    .then((D) => D.openDesk(el.dataset.rulesTask, rulesCtx.get(el) || {}))
+    .catch((err) => console.warn('[rules] the Desk did not load', err));
+});
+
 const app = document.getElementById('app');
 const typesetter = () => import('../lib/screenplay-export.js');
 const pdfLib = () => import('../lib/pdf.js');
@@ -168,6 +184,7 @@ delegate(document, 'input', '[data-tp-field]', (e, input) => {
   tpTimer = setTimeout(() => { fresh(); refreshState(); }, 400);
 });
 
+
 /* The AI Desk's 'draft-changes' task: a read of what changed between the
    two drafts the Compare selects name AT THE CLICK. It changes nothing.
    The page hands the two element lists in; src/lib never reads a select. */
@@ -180,13 +197,15 @@ function changesPill() {
     const olderId = val('wr-cmp-from'), newerId = val('wr-cmp-to');
     return { olderId, newerId, older: lists(olderId), newer: lists(newerId), olderLabel: label('wr-cmp-from'), newerLabel: label('wr-cmp-to') };
   };
-  return h('p.dr-ai', {}, [aiPill({
-    label: 'Summarise changes', tasks: ['draft-changes'],
-    ctx: () => {
-      const c = picked();
-      return { olderId: c.olderId, newerId: c.newerId, compare: () => c };
-    }
-  })]);
+  const ctx = () => {
+    const c = picked();
+    return { olderId: c.olderId, newerId: c.newerId, compare: () => c };
+  };
+  return h('p.dr-ai', {}, [
+    rulesButton('Summarise changes', 'draft-changes-rules', () => ({ ...ctx(), say: (m) => StudioUI.toast(m) }), 'rule',
+      'Counts and names from the line-by-line comparison, on this device. No AI.'),
+    aiPill({ label: 'Enhance with AI', tasks: ['draft-changes'], ctx })
+  ]);
 }
 
 /* ---- the list ---------------------------------------------------- */

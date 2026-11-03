@@ -119,6 +119,36 @@ export function actionMenu(label, items, opts = {}) {
 function clampIntoViewport(panel) {
   panel.style.left = '';
   panel.style.right = '';
+  clampHeight(panel);
+  clampWidth(panel);
+}
+
+/* The same failure vertically, and it was worse: the Screenplay
+   Writer's ⋯ menu is 978px of items under a sticky top bar, so in a
+   720 or 800px window everything after "Fold all scenes" sat below the
+   fold — and the wheel scrolled the PAGE, which carried the sticky bar
+   and the menu with it, so Statistics stayed at y=985 for ever (QA r3).
+   A panel taller than the room below its button is capped to that room
+   and scrolls inside itself; overscroll stays in the panel so the wheel
+   at its end does not move the page instead. Only an absolutely placed
+   panel: the phone sheet's in-flow copy (mobile-nav.css) scrolls with
+   the sheet, and the rail's fixed panel is anchored from the bottom. */
+function clampHeight(panel) {
+  panel.style.maxHeight = '';
+  panel.style.overflowY = '';
+  panel.style.overscrollBehavior = '';
+  if (getComputedStyle(panel).position !== 'absolute') return;
+  const r = panel.getBoundingClientRect();
+  const room = window.innerHeight - r.top - 8;
+  if (r.height <= room) return;
+  /* A floor, so a button near the foot of the window still opens a
+     usable list rather than a 20px sliver. */
+  panel.style.maxHeight = Math.max(room, 192) + 'px';
+  panel.style.overflowY = 'auto';
+  panel.style.overscrollBehavior = 'contain';
+}
+
+function clampWidth(panel) {
   /* The left edge is the step rail's right edge, not the screen's: the
      band is clipped there, so a panel clamped to x=8 was cut off under
      the rail (the Theme menu showed "NK" for "INK"). */

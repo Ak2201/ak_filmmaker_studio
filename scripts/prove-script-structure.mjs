@@ -170,7 +170,27 @@ ok(!(await page.$('.sc-split')), '4  under 1100px the split closes');
 await page.setViewportSize({ width: 1280, height: 900 });
 
 /* ---- 5 statistics ----------------------------------------------------- */
-await page.evaluate(() => document.querySelector('[data-action="sc-stats"]').click());
+/* Reached with a MOUSE through the ⋯ menu, in a short window: the menu is
+   taller than 720px, and it used to run off the bottom with the wheel
+   scrolling the page (and the sticky bar and the menu with it), so
+   Statistics could not be clicked at all (QA r3 B-1). The panel now caps
+   to the room below its button and scrolls inside itself. */
+await page.setViewportSize({ width: 1280, height: 720 });
+await settle(300);
+await page.evaluate(() => [...document.querySelectorAll('#scTop .tb-menu')]
+  .find((m) => m.querySelector('[data-action="sc-stats"]')).querySelector('.tb-menu-btn').click());
+await settle(200);
+const menuBox = await page.evaluate(() => {
+  const p = document.querySelector('#scTop .tb-menu-panel:not([hidden])');
+  const r = p.getBoundingClientRect();
+  return { bottom: Math.round(r.bottom), vh: innerHeight, scrolls: p.scrollHeight > p.clientHeight };
+});
+ok(menuBox.bottom <= menuBox.vh && menuBox.scrolls, '5  the ⋯ menu fits the window and scrolls inside itself', menuBox);
+let statsClicked = true;
+try { await page.click('[data-action="sc-stats"]', { timeout: 3000 }); } catch (e) { statsClicked = false; }
+ok(statsClicked, '5  Statistics, the last Tools item, takes a real mouse click at 1280x720');
+if (!statsClicked) await page.evaluate(() => document.querySelector('[data-action="sc-stats"]').click());
+await page.setViewportSize({ width: 1280, height: 900 });
 await page.waitForSelector('.sst-facts');
 const facts = await page.$$eval('.sst-facts dd', (d) => d.map((x) => x.textContent));
 ok(facts[2] === '4', '5  Statistics counts the scenes', facts);

@@ -671,6 +671,16 @@ async function clickUndo(page) {
   return has;
 }
 
+/* QA r3 K-1: a REFUSED Undo must say why. scriptgen returns the
+   sentence and undoGen() sends it through ctx.say; write.js's two
+   ctx builders passed no `say`, so the refusal was silent and Undo
+   looked dead. */
+async function refusedUndoSays(page, re, label) {
+  await clickUndo(page);
+  const said = await page.locator('.toast', { hasText: re }).count();
+  ok(said > 0, label, await page.locator('.toast').allInnerTexts());
+}
+
 /* =================================================================
    (e) stage 2 — the scene list
    ================================================================= */
@@ -724,6 +734,20 @@ async function clickUndo(page) {
   ok(JSON.stringify(undoneScenes.map((s) => s.location)) === JSON.stringify(['MY OWN SCENE']), 'Undo removes the accepted scenes and keeps one the writer added since', undoneScenes.map((s) => s.location));
   const undoneJob = await stored(page, 'fms_scriptgen_v1');
   ok(undoneJob && undoneJob.stage === 'beats' && undoneJob.scenes.length === 0 && undoneJob.beats.length === BEATS.length, 'and the job is back at stage "beats", beats intact', undoneJob && { stage: undoneJob.stage, scenes: undoneJob.scenes.length, beats: undoneJob.beats.length });
+
+  /* Accept again, move the job on, Undo: refused, and it says so. */
+  if (!(await deskOpen(page))) await openPillIn(page, scope, /lay out/i, 'gen-scenes');
+  if (!(await page.locator('aside.ai-desk label.ai-desk-item').count())) await runList(page);
+  await page.click('aside.ai-desk [data-action="ai-desk-accept"]');
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => {
+    const k = Object.keys(localStorage).find((x) => x.startsWith('fms_scriptgen_v1'));
+    const d = JSON.parse(localStorage.getItem(k));
+    d.cursor = 1;
+    localStorage.setItem(k, JSON.stringify(d));
+  });
+  await refusedUndoSays(page, /nothing was undone/i, 'a refused gen-scenes Undo says why (QA r3 K-1)');
+  ok(((await stored(page, 'fms_scriptgen_v1')) || {}).cursor === 1, 'and the refused Undo left the job as it was');
   ok(errors.length === 0, 'no page errors', errors);
   } catch (e) { ok(false, 'the scenario stopped: ' + String(e && e.message || e).split('\n')[0]); }
   finally { await ctx.close(); }
@@ -823,6 +847,22 @@ async function clickUndo(page) {
   ok(requests.length === r0, 'Skip sends nothing');
   ok((await stored(page, 'fms_scriptgen_v1')).cursor === 0, 'and the cursor stays at 0');
   ok(!(await deskOpen(page)), 'Skip closes the Desk');
+
+  /* Accept, edit an accepted line, Undo: refused, and it says so. */
+  await openPillIn(page, scope, /next/i, 'gen-batch');
+  if (!(await page.locator('aside.ai-desk label.ai-desk-item').count())) await runList(page);
+  const pre = (await scriptDoc(page)).elements.length;
+  await page.click('aside.ai-desk [data-action="ai-desk-accept"]');
+  await page.waitForTimeout(1500);
+  await page.evaluate((n) => {
+    const k = Object.keys(localStorage).find((x) => x.startsWith('fms_script_v1'));
+    const d = JSON.parse(localStorage.getItem(k));
+    const e = d.elements.slice(n).find((x) => x.type === 'action');
+    if (e) e.text += ' [my edit]';
+    localStorage.setItem(k, JSON.stringify(d));
+  }, pre);
+  await refusedUndoSays(page, /nothing was undone/i, 'a refused gen-batch Undo says why (QA r3 K-1)');
+  ok((await scriptDoc(page)).elements.some((e) => String(e.text).endsWith(' [my edit]')), 'and the edited line is kept');
   ok(errors.length === 0, 'no page errors', errors);
   } catch (e) { ok(false, 'the scenario stopped: ' + String(e && e.message || e).split('\n')[0]); }
   finally { await ctx.close(); }

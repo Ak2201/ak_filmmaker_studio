@@ -96,6 +96,11 @@
   padding: 0;
 }
 .dv-src-links a { color: var(--accent-deep); overflow-wrap: anywhere; }
+/* A bare inline link is 16px tall; base.css's coarse floor names a.btn,
+   not a plain <a>, so a touch screen needs its own target here. */
+@media (pointer: coarse) {
+  .dv-src-links a { display: inline-flex; align-items: center; min-height: 44px; }
+}
 
 /* ---- streamer switches -------------------------------------- */
 .dv-ott { margin: 0 0 var(--s6); }

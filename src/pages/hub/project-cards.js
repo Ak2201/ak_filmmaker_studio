@@ -11,12 +11,11 @@
    ============================================================ */
 import Store from '../../lib/store.js';
 import PlanGate from '../../lib/plan-gate.js';
-import { STAGES, journey, guideJourney } from '../../lib/journey.js';
 import { h } from '../../lib/dom.js';
 import { button, buttonGroup } from '../../ui/kit/index.js';
 import { isSampleProject } from '../../lib/sample-project.js';
 import { PROJECT_HOME_URL, FORMAT_LABELS, fmtRelDate, $ } from './util.js';
-import { applyProjectFilters as applyProjectFiltersTo, projectBlob } from '../../lib/hub-model.js';
+import { applyProjectFilters as applyProjectFiltersTo, projectBlob, projectStatus } from '../../lib/hub-model.js';
 import { renderFirstRun, renderSampleOnly } from './first-run.js';
 
 
@@ -34,29 +33,12 @@ function applyProjectFilters(projects) {
   return applyProjectFiltersTo(projects, { filter: projectFilter, search: projectSearchTerm, sort: projectSort });
 }
 
-/* Progress and stage for a card, from journey.js. The percentage used
-   to be filled keys over SAVED keys — the trap blueprint-fields.js is
-   named for, where eleven saved fields read 100% — and the label a
-   band of that percentage ("Pre-prod" at 50–79%) that knew nothing
-   about the film. Now: the declared-field percentage, and the stage.
-   The OPEN project gets the full journey (guide and tools, read through
-   the proxy); any other project gets the guide's reading of its blob,
-   because its tools live under another id. */
-function projectStatus(p, active, openJourney) {
-  const g = guideJourney(p.format, projectBlob(p));
-  if (active && openJourney) {
-    return {
-      pct: g.pct,
-      label: openJourney.complete ? 'All ' + STAGES.length + ' stages'
-                                  : openJourney.currentLabel
-    };
-  }
-  return { pct: g.pct, label: g.started ? g.currentLabel : 'Not started' };
-}
+/* Progress and stage for a card: projectStatus() in hub-model.js, one
+   reading for every card whether or not it is the open project. */
 
-function projectCard(p, currentId, openJourney) {
+function projectCard(p, currentId) {
   const active = p.id === currentId;
-  const status = projectStatus(p, active, openJourney);
+  const status = projectStatus(p);
   const pct = status.pct;
   const card = h('div', {
     class: 'project-card' + (active ? ' active' : '') + ' format-' + p.format,
@@ -265,10 +247,7 @@ function renderProjects() {
     return;
   }
 
-  // The open project's journey, once per render, for its card's stage.
-  const cur = currentId ? Store.currentProject() : null;
-  const openJourney = cur ? journey(cur) : null;
-  filtered.forEach(p => out.append(projectCard(p, currentId, openJourney)));
+  filtered.forEach(p => out.append(projectCard(p, currentId)));
   if (PlanGate.allowed('new_projects')) {
     out.append(h('div.project-card.new-card', {
       tabindex: '0', role: 'button', 'data-action': 'new-project', 'aria-label': 'Create new project'

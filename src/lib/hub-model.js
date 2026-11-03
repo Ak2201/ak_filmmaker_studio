@@ -13,7 +13,7 @@
 import Store from './store.js';
 import { fmtMoney } from './money.js';
 import { esc } from './dom.js';
-import { STAGES, stageOfStep } from './journey.js';
+import { STAGES, stageOfStep, guideJourney } from './journey.js';
 import { readActivityLog, saveActivityLog, capLog } from './hub-activity.js';
 import {
   FEATURE_KEY, SHORT_KEY, FEATURE_URL, SHORT_URL, PROJECT_HOME_URL, LIBRARY_URL
@@ -203,6 +203,20 @@ export function projectBlob(p) {
   } catch (e) { return {}; }
 }
 
+/* Progress and stage for a project CARD: the guide's reading of the
+   blob, for EVERY card, the open one included. The open card used to
+   take journey()'s full answer (guide plus tools, read through the
+   proxy) while every other card took this one, so the same film read
+   "Pre-Production" while it was open and "Screenplay" the moment another
+   project was (QA r2 H-1). A card cannot read a closed project's tools
+   (they sit under another id behind the proxy), so the only reading all
+   cards can share is the guide's; the dashboard is where the full
+   journey of the open film is shown. */
+export function projectStatus(p) {
+  const g = guideJourney(p.format, projectBlob(p));
+  return { pct: g.pct, label: g.started ? g.currentLabel : 'Not started' };
+}
+
 /** The grid's filter, search and sort, applied to a copy of the list.
  *  @param {{filter:string, search:string, sort:string}} view */
 export function applyProjectFilters(projects, { filter, search, sort }) {
@@ -228,5 +242,5 @@ export function byRecent(projects) {
 
 export default {
   rewriteUrl, FEATURE_STEPS, SHORT_STEPS, stageName, ANCHORS, stageParts, FEATURE_PARTS, SHORT_PARTS,
-  greetingHTML, detectActivity, copyProjectData, projectBlob, applyProjectFilters, byRecent
+  greetingHTML, detectActivity, copyProjectData, projectBlob, projectStatus, applyProjectFilters, byRecent
 };

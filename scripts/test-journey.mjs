@@ -86,5 +86,30 @@ eq(J.suggestNext([S('a', 'done'), S('b', 'done'), S('c', 'none')]), { id: 'c', w
 eq(J.suggestNext([S('a', 'done'), S('b', 'done')]), null, 'all done → no nudge');
 eq(J.suggestNext([S('a', 'none'), S('b', 'doing')]), { id: 'b', why: 'continue' }, 'later work is respected');
 
+
+/* ---- QA r2 H-1: a hub card's stage does not depend on which project is open ----
+   projectStatus() is the guide's reading of the blob for every card; the
+   open card once took journey()'s full answer and so the same film read
+   "Pre-Production" while open and "Screenplay" once another was. */
+{
+  const StoreStub = (await import('data:text/javascript,export default {}')).default;
+  const raw = new Map();
+  StoreStub.rawGet = (k) => (raw.has(k) ? raw.get(k) : null);
+  const HM = await import('../src/lib/hub-model.js');
+  const p = { id: 'pX', title: 'X', format: 'feature' };
+  eq(HM.projectStatus(p), { pct: 0, label: 'Not started' }, 'an empty blob reads Not started on its card');
+  const steps = J.guideSteps('feature');
+  const blob = {};
+  for (const s of steps.slice(0, 3)) for (const k of (s.fields || s.keys || [])) blob[typeof k === 'string' ? k : k.key] = 'filled';
+  raw.set(J.FEATURE_KEY + '__pX', JSON.stringify(blob));
+  const g = J.guideJourney('feature', blob);
+  ok(g.started && g.pct > 0, 'the seeded blob counts as started');
+  eq(HM.projectStatus(p), { pct: g.pct, label: g.started ? g.currentLabel : 'Not started' }, 'a card reads the guide of its own blob');
+  eq(HM.projectStatus.length, 1, 'projectStatus takes the project only: no open-project branch');
+  const fs = await import('node:fs');
+  const cards = fs.readFileSync(new URL('../src/pages/hub/project-cards.js', import.meta.url), 'utf8');
+  ok(!/\bjourney\(/.test(cards), 'project-cards.js reads no full journey() for one card');
+}
+
 console.log('test:journey — ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

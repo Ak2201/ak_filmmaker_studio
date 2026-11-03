@@ -415,9 +415,13 @@ export function useDaysMessage(fieldCount, filled, kept, days) {
    representation; a copy of the day count in the calculator's own
    storage would be the second, and the two would disagree by the end
    of the week. */
-export function scheduleFacts() {
+/* `given` is a scene list to read instead of the stored one (Run all's
+   budget estimate reads the drafted shoot order this way); absent, the
+   stored scenes. */
+export function scheduleFacts(given) {
   let scenes = [];
-  try { scenes = Scenes.listScenes(); } catch (e) { scenes = []; }
+  if (Array.isArray(given)) scenes = given;
+  else { try { scenes = Scenes.listScenes(); } catch (e) { scenes = []; } }
   const dayOf = (s) => { const n = parseInt(s.shootDay, 10); return Number.isFinite(n) && n > 0 ? n : 0; };
   const scheduled = scenes.filter((s) => dayOf(s) > 0);
   const days = new Set(scheduled.map(dayOf));

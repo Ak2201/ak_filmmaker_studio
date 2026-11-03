@@ -184,6 +184,22 @@ ok(visible.some((p) => p.title === 'Other side (imported)' && p.id !== 'there'),
 ok(visible.some((p) => p.title === 'Mine (imported)'), 'a same-namespace clash is marked as before');
 eq(all().filter((p) => p.id === 'there').length, 1, 'an id never means two projects');
 
+/* ---- a sample stays a sample through a backup (QA r3 H-2) ----- */
+{
+  const smp = Store.createProject({ title: 'Dragon', format: 'feature', sample: 'dragon' });
+  const out = buildBackup();
+  eq((out.projects.find((p) => p.id === smp.id) || {}).sample, 'dragon', 'an export carries the sample stamp');
+  applyBackup(out, { mode: 'merge', confirm: () => true });
+  const copy = all().find((p) => p.title === 'Dragon (imported)');
+  ok(!!copy, 'a merge over an existing sample lands a marked copy');
+  eq(copy && copy.sample, 'dragon', 'the imported copy keeps sample:dragon, so it never syncs');
+  const bad = JSON.parse(JSON.stringify(out));
+  bad.projects.forEach((p) => { if (p.id === smp.id) { p.id = 'odd-one'; p.title = 'Odd'; p.sample = 'Not A Sample!'; } });
+  bad.data['odd-one'] = bad.data[smp.id];
+  applyBackup(bad, { mode: 'merge', confirm: () => true });
+  eq((all().find((p) => p.title === 'Odd') || {}).sample, undefined, 'a malformed stamp is not carried');
+}
+
 /* ---- the Supabase config is not part of a backup -------------- */
 ok(!('sync_config' in GLOBAL_KEYS), 'GLOBAL_KEYS does not name the Supabase config');
 mem.set(CFG, JSON.stringify({ url: 'https://mine.supabase.co', key: 'k-mine' }));

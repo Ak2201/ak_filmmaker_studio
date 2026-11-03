@@ -433,29 +433,42 @@ function renderDayCard(sheet, scenes) {
    only while it is empty and keeps no other copy; the unit message it
    also drafts is offered to copy in a toast, never stored. The page hands
    in the facts it already builds for the WhatsApp text. */
-function notesAi(sheetId) {
+const notesCtx = (sheetId) => {
   const find = () => Contacts.listCallSheets().find((x) => x.id === sheetId) || null;
-  return h('div.ct-ai-row', {}, [aiPill({
-    label: 'Draft notes', tasks: ['callsheet-notes'],
-    ctx: () => ({
-      sheetId,
-      facts: () => { const sh = find(); return sh ? factsOf(sh, Scenes.listScenes()) : null; },
-      say: (m) => StudioUI.toast(m),
-      offerUnit: (text) => StudioUI.toast('A unit message is ready to copy.', {
-        action: 'Copy it',
-        onAction: () => { copyText(text).then((ok) => StudioUI.toast(ok ? 'Unit message copied.' : 'Could not reach the clipboard.')); }
-      }),
-      after: () => {
-        const card = document.querySelector('.ct-sheet[data-sheet="' + sheetId + '"]');
-        const sh = find();
-        const box = card && card.querySelector('.ct-sheet-notes');
-        if (!box || !sh) return;
-        box.value = sh.notes || '';
-        syncDoc(box);
-      }
-    })
+  return {
+    sheetId,
+    facts: () => { const sh = find(); return sh ? factsOf(sh, Scenes.listScenes()) : null; },
+    sceneIds: () => { const sh = find(); return sh ? sh.sceneIds || [] : []; },
+    say: (m) => StudioUI.toast(m),
+    offerUnit: (text) => StudioUI.toast('A unit message is ready to copy.', {
+      action: 'Copy it',
+      onAction: () => { copyText(text).then((ok) => StudioUI.toast(ok ? 'Unit message copied.' : 'Could not reach the clipboard.')); }
+    }),
+    after: () => {
+      const card = document.querySelector('.ct-sheet[data-sheet="' + sheetId + '"]');
+      const sh = find();
+      const box = card && card.querySelector('.ct-sheet-notes');
+      if (!box || !sh) return;
+      box.value = sh.notes || '';
+      syncDoc(box);
+    }
+  };
+};
+
+/* Write notes (callsheet-notes-rules, no AI): one line per fact on the
+   sheet, in the Desk's tick list; the AI pill beside it drafts prose. */
+function notesAi(sheetId) {
+  return h('div.ct-ai-row', {}, [button({
+    label: 'Write notes', size: 'sm', action: 'sheet-notes-rules', attrs: { 'data-sheet-id': sheetId }
+  }), aiPill({
+    label: 'Enhance with AI', tasks: ['callsheet-notes'], ctx: () => notesCtx(sheetId)
   })]);
 }
+
+delegate(document, 'click', '[data-action="sheet-notes-rules"]', (e, el) => {
+  const sheetId = el.dataset.sheetId;
+  import('../ui/ai-desk.js').then((D) => D.openDesk('callsheet-notes-rules', notesCtx(sheetId)));
+});
 
 function renderSheetEdit(sheet, contacts, scenes) {
   const edit = h('div.ct-edit');

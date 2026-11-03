@@ -286,9 +286,22 @@ function renderOrphanDays(orphans) {
    2. LOCATIONS
    ============================================================ */
 
-const recceIdeas = (locationName) => aiPill({
-  label: locationName ? 'Recce ideas' : 'Recce ideas for all places', tasks: ['recce-notes'],
-  ctx: () => ({ locationName, say: (m) => StudioUI.toast(m), after: render })
+/* Check recce (recce-notes-rules, the no-AI checklist: "To check:" lines
+   for blank fields, each from a fact in the script) beside the AI pill. */
+const recceIdeas = (locationName) => h('span.pl-rules-row', {}, [
+  button({
+    label: locationName ? 'Check recce' : 'Check recce for all places', size: 'sm', action: 'recce-rules',
+    attrs: { 'data-location': locationName || '' }
+  }),
+  aiPill({
+    label: 'Enhance with AI', tasks: ['recce-notes'],
+    ctx: () => ({ locationName, say: (m) => StudioUI.toast(m), after: render })
+  })
+]);
+
+delegate(document, 'click', '[data-action="recce-rules"]', (e, el) => {
+  const locationName = el.dataset.location || '';
+  import('../ui/ai-desk.js').then((D) => D.openDesk('recce-notes-rules', { locationName, say: (m) => StudioUI.toast(m), after: render }));
 });
 
 function renderLocations(scenes) {

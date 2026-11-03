@@ -152,12 +152,14 @@ export function suggestionTagsForCategory(scenes, elements, cat) {
   return tags;
 }
 /** The Auto-Tag count line. ADD ALL's category limit is said here, not
- *  only in a comment, and the line names the categories it leaves to a
- *  chip or a scene at a time. `labelOf` maps a category id to its label. */
+ *  only in a comment, and the line names the categories it leaves out and
+ *  how those ARE taken: their own "Accept all <category>", a scene or a
+ *  chip (it once said "one chip or one scene at a time" beside the very
+ *  Accept all buttons it denied, QA r3). `labelOf` maps an id to its label. */
 export function suggestCountText({ total, scenes, guessed, labelOf = (c) => c }) {
   const rest = SUGGEST_CATEGORIES.filter((c) => !BULK_CATS.includes(c));
   return `${total} suggestion${total === 1 ? '' : 's'} across ${scenes} scene${scenes === 1 ? '' : 's'}`
-    + ` \u00b7 ADD ALL takes ${BULK_CATS.map(labelOf).join(', ')}; ${rest.map(labelOf).join(', ')} are added one chip or one scene at a time`
+    + ` \u00b7 ADD ALL takes ${BULK_CATS.map(labelOf).join(', ')}; ${rest.map(labelOf).join(', ')} are left to their own Accept all, a scene or a chip`
     + (guessed ? ` \u00b7 and it leaves out the ${guessed} paired by position only` : '');
 }
 /** `.sel` scoped under `[data-scene=id]`, EVERY comma alternative: a

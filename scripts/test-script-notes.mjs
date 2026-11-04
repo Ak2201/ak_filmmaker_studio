@@ -62,5 +62,7 @@ ok(csv.includes('"Too long, ""cut""\nsecond line"'), 'csv escapes quotes, commas
 eq(lines.length, rows.length + 2, 'csv one line per note (+ header, trailing)');
 eq(N.toCSV([]).split('\r\n').length, 2, 'empty csv is header only');
 
+const evil = N.toCSV([{ sceneNumber: '1', scene: 'INT. X', elementType: 'action', line: '=1+1', kind: 'shared', resolved: true, author: '@evil', created: 0, body: '=HYPERLINK("a","b")', replies: [{ author: '+x', body: '-2' }] }]).split('\r\n')[1];
+ok(evil.includes('"\'=1+1"') && evil.includes('"\'@evil"') && evil.includes('"\'=HYPERLINK(""a"",""b"")"') && evil.includes('"\'+x: -2"'), 'csv defuses formulas in line, author, note and replies: ' + evil);
 console.log(fails ? fails + ' FAILED of ' + n : 'script-notes: ' + n + ' checks passed');
 process.exit(fails ? 1 : 0);

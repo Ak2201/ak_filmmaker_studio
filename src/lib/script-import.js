@@ -1138,8 +1138,10 @@ export function parseSlug(slug) {
   const out = { number: split.number, intExt: 'INT', dayNight: 'DAY', location: '', guessedTime: false };
 
   /* INTERIOR / EXTERIOR are the long forms of INT / EXT (QA r4): without
-     them "EXTERIOR. STREET" read as INT with the word left in the place. */
-  const ie = text.match(/^(INT\.?\s*\/\s*EXT|EXT\.?\s*\/\s*INT|I\s*\/\s*E|INTERIOR|EXTERIOR|INT|EXT|EST|உள்|வெளி)(?![A-Za-z])\.?/i);
+     them "EXTERIOR. STREET" read as INT with the word left in the place.
+     The combined long form (QA r5) too: "INTERIOR/EXTERIOR HOUSE" read as
+     INT with "/EXTERIOR HOUSE" left as the place. */
+  const ie = text.match(/^(INT(?:ERIOR)?\.?\s*\/\s*EXT(?:ERIOR)?|EXT(?:ERIOR)?\.?\s*\/\s*INT(?:ERIOR)?|I\s*\/\s*E|INTERIOR|EXTERIOR|INT|EXT|EST|உள்|வெளி)(?![A-Za-z])\.?/i);
   if (ie) {
     const token = ({ INTERIOR: 'INT', EXTERIOR: 'EXT' })[ie[1].toUpperCase()] || ie[1].toUpperCase().replace(/\s|\./g, '');
     // EST. is an establishing shot — of the OUTSIDE.

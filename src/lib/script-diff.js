@@ -305,11 +305,20 @@ export function groupByScene(diff, opts = {}) {
     const any = counts.changed + counts.moved + counts.added + counts.removed;
     if (cur.ops.length && (any || opts.all)) groups.push({ ...cur, counts });
   };
+  const isHead = (el) => !!el && el.type === 'scene' && !!norm(el.text);
   for (const o of (diff && diff.ops) || []) {
-    const el = o.b || o.a;
-    if (el && el.type === 'scene' && norm(el.text)) {
+    if (isHead(o.b)) {
       close();
-      cur = { heading: norm((o.b || o.a).text), headingId: o.b ? o.b.id : null, headingOp: o.op, ops: [] };
+      cur = { heading: norm(o.b.text), headingId: o.b.id, headingOp: o.op, ops: [] };
+    } else if (isHead(o.a)) {
+      /* The older draft's heading with no heading in its place: deleted
+         outright, OR (QA r5) still there with its text cleared or its type
+         changed. Either way no scene opens there any more — its lines read
+         as part of the scene above — so it is the scene REMOVED, not a line
+         of the scene above "changed". Treated as one, the lock's change
+         report listed no Omitted item for it at all. */
+      close();
+      cur = { heading: norm(o.a.text), headingId: null, headingOp: 'removed', ops: [] };
     }
     cur.ops.push(o);
   }

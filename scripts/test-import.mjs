@@ -333,6 +333,8 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   const sl = (t) => { const p = I.parseSlug(t); return [p.intExt, p.dayNight, p.location, p.guessedTime].join('|'); };
   eq(sl('INTERIOR. KITCHEN - DAY'), 'INT|DAY|KITCHEN|false', 'r4: INTERIOR is INT, the word leaves the place');
   eq(sl('EXTERIOR. STREET - DAY'), 'EXT|DAY|STREET|false', 'r4: EXTERIOR is EXT');
+  eq(sl('INTERIOR/EXTERIOR HOUSE - DAY'), 'INT/EXT|DAY|HOUSE|false', 'r5: the combined long form is INT/EXT');
+  eq(sl('EXTERIOR/INTERIOR CAR - NIGHT'), 'INT/EXT|NIGHT|CAR|false', 'r5: EXTERIOR/INTERIOR is INT/EXT');
   eq(sl('INT. KITCHEN (NIGHT)'), 'INT|NIGHT|KITCHEN|false', 'r4: a bracketed time is the time');
   eq(sl('INT KITCHEN NIGHT'), 'INT|NIGHT|KITCHEN|false', 'r4: a bare last NIGHT is the time');
   eq(sl('INT. KITCHEN - DUSK/NIGHT'), 'INT|DUSK|KITCHEN|false', 'r4: a compound time leaves the place');

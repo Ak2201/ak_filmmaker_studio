@@ -169,6 +169,19 @@ const edited = () => {
   ok(L.changeReport(marked, inject).items.find((i) => i.key === '2').reviewed, 'and it can be marked reviewed');
 }
 
+for (const [how, edit] of [['cleared', (x) => ({ ...x, text: '' })], ['turned into action', (x) => ({ ...x, type: 'action' })]]) {
+  // QA r5: a heading whose TEXT is cleared (or whose type is changed) is
+  // still an element, but no scene opens there: it is omitted, like a delete.
+  const d = script();
+  L.takeLock(d, rows());
+  d.elements = d.elements.map((x) => (x.id === 'h3' ? edit(x) : x));
+  Script.saveScript(d);
+  const rep = L.changeReport(d, inject);
+  eq(rep.items.map((i) => [i.key, i.kind]), [['2', 'changed'], ['3', 'omitted']], 'heading ' + how + ': scene 3 is omitted, scene 2 changed');
+  const omit = rep.items.find((i) => i.key === '3');
+  eq([omit.sceneId, omit.pending, omit.impact.shots], ['s3', 'omit', 1], 'heading ' + how + ': the omitted item carries its row, the held omit and its shots');
+}
+
 {
   // QA r3: INSERTING a heading mid-scene takes the lines below it out of
   // that scene. The scene that lost them is reported as changed, and the

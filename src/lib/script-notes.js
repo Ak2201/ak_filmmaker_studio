@@ -18,6 +18,7 @@
    scripts/test-script-notes.mjs run it in Node.
    ============================================================ */
 import { sceneNumbers } from './script.js';
+import { csvCell } from './admin-format.js';
 
 export const KEY_PREFIX = 'script_';
 export const NOTE_PREFIX = 'fms_note_';
@@ -172,7 +173,10 @@ export function toText(rows, title = 'Script') {
 }
 
 export const CSV_HEADER = ['Scene', 'Scene heading', 'Line type', 'Line', 'Kind', 'Status', 'Author', 'Date', 'Note', 'Replies'];
-const cell = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+/* Every cell quoted (as before), AND through csvCell(), the formula guard
+   every CSV in the studio shares: a note, a script line or an author typed
+   (or co-edited) as =, +, - or @ must open in a spreadsheet as text. */
+const cell = (v) => { const c = csvCell(String(v ?? '')); return c.startsWith('"') ? c : '"' + c + '"'; };
 export function toCSV(rows) {
   const data = rows.map((r) => [
     r.sceneNumber, r.scene, r.elementType, r.line, r.kind === 'private' ? 'Private' : 'Shared',

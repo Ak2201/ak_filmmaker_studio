@@ -322,8 +322,17 @@ export function reconcile(elements, scenes, opts = {}) {
       const h = order[sliceIndex.get(p.slice)];
       if (!h || claimed.has(h.id)) continue;
       if (isConfident(p.how)) {
+        /* LINKED IS BOUND (QA r5): a hand-added "Rooftop" (time left at the
+           default DAY) paired with "INT. ROOFTOP - NIGHT" was linked and kept
+           DAY, so the schedule disagreed with the script it now follows. The
+           heading's own INT/EXT and time are written, as step 1 does for a
+           linked row whose heading changed; the place the person typed (it
+           is what matched) is left as typed. keepLinked keeps fields. */
+        const hp = keepFields ? {} : headingPatch(h.text, p.scene);
+        const ie = {};
+        for (const k of ['intExt', 'dayNight']) if (k in hp) ie[k] = hp[k];
         claimed.set(h.id, p.scene.id);
-        addPatch(p.scene.id, lockPatch(h.id, p.scene, { scriptElId: h.id }));
+        addPatch(p.scene.id, lockPatch(h.id, p.scene, { scriptElId: h.id, ...ie }));
       } else if (isPlaceholder(p.scene)) {
         /* A BLANK ROW IS A PLACE KEPT, NOT A GUESS (QA r4). '+ Add scene'
            gives a row with no place and no synopsis; the join pairs it by

@@ -108,7 +108,11 @@ eq([plan.update.length, plan.bin.length], [0, 0], 'a script with no matching hea
 Sync.applySync({ ...plan, add: [] });
 eq(mem.get('fms_scenes_v1'), handRaw, '…byte for byte');
 plan = Sync.reconcile([el('scene', 'EXT. ROOFTOP - DAY', 'r1')], Scenes.listScenes(), {});
-eq(plan.update, [{ id: hand.id, patch: { scriptElId: 'r1' } }], 'a confident match LINKS an unlinked row and writes nothing else');
+eq(plan.update, [{ id: hand.id, patch: { scriptElId: 'r1', intExt: 'EXT' } }], 'a confident match LINKS an unlinked row and takes only the heading\'s INT/EXT and time (place and synopsis stay as typed)');
+eq(Sync.reconcile([el('scene', 'INT. ROOFTOP - NIGHT', 'r1')], Scenes.listScenes(), {}).update,
+  [{ id: hand.id, patch: { scriptElId: 'r1', dayNight: 'NIGHT' } }], 'r5: a linked row\'s default DAY follows the heading\'s NIGHT');
+eq(Sync.reconcile([el('scene', 'INT. ROOFTOP - NIGHT', 'r1')], Scenes.listScenes(), { keepLinked: true }).update,
+  [{ id: hand.id, patch: { scriptElId: 'r1' } }], 'r5: keepLinked (fill the blanks) links and keeps the typed fields');
 eq(plan.add.length, 0, '…instead of adding a duplicate');
 
 /* ---- a blank row ('+ Add scene') is filled, not a heading swallowed (QA r4) */

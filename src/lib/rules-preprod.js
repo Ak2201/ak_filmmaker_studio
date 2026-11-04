@@ -352,7 +352,7 @@ export function proposeBudget({ schedule, scenes, elements, presets, rates, regi
   });
   const withExtras = list0.filter((s) => catOf(s, 'extras').length);
   const peak = peakOf(withExtras.flatMap((s) => catOf(s, 'extras')));
-  line({ custom: 'Background extras' + (peak ? ' (peak ' + peak + ')' : ''), days: days(withExtras), basis: plural(withExtras.length, 'scene', 'scenes') + ' tag background.' });
+  line({ custom: 'Background extras' + (peak ? ' (peak ' + peak + ')' : ''), days: days(withExtras), basis: plural(withExtras.length, 'scene', 'scenes') + (withExtras.length === 1 ? ' tags' : ' tag') + ' background.' });
   const vehicles = new Map();
   list0.forEach((s) => catOf(s, 'vehicles').forEach((v) => {
     const k = v.toLowerCase();
@@ -367,7 +367,7 @@ export function proposeBudget({ schedule, scenes, elements, presets, rates, regi
     if (!places.has(k)) places.set(k, { name: n, scenes: [] });
     places.get(k).scenes.push(s);
   });
-  places.forEach((p) => line({ custom: 'Location: ' + niceName(p.name), days: days(p.scenes), basis: plural(p.scenes.length, 'scene', 'scenes') + ' are set here.' }));
+  places.forEach((p) => line({ custom: 'Location: ' + niceName(p.name), days: days(p.scenes), basis: plural(p.scenes.length, 'scene', 'scenes') + (p.scenes.length === 1 ? ' is' : ' are') + ' set here.' }));
 
   // the template's lines, by count
   const counts = {

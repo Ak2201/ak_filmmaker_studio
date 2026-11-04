@@ -63,7 +63,7 @@
    to the department, not to the person.
    ============================================================ */
 import rates from '../data/rates.chennai.2024.json';
-import { parseNum, parseAmount } from './money.js';
+import { parseNum, parseAmount, lineAmount } from './money.js';
 import { normaliseCurrency, projectRegion, currencyForRegion } from './region-core.js';
 import Store from './store.js';
 import { newId as uid } from './record-id.js';
@@ -185,7 +185,11 @@ function cleanPayment(x) {
 function typedDays(v) {
   if (typeof v === 'number') return Number.isFinite(v) && v >= 0 ? v : '';
   const t = String(v).trim();
-  if (!/\d/.test(t) || /^[-−]/.test(t) || /e/i.test(t.replace(/days?|shifts?/i, ''))) return '';
+  // A day count is a figure (a typed ½ is one: it is not \d, and was
+  // dropped while "1/2" read 0.5) with at most a day word after it. Any
+  // other letter is a magnitude or an exponent, which a count of days
+  // never carries: "1 lakh" stored 100000 days and a ₹ 1,00,00,00,000 fee.
+  if (!/[\d½¼¾⅓⅔]/.test(t) || /^[-−]/.test(t) || /[a-z]/i.test(t.replace(/(?:days?|shifts?|d)\.?$/i, ''))) return '';
   const n = num(t);
   return n >= 0 ? n : '';
 }
@@ -338,7 +342,7 @@ export function restoreVersion(row, index) {
 /** A locked version against the budget as it stands. PURE, mutates nothing. */
 export function compareVersion(version, lines = [], grandNow = null) {
   const v = cleanVersion(version);
-  const now = (Array.isArray(lines) ? lines : []).map(cleanVersionLine).map((l) => ({ ...l, estimate: round2(l.days * l.rate) }));
+  const now = (Array.isArray(lines) ? lines : []).map(cleanVersionLine).map((l) => ({ ...l, estimate: round2(lineAmount(l.days, l.rate)) }));
   const nowIds = new Map(now.map((l) => [l.id, l]));
   const thenIds = new Map(v.lines.map((l) => [l.id, l]));
   const sumBy = (list) => { const m = new Map(); for (const l of list) m.set(l.dept, (m.get(l.dept) || 0) + l.estimate); return m; };
@@ -626,7 +630,7 @@ export function estimateLines(calc, lineMeta = {}) {
     const id = 'ci_' + n;
     const meta = lineMeta[id] || {};
     const dept = DEPT.has(meta.dept) ? meta.dept : defaultDept(name);
-    out.push({ id, n, name: name || 'Line ' + n, days, rate, estimate: days * rate, dept, deptSet: DEPT.has(meta.dept),
+    out.push({ id, n, name: name || 'Line ' + n, days, rate, estimate: lineAmount(days, rate), dept, deptSet: DEPT.has(meta.dept),
       scales: typeof meta.scales === 'boolean' ? meta.scales : null });
   }
   return out;
@@ -780,7 +784,7 @@ export function crewAccount(rec, payments = [], derived = { days: 0, source: '' 
   const r = cleanCrew(rec || {});
   const entered = r.days !== '';
   const days = entered ? r.days : derived.days;
-  const gross = r.feeType === 'lump' ? r.fee : r.fee * days;
+  const gross = r.feeType === 'lump' ? r.fee : lineAmount(r.fee, days);
   const tds = round2(gross * r.tdsPct / 100);
   const net = round2(gross - tds);
   const paid = payments.reduce((s, p) => s + num(p.amount), 0);
@@ -861,7 +865,10 @@ export function costReport({ lines = [], expenses = [], crew = {}, payments = []
       estimate, contingencyPct: pct, contingency, estimateWithContingency: withCont,
       actual, actualNet: sum(depts, 'actualNet'), gst: sum(depts, 'gst'), tds: sum(depts, 'tds'),
       variance: round2(withCont - actual),
-      pctUsed: withCont > 0 ? Math.round((actual / withCont) * 100) : 0,
+      // As a line's and a department's: spend against no estimate has no
+      // percentage (null, a dash), never 0, which pct() prints as '<1%'
+      // beside 'Over budget'.
+      pctUsed: withCont > 0 ? Math.round((actual / withCont) * 100) : (actual > 0 ? null : 0),
       contingencyUsed: round2(Math.max(0, actual - estimate))
     }
   };
@@ -982,7 +989,7 @@ export function actualsCSV(report, currency, india = true) {
   }
   const t = report.totals;
   out.push(['', 'CONTINGENCY', t.contingency, '', '', '', '', '', '']);
-  out.push(['', 'TOTAL', t.estimateWithContingency, t.actual, t.actualNet, t.gst, t.tds, t.variance, t.pctUsed]);
+  out.push(['', 'TOTAL', t.estimateWithContingency, t.actual, t.actualNet, t.gst, t.tds, t.variance, t.pctUsed === null ? '' : t.pctUsed]);
   if (!india) {
     // Columns 3 (excl. GST), 4 (GST) and 5 (TDS) go; "Actual (incl. GST)" is just "Actual".
     const kept = keepCols(out, [4, 5, 6]);

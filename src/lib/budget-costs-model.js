@@ -9,7 +9,7 @@
    the DOM, and nothing here writes; every write is still a costs.js
    call the view makes.
    ============================================================ */
-import { INR, fmtGlance, fmtMoney, parseAmount } from './money.js';
+import { INR, fmtGlance, fmtMoney, moneyOf } from './money.js';
 import C from './costs.js';
 import { listContacts, listCallSheets } from './contacts.js';
 import { calendarDays } from './locations.js';
@@ -60,7 +60,8 @@ export const rupees = (n) => {
    a Top sheet saying ₹ 1,200, a 500-rupee lie in a headline card. */
 export const glance = (n) => fmtGlance(n, shown);
 /** Parse a typed figure in the budget's currency (parseNum for rupees). */
-export const amountOf = (s) => parseAmount(s, shown);
+/* moneyOf, not parseAmount: a payment of "1/2 day" is not ₹ 0.50. */
+export const amountOf = (s) => moneyOf(s, shown);
 /** A percentage, or a dash for none. */
 export const pct = (n, spent) => (n === null || n === undefined ? '—'
   : n === 0 && spent > 0 ? '<1%' : n + '%');

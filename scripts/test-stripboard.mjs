@@ -350,7 +350,9 @@ eq(D.calcLines(blob).map((l) => l.item), ['ARRI Alexa 35', 'DOP', 'Haze machine 
 seed();
 mem.set('fms_library_calc_v1', JSON.stringify(blob));
 const calcBefore = mem.get('fms_library_calc_v1');
+eq(D.kitLinesToSeed(D.getKit(1), D.readCalcLines()).length, 3, 'three kit lines to fill before seeding');
 eq(D.seedKitFromCalc(1), 3, 'seeded three kit lines (DOP is crew, not kit)');
+eq(D.kitLinesToSeed(D.getKit(1), D.readCalcLines()).length, 0, 'QA r6 F-10: nothing left to fill once seeded, so the button count is 0');
 eq(D.seedKitFromCalc(1), 0, 'seeding twice adds nothing');
 eq(mem.get('fms_library_calc_v1'), calcBefore, 'the estimator is read, never written');
 const kit = D.getKit(1);

@@ -23,7 +23,7 @@
    ============================================================ */
 import { h, delegate } from '../lib/dom.js';
 import { learnInline } from './learn-pill.js';
-import { parseAmount, fmtMoney, fmtINR } from '../lib/money.js';
+import { parseAmount, fmtMoney, fmtINR, lineAmount } from '../lib/money.js';
 import {
   PRESET_ITEMS, readCalcData, saveCalcData, clearCalcData, maxRowIndex, rescuedCustomNames,
   rateHintParts, itemNameOf, totalCaption, useDaysMessage, rowEquation,
@@ -217,7 +217,7 @@ function updateCalc() {
     rEl.setAttribute('aria-invalid', rawRate < 0 ? 'true' : 'false');
     const days = Math.max(0, rawDays);
     const rate = Math.max(0, rawRate);
-    const sub = days * rate;
+    const sub = lineAmount(days, rate);
     row.toggleAttribute('data-blank', !sub && !rowItemName(row));
 
     const subEl = row.querySelector('.total-cell');

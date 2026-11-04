@@ -168,6 +168,9 @@ const baseBudget = (o = {}) => ({
   ok(names.some((n) => /^Location: /.test(n)) && names.some((n) => /^Vehicle: Auto$/.test(n)) && names.some((n) => /^Background extras \(peak 40\)$/.test(n)), 'the lock’s location, vehicle and background lines are there');
   ok(names.includes('HMI 1.2K') && !names.includes('Stunts: coordinator and rigging'), 'a night scene triggers the night light; no stunt tag, no stunt line');
   ok(res.items.every((i) => Number(i.line.days) > 0), 'every line has days from the schedule');
+  // QA r6 F-8: the verb agrees with the count.
+  const bases = res.items.map((i) => i.basis).filter(Boolean);
+  ok(!bases.some((b) => /^1 scene (are|tag) /.test(b)) && !bases.some((b) => /^([2-9]|\d\d+) scenes (is|tags) /.test(b)), 'no "1 scene are" / "1 scene tag" — ' + bases.filter((b) => /scenes? (is|are|tags?) /.test(b)).join('|'));
   ok(res.items.every((i) => i.line.rate === ''), 'no rate is typed unless the midpoint is asked for');
   eq(Number(res.items.find((i) => i.line.item === 'Sound recordist + kit').line.days), 3, 'a kit line’s days are the schedule’s shoot days');
   const sound = res.items.find((i) => i.line.item === 'Sound recordist + kit');

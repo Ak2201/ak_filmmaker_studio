@@ -1,5 +1,5 @@
 // parseNum / fmtINR: the cases CLAUDE.md names. Node, no browser.
-import { parseNum, parseAmount, fmtINR, fmtMoney } from '../src/lib/money.js';
+import { parseNum, parseAmount, fmtINR, fmtMoney, lineAmount, moneyOf } from '../src/lib/money.js';
 let bad = 0;
 const eq = (name, got, want) => { if (got !== want) { bad++; console.error('FAIL', name, 'got', got, 'want', want); } };
 eq('1500 per roll', parseNum('1500 per roll'), 1500);
@@ -74,5 +74,21 @@ eq('1e400', parseNum('1e400'), 0);
 eq('9x400', parseNum('9'.repeat(400)), 0);
 eq('1e400 usd', parseAmount('1e400', 'USD'), 0);
 eq('1e3 still', parseNum('1e3'), 1000);
+// QA r6 F-1: past 2^53 is not an amount, and neither is a product of two
+// parseable figures that overflows.
+eq('1e300', parseNum('1e300'), 0);
+eq('1e15 kept', parseNum('1e15'), 1e15);
+eq('line 1e300', lineAmount(parseNum('1e300'), parseNum('1e300')), 0);
+eq('line inf', lineAmount(1e300, 1e300), 0);
+eq('line 1.7e308 x 2', lineAmount(1.7e308, 2), 0);
+eq('line 1e11 x 1e11', lineAmount(99999999999, 99999999999), 0);
+eq('line ok', lineAmount(2.5, 25000), 62500);
+// QA r6 F-6: a fraction is a quantity, not a sum of money.
+eq('money 1/2 day', moneyOf('1/2 day', 'INR'), 0);
+eq('money 1/2', moneyOf('1/2'), 0);
+eq('money ½', moneyOf('½'), 0);
+eq('money 1.85k', moneyOf('1.85k'), 1850);
+eq('money usd', moneyOf('1.5k', 'USD'), 1500);
+eq('money empty', moneyOf(''), 0);
 if (bad) process.exit(1);
 console.log('test-money: all passed');

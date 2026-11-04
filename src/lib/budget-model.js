@@ -22,7 +22,7 @@ import rates from '../data/rates.chennai.2024.json';
 import rateChecks from '../data/rates.chennai.checks.json';
 import Scenes, { formatEighths, totalEighths } from './scenes.js';
 import * as Songs from './songs.js';
-import { parseNum, parseAmount, INR, USD, fmtMoney } from './money.js';
+import { parseNum, parseAmount, lineAmount, INR, USD, fmtMoney } from './money.js';
 import C, {
   norm, rowKey, CALC_KEY, CALC_CURRENCY, calcHasContent, resolveCurrency, projectCurrency,
   budgetCurrency as costsBudgetCurrency
@@ -397,7 +397,8 @@ const DAYS = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
 /** The 'days × rate' line under a row's subtotal, or '' when either is
     missing. `money` formats the rate in the budget's currency. */
 export function rowEquation(days, rate, money) {
-  return days > 0 && rate > 0 ? `${DAYS.format(days)} d × ${money(rate)}` : '';
+  // Not beside a subtotal that is not an amount (lineAmount's 0).
+  return days > 0 && rate > 0 && lineAmount(days, rate) > 0 ? `${DAYS.format(days)} d × ${money(rate)}` : '';
 }
 
 /** The toast after "Use N days": what was filled and what was left. */

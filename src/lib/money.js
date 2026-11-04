@@ -60,8 +60,20 @@ function fraction(s) {
    check, printed ₹ ∞ in one total and ₹ 0 in the next (a later
    clean-up had zeroed it), so the header, the top sheet and the cost
    report disagreed about one line. Nothing typed is ever that big,
-   so it reads as unparseable, the same 0 as "abc". */
-const finite = (n) => (Number.isFinite(n) ? n : 0);
+   so it reads as unparseable, the same 0 as "abc".
+   NOR IS A FINITE FIGURE PAST 2^53. "1e300" parses, and printed 300
+   digits; 99999999999 x 99999999999 is 1e22 and printed
+   '999999999980000.1 Cr'; and 1e300 x 1e300 overflowed to Infinity
+   past this guard, because only the single parse was checked. Nothing
+   above Number.MAX_SAFE_INTEGER (90 lakh crore crore) is an amount
+   anybody budgets, and above it a rupee is no longer exact. */
+const finite = (n) => (Number.isFinite(n) && Math.abs(n) <= Number.MAX_SAFE_INTEGER ? n : 0);
+
+/** A line's days x rate, read as nothing when it is not a representable
+    amount. Two figures that each parse can still multiply past the
+    guard above, so every days x rate goes through here, or the row,
+    the total, the header and the top sheet disagree about one line. */
+export const lineAmount = (days, rate) => finite((+days || 0) * (+rate || 0));
 
 export function parseNum(s) {
   if (!s) return 0;
@@ -103,6 +115,15 @@ export function parseNum(s) {
     return finite(parseFloat(parts[1]) * m);
   }
   return finite(parseFloat(s));
+}
+
+/** A SUM OF MONEY someone typed: parseAmount, except that a fraction
+    or a fraction of a day ("1/2", "1/2 day", "½") is a quantity, not
+    an amount, and reads as 0, the same refusal as "abc". parseNum
+    takes fractions for day counts; a payment of "1/2 day" was being
+    recorded as ₹ 0.50. */
+export function moneyOf(s, currency) {
+  return s && fraction(s) !== null ? 0 : parseAmount(s, currency);
 }
 
 /** Abbreviated — lossy by design. Glanceable magnitude only. */

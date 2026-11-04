@@ -360,8 +360,9 @@ delegate(document, 'click', '[data-dr="restore"]', async (e, btn) => {
   const dirty = Drafts.changedSinceDraft(doc);
   const res = await choiceDialog(restoreDialogSpec(d, dirty, nextDraftName(doc)));
   if (res.id === 'cancel' || res.id === null) return;
-  fresh();
-  if (res.id === 'save') Drafts.saveNewDraft(doc);
+  /* Draft N is made below, after the LAST fresh(): fresh() re-reads the
+     stored script, so a draft added to `doc` before it and never saved
+     was thrown away and the unsaved work went with it (QA r5). */
   /* The Breakdown follows the restore, the way it follows a heading
      deleted in the Writer (QA: a scene the restored script no longer
      has stayed in the Breakdown). The baseline is the headings as they
@@ -371,6 +372,7 @@ delegate(document, 'click', '[data-dr="restore"]', async (e, btn) => {
   let Sync = null;   // loaded at the press: no first-paint cost here
   try { Sync = await import('../lib/scene-sync.js'); } catch (e) { console.warn('[drafts] scene sync', e); }
   fresh();
+  if (res.id === 'save') Drafts.saveNewDraft(doc);
   const prev = Sync ? Sync.headingMap(doc.elements) : null;
   Drafts.restoreDraft(doc, id);
   save();

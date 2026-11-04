@@ -685,6 +685,31 @@ await page.setViewportSize({ width: 1280, height: 900 });
   ok(before.includes('CAVE') && !s.scenes.some((x) => x.location === 'CAVE') && s.scenes.length === 2,
     '20i a scene the restored draft lacks leaves the Breakdown', { before, after: s.scenes.map((x) => x.location) });
 
+  /* i2) "Save as Draft N, then restore" really saves Draft N first (QA r5:
+     the draft was made on a copy that a re-read then threw away, so the
+     unsaved work was lost under a button that promised to keep it) */
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  const teaId = (await stored()).script.elements.find((e) => e.text === 'Tea.').id;   // the restore renewed every id
+  await page.click('[data-el="' + teaId + '"] .wr-text');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' UNSAVEDXYZ');
+  await page.waitForTimeout(3000);
+  const revsBefore = ((await stored()).script.revisions || []).length;
+  await page.goto(url('drafts.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(300);
+  await page.click('.dr-row [data-dr="restore"]');
+  await page.waitForSelector('.lp-card [data-lp="save"]');
+  await page.click('.lp-card [data-lp="save"]');
+  await page.waitForTimeout(800);
+  s = await stored();
+  const revs = s.script.revisions || [];
+  const last = revs[revs.length - 1] || {};
+  ok(revs.length === revsBefore + 1 && (last.elements || []).some((e) => /UNSAVEDXYZ/.test(e.text || ''))
+    && !s.script.elements.some((e) => /UNSAVEDXYZ/.test(e.text || '')),
+    '20i2 "Save as Draft N, then restore" keeps the unsaved script as Draft N',
+    { revsBefore, revs: revs.length, last: last.name });
+
   /* j) the phone toolbar: one row, the type named in full, Notes shows its icon */
   await fresh('Proof Phone', FOUR);
   await page.setViewportSize({ width: 390, height: 844 });

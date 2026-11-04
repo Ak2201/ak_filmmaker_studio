@@ -89,6 +89,11 @@ export function parseTimecode(str) {
   const s = String(str == null ? '' : str).trim();
   if (!/^\d{1,6}(:\d{1,3}){0,3}$/.test(s)) return null;
   const p = s.split(':').map(Number);
+  /* A fourth part is only a frame count when the whole thing reads as
+     one, HH:MM:SS:FF with two-digit fields and frames under 60 (QA r5:
+     '1:2:3:4' was taken as 1:02:03 and its last part dropped without a
+     word). Anything looser is refused, like any other garbage. */
+  if (p.length === 4 && (!/^\d{1,6}:\d{2}:\d{2}:\d{2}$/.test(s) || p[3] > 59)) return null;
   let sec;
   if (p.length === 1) sec = p[0];
   else if (p.length === 2) { if (p[1] > 59) return null; sec = p[0] * 60 + p[1]; }

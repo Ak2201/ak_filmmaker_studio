@@ -502,8 +502,8 @@ const activeAction = () => page.evaluate(() => document.activeElement?.getAttrib
   const auto = await daysOf();
   ok(new Map(auto).get(held.id) === heldDay, 'r5 a shot scene keeps its day through Schedule by location');
   ok(auto.filter(([, d]) => d === heldDay).length === before.filter(([, d]) => d === heldDay).length, 'r5 no new scene lands on the held day');
-  await page.locator('.toast-action', { hasText: 'UNDO' }).last().click();
-  await settle(page, 400);
+  // Put the hand-made schedule back for the rest of round 3 (Auto's Undo only reaches the cleared board).
+  await writeScenes(`const d = new Map(${JSON.stringify(before)}); for (const s of scenes) if (d.has(s.id)) s.shootDay = d.get(s.id);`);
 }
 // The rest of round 3 clears EVERY day, so nothing may be shot.
 await writeScenes(`for (const s of scenes) { s.shotState = ''; }`);

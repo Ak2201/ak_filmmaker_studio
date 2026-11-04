@@ -21,6 +21,13 @@ export function draftStateText(doc) {
   return changedSinceDraft(doc) ? 'Unsaved draft changes since ' + last.label + '.' : 'Up to date with ' + last.label + '.';
 }
 
+/** Whether the working copy holds any writing at all. "Save as new
+    draft" refuses without it, the way Ctrl+S says "Nothing to save yet."
+    and a draft's PDF refuses an empty draft: an empty Draft 1 would be
+    marked Current, print nothing and restore nothing. */
+export const hasWriting = (doc) =>
+  (doc && Array.isArray(doc.elements) ? doc.elements : []).some((el) => String((el && el.text) || '').trim());
+
 /** The title-page card's state line. */
 export const titlePageStateText = (on) => (on
   ? 'Page 1 of every PDF. A draft keeps the title page it was saved with.'

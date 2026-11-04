@@ -91,6 +91,13 @@ ok('screenplay model', () => {
   assert.equal(S.importReplaceBody(0), 'A draft of the current one is saved first, so it can be restored.');
 });
 
+ok('drafts model: hasWriting (QA r4 G-2)', () => {
+  assert.equal(D.hasWriting({ elements: [] }), false);
+  assert.equal(D.hasWriting({ elements: [{ type: 'action', text: '   ' }] }), false);
+  assert.equal(D.hasWriting({}), false);
+  assert.equal(D.hasWriting({ elements: [{ type: 'scene', text: 'INT. ROOM - DAY' }] }), true);
+});
+
 ok('drafts model', () => {
   const d = { label: 'Draft 2', colour: { name: 'Blue' }, savedAt: new Date(2026, 9, 1, 9, 3).toISOString(), pages: 1, lines: 2 };
   assert.equal(D.draftMetaText(d), '1 Oct 2026, 09:03 · 1 page · 2 lines');

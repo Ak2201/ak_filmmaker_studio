@@ -47,7 +47,7 @@ import { formatPages, pageCount } from '../lib/script.js';
 import { TITLE_LABELS, titlePlaceholder as titlePlaceholderFor } from '../lib/write-format.js';
 import {
   draftStateText, titlePageStateText, draftMetaText, nextDraftName, restoreDialogSpec,
-  draftPdfMeta, draftPdfTitles
+  draftPdfMeta, draftPdfTitles, hasWriting
 } from '../lib/screenplay-drafts-model.js';
 
 /* The no-AI twin (docs/RULES-BREAKDOWN.md lane B): a plain button that opens the
@@ -307,6 +307,7 @@ function refreshStateClass(main) {
 delegate(document, 'click', '[data-dr="new"]', async (e, btn) => {
   const opener = focusKey(btn);
   fresh();
+  if (!hasWriting(doc)) { say('Nothing to save yet — write a line first.'); return; }
   const name = nextDraftName(doc);
   const res = await choiceDialog({
     title: 'Save as ' + name,
@@ -316,6 +317,7 @@ delegate(document, 'click', '[data-dr="new"]', async (e, btn) => {
   });
   if (res.id !== 'go') return;
   fresh();   // the dialog took time: the script may have moved on
+  if (!hasWriting(doc)) { say('Nothing to save yet — write a line first.'); return; }
   const made = Drafts.saveNewDraft(doc, { note: res.value });
   save();
   say('Saved as ' + made.label + '.', 'success');

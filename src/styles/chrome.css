@@ -750,6 +750,11 @@ a:focus-visible { outline-offset: 3px; }
 .toast.error   { border-left-color: var(--danger-lift); }
 .toast.info    { border-left-color: var(--shorts-lift); }
 .toast .toast-msg { flex: 1; }
+/* A toast that echoes the user's own text ("Cut removed: <name>") must
+   wrap even an unbroken run, or the message pushes the toast past the
+   host's min(90vw, 360px) cap and Undo lands outside the window. A flex
+   item's min-width is its content's by default, so both are needed. */
+.toast .toast-msg { min-width: 0; overflow-wrap: anywhere; }
 .toast .toast-action {
   padding: 3px var(--s2);
   background: transparent;

@@ -329,6 +329,17 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   eq(I.parseSlug('EST. SKYLINE - DAY').intExt, 'EXT', '9: EST is exterior');
   eq(I.parseSlug('INT. CAR - LATER').dayNight + '|' + I.parseSlug('INT. CAR - LATER').location, 'CONTINUOUS|CAR', '15: LATER is a time, not part of the place');
   eq(['MOMENTS LATER', 'SAME', 'EVENING', 'DAWN', 'DUSK', 'NOON', 'MIDNIGHT', 'MORNING'].map((w) => I.parseSlug('INT. X - ' + w).location), Array(8).fill('X'), '15: time words leave the location alone');
+  // QA r4: long forms, a bracketed or bare time, a compound time, a dash with no place.
+  const sl = (t) => { const p = I.parseSlug(t); return [p.intExt, p.dayNight, p.location, p.guessedTime].join('|'); };
+  eq(sl('INTERIOR. KITCHEN - DAY'), 'INT|DAY|KITCHEN|false', 'r4: INTERIOR is INT, the word leaves the place');
+  eq(sl('EXTERIOR. STREET - DAY'), 'EXT|DAY|STREET|false', 'r4: EXTERIOR is EXT');
+  eq(sl('INT. KITCHEN (NIGHT)'), 'INT|NIGHT|KITCHEN|false', 'r4: a bracketed time is the time');
+  eq(sl('INT KITCHEN NIGHT'), 'INT|NIGHT|KITCHEN|false', 'r4: a bare last NIGHT is the time');
+  eq(sl('INT. KITCHEN - DUSK/NIGHT'), 'INT|DUSK|KITCHEN|false', 'r4: a compound time leaves the place');
+  eq(sl('EXT. - DAY'), 'EXT|DAY||false', 'r4: a dash with no place gives no place, not DAY');
+  eq(sl('INT. THE NIGHT CLUB'), 'INT|DAY|THE NIGHT CLUB|true', 'r4: a time word inside a place stays there');
+  eq(sl('EXT. HIGH NOON'), 'EXT|DAY|HIGH NOON|true', 'r4: a bare synonym is a place, not a time');
+  eq(sl('INT. ROOM (2014)'), 'INT|DAY|ROOM (2014)|true', 'r4: a bracketed year is not a time');
   // A qualifier after the time is not the time, and leaves the place (QA r2).
   for (const [h, loc, dn] of [
     ['INT. HOUSE - NIGHT (1995)', 'HOUSE', 'NIGHT'],

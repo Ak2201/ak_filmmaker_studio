@@ -39,7 +39,9 @@
         left as they are. This is the one-time linking of a project
         made before the link existed, and it is how a Story outline's
         placeholder scene or an imported scene list gets its heading.
-        A 'position' guess links nothing and adds nothing: it is held.
+        A 'position' guess links nothing and adds nothing: it is held —
+        except for a BLANK row (no place, no synopsis: '+ Add scene'),
+        which the heading at its position fills (link + heading fields).
      6. Anything left that is NEW since the last sync → a new row,
         placed after the row of the heading before it.
 
@@ -67,7 +69,8 @@
    (the headings have not changed, so a sync would not run).
 
    UNLINKED ROWS ARE NEVER TOUCHED except by rule 5's link, which
-   writes `scriptElId` alone. A Breakdown with no script, or rows
+   writes `scriptElId` alone (and, for a blank row, its blank heading
+   fields). A Breakdown with no script, or rows
    typed by hand with no heading to match, stay exactly as they are.
    ============================================================ */
 import './store.js';   // must evaluate before anything reads localStorage
@@ -104,7 +107,7 @@ const asMap = (prev) => {
   return null;
 };
 
-const HAS_IE = /^(?:[A-Z]?\d+[A-Z]?[.)]?\s+)?(INT|EXT|EST|I\s*\/\s*E)\b/i;
+const HAS_IE = /^(?:[A-Z]?\d+[A-Z]?[.)]?\s+)?(INTERIOR|EXTERIOR|INT|EXT|EST|I\s*\/\s*E)\b/i;
 
 /** The heading-derived fields of a row, as this heading says them. */
 export function headingFields(text) {
@@ -119,6 +122,11 @@ export function headingFields(text) {
   if (p.number) out.number = p.number;
   return out;
 }
+
+/** A row with nothing of its own a heading could contradict: no place,
+ *  no synopsis, no link. What '+ Add scene' gives. */
+const isPlaceholder = (s) => !!s && !s.scriptElId
+  && !String(s.location || '').trim() && !String(s.synopsis || '').trim();
 
 /** Only the fields that differ from the row. Exported for the change report's
     "Update place and time" (docs/SCRIPT-LOCK.md §3); callers drop `number`. */
@@ -316,6 +324,17 @@ export function reconcile(elements, scenes, opts = {}) {
       if (isConfident(p.how)) {
         claimed.set(h.id, p.scene.id);
         addPatch(p.scene.id, lockPatch(h.id, p.scene, { scriptElId: h.id }));
+      } else if (isPlaceholder(p.scene)) {
+        /* A BLANK ROW IS A PLACE KEPT, NOT A GUESS (QA r4). '+ Add scene'
+           gives a row with no place and no synopsis; the join pairs it by
+           position with the heading at that place in the script, which made
+           the heading "not new", and holding the guess then left it nowhere:
+           no row, no banner, missing from the stripboard and the budget. Such
+           a row has no slug to disagree with, so the heading FILLS it —
+           linked, and its blank heading fields written. A row with words of
+           its own (a place, a synopsis: a Story placeholder) stays held. */
+        claimed.set(h.id, p.scene.id);
+        addPatch(p.scene.id, lockPatch(h.id, p.scene, { scriptElId: h.id, ...headingPatch(h.text, p.scene) }));
       } else {
         plan.held.push(h.id);
       }

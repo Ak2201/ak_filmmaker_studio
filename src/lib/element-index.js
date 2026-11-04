@@ -9,7 +9,12 @@
    what it would write, so the page can say it first.
    ============================================================ */
 
-const cellOf = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+import { csvCell } from './admin-format.js';
+
+/* Every cell quoted, AND through csvCell(), the formula guard every CSV in
+   the studio shares (QA r4): a tag named =HYPERLINK(…) or @SUM(…) still
+   evaluates in Excel inside quotes, so it leaves with a leading apostrophe. */
+const cellOf = (v) => { const c = csvCell(String(v ?? '')); return c.startsWith('"') ? c : '"' + c + '"'; };
 const nameKey = (n) => String(n).trim().toLowerCase();
 const numOf = (s, i) => String(s.number || '').trim() || String(i + 1);
 

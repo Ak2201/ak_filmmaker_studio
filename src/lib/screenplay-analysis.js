@@ -119,7 +119,7 @@ const tokensOf = (t) => String(t || '')
   .replace(/[^\p{L}\p{N}/]+/gu, ' ')
   .replace(/(^|\s)\/|\/(\s|$)/g, ' ')
   .trim().split(/\s+/).filter(Boolean);
-const IE = { INT: 'INT', EST: 'INT', EXT: 'EXT', 'I/E': 'INT/EXT', 'INT/EXT': 'INT/EXT', 'EXT/INT': 'INT/EXT' };
+const IE = { INT: 'INT', INTERIOR: 'INT', EST: 'INT', EXT: 'EXT', EXTERIOR: 'EXT', 'I/E': 'INT/EXT', 'INT/EXT': 'INT/EXT', 'EXT/INT': 'INT/EXT' };
 const SCENE_NO = /^[A-Z]?\d+[A-Z]?$/;
 
 /** A heading (or a typed location) as { ie, place, time, number }. */
@@ -134,7 +134,10 @@ export function headingParts(heading) {
     toks = toks.slice(0, -1);
   }
   let time = '';
-  for (const n of [2, 1]) {
+  // "DUSK/NIGHT": a compound time is a time (parseSlug reads its first half).
+  const last = toks.length > 1 ? toks[toks.length - 1].split('/') : [];
+  if (last.length > 1 && last.every((w) => TIME_WORDS[w])) { time = TIME_WORDS[last[0]]; toks = toks.slice(0, -1); }
+  for (const n of time ? [] : [2, 1]) {
     if (toks.length > n) {
       const tail = toks.slice(-n).join(' ');
       if (tail in TIME_WORDS) { time = TIME_WORDS[tail]; toks = toks.slice(0, -n); break; }

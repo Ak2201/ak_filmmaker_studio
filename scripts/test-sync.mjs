@@ -111,6 +111,30 @@ plan = Sync.reconcile([el('scene', 'EXT. ROOFTOP - DAY', 'r1')], Scenes.listScen
 eq(plan.update, [{ id: hand.id, patch: { scriptElId: 'r1' } }], 'a confident match LINKS an unlinked row and writes nothing else');
 eq(plan.add.length, 0, '…instead of adding a duplicate');
 
+/* ---- a blank row ('+ Add scene') is filled, not a heading swallowed (QA r4) */
+reset();
+{
+  const els = [el('scene', 'INT. KITCHEN - NIGHT', 'k1'), el('action', 'a'), el('scene', 'EXT. STREET - DAY', 'k2'), el('action', 'b')];
+  Sync.syncScript(els);
+  const blank = Scenes.addScene({});
+  const more = [...els, el('scene', 'EXT. BUS - NIGHT', 'k3'), el('action', 'Sit.')];
+  const p3 = Sync.reconcile(more, Scenes.listScenes(), { prev: Sync.headingMap(els) });
+  eq(p3.add.length, 0, 'blank row: the new heading does not add a second row');
+  eq(p3.update.find((u) => u.id === blank.id)?.patch, { scriptElId: 'k3', intExt: 'EXT', dayNight: 'NIGHT', location: 'BUS' }, 'blank row: linked to the heading at its place and its blank heading fields filled');
+  eq(p3.held, [], 'blank row: nothing held');
+  Sync.applySync(p3);
+  eq(Scenes.listScenes().map((s) => s.location + '|' + s.scriptElId), ['KITCHEN|k1', 'STREET|k2', 'BUS|k3'], 'blank row: three linked scenes after the sync');
+  reset();
+  const lone = Scenes.addScene({});
+  const fill = Sync.syncScript([el('scene', 'INT. KITCHEN - NIGHT', 'q1')], { fillOnly: true });
+  eq(Scenes.listScenes().map((s) => [s.id === lone.id, s.location, s.dayNight, s.scriptElId]), [[true, 'KITCHEN', 'NIGHT', 'q1']], 'blank row: a fill-only run (Break down everything) fills it too');
+  ok(fill.result.added.length === 0, '…and adds no duplicate');
+  reset();
+  Scenes.addScene({ synopsis: 'a beat of my own' });
+  const kept = Sync.reconcile([el('scene', 'INT. KITCHEN - NIGHT', 'w1')], Scenes.listScenes(), {});
+  eq([kept.update, kept.held], [[], ['w1']], 'a row with a synopsis of its own is still only a positional guess: held');
+}
+
 /* ---- empty script and mass guards -------------------------------- */
 reset();
 Sync.syncScript(base());

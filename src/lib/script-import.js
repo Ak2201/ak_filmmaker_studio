@@ -1137,9 +1137,11 @@ export function parseSlug(slug) {
   let text = split.text;
   const out = { number: split.number, intExt: 'INT', dayNight: 'DAY', location: '', guessedTime: false };
 
-  const ie = text.match(/^(INT\.?\s*\/\s*EXT|EXT\.?\s*\/\s*INT|I\s*\/\s*E|INT|EXT|EST|உள்|வெளி)(?![A-Za-z])\.?/i);
+  /* INTERIOR / EXTERIOR are the long forms of INT / EXT (QA r4): without
+     them "EXTERIOR. STREET" read as INT with the word left in the place. */
+  const ie = text.match(/^(INT\.?\s*\/\s*EXT|EXT\.?\s*\/\s*INT|I\s*\/\s*E|INTERIOR|EXTERIOR|INT|EXT|EST|உள்|வெளி)(?![A-Za-z])\.?/i);
   if (ie) {
-    const token = ie[1].toUpperCase().replace(/\s|\./g, '');
+    const token = ({ INTERIOR: 'INT', EXTERIOR: 'EXT' })[ie[1].toUpperCase()] || ie[1].toUpperCase().replace(/\s|\./g, '');
     // EST. is an establishing shot — of the OUTSIDE.
     out.intExt = (token === 'INT' || token === 'உள்') ? 'INT'
       : (token === 'EXT' || token === 'EST' || token === 'வெளி') ? 'EXT' : 'INT/EXT';
@@ -1158,15 +1160,40 @@ export function parseSlug(slug) {
      en dash ("KITCHEN—NIGHT") or a doubled hyphen ("--"): a single
      hyphen inside a word ("CO-OP") is part of the place. */
   const SEP = /(\s+-{1,2}\s+|\s*(?:—|–|--)\s*)/;
+  // "EXT. - DAY": a dash straight after INT/EXT is not a place.
+  text = text.replace(/^[-—–]+\s*/, '');
   const parts = text.split(SEP);          // [seg, sep, seg, sep, seg …]
+  /* A compound time ("DUSK/NIGHT") is a time: the first half is when the
+     scene starts, which is what the schedule needs. */
+  const timeOfSeg = (seg) => timeOf(seg) || (/\//.test(seg) && seg.split('/').every((w) => timeOf(w))
+    ? timeOf(seg.split('/')[0]) : '');
   let found = -1;
   for (let i = parts.length - 1; i >= 2; i -= 2) {
     const seg = parts[i].replace(/\s*\([^()]*\)/g, '').trim().toUpperCase().replace(/[.]+$/, '');
-    const mapped = timeOf(seg);
+    const mapped = timeOfSeg(seg);
     if (mapped) { out.dayNight = mapped; found = i; break; }
+  }
+  /* No dash before the time (QA r4): "KITCHEN (NIGHT)" brackets it and
+     "INT KITCHEN NIGHT" just ends with it. Only the LAST bracket or word
+     is read, and only when it is wholly a time, so "THE NIGHT CLUB" and
+     "DAY CARE CENTRE" keep their places. */
+  let tail = null;
+  if (found < 0) {
+    const t = text.trim();
+    const br = t.match(/^(.*?)\s*\(([^()]*)\)\s*$/);
+    if (br && timeOfSeg(br[2].trim().toUpperCase())) tail = { location: br[1], time: timeOfSeg(br[2].trim().toUpperCase()) };
+    // A bare last word counts only as one of the five times themselves
+    // (DAY NIGHT DAWN DUSK CONTINUOUS), never a synonym: "HIGH NOON" is a place.
+    const last = t.split(/\s+/).pop().toUpperCase().replace(/[.]+$/, '');
+    if (!tail && (DAY_NIGHT.includes(last) || (/\//.test(last) && last.split('/').every((w) => DAY_NIGHT.includes(w))))) {
+      tail = { location: t.slice(0, t.length - t.split(/\s+/).pop().length), time: timeOfSeg(last) };
+    }
   }
   if (found >= 0) {
     out.location = parts.slice(0, found - 1).join('').trim();
+  } else if (tail) {
+    out.dayNight = tail.time;
+    out.location = tail.location.trim();
   } else {
     out.location = text.trim();
     out.guessedTime = true;

@@ -19,6 +19,11 @@ eq(indexRows(scenes, CATS, 'props').length, 2, 'category filter');
 const csv = toCSV(rows);
 ok(csv.startsWith('"Category","Element","Scenes (count)","Scene numbers"\r\n'), 'csv header');
 ok(csv.includes('"Props","Chai, ""hot""","1","2A"'), 'csv quotes commas and quotes');
+{
+  const evil = toCSV([{ categoryLabel: 'Props', name: '=HYPERLINK("http://evil","x")', scenes: [{ number: '1' }] }, { categoryLabel: 'Props', name: '@SUM(1+1)', scenes: [] }]);
+  ok(evil.includes('"Props","\'=HYPERLINK(""http://evil"",""x"")","1","1"'), 'csv: a leading = gets the shared formula guard');
+  ok(evil.includes('"Props","\'@SUM(1+1)","0",""'), 'csv: a leading @ gets the shared formula guard');
+}
 eq(toCSV([]), '"Category","Element","Scenes (count)","Scene numbers"\r\n', 'empty csv is just the header');
 const p = planBatch(scenes, ['a', 'b', 'zzz'], 'cast', 'RAVI');
 eq([p.tags.length, p.already], [0, 2], 'batch skips scenes that already carry the name');

@@ -138,6 +138,11 @@ ok(I.unionRevisions([{ id: 'x', date: '2' }], [{ id: 'x', date: '2' }, { id: 'y'
   ok(I.crossedSave(base, A.elements.concat(el('n', 'A new line.')), AthenB) === true, 'a line added here and missing there is crossed');
   ok(I.crossedSave(base, A.elements.filter((e) => e.id !== 'd'), { elements: A.elements }) === true, 'a line cut here and still there as it was is crossed');
   ok(I.crossedSave(base, A.elements.filter((e) => e.id !== 'd'), { elements: A.elements.filter((e) => e.id !== 'd') }) === false, 'and gone there too is not');
+  // QA r6 B-1: the other window loaded this save, then typed further into the same line.
+  const further = { elements: [el('a', 'INT. FLAT - NIGHT', 'scene'), { ...el('b', 'Ravi paces. AAA TAB2'), u: 2000 }, el('d', 'Not tonight.', 'dialogue')], revisions: [] };
+  ok(I.crossedSave(base, A.elements, further, 1000) === false, 'a line edited there after this save was seen there: not crossed (QA r6)');
+  ok(I.crossedSave(base, A.elements, { elements: further.elements.map((e) => e.id === 'b' ? { ...e, u: 500 } : e) }, 1000) === true, 'the same text stamped before this save is still crossed');
+  ok(I.crossedSave(base, A.elements, B, 1000) === true, 'an untouched line there is crossed whatever the save time');
 
   const lab = I.ARRIVAL_WINDOW_PREFIX + '18:40';
   const inA = I.settleCrossed(A, B, lab), inB = I.settleCrossed(B, A, lab);

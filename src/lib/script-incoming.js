@@ -200,7 +200,15 @@ export function displacedCopy(fresh, savedEls) {
        true when a line this page changed since `base` (the copy it last
        loaded or received) — edited, added or cut, by element id — is not
        on `fresh` the way this page saved it: the other window wrote
-       without having seen this page's save.
+       without having seen this page's save. `savedAt` (ms, when this
+       page saved) settles the one case the text cannot: a line the other
+       window EDITED FURTHER after loading this save (QA r6: B extended
+       the line A had saved and gone idle on) reads differently from both
+       `base` and `saved`, exactly like a crossed edit. The arrival's line
+       carries its own edit stamp `u`; one later than this save was typed
+       after the save landed, so the other window had it. Two windows
+       saving together typed before their debounces, so their stamps are
+       older than the save and the check still fires.
      settleCrossed(mine, fresh, label)
        one copy on screen and the other kept whole as a side copy. The
        SAME answer in both windows, whichever of them notices: the copy
@@ -208,7 +216,7 @@ export function displacedCopy(fresh, savedEls) {
        id is derived from its lines, so two windows that both settle file
        one draft, not two, and their saves then read as the same copy. */
 const lineSig = (els) => JSON.stringify((els || []).map((e) => [e.id, e.type, String(e.text ?? '')]));
-export function crossedSave(base, saved, fresh) {
+export function crossedSave(base, saved, fresh, savedAt = Infinity) {
   if (!Array.isArray(saved) || !fresh) return false;
   const was = new Map(((base && base.elements) || []).map((e) => [e.id, e]));
   const now = new Map((fresh.elements || []).map((e) => [e.id, e]));
@@ -217,7 +225,9 @@ export function crossedSave(base, saved, fresh) {
   for (const e of saved) {
     ids.add(e.id);
     if (same(was.get(e.id), e)) continue;          // a line this page did not touch
-    if (!same(now.get(e.id), e)) return true;      // edited or added here, not on the arrival
+    const there = now.get(e.id);
+    if (there && (Number(there.u) || 0) > savedAt) continue;   // edited there AFTER this save: it was seen
+    if (!same(there, e)) return true;              // edited or added here, not on the arrival
   }
   for (const [id, e] of was) {
     if (ids.has(id)) continue;                     // cut here…

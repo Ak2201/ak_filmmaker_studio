@@ -65,7 +65,7 @@ import { autoContdOn } from '../lib/chrome-prefs.js';   // the automatic (CONT'D
 import Scenes from '../lib/scenes.js';
 import { installLeavePrompt } from '../ui/leave-prompt.js';
 import { latestDraft } from '../lib/drafts.js';
-import { sceneOfElement } from '../lib/script-structure.js';
+import { sceneOfElement, sceneBlocks, foldedCount } from '../lib/script-structure.js';
 /* The page's derivations and sentences: src/lib/screenplay-model.js. */
 import {
   draftLabel as draftLabelOf, isBlankScript, showStartHint, typeKeyHint, typeName, tipKeysLine,
@@ -137,6 +137,7 @@ function persist() {
 let savedSig = scriptSignature(doc);
 let savedEls = null;          // the elements this page last saved, if it saved since it last loaded
 let savedLines = null;        // the same, with their ids: what crossedSave() compares (script-incoming.js)
+let savedAt = 0;              // when savedLines were written (ms): crossedSave()'s "typed after this save"
 /* A REFUSED save is not a save. The storage proxy swallows a quota
    failure and says so with storage:error (CLAUDE.md item 57), so
    saveScript() still returns true; without this the status line settled
@@ -155,6 +156,7 @@ function persistNow() {
   savedSig = scriptSignature(doc);
   savedEls = doc.elements.map((e) => [e.type, e.text]);
   savedLines = doc.elements.map((e) => ({ id: e.id, type: e.type, text: e.text }));
+  savedAt = Date.now();
   const settle = () => {
     saving = false;
     if (saveOwed) { saveOwed = false; persistNow(); return; }
@@ -332,7 +334,7 @@ function onIncomingScript(live, where = 'device') {
        that window saw nothing to keep. Settle it instead: one copy on
        the page, the other kept whole in Drafts, the same in both
        windows. Another window only: a synced copy has its own clocks. */
-    if (!gone && where === 'window' && crossedSave(base, savedLines, fresh)) {
+    if (!gone && where === 'window' && crossedSave(base, savedLines, fresh, savedAt)) {
       const { doc: next, mineWon, draft } = settleCrossed(doc, fresh, ARRIVAL_WINDOW_PREFIX + clock());
       doc = next;
       savedEls = null; savedLines = null;
@@ -1160,14 +1162,22 @@ delegate(document, 'click', '[data-action="sc-typewriter"]', () => {
 delegate(document, 'click', '[data-action="sc-fold"]', () => {
   const sid = curId ? sceneOfElement(doc.elements, curId) : null;
   if (!sid) { say('Put the caret in a scene first.'); return; }
+  /* A heading with nothing under it folds nothing: say so rather than
+     claim a fold (QA r6: an empty script toasted "Scene folded"). */
+  if (!editor.isFolded(sid) && !foldedCount(doc.elements, sid)) { say('Nothing to fold yet: this scene has no lines under its heading.'); return; }
   const on = editor.toggleFold(sid);
   say(on ? 'Scene folded to its heading.' : 'Scene unfolded.');
 });
 delegate(document, 'click', '[data-action="sc-fold-all"]', () => {
+  if (!sceneBlocks(doc.elements).some((b) => foldedCount(doc.elements, b.id))) { say('Nothing to fold yet: no scene has lines under its heading.'); return; }
   editor.foldAll(true);
   say('Every scene folded to its heading. Unfold all from the ⋯ menu; find and replace opens them too.');
 });
-delegate(document, 'click', '[data-action="sc-unfold-all"]', () => { editor.foldAll(false); say('Every scene unfolded.'); });
+delegate(document, 'click', '[data-action="sc-unfold-all"]', () => {
+  const any = sceneBlocks(doc.elements).some((b) => editor.isFolded(b.id));
+  editor.foldAll(false);
+  say(any ? 'Every scene unfolded.' : 'No scene is folded.');
+});
 delegate(document, 'click', '[data-action="sc-split"]', async () => {
   if (!split) {
     try {

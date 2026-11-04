@@ -316,6 +316,14 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
     eq(shape(parseScript2(f)), shape(doc), '6: no ! leaks on any line of a forced action block');
     eq(tx('INT. A - DAY\n\n!ONE\n!TWO\nthree', 'x.fountain').slice(1), ['ONE\nTWO\nthree'], '6: every leading ! in a forced block is stripped');
   }
+  // QA r6: the writer's own [[ ]] and /* */ and two dialogues in a row survive a Fountain round trip.
+  {
+    const doc = [E('scene', 'INT. A - DAY'), E('action', 'He says [[a note]] to her.'), E('action', '/* not a boundary */ text'),
+      E('character', 'RAVI'), E('dialogue', 'First thought.'), E('dialogue', 'Second thought.'), E('action', 'He leaves.')];
+    const f = S.toFountain({ elements: doc }, { title: 'T', date: '2026-10-06' });
+    eq(shape(parseScript2(f)), shape(doc), 'QA r6: notes, boneyard marks and two consecutive dialogues round-trip');
+    eq(tx('INT. A - DAY\n\nHe says [[a real note]] to her.', 'x.fountain').slice(1), ['He says  to her.'], 'QA r6: a real Fountain note is still left out');
+  }
 
   // 7 / 8 / 9 / 15. slug lines
   eq(pin(I.scenesFrom([E('scene', 'INT. KITCHEN - DAY #12#')]).rows[0]).slice(0, 4), ['12', 'INT', 'DAY', 'KITCHEN'], '7: Fountain #12# scene number');
@@ -470,6 +478,12 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
     'docx: "heading N" is not a scene-heading style');
   const acts = I.docxScreenplayText([{ text: 'Act One', style: 'heading 1' }, { text: 'INT. A - DAY' }, { text: 'Rain.' }]);
   eq([acts.styled, String(acts.text).split('\n')[0]], [0, 'Act One'], 'docx: a Heading 1 line keeps its case and does not count as styled');
+  // QA r6: a styled line is typed text: spaces, tabs and a typed (CONT'D) stay.
+  {
+    const typedWs = I.parseScript(I.docxScreenplayText([{ text: 'INT. A - DAY', style: 'Scene Heading' }, { text: 'Two  spaces   inside.', style: 'Action' },
+      { text: 'A\ttab.', style: 'Action' }, { text: "RAVI (CONT'D)", style: 'Character' }, { text: 'Hi.', style: 'Dialogue' }]).text, 'x.docx');
+    eq(typedWs.elements.map((e) => e.text), ['INT. A - DAY', 'Two  spaces   inside.', 'A\ttab.', "RAVI (CONT'D)", 'Hi.'], 'QA r6: styled Word lines keep their spaces, tabs and typed (CONT\'D)');
+  }
 
   // A non-breaking hyphen is a hyphen; a soft one is nothing.
   const hy = D.documentXmlToParagraphs('<w:body><w:p><w:r><w:t>SELF</w:t><w:noBreakHyphen/><w:t>DE</w:t><w:softHyphen/><w:t>STRUCT</w:t></w:r></w:p></w:body>');

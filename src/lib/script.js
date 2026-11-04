@@ -848,9 +848,15 @@ const TAMIL_CUE_SHAPE = (l) => /[஀-௿]/.test(l) && !/[a-z]/.test(l)
    script-import.js. */
 const EMPHASIS_SHAPE = /(^|[^\\*])(\*{1,3})(?=[^\s*])[^*\n]*?[^\s*\\]\2(?!\*)|(^|[^\w\\])_(?=\S)[^_\n]*?[^\s\\]_(?!\w)/;
 const escapeEmphasis = (t) => (EMPHASIS_SHAPE.test(t) ? t.replace(/[*_]/g, '\\$&') : t);
+/* `[[ ]]` is a Fountain note and slash-star … star-slash is boneyard:
+   the importer cuts both out as comments, so a writer who typed either lost the words
+   inside on a round trip (QA r6). They go out escaped, `[\[` and
+   `/\*`, which no Fountain reader takes for a note or boneyard; the
+   importer turns them back (`unmark`). */
+const escapeComments = (t) => t.replace(/\[\[/g, '[\\[').replace(/\/\*/g, '/\\*');
 
 function fountainBlock(type, text) {
-  const t = escapeEmphasis(text.trim());
+  const t = escapeComments(escapeEmphasis(text.trim()));
   switch (type) {
     case 'scene': {
       const up = t.toUpperCase();
@@ -953,6 +959,10 @@ export function toFountain(doc, meta = {}) {
     if (nums && el.type === 'scene' && nums.get(el.id)) lines[0] += ' #' + nums.get(el.id) + '#';
     const glue = GLUED.has(el.type) && CUE_ISH.has(prev);
     if (body.length && !glue) body.push('');
+    /* Two dialogue elements in a row: Fountain's "two spaces" line keeps
+       the speech one block, and the importer splits the dialogue there,
+       so they do not come back as one element (QA r6). */
+    else if (glue && el.type === 'dialogue' && prev === 'dialogue') body.push('  ');
     body.push(...lines);
     prev = el.type;
   }

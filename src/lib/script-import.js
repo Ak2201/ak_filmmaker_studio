@@ -262,7 +262,7 @@ function parseFountain(raw) {
   const unmark = (t) => String(t)
     .replace(/(^|[^\\*])(\*{1,3})(?=[^\s*])([^*\n]*?[^\s*\\])\2(?!\*)/g, (m, pre, st, body) => { emphasis++; return pre + body; })
     .replace(/(^|[^\w\\])_(?=\S)([^_\n]*?[^\s\\])_(?!\w)/g, (m, pre, body) => { emphasis++; return pre + body; })
-    .replace(/\\([*_])/g, '$1');
+    .replace(/\\([*_[])/g, '$1');   // \[ is the exporter's escaped note mark (script.js escapeComments)
   const push = (type, t, extra) => {
     const clean = unmark(String(t).trim()).trim();
     if (!clean) return;
@@ -275,7 +275,15 @@ function parseFountain(raw) {
   let block = [];
   for (; i < lines.length; i++) {
     const line = lines[i];
-    if (!line.trim()) { if (block.length) blocks.push(block); block = []; continue; }
+    /* A line of two or more spaces is Fountain's blank line INSIDE a
+       speech: it keeps the block, and speech() ends a dialogue there.
+       Only in a block that opened on a cue, so everywhere else a
+       whitespace line still separates blocks exactly as before. */
+    if (!line.trim()) {
+      const next = lines[i + 1];
+      if (/^ {2,}$/.test(line) && block.length > 1 && next && next.trim() && /^@|^[^.!>#=~a-z]*$/.test(block[0].trim())) { block.push(''); continue; }
+      if (block.length) blocks.push(block); block = []; continue;
+    }
     block.push(line);
   }
   if (block.length) blocks.push(block);
@@ -418,6 +426,7 @@ function emitMixed(lines, push, warnings) {
       continue;
     }
     held = false;
+    if (!t) { flush(); continue; }                 // the "two spaces" line (parseFountain)
     if (SLUG_RE.test(t)) { flush(); push('scene', t); mode = 'action'; continue; }
     if (mode === 'speech' && /^\(.*\)$/.test(t)) { flush(); push('paren', t); held = true; continue; }
     buf.push(t);
@@ -476,7 +485,7 @@ function speech(b, cueLine, push) {
   const flush = () => { if (buffer.length) { push('dialogue', buffer.join('\n')); buffer = []; } };
   for (const line of b.slice(1)) {
     const t = line.trim();
-    if (!t) continue;
+    if (!t) { flush(); continue; }                 // the "two spaces" line: a second dialogue
     if (/^\(.*\)$/.test(t)) { flush(); push('paren', t); continue; }
     buffer.push(t);
   }
@@ -667,7 +676,10 @@ function parseText(raw) {
     if (!open) return;
     /* Wrapped lines rejoin with a space; a break the writer typed
        inside one Word paragraph (`seps` '\n') is given back. */
-    const text = open.lines.map((l, k) => (k ? open.seps[k] : '') + l.replace(/\s+/g, ' ').trim())
+    /* A STYLED (Word) line is typed text, not a wrapped one, so its
+       spaces and tabs are the writer's and stay (QA r6: "Two  spaces"
+       came back as one). Unstyled lines are laid out, and collapse. */
+    const text = open.lines.map((l, k) => (k ? open.seps[k] : '') + (open.forced ? l.trim() : l.replace(/\s+/g, ' ').trim()))
       .join('').replace(/ *\n */g, '\n').trim();
     const o = open;
     open = null;
@@ -702,12 +714,17 @@ function parseText(raw) {
        element even mid-block. Same kind continues it, which is
        how a wrapped paragraph comes back as one paragraph. */
     if (open && (open.type !== type || row.dual)) close();
-    if (!open) open = { type, lines: [], seps: [], dual: !!row.dual, contd: false, breakBefore: pendingBreak };
+    if (!open) open = { type, lines: [], seps: [], dual: !!row.dual, contd: false, breakBefore: pendingBreak, forced: !!row.forced };
     pendingBreak = false;
-    // (CONT'D) belongs to a cue; on any other line it is the writer's words.
-    if (type === 'character' && CUE_TAIL_ONLY_CONTD.test(row.text)) open.contd = true;
+    /* (CONT'D) belongs to a cue; on any other line it is the writer's
+       words. On a STYLED cue it is the writer's too: a Word paragraph
+       styled Character is not a laid-out page, and our own .docx export
+       writes the cue exactly as typed (QA r6: 69 typed (CONT'D)s on the
+       Dragon sample were lost; .fdx and .fountain keep them). */
+    const stripContd = type === 'character' && !row.forced && CUE_TAIL_ONLY_CONTD.test(row.text);
+    if (stripContd) open.contd = true;
     open.seps.push(row.cont ? '\n' : ' ');
-    open.lines.push(type === 'character' ? row.text.replace(CUE_TAIL_ONLY_CONTD, '') : row.text);
+    open.lines.push(stripContd ? row.text.replace(CUE_TAIL_ONLY_CONTD, '') : row.text);
     prevType = type;
     /* A cue is always one line. Anything after it is the speech. */
     if (type === 'scene' || type === 'character' || type === 'transition' || type === 'paren' || type === 'shot') close();
@@ -1523,7 +1540,9 @@ export function docxScreenplayText(paras) {
     const type = docxStyleType(p.style);
     const right = !type && (p.jc === 'right' || p.jc === 'end');
     let lines = String(p.text || '').split('\n')
-      .map((l) => ({ col: type ? COLUMN[type] : right ? COLUMN.transition : Math.round(leadTwips(l, p.indL, p.tabs) / 144), t: l.replace(/\t/g, '    ').trim() }))
+      /* A styled line's tabs are the writer's (QA r6: a round trip turned
+         one into a space); a hand-typed line's are its indent. */
+      .map((l) => ({ col: type ? COLUMN[type] : right ? COLUMN.transition : Math.round(leadTwips(l, p.indL, p.tabs) / 144), t: type ? l.trim() : l.replace(/\t/g, '    ').trim() }))
       .filter((l) => l.t);
     /* A styled heading, cue, parenthetical, transition or shot is ONE
        line however Word broke it, or PARSER 2 reads two of them. */

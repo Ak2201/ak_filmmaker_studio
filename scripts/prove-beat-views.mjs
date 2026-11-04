@@ -241,6 +241,28 @@ const editId = stepsOf(S0, K('catalyst'))[0];
   check('Escape closes the card and the keyboard stays on it', [await page.$eval(`[data-step-row="${editId}"]`, (c) => c.classList.contains('is-open')), await active(page)], [false, 'card:' + editId]);
 }
 
+/* QA r5: a step's held change redraws between the picker summary's click
+   and its async toggle event, which drew the picker closed under the
+   press. The first click after typing must open it. */
+{
+  const pickOpen = () => page.$eval('#st-fw-pick', (d) => d.open);
+  await page.click(`#stStep_${editId}`);
+  await page.keyboard.press('End');
+  await page.keyboard.type('!');
+  await page.click('#st-fw-pick > summary');
+  await page.waitForTimeout(600);
+  const first = await pickOpen();
+  await page.click('#st-fw-pick > summary');
+  await page.waitForTimeout(400);
+  check('picker: the first click after typing in a step opens it, the next closes it', [first, await pickOpen()], [true, false]);
+  await page.fill(`#stStep_${editId}`, 'Lanes edit: the letter arrives.');
+  await page.click('#st-fw-pick > summary');
+  await page.waitForTimeout(600);
+  await page.click('#st-fw-pick > summary');
+  await page.waitForTimeout(400);
+  check('picker: the step text is back as it was, picker closed', [(await story(page)).outline.find((x) => x.id === editId).text, await pickOpen()], ['Lanes edit: the letter arrives.', false]);
+}
+
 /* ---- the keyboard: Alt+arrows, and the buttons ------------------ */
 {
   const cat = K('catalyst'), deb = K('debate');

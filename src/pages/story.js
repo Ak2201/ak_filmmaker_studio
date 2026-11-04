@@ -642,6 +642,12 @@ function renderFwPicker(s) {
   }
   box.append(grid);
   box.addEventListener('toggle', () => { fwPickOpen = box.open; });
+  /* The toggle event is ASYNC, and a step field's held change redraws the
+     page between the summary's click and that event, so the redraw drew
+     the picker closed and the first press looked dead (QA r5, the same
+     mechanism as the More menu in r4). The click knows the answer now:
+     the summary's activation flips `open` right after its listeners. */
+  box.firstChild.addEventListener('click', (e) => { if (!e.defaultPrevented) fwPickOpen = !box.open; });
   return box;
 }
 

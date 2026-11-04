@@ -1070,12 +1070,13 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   .sc-tools > .sc-pos { order: -1; flex: 1 1 100%; }
   .sc-runtime { padding-inline: var(--s3); }
 
-  /* One row that fits: type · Beats · AI · Tools. File, ⋯ and Focus
-     move into the Tools sheet; nothing is dropped. */
+  /* One row that fits: type · Beats · AI · Tools. File, ⋯, Focus and
+     Clean up move into the Tools sheet; nothing is dropped. */
   .sc-tools { overflow: visible; }
   .sc-tools-l { flex: 1 1 auto; min-width: 0; }
   .sc-tools-r .tb-menu,
-  .sc-focus-slot > #fm-enter { display: none; }
+  .sc-focus-slot > #fm-enter,
+  .sc-tools-l > .sc-cleanup-btn { display: none; }   /* in the Tools sheet (QA r4: it squeezed the type pill to 18px) */
   .sc-tools-sheet-btn { display: inline-flex; }
   .sc-typekey { display: none; }
   .sc-typepill { height: var(--tap-min, 44px); }

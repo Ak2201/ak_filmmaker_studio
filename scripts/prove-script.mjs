@@ -703,6 +703,12 @@ await page.setViewportSize({ width: 1280, height: 900 });
   ok(tb.sameRow, '20j the phone toolbar is one row (the ⋯ button no longer wraps alone)', tb);
   ok(tb.nameFits && tb.ai === tb.tools, '20j the type pill names the type in full; the AI pill is the row\'s height', tb);
   ok(tb.icon > 8 && tb.notesW >= 44, '20j Notes shows its icon in a thumb-sized button', tb);
+  /* QA r4: Clean up (no AI) left the row for the Tools sheet so the pill
+     could name the type; the sheet's row must still open it. */
+  await page.click('.sc-tools-r .sc-tools-sheet-btn');
+  await page.click('.sc-sheet-row[data-sc-act="sc-cleanup-rules"]');
+  const deskOpen = await page.waitForSelector('.ai-desk', { state: 'visible', timeout: 5000 }).then(() => true, () => false);
+  ok(deskOpen, '20j the Tools sheet opens Clean up (no AI) on a phone', { deskOpen });
   await page.setViewportSize({ width: 1280, height: 900 });
 }
 

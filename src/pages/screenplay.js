@@ -1712,7 +1712,13 @@ function sheetRow(it) {
 function openToolsSheet(opener) {
   const groups = [
     ['File', FILE_ITEMS],
-    ['Write', [{ label: 'Focus mode', action: 'fm-enter', hint: 'only the page', icon: 'center_focus_strong' }]],
+    /* Clean up (no AI) lives here on a phone: its 116px word button left
+       the type pill 18px and the type name unreadable (QA r4). The row
+       clicks the real toolbar button, hidden at this width. */
+    ['Write', [
+      { label: 'Focus mode', action: 'fm-enter', hint: 'only the page', icon: 'center_focus_strong' },
+      { label: 'Clean up (no AI)', action: 'sc-cleanup-rules', hint: 'your words kept', icon: 'segment' }
+    ]],
     ['Tools', TOOL_ITEMS],
     ['Help', HELP_ITEMS]
   ];
@@ -1726,6 +1732,7 @@ function openToolsSheet(opener) {
     const act = row.dataset.scAct;
     closeSheet().then(() => {
       const real = act === 'fm-enter' ? document.getElementById('fm-enter')
+        : act === 'sc-cleanup-rules' ? document.querySelector('#scTop .sc-cleanup-btn')
         : document.querySelector('#scTop .tb-menu-panel [data-action="' + act + '"]');
       if (real) real.click();
     });

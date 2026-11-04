@@ -34,7 +34,7 @@
     "event",
     "fact_check",
     "ink_highlighter",
-    "format_list_numbered",
+    "format_list_numbered", "segment",
     "grid_view",
     "groups",
     "history",

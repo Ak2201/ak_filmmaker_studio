@@ -152,7 +152,7 @@ async function openDeskOnShots(page) {
   await page.evaluate(() => { if (location.hash !== '#draft') location.hash = '#draft'; });
   await page.waitForTimeout(400);
   await page.waitForSelector('.ai-pill', { state: 'attached', timeout: 15000 });
-  const p = page.locator('.ai-pill:visible', { hasText: /Draft/ }).first();
+  const p = page.locator('.ai-pill:visible', { hasText: /Draft|Enhance/ }).first();
   if (!(await p.count())) {
     const seen = await page.$$eval('.ai-pill', (els) => els.map((e) => ({ t: e.textContent.trim(), v: !!(e.offsetWidth || e.offsetHeight), s: e.dataset.aiState })));
     throw new Error('no visible Draft pill; pills: ' + JSON.stringify(seen) + ' url ' + page.url());

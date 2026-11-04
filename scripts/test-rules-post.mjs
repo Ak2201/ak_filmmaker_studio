@@ -263,9 +263,18 @@ Scenes.saveScenes(Scenes.listScenes().map((s) => (s.id === 'r1' ? { ...s, reader
 const said2 = [];
 eq(keepRuleNotes(items, { label: 'Test', say: (m) => said2.push(m) }), null, 'a second Accept of the same list returns null');
 ok(/already/.test(said2[0] || ''), 'and says why — ' + said2[0]);
+/* a sticky note the writer edited after Accept survives Undo */
+{
+  const v = Story.listVault();
+  const mine = v.find((n) => /sticky/.test(n.snippet));
+  const edited = v.map((n) => (n.id === mine.id ? { ...n, snippet: n.snippet + ' (my edit)' } : n));
+  mem.set([...mem.keys()].find((k) => /idea_vault/.test(k)), JSON.stringify(edited));
+}
 undo();
+ok(Story.listVault().length === 1 && /my edit/.test(Story.listVault()[0].snippet), 'Undo keeps a sticky note edited since Accept');
+{ const k = [...mem.keys()].find((x) => /idea_vault/.test(x)); mem.set(k, JSON.stringify(Story.listVault().filter((n) => !/my edit/.test(n.snippet)))); }
 eq(Scenes.listScenes().find((s) => s.id === 'r1').readerNote, 'Typed by me.\nAdded later by hand.', 'Undo removes only its own line: a later edit is kept');
-eq(Story.listVault().length, 0, 'Undo removes exactly the sticky notes it made');
+eq(Story.listVault().length, 0, 'Undo removes exactly the sticky notes it made (the edited one was kept and cleared by the test)');
 eq(Scenes.listScenes().find((s) => s.id === 'r2').readerNote, '', 'and blanks the note it filled');
 /* clean round trip, byte for byte */
 seedScenes();

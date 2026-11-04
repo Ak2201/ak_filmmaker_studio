@@ -70,6 +70,7 @@ export function keepRuleNotes(selected, { label = 'Notes', after, say } = {}) {
     throw new Error('The notes board could not be saved (storage may be full), so nothing was kept.');
   }
   const ids = added.map((n) => n.id);
+  const wrote = new Map(added.map((n) => [n.id, n.snippet]));
   const same = (changes && changes.same) || 0;
   const skippedSticky = sticky.length - notes.length;
   if (!changes.length && !ids.length) {
@@ -81,7 +82,12 @@ export function keepRuleNotes(selected, { label = 'Notes', after, say } = {}) {
   call(after);
   const undo = () => {
     ScenesM.undoSceneNotes(changes);
-    if (ids.length) StoryM.removeManyFromVault(ids);
+    if (ids.length) {
+      // a note edited since Accept is the writer's now: only unchanged ones go
+      const now = new Map(StoryM.listVault().map((x) => [x.id, x.snippet]));
+      const keep = ids.filter((id) => now.has(id) && now.get(id) === wrote.get(id));
+      if (keep.length) StoryM.removeManyFromVault(keep);
+    }
     call(after);
   };
   const written = new Set(changes.map((x) => x.id));

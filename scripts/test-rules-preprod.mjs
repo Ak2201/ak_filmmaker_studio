@@ -418,5 +418,21 @@ const noStamp = (rows) => rows.every((r) => !('ai' in r) && !('aiFill' in r));
   ok(blocked && blocked.kind === 'nocontent', 'a sheet with typed notes is never overwritten');
 }
 
+
+/* review fixes: Unicode names, the sheet's own currency, a stable background line */
+{
+  const ta = (id, loc, day, extra = {}) => ({ id, number: id, location: loc, shootDay: day, ...extra });
+  const tam = R.proposeBudget(baseBudget({ scenes: [ta('t1', 'கோயில்', 1), ta('t2', 'வீடு', 2)], schedule: sched(2) }));
+  const tn = tam.items.map((i) => i.line.custom || i.line.item);
+  ok(tn.includes('Location: கோயில்') && tn.includes('Location: வீடு'), 'two Tamil locations are two lines — ' + tn.join('|'));
+  const inr = R.proposeBudget(baseBudget({ region: 'INT', currency: 'INR', midpoint: true }));
+  const snd = inr.items.find((i) => i.line.item === 'Sound recordist + kit');
+  ok(snd && snd.line.rate === '6000', 'an INT film with an INR sheet gets rupee bands — ' + (snd && snd.line.rate));
+  const first = R.proposeBudget(baseBudget());
+  const bg = first.items.find((i) => /^Background extras/.test(i.line.custom));
+  const again = R.proposeBudget(baseBudget({ existing: ['Background extras (peak 25)'] }));
+  ok(bg && !again.items.some((i) => /^Background extras/.test(i.line.custom)), 'a changed peak does not add a second background line');
+}
+
 console.log(fail ? `\n${fail} FAILED, ${pass} passed` : `\nrules-preprod: ${pass} checks passed`);
 process.exit(fail ? 1 : 0);

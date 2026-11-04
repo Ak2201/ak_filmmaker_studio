@@ -165,10 +165,10 @@ async function runDesk(page) {
 }
 
 const PAGES = [
-  { url: '/drafts.html', label: 'Summarise changes', task: 'draft-changes' },
-  { url: '/shoot.html?day=1', label: 'Wrap summary', task: 'day-wrap-summary' },
-  { url: '/edit.html', label: 'Edit notes', task: 'edit-notes' },
-  { url: '/deliverables.html#certification', label: 'Certification read', task: 'cert-read' }
+  { url: '/drafts.html', label: 'Enhance with AI', task: 'draft-changes' },
+  { url: '/shoot.html?day=1', label: 'Enhance with AI', task: 'day-wrap-summary' },
+  { url: '/edit.html', label: 'Enhance with AI', task: 'edit-notes' },
+  { url: '/deliverables.html#certification', label: 'Enhance with AI', task: 'cert-read' }
 ];
 
 /* (a) LOCKED */
@@ -275,7 +275,7 @@ async function editCycle(name, fn) {
     await page.goto(BASE + '/edit.html', { waitUntil: 'networkidle' });
     await planKnown(page, true);
     const w0 = await writesTo(page, 'fms_edit_v1');
-    await openPill(page, 'Edit notes');
+    await openPill(page, 'Enhance with AI');
     const input = await page.locator('aside.ai-desk .ai-desk-input').inputValue();
     ok(/"id":"sc1"/.test(input) && /typed by the editor/.test(input), 'the facts show every scene and the note already there');
     ok(requests.length === 0, 'nothing sent before Run');

@@ -23,7 +23,9 @@ import { fmtMoney } from './money.js';
 import { minutesOf, isPastSunset } from './sun.js';
 import { matchScenes, isConfident, castMatrix, cueName, niceName } from './screenplay-analysis.js';
 
-const norm = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, '');
+const norm = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^\p{L}\p{M}\p{N}]/gu, '');
+// a line's identity: the crowd size in "(peak N)" moves, the line does not
+const lineKey = (s) => norm(String(s == null ? '' : s).replace(/\s*\(peak\s*\d+\)\s*$/i, ''));
 const oneLine = (s, n) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, n);
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
 const list = (v) => [].concat(v == null ? [] : v).map((x) => oneLine(x, 80)).filter(Boolean);
@@ -333,8 +335,8 @@ export function rateBand(name, currency, rates, rowKey = norm) {
  */
 export function proposeBudget({ schedule, scenes, elements, presets, rates, region, currency, existing, midpoint = false, rowKey = norm } = {}) {
   const list0 = scenes || [];
-  const cur = currency === 'USD' ? 'USD' : (region && !/^(in|ind|india)$/i.test(String(region)) ? 'USD' : 'INR');
-  const taken = new Set(list(existing || []).map(norm));
+  const cur = currency === 'USD' ? 'USD' : 'INR';   // the sheet's own currency, never the film's region
+  const taken = new Set(list(existing || []).map(lineKey));
   const presetBy = new Map(list(presets || []).filter((p) => !/^other\b/i.test(p)).map((p) => [norm(p), p]));
   const days = (ss) => new Set(ss.map(dayOf).filter((d) => d > 0)).size;
   const unit = Number(schedule && (schedule.totalDays || schedule.days)) || 0;
@@ -394,7 +396,7 @@ export function proposeBudget({ schedule, scenes, elements, presets, rates, regi
   const items = [];
   for (const l of raw) {
     const name = l.custom || l.item;
-    const k = norm(name);
+    const k = lineKey(name);
     if (!(l.days > 0) || !k || taken.has(k)) continue;
     taken.add(k);
     const band = l.item ? rateBand(l.item, cur, rates, rowKey) : null;

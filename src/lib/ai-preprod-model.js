@@ -22,7 +22,8 @@
 const clipText = (s, n) => String(s == null ? '' : s).replace(/\r\n?/g, '\n').trim().slice(0, n);
 const oneLine = (s, n) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, n);
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
-const norm = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, '');
+const norm = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^\p{L}\p{M}\p{N}]/gu, '');
+const lineKey = (s) => norm(String(s == null ? '' : s).replace(/\s*\(peak\s*\d+\)\s*$/i, ''));
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
 const dayOf = (s) => { const n = parseInt(s && s.shootDay, 10); return Number.isFinite(n) && n > 0 ? n : 0; };
 const castOf = (s) => [].concat((s && s.elements && s.elements.cast) || []).map((c) => oneLine(c, 60)).filter(Boolean);
@@ -468,14 +469,14 @@ export const budgetPrevious = (prev) => ({
  * skipped } where keys are the four ci_<n>_… values.
  */
 export function planBudgetRows(selected, data, first) {
-  const taken = new Set(existingLineNames(data).map(norm));
+  const taken = new Set(existingLineNames(data).map(lineKey));
   const rows = [];
   let skipped = 0, n = first;
   for (const it of selected || []) {
     const l = it.line || {};
     const name = l.custom || l.item;
-    if (!name || taken.has(norm(name))) { skipped += 1; continue; }
-    taken.add(norm(name));
+    if (!name || taken.has(lineKey(name))) { skipped += 1; continue; }
+    taken.add(lineKey(name));
     rows.push({
       n,
       keys: { ['ci_' + n + '_item']: l.item || '', ['ci_' + n + '_custom']: l.custom || '', ['ci_' + n + '_days']: l.days, ['ci_' + n + '_rate']: l.rate }

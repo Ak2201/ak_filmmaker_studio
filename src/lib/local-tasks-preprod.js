@@ -52,7 +52,7 @@ const call = (fn, ...args) => (typeof fn === 'function' ? fn(...args) : undefine
 const fail = (msg) => { const e = new Error(msg); e.kind = 'nocontent'; throw e; };
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
 const sentence = (...parts) => parts.filter(Boolean).join(' ');
-const norm = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, '');
+const norm = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^\p{L}\p{M}\p{N}]/gu, '');
 
 /* ============================================================
    1. shoot-order-rules

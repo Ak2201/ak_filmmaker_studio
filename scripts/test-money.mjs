@@ -61,5 +61,18 @@ eq('1 1/2', parseNum('1 1/2'), 1.5);
 eq('3/4 usd', parseAmount('3/4', 'USD'), 0.75);
 eq('1/0 is not a fraction', parseNum('1/0'), 1);
 eq('25,000/- still', parseNum('25,000/-'), 25000);
+// QA r5 F-1: a day word after a fraction, and the typed vulgar ones.
+eq('1/2 day', parseNum('1/2 day'), 0.5);
+eq('1/2d', parseNum('1/2d'), 0.5);
+eq('1 1/2 days', parseNum('1 1/2 days'), 1.5);
+eq('½', parseNum('½'), 0.5);
+eq('1½', parseNum('1½'), 1.5);
+eq('½ day usd', parseAmount('½ day', 'USD'), 0.5);
+eq('1/2 lakh not taken', parseNum('1/2 lakh'), 1);
+// QA r5 F-4/F-5: an overflow is unparseable, never Infinity.
+eq('1e400', parseNum('1e400'), 0);
+eq('9x400', parseNum('9'.repeat(400)), 0);
+eq('1e400 usd', parseAmount('1e400', 'USD'), 0);
+eq('1e3 still', parseNum('1e3'), 1000);
 if (bad) process.exit(1);
 console.log('test-money: all passed');

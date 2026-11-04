@@ -68,6 +68,14 @@ eq(C.getCrew('c-hero').fee, 25000, 'crew fee parsed once');
 eq(C.getCrew('c-hero').days, '', 'days blank = derive');
 C.setCrew('c-hero', { days: '0' });
 eq(C.getCrew('c-hero').days, 0, 'a typed 0 is the person\'s word, not "derive"');
+// QA r5 F-3: text, a negative or an overflow is not a word: back to derive.
+for (const v of ['abc', 'TBC', '-3', '1e400']) {
+  C.setCrew('c-hero', { days: v });
+  eq(C.getCrew('c-hero').days, '', 'days "' + v + '" reverts to derive');
+}
+C.setCrew('c-hero', { days: '1/2 day' });
+eq(C.getCrew('c-hero').days, 0.5, 'a half day typed with its unit');
+C.setCrew('c-hero', { days: '0' });
 C.setCrew('c-hero', { days: '' });
 
 const removed = C.removeExpense(e2.id);

@@ -182,12 +182,23 @@ function cleanPayment(x) {
   for (const k of ['contactId', 'date', 'note']) p[k] = String(p[k] || '').trim();
   return p;
 }
+function typedDays(v) {
+  if (typeof v === 'number') return Number.isFinite(v) && v >= 0 ? v : '';
+  const t = String(v).trim();
+  if (!/\d/.test(t) || /^[-−]/.test(t) || /e/i.test(t.replace(/days?|shifts?/i, ''))) return '';
+  const n = num(t);
+  return n >= 0 ? n : '';
+}
 function cleanCrew(x) {
   const c = { ...blankCrew(), ...x };
   c.feeType = oneOf(c.feeType, ['day', 'lump'], 'day');
   c.fee = Math.max(0, num(c.fee));
   // '' means "derive it"; a typed number (0 included) is the person's word.
-  c.days = (c.days === '' || c.days === null || c.days === undefined) ? '' : Math.max(0, num(c.days));
+  // But only a NUMBER is a word: "abc", "TBC", "-3" or an overflow used
+  // to clean to an explicit 0, which beat the schedule's days and
+  // zeroed the fee. Anything that is not a figure of zero or more goes
+  // back to '' (derive), exactly as clearing the box does.
+  c.days = (c.days === '' || c.days === null || c.days === undefined) ? '' : typedDays(c.days);
   c.tdsPct = Math.min(100, Math.max(0, Number(c.tdsPct) || 0));
   for (const k of ['line', 'wageRow', 'note']) c[k] = String(c[k] || '').trim();
   return c;

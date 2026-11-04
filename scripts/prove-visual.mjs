@@ -15,6 +15,7 @@
         empty storyboard links to the step that comes first
      7  a blocking mark removed by the Delete key offers Undo
     30  a shot row opens ITS blocking diagram, drawn over the floor plan
+    31  a setup's name and note are saved as typed, with no blur
      8  the scene board prints "2 2/8 pgs", its empty Shots line is
         padded like its neighbours, and the five Visualise tabs have
         five distinct icons
@@ -231,6 +232,28 @@ ok(/Removed Actor/.test(toast) && /Undo/.test(toast), '7  the Delete key offers 
   await page.selectOption('[data-blk-shot]', '');
   await settle(page, 400);
   ok(await page.evaluate(() => !!document.querySelector('#blocking .vz-blk[data-block="bkProveFloor"]')), '30 "Floor plan" goes back to the floor');
+}
+
+/* ---- 31 a setup's name and note save as they are typed (QA r5 E) -- */
+{
+  await page.goto(url('visualize.html#blocking'), { waitUntil: 'networkidle' });
+  await settle(page);
+  await page.click('[data-action="blk-add"]');
+  await settle(page, 300);
+  const B = await page.evaluate(() => [...document.querySelectorAll('#blocking .vz-blk[data-block]')].pop()?.dataset.block);
+  const card = `#blocking .vz-blk[data-block="${B}"]`;
+  await page.click(`${card} .vz-blk-name`);
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('Renamed unblurred');
+  await page.click(`${card} .vz-blk-note`);
+  await page.keyboard.type('Typed and never blurred');
+  await settle(page, 1200);
+  const stored = (await shotsDoc()).blocks?.find((b) => b.id === B) || {};
+  await page.reload({ waitUntil: 'networkidle' });
+  await settle(page);
+  const back = await page.evaluate((c) => ({ name: document.querySelector(c + ' .vz-blk-name')?.value, note: document.querySelector(c + ' .vz-blk-note')?.value }), card);
+  ok(stored.name === 'Renamed unblurred' && stored.note === 'Typed and never blurred' && back.name === stored.name && back.note === stored.note,
+    '31 a setup\'s name and note are saved while the cursor is still in them', { stored: { name: stored.name, note: stored.note }, back });
 }
 
 /* ---- 5 contacts' New shoot day ----------------------------------- */

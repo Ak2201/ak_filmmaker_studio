@@ -405,12 +405,12 @@ const itemSel = (blockId, id) => `[data-block="${esc(blockId)}"] [data-mark="${e
  * `how`: 'card' (default), 'map' (fields), or 'none'. A change to the
  * cameras redraws the whole page (the shot list reads them).
  */
-function commit(blockId, change, { focus = '', how = 'card' } = {}) {
+function commit(blockId, change, { focus = '', how = 'card', record = true } = {}) {
   const before = Shots.getBlock(blockId);
   if (!before) return null;
   const next = JSON.parse(JSON.stringify(before));
   if (change(next) === false) return null;
-  History.record(before);
+  if (record) History.record(before);
   const saved = Shots.replaceBlock(next);
   afterWrite(blockId, before, saved, { focus, how });
   return saved;
@@ -1119,6 +1119,44 @@ delegate(document, 'click', '[data-action="blk-pdf"]', (e, el) => {
   exportBlockPDF({ map: drawReadOnly(block, { idPrefix: 'p' }), key: mapKey(block), name: block.name, note: block.note, scene: sceneLabel(block.sceneId) });
 });
 
+/* TYPED TEXT IS SAVED AS IT IS TYPED (QA r5). The fields below used to
+   write on `change` only, i.e. on blur or Enter, so a reload, a closed
+   tab or a crash with the cursor still in a setup's name or note lost
+   every word — while the shot list and the storyboard beside them save
+   as you type. A typing pause now replays the field's own `change`
+   handler, so there is still ONE write path per field. Undo stays one
+   step per edit: only the first save of a focus session records
+   history (`takeRecord`), the later ones and the closing `change` do
+   not. Number, checkbox and select fields keep `change` only: they are
+   validated values, not prose. */
+const LIVE_TEXT = '[data-block-field="name"], [data-block-field="note"], input[type="text"][data-mark-field], input[type="text"][data-piece-field], [data-beat-field]';
+const LIVE_MS = 400;
+const live = new Map();   // element -> { timer, recorded }
+function takeRecord(el) {
+  const st = live.get(el);
+  if (!st) return true;
+  clearTimeout(st.timer); st.timer = 0;
+  if (st.recorded) return false;
+  st.recorded = true;
+  return true;
+}
+function flushLive(el) {
+  const st = live.get(el);
+  if (!st) return;
+  clearTimeout(st.timer); st.timer = 0;
+  if (el.isConnected) el.dispatchEvent(new Event('change', { bubbles: true }));
+}
+delegate(document, 'input', LIVE_TEXT, (e, el) => {
+  const st = live.get(el) || { timer: 0, recorded: false };
+  live.set(el, st);
+  clearTimeout(st.timer);
+  st.timer = setTimeout(() => flushLive(el), LIVE_MS);
+});
+// `change` fires before `focusout`, so the session ends after its last save.
+document.addEventListener('focusout', (e) => { const st = live.get(e.target); if (st && !st.timer) live.delete(e.target); });
+// A page closed inside the pause still keeps the words.
+window.addEventListener('pagehide', () => { [...live.keys()].forEach((el) => { if (live.get(el).timer) flushLive(el); }); });
+
 delegate(document, 'change', '[data-block-field]', (e, el) => {
   const id = blockIdOf(el);
   if (el.dataset.blockField === 'widthM') {
@@ -1132,7 +1170,7 @@ delegate(document, 'change', '[data-block-field]', (e, el) => {
     if (err) { if (hintEl) hintEl.textContent = err; return; }
   }
   const before = Shots.getBlock(id);
-  if (before) History.record(before);
+  if (before && takeRecord(el)) History.record(before);
   const b = Shots.updateBlock(id, { [el.dataset.blockField]: el.value });
   /* The floor width changes what the map prints (the distances), so the
      map and the hint under the field are redrawn IN PLACE: a full
@@ -1166,7 +1204,7 @@ delegate(document, 'change', '[data-mark-field]', (e, el) => {
       const c = el.value && characters().find((x) => x.id === el.value);
       if (c && (!m.label || DEFAULT_ACTOR.test(m.label))) { m.label = titleCase(c.name); label = m.label; }
     } else m[f] = el.value;
-  }, { how: 'map' });
+  }, { how: 'map', record: takeRecord(el) });
   const m = saved && saved.marks.find((x) => x.id === markId);
   if (!m) return;
   const card = cardOf(B);
@@ -1199,7 +1237,7 @@ delegate(document, 'change', '[data-piece-field]', (e, el) => {
     if (f === 'w' || f === 'h') { const v = Number(el.value); if (!Number.isFinite(v) || v <= 0) return false; p[f] = k ? v / k : v; }
     else if (f === 'rot') p.rot = Number(el.value) || 0;
     else p[f] = el.value;
-  }, { how: 'map' });
+  }, { how: 'map', record: takeRecord(el) });
   const p = saved && saved.set.find((x) => x.id === pieceId);
   if (!p) return;
   if (f === 'rot') el.value = p.rot;
@@ -1213,7 +1251,7 @@ delegate(document, 'change', '[data-beat-field]', (e, el) => {
     const m = b.marks.find((x) => x.id === markId);
     if (!m || !m.path[i]) return false;
     m.path[i].beat = el.value;
-  }, { how: 'map' });
+  }, { how: 'map', record: takeRecord(el) });
 });
 delegate(document, 'click', '[data-action="mk-beat-del"]', (e, el) => {
   const B = blockIdOf(el);

@@ -158,6 +158,10 @@ delegate(document, 'change', '[data-cutnote-done]', (e, el) => {
   render('[data-cutnote-done="' + CSS.escape(el.getAttribute('data-cutnote-done')) + '"]');
 });
 
+/* Removed cuts by id, for a note's Undo that outlives its cut (QA r6
+   G-3). In memory only, for this page's life, like the toasts it serves. */
+const removedCuts = new Map();
+
 delegate(document, 'click', '[data-edit-action="note-del"]', (e, el) => {
   const cutId = el.getAttribute('data-cut');
   const noteId = el.getAttribute('data-note');
@@ -169,7 +173,16 @@ delegate(document, 'click', '[data-edit-action="note-del"]', (e, el) => {
   if (gone && StudioUI.toast) {
     StudioUI.toast('Note removed: ' + gone.text, {
       action: 'Undo',
-      onAction: () => { Edit.restoreCutNote(cutId, gone, at); render(); }
+      onAction: () => {
+        /* The cut may have been removed after the note (QA r6 G-3): the
+           cut's removed copy brings it back with the note in it. */
+        const held = removedCuts.get(cutId);
+        const how = Edit.restoreCutNoteWithCut(cutId, gone, at, held && held.row, held && held.at);
+        if (how === 'cut') removedCuts.delete(cutId);
+        render();
+        if (how === 'cut') StudioUI.toast('Note restored, with ' + (held.row.name || 'its cut') + ', the cut it belongs to.');
+        else if (!how && StudioUI.toastError) StudioUI.toastError('That note cannot come back: its cut is gone.');
+      }
     });
   }
 });
@@ -180,11 +193,12 @@ delegate(document, 'click', '[data-edit-action="cut-del"]', (e, el) => {
   const at = all.findIndex((c) => c.id === cutId);
   const gone = all[at];
   Edit.removeCut(cutId);
+  if (gone) removedCuts.set(cutId, { row: gone, at });
   render('[data-edit-form="cut"] input');
   if (gone && StudioUI.toast) {
     StudioUI.toast('Cut removed: ' + gone.name, {
       action: 'Undo',
-      onAction: () => { Edit.restoreCut(gone, at); render(); }
+      onAction: () => { removedCuts.delete(cutId); Edit.restoreCut(gone, at); render(); }
     });
   }
 });

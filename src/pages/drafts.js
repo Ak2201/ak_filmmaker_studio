@@ -331,6 +331,10 @@ delegate(document, 'click', '[data-dr="update"]', async (e, btn) => {
   fresh();
   const last = Drafts.latestDraft(doc);
   if (!last) return;
+  /* An empty working copy would replace the draft's lines with none, and
+     that draft may hold the only good copy (QA r6 G-1): the same refusal
+     as "Save as new draft", before the dialog and again after it. */
+  if (!hasWriting(doc)) { say('Nothing to save yet — write a line first.'); return; }
   const res = await choiceDialog({
     title: 'Update ' + last.label + '?',
     body: 'Its copy is replaced by the script as it is now. What it held before is not kept.',
@@ -338,6 +342,7 @@ delegate(document, 'click', '[data-dr="update"]', async (e, btn) => {
   });
   if (res.id !== 'go') return;
   fresh();
+  if (!hasWriting(doc)) { say('Nothing to save yet — write a line first.'); return; }
   /* updateDraft() refuses the locked baseline (the change report compares
      the script with it): save a new draft instead and say why. */
   if (Drafts.updateDraft(doc, last.id)) {
@@ -358,7 +363,7 @@ delegate(document, 'click', '[data-dr="restore"]', async (e, btn) => {
   const d = Drafts.listDrafts(doc).find((x) => x.id === id);
   if (!d) return;
   const dirty = Drafts.changedSinceDraft(doc);
-  const res = await choiceDialog(restoreDialogSpec(d, dirty, nextDraftName(doc)));
+  const res = await choiceDialog(restoreDialogSpec(d, dirty, nextDraftName(doc), hasWriting(doc)));
   if (res.id === 'cancel' || res.id === null) return;
   /* Draft N is made below, after the LAST fresh(): fresh() re-reads the
      stored script, so a draft added to `doc` before it and never saved
@@ -372,7 +377,7 @@ delegate(document, 'click', '[data-dr="restore"]', async (e, btn) => {
   let Sync = null;   // loaded at the press: no first-paint cost here
   try { Sync = await import('../lib/scene-sync.js'); } catch (e) { console.warn('[drafts] scene sync', e); }
   fresh();
-  if (res.id === 'save') Drafts.saveNewDraft(doc);
+  if (res.id === 'save' && hasWriting(doc)) Drafts.saveNewDraft(doc);   // never an empty draft (QA r6 G-2)
   const prev = Sync ? Sync.headingMap(doc.elements) : null;
   Drafts.restoreDraft(doc, id);
   save();

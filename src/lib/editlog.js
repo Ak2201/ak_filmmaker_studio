@@ -466,6 +466,23 @@ export function restoreCutNote(cutId, row, index) {
   return row;
 }
 
+/** A note's Undo when its CUT may have been removed since (QA r6 G-3).
+    restoreCutNote() alone refuses a note whose cut is gone, and the cut's
+    own Undo snapshot was taken AFTER the note left it, so pressing both
+    Undos gave back the cut with no note: the note was lost although Undo
+    was pressed for it. A note cannot exist outside its cut, so when the
+    cut is gone and its removed copy (`cutRow`, at `cutAt`) is in hand,
+    the cut comes back with the note in it. Returns 'note' (put back in
+    its cut), 'cut' (the cut came back carrying it) or null. */
+export function restoreCutNoteWithCut(cutId, row, index, cutRow, cutAt) {
+  if (!row || !row.id) return null;
+  if (loadEdit().cuts.some((c) => c.id === cutId)) return restoreCutNote(cutId, row, index) ? 'note' : null;
+  if (!cutRow || cutRow.id !== cutId) return null;
+  const notes = (Array.isArray(cutRow.notes) ? cutRow.notes : []).filter((n) => n && n.id !== row.id);
+  notes.splice(Math.max(0, Math.min(Number(index) || 0, notes.length)), 0, row);
+  return restoreCut({ ...cutRow, notes }, cutAt) ? 'cut' : null;
+}
+
 /** A cut's notes as plain text for an email: a heading, the open
     notes in time order, then the done ones marked. `sceneLabel` maps a
     sceneId to its label ('Sc 12'); '' or absent leaves the scene out. */
@@ -767,6 +784,6 @@ export default {
   parseTimecode, formatTimecode, addSceneLink, removeSceneLink,
   dayLinks, addDayLink, removeDayLink,
   listCuts, addCut, updateCut, removeCut, restoreCut, addCutLink, removeCutLink,
-  addCutNote, updateCutNote, removeCutNote, restoreCutNote, cutNotesText,
+  addCutNote, updateCutNote, removeCutNote, restoreCutNote, restoreCutNoteWithCut, cutNotesText,
   verdict, coverage, pickupText, localISO
 };

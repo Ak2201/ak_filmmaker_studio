@@ -206,6 +206,18 @@ E.removeCutNote(k2.id, nn.id);
 eq(E.listCuts()[1].notes, [], 'a note is removed');
 E.restoreCutNote(k2.id, nn, 0);
 eq(E.listCuts()[1].notes.map((n) => n.id), [nn.id], 'and restored');
+/* QA r6 G-3: note removed, then its cut, then the NOTE's Undo first */
+const cutSnap = () => JSON.parse(JSON.stringify(E.listCuts()[1]));
+E.removeCutNote(k2.id, nn.id);
+const cutGone = cutSnap();
+E.removeCut(k2.id);
+eq(E.restoreCutNoteWithCut(k2.id, nn, 0, null, 1), null, 'no cut copy: the note cannot come back');
+eq(E.restoreCutNoteWithCut(k2.id, nn, 0, cutGone, 1), 'cut', 'the note Undo brings its cut back');
+eq(E.listCuts()[1].notes.map((n) => n.id), [nn.id], 'with the note in it');
+eq(E.restoreCut(cutGone, 1), null, 'and the cut Undo after it adds nothing');
+E.removeCutNote(k2.id, nn.id);
+eq(E.restoreCutNoteWithCut(k2.id, nn, 0, cutGone, 1), 'note', 'a cut still there takes the note back plainly');
+eq(E.listCuts().map((c) => c.name), ['One', 'Two b', 'Three'], 'no second copy of the cut');
 
 /* cutNotesText */
 const tcut = { name: 'Assembly', date: '2026-10-01', notes: [

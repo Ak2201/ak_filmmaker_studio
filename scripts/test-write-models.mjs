@@ -106,6 +106,9 @@ ok('drafts model', () => {
   const d = { label: 'Draft 2', colour: { name: 'Blue' }, savedAt: new Date(2026, 9, 1, 9, 3).toISOString(), pages: 1, lines: 2 };
   assert.equal(D.draftMetaText(d), '1 Oct 2026, 09:03 · 1 page · 2 lines');
   assert.equal(D.restoreDialogSpec(d, true, 'Draft 3').choices[0].label, 'Save as Draft 3, then restore');
+  const empty = D.restoreDialogSpec(d, true, 'Draft 3', false);   // QA r6 G-2
+  assert.ok(!empty.choices.some((c) => c.id === 'save'), 'an empty script offers no Save as Draft N');
+  assert.deepEqual(empty.choices.map((c) => c.id), ['go', 'cancel']);
   assert.equal(D.draftPdfMeta(d, 'T').revision, 'Blue — Draft 2');
 });
 

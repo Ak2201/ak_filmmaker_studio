@@ -1369,7 +1369,10 @@ await page.setViewportSize({ width: 1280, height: 900 });
 }
 
 /* ---- 13 overflow -------------------------------------------------------- */
-for (const w of [390, 1280]) {
+/* 540-719 too: from 540px up a capped .sc-pos <p> left room beside it, the
+   tools joined its line and the row ran ~160px past the screen, while 390
+   and 1280 were both clean (QA r5 J). */
+for (const w of [390, 540, 600, 719, 1280]) {
   for (const p of ['screenplay.html', 'drafts.html', 'breakdown.html#script']) {
     await page.setViewportSize({ width: w, height: 860 });
     await page.goto(url(p), { waitUntil: 'networkidle' });
@@ -1377,6 +1380,18 @@ for (const w of [390, 1280]) {
     const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     if (over > 0) console.log('        wide:', JSON.stringify(await page.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > innerWidth + 1).slice(0, 6).map((e) => e.tagName + '.' + String(e.className).slice(0, 30) + ' ' + Math.round(e.getBoundingClientRect().right) + ' ' + (e.textContent || '').slice(0, 40)))));
     ok(over <= 0, `13 ${p} has no horizontal overflow at ${w}px`, over);
+    if (p === 'screenplay.html' && w < 720) {
+      /* the phone row: pill, Beats, AI, Notes, Tools on ONE line inside the
+         screen, the pill a 44px target that still shows its name */
+      const row = await page.evaluate(() => {
+        const vis = [...document.querySelectorAll('.sc-tools-l > *, .sc-tools-r > *')].filter((e) => e.getBoundingClientRect().width > 0);
+        const r = vis.map((e) => e.getBoundingClientRect());
+        const pill = document.querySelector('.sc-typepill')?.getBoundingClientRect();
+        const nm = document.querySelector('.sc-typename');
+        return { n: r.length, tops: new Set(r.map((q) => Math.round(q.top))).size, right: Math.round(Math.max(...r.map((q) => q.right))), iw: innerWidth, pill: Math.round(pill?.width || 0), clipped: !nm || nm.scrollWidth > nm.clientWidth + 1 };
+      });
+      ok(row.n >= 5 && row.tops === 1 && row.right <= row.iw && row.pill >= 44 && !row.clipped, `13 the Writer's tools stay one row with the type named at ${w}px`, row);
+    }
   }
 }
 /* 14 a cold #analysis reads the writer's target before it places the beats */

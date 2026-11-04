@@ -1192,6 +1192,14 @@ export function parseSlug(slug) {
     const mapped = timeOfSeg(seg);
     if (mapped) { out.dayNight = mapped; found = i; break; }
   }
+  /* "KITCHEN - NIGHT - CONTINUOUS" / "- NIGHT - LATER" (QA r6): a
+     continuity word after a real time says the scene runs on, and the
+     time before it is when it happens. Reading only the last part left
+     "KITCHEN - NIGHT" as a place of its own, apart from KITCHEN. */
+  if (found >= 4 && out.dayNight === 'CONTINUOUS') {
+    const prev = timeOfSeg(parts[found - 2].replace(/\s*\([^()]*\)/g, '').trim().toUpperCase().replace(/[.]+$/, ''));
+    if (prev && prev !== 'CONTINUOUS') { out.dayNight = prev; found -= 2; }
+  }
   /* No dash before the time (QA r4): "KITCHEN (NIGHT)" brackets it and
      "INT KITCHEN NIGHT" just ends with it. Only the LAST bracket or word
      is read, and only when it is wholly a time, so "THE NIGHT CLUB" and

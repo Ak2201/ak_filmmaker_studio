@@ -141,6 +141,10 @@ export function classifyReturn(text, type, ctx = {}) {
   const words = base.split(/\s+/);
   if (words.length < 1 || words.length > 4) return null;
   if (!isCapsLine(base) || SCENE_PREFIX.test(base)) return null;
+  /* A closing full stop is a sentence, not a name (QA r6): "SILENCE.",
+     "DARKNESS." and "A." became cues and were counted as cast. A dotted
+     initialism ("J.D.") is still a name. */
+  if (/\.$/.test(base) && !/(?:^|\s)(?:[A-Z]\.){2,}$/.test(base)) return null;
   return { type: 'character', text: t };
 }
 

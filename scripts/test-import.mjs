@@ -343,6 +343,11 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   eq(sl('EXTERIOR. STREET - DAY'), 'EXT|DAY|STREET|false', 'r4: EXTERIOR is EXT');
   eq(sl('INTERIOR/EXTERIOR HOUSE - DAY'), 'INT/EXT|DAY|HOUSE|false', 'r5: the combined long form is INT/EXT');
   eq(sl('EXTERIOR/INTERIOR CAR - NIGHT'), 'INT/EXT|NIGHT|CAR|false', 'r5: EXTERIOR/INTERIOR is INT/EXT');
+  // QA r6: a continuity word after a real time keeps the time and the place.
+  eq(sl('INT. KITCHEN - NIGHT - CONTINUOUS'), 'INT|NIGHT|KITCHEN|false', 'r6: NIGHT - CONTINUOUS is NIGHT in KITCHEN');
+  eq(sl('INT. KITCHEN – NIGHT – LATER'), 'INT|NIGHT|KITCHEN|false', 'r6: en-dash NIGHT – LATER');
+  eq(sl('INT. KITCHEN - CONTINUOUS'), 'INT|CONTINUOUS|KITCHEN|false', 'r6: CONTINUOUS alone stays CONTINUOUS');
+  eq(sl('INT. HALL - CONTINUOUS - CONTINUOUS'), 'INT|CONTINUOUS|HALL - CONTINUOUS|false', 'r6: no real time before it, unchanged');
   eq(sl('INT. KITCHEN (NIGHT)'), 'INT|NIGHT|KITCHEN|false', 'r4: a bracketed time is the time');
   eq(sl('INT KITCHEN NIGHT'), 'INT|NIGHT|KITCHEN|false', 'r4: a bare last NIGHT is the time');
   eq(sl('INT. KITCHEN - DUSK/NIGHT'), 'INT|DUSK|KITCHEN|false', 'r4: a compound time leaves the place');

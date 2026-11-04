@@ -111,6 +111,15 @@ eq(S.describeMove({ toDay: 0 }, board[0], 0), 'Scene 1 is off the schedule.', 'm
 eq(S.describeMove({ fromDay: 2, toDay: 2, index: 0 }, board[0], 3), 'Scene 1 moved to position 1 of 3 on Day 2.', 'move within');
 eq(S.describeMove({ fromDay: 1, toDay: 2, index: 1 }, undefined, 3), 'The scene moved to Day 2, position 2 of 3.', 'move across');
 eq(S.scheduleByLocation(board), { plan: [{ id: '1', day: 1 }, { id: '2', day: 2 }, { id: '3', day: 1 }, { id: '4', day: 3 }], days: 3 }, 'schedule by location');
+/* QA r5 D-1: a shot scene keeps its day, and the new days skip every held day. */
+{
+  const shot = [{ ...board[0], shootDay: 1, shotState: 'shot' }, { ...board[1], shootDay: 1 }, { ...board[2], shootDay: 0 }, { ...board[3], shootDay: 0 }];
+  eq([...S.heldDays(shot)], [1], 'held days: the day a shot scene is on');
+  eq(S.movableScenes(shot).map((x) => x.id), ['3', '4'], 'movable: not shot, not on a held day');
+  const r = S.scheduleByLocation(shot);
+  eq(r.plan.some((p) => p.id === '1' || p.id === '2'), false, 'schedule by location leaves a held day alone');
+  eq(r.plan.every((p) => p.day !== 1), true, 'schedule by location never lands on a held day');
+}
 eq(S.sceneHeadings({ elements: [{ type: 'scene', text: 'INT. X' }, { type: 'scene', text: ' ' }, { type: 'action', text: 'a' }] }), 1, 'scene headings');
 eq(S.latestDraft({ revisions: [{ name: 'a' }, { name: 'b' }] }), { latest: { name: 'b' }, count: 2 }, 'latest draft');
 eq([...S.lockPreset([{ scriptElId: 'e1', number: 3 }, { scriptElId: 'e2', number: '' }])], [['e1', '3']], 'lock preset');

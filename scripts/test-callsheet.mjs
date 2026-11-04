@@ -200,5 +200,15 @@ eq([L.getRecce('Test Place').hospital, L.getRecce('Test Place').lat], ['GH', '13
   ok(WA.personMessage(f, { name: 'Ravi', call: '05:00' }).includes('Nearest hospital'), 'a person message carries it too');
 }
 
+/* QA r5 D-2: one late exterior scene "needs" the light; two "need" it. */
+{
+  const CM = await import('../src/lib/contacts-model.js');
+  const light = { sunset: '17:43' };
+  const one = CM.lateText({ wrap: '19:30' }, [], light, [{ number: '3' }]);
+  ok(one.includes('Exterior scene 3 needs the light — shoot it before 17:43.'), 'singular: ' + one);
+  const two = CM.lateText({ wrap: '19:30' }, [], light, [{ number: '3' }, { number: '5' }]);
+  ok(two.includes('Exterior scenes 3, 5 need the light — shoot them before 17:43.'), 'plural: ' + two);
+}
+
 console.log(`\n  callsheet: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

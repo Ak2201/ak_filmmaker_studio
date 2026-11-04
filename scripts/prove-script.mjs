@@ -685,6 +685,31 @@ await page.setViewportSize({ width: 1280, height: 900 });
   ok(before.includes('CAVE') && !s.scenes.some((x) => x.location === 'CAVE') && s.scenes.length === 2,
     '20i a scene the restored draft lacks leaves the Breakdown', { before, after: s.scenes.map((x) => x.location) });
 
+  /* i2) "Save as Draft N, then restore" really saves Draft N first (QA r5:
+     the draft was made on a copy that a re-read then threw away, so the
+     unsaved work was lost under a button that promised to keep it) */
+  await page.goto(url('screenplay.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  const teaId = (await stored()).script.elements.find((e) => e.text === 'Tea.').id;   // the restore renewed every id
+  await page.click('[data-el="' + teaId + '"] .wr-text');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' UNSAVEDXYZ');
+  await page.waitForTimeout(3000);
+  const revsBefore = ((await stored()).script.revisions || []).length;
+  await page.goto(url('drafts.html'), { waitUntil: 'networkidle' });
+  await page.waitForTimeout(300);
+  await page.click('.dr-row [data-dr="restore"]');
+  await page.waitForSelector('.lp-card [data-lp="save"]');
+  await page.click('.lp-card [data-lp="save"]');
+  await page.waitForTimeout(800);
+  s = await stored();
+  const revs = s.script.revisions || [];
+  const last = revs[revs.length - 1] || {};
+  ok(revs.length === revsBefore + 1 && (last.elements || []).some((e) => /UNSAVEDXYZ/.test(e.text || ''))
+    && !s.script.elements.some((e) => /UNSAVEDXYZ/.test(e.text || '')),
+    '20i2 "Save as Draft N, then restore" keeps the unsaved script as Draft N',
+    { revsBefore, revs: revs.length, last: last.name });
+
   /* j) the phone toolbar: one row, the type named in full, Notes shows its icon */
   await fresh('Proof Phone', FOUR);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -703,6 +728,12 @@ await page.setViewportSize({ width: 1280, height: 900 });
   ok(tb.sameRow, '20j the phone toolbar is one row (the ⋯ button no longer wraps alone)', tb);
   ok(tb.nameFits && tb.ai === tb.tools, '20j the type pill names the type in full; the AI pill is the row\'s height', tb);
   ok(tb.icon > 8 && tb.notesW >= 44, '20j Notes shows its icon in a thumb-sized button', tb);
+  /* QA r4: Clean up (no AI) left the row for the Tools sheet so the pill
+     could name the type; the sheet's row must still open it. */
+  await page.click('.sc-tools-r .sc-tools-sheet-btn');
+  await page.click('.sc-sheet-row[data-sc-act="sc-cleanup-rules"]');
+  const deskOpen = await page.waitForSelector('.ai-desk', { state: 'visible', timeout: 5000 }).then(() => true, () => false);
+  ok(deskOpen, '20j the Tools sheet opens Clean up (no AI) on a phone', { deskOpen });
   await page.setViewportSize({ width: 1280, height: 900 });
 }
 
@@ -1338,7 +1369,10 @@ await page.setViewportSize({ width: 1280, height: 900 });
 }
 
 /* ---- 13 overflow -------------------------------------------------------- */
-for (const w of [390, 1280]) {
+/* 540-719 too: from 540px up a capped .sc-pos <p> left room beside it, the
+   tools joined its line and the row ran ~160px past the screen, while 390
+   and 1280 were both clean (QA r5 J). */
+for (const w of [390, 540, 600, 719, 1280]) {
   for (const p of ['screenplay.html', 'drafts.html', 'breakdown.html#script']) {
     await page.setViewportSize({ width: w, height: 860 });
     await page.goto(url(p), { waitUntil: 'networkidle' });
@@ -1346,6 +1380,18 @@ for (const w of [390, 1280]) {
     const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     if (over > 0) console.log('        wide:', JSON.stringify(await page.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > innerWidth + 1).slice(0, 6).map((e) => e.tagName + '.' + String(e.className).slice(0, 30) + ' ' + Math.round(e.getBoundingClientRect().right) + ' ' + (e.textContent || '').slice(0, 40)))));
     ok(over <= 0, `13 ${p} has no horizontal overflow at ${w}px`, over);
+    if (p === 'screenplay.html' && w < 720) {
+      /* the phone row: pill, Beats, AI, Notes, Tools on ONE line inside the
+         screen, the pill a 44px target that still shows its name */
+      const row = await page.evaluate(() => {
+        const vis = [...document.querySelectorAll('.sc-tools-l > *, .sc-tools-r > *')].filter((e) => e.getBoundingClientRect().width > 0);
+        const r = vis.map((e) => e.getBoundingClientRect());
+        const pill = document.querySelector('.sc-typepill')?.getBoundingClientRect();
+        const nm = document.querySelector('.sc-typename');
+        return { n: r.length, tops: new Set(r.map((q) => Math.round(q.top))).size, right: Math.round(Math.max(...r.map((q) => q.right))), iw: innerWidth, pill: Math.round(pill?.width || 0), clipped: !nm || nm.scrollWidth > nm.clientWidth + 1 };
+      });
+      ok(row.n >= 5 && row.tops === 1 && row.right <= row.iw && row.pill >= 44 && !row.clipped, `13 the Writer's tools stay one row with the type named at ${w}px`, row);
+    }
   }
 }
 /* 14 a cold #analysis reads the writer's target before it places the beats */

@@ -653,6 +653,8 @@ export function getProject(id) {
   return listProjects().find(p => p.id === id) || null;
 }
 
+const isStamp = (v) => typeof v === 'string' && /^\d{4}-\d\d-\d\dT/.test(v) && !isNaN(Date.parse(v));
+
 export function createProject(meta) {
   meta = meta || {};
   const now = new Date().toISOString();
@@ -678,8 +680,11 @@ export function createProject(meta) {
     id:         wanted || uuid(),
     title:      (meta.title || 'Untitled Project').trim(),
     format:     FORMATS.indexOf(meta.format) >= 0 ? meta.format : 'feature',
-    createdAt:  now,
-    updatedAt:  now,
+    /* A restored project keeps its own dates (backup.js land()): a
+       backup read back as "edited just now" loses the Recent order and
+       "continue where you left off" (QA r4 H-1). Only a real ISO time. */
+    createdAt:  isStamp(meta.createdAt) ? meta.createdAt : now,
+    updatedAt:  isStamp(meta.updatedAt) ? meta.updatedAt : now,
     ns:         ns
   };
   /* The favourite film rides on the project entry, beside format: an

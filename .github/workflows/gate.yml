@@ -120,8 +120,15 @@ jobs:
       - run: npm run prove:ai-fast
       # The ten AI Desk tasks on the pages that had none (Phase 3, 1 Nov 2026), faked provider.
       - run: npm run prove:ai-everywhere
+      # The no-AI twins of the on-set and post reads (docs/RULES-BREAKDOWN.md lane B): no key, no AI host.
+      - run: npm run prove:rules-post
       # The AI history: stamp, badge, Desk History tab, dashboard #ai, Undo from History (2 Nov 2026), faked provider.
       - run: npm run prove:ai-history
+      # Run all (3 Nov 2026): the Draft space on preprod.html#drafts, nothing written before Accept,
+      # parents first, one exact Undo, Resume, zero idle writes (faked provider).
+      - run: npm run prove:ai-run-all
+      # The no-AI story twins: clean-up, logline check, voice measure, Shots without AI (Lane C, item 88): no key, no Pro, no AI-host request.
+      - run: npm run prove:rules-story
       # Sticky notes, beat <-> scene sync and the shared beat sheet (HISTORY
       # 61-62), then the proofs that ran only by hand until the full-app QA
       # (HISTORY 67). All read this job's gate-off dist/.
@@ -134,6 +141,8 @@ jobs:
       # The script lock end to end: bar, review, lock, held edits, change report, unlock, legacy lock.
       - run: npm run prove:script-lock
       - run: npm run prove:lock-extract
+      # The no-AI pre-production tasks: plan days, recce, budget lines, call sheet notes (docs/RULES-BREAKDOWN.md lane A).
+      - run: npm run prove:rules-preprod
       - run: npm run prove:story-coedit
       - run: npm run prove:visual
       - run: npm run prove:board-frames

@@ -53,3 +53,15 @@ export function undoNote(ret, spoke) {
   if (spoke || ret === false) return null;
   return 'Undone.';
 }
+
+/** Did the open film change since this draft was asked for? A version is
+    stamped with currentProjectId() when its request goes out (or when a
+    stored draft is opened); the store proxy scopes every model read and
+    write to whichever project is open AT CALL TIME, so Accepting film A's
+    draft after another tab switched the pointer would write A's shots into
+    B's keys. Same rule as Run all's projectNowOf (ai-run-all.js). An
+    unstamped version (undefined) cannot tell, and never refuses. */
+export function projectMoved(stamped, now) {
+  if (stamped === undefined) return false;
+  return String(stamped || '') !== String(now || '');
+}

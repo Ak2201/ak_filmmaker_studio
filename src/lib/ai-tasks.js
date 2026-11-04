@@ -985,7 +985,7 @@ const shotTask = {
     try { return AI.buildPrompt(shotJobs(resolve(ctx))); }
     catch (e) { return (e && e.message) || ''; }
   },
-  async run(input, { onStatus, signal, refine, ctx, onItems, careful } = {}) {
+  async run(input, { onStatus, signal, refine, ctx, onItems, careful, onBatchTime } = {}) {
     await ready();
     let jobs = shotJobs(resolve(ctx));
     const extra = refineText(refine);
@@ -998,7 +998,7 @@ const shotTask = {
       detail: [d.size, d.angle, d.movement, d.lens, d.rig, d.setup].filter(Boolean).join(' · ')
     })));
     const res = await AI.draftShotDivision(jobs, {
-      onStatus, signal, careful,
+      onStatus, signal, careful, onBatchTime,
       onItems: onItems ? (entries) => onItems(toItems(entries)) : undefined
     });
     const items = toItems([...res.byScene].map(([sceneId, shots]) => ({ sceneId, shots })));
@@ -1017,6 +1017,7 @@ const shotTask = {
     const c = resolve(ctx);
     const m = metaFor('shot-draft', meta, result && result.model);
     const made = [];
+    const pairs = [];
     for (const it of selected || []) {
       if (!it.sceneId || !it.draft) continue;
       /* Every column the Shot List shows, rig and setup included, so
@@ -1031,15 +1032,23 @@ const shotTask = {
         rig: d.rig || '', setup: d.setup || '', description: d.description };
       for (const k of Object.keys(fields)) if (fields[k] === undefined) delete fields[k];   // a blank default, never `undefined`
       const { sceneId: _s, number: _n, ...rest } = Stamp.stampAI('shot', ShotsM.blankShot(fields), m);
-      made.push(ShotsM.addShot(it.sceneId, rest).id);
+      const id = ShotsM.addShot(it.sceneId, rest).id;
+      made.push(id);
+      pairs.push([it.id, id]);
     }
     if (!made.length) return null;
     call(c.after, made);
-    return () => {
+    const undo = () => {
       const ids = new Set(made);
       ShotsM.saveShots(ShotsM.listShots().filter((s) => !ids.has(s.id)));
       call(c.after, []);
     };
+    /* Which drafted item became which shot: [itemId, shotId]. Run all
+       (ai-run-all.js acceptDraft) reads it to point the blocking and the
+       frames drafted on 'draft:<n>' shots at the real ones. A property on
+       the undo, like `said`, so a caller that only calls undo() is unchanged. */
+    undo.made = pairs;
+    return undo;
   }
 };
 
@@ -1819,11 +1828,21 @@ function rowFor(match, sliceIndex) {
   const free = pairs.filter((x) => !x.slice && normNo(x.scene.number) === no);
   return free.length === 1 ? free[0].scene : null;
 }
+/* A batched scene read that lost some parts says which scenes, never
+   the whole run's error (runSceneBatches throws only when none came back). */
+function failedNote(failed) {
+  if (!Array.isArray(failed) || !failed.length) return '';
+  const scenes = failed.flatMap((f) => f.scenes || []);
+  const why = failed[0].kind === 'rate' ? 'rate limited' : failed[0].kind === 'overloaded' ? 'the service was busy' : 'the request failed';
+  return ' Not read (' + why + '): ' + scenes.map((n) => 'Sc ' + n).join(', ') + ' — run again for these.';
+}
 const sceneNotesTask = {
   id: 'scene-notes',
   label: 'Scene notes',
   kind: 'list',
   editable: false,
+  stream: true,         // cards per part, as each batch of scenes comes back
+  effortSwitch: true,   // low by default (ai-effort.js); Careful raises it one step
   identity(ctx) { try { return 'scene-notes:' + AI.scriptSignature(scriptElements(resolve(ctx))); } catch (e) { return 'scene-notes'; } },
   input(ctx) {
     const plan = AI.planSceneRead(scriptElements(resolve(ctx)));
@@ -1832,27 +1851,38 @@ const sceneNotesTask = {
       + plan.chars.toLocaleString('en-IN') + ' characters — in ' + plural(plan.requests, 'request', 'requests')
       + ', roughly ' + plan.tokensIn.toLocaleString('en-IN') + ' tokens. One note per scene; nothing is written until you accept.';
   },
-  async run(input, { onStatus, signal, refine, ctx } = {}) {
+  async run(input, { onStatus, signal, refine, ctx, careful, onItems, onBatchTime } = {}) {
     await ready();
     const c = resolve(ctx);
     const els = scriptElements(c).map((e) => ({ ...e }));
     let title = c.title;
     if (!title) { try { title = ScriptM.projectTitle(); } catch (e) { title = ''; } }
     const context = withRefineContext(BP.blueprintContext(), refine);
-    const run = await AI.runSceneBatches(els, (scenes, part, parts) =>
-      AI.sceneNotesBatch({ scenes, part, parts, title, context }, { onStatus, signal }), { onStatus, signal });
-    const heading = new Map(run.scenes.map((sc, i) => [sc.n, { i, heading: sc.heading }]));
+    /* Fixed once for the run: the effort and the shared block are part of
+       what the prompt cache is keyed on (docs/AI-FAST-HARNESS.md). */
+    const effort = AI.taskEffort('scene-notes', careful);
+    const shared = AI.buildSceneNotesShared({ title, context });
+    const plan = AI.planSceneRead(els);
+    const heading = new Map(plan.scenes.map((sc, i) => [sc.n, { i, heading: sc.heading }]));
+    const toItem = (n) => ({ id: 's' + n.scene, scene: n.scene, i: (heading.get(n.scene) || {}).i, note: n.note, cut: n.cut,
+      text: n.note + (n.cut ? '  — CUT CANDIDATE' : ''),
+      detail: 'Sc ' + n.scene + ' · ' + ((heading.get(n.scene) || {}).heading || '') + (n.quote ? ' · “' + n.quote + '”' : ' · no quote — the one given was not in the scene') });
+    const run = await AI.runSceneBatches(els, (scenes, part, parts, o = {}) =>
+      AI.sceneNotesBatch({ scenes, part, parts, title, context, shared }, { onStatus, signal: o.signal || signal, effort, onStart: o.onStart }), {
+      onStatus, signal, onBatchTime,
+      onPart: onItems ? (p) => onItems(p.notes.map(toItem)) : undefined
+    });
     const notes = run.parts.flatMap((p) => p.notes);
     const removed = run.parts.reduce((n, p) => n + p.removed, 0);
     last.set('scene-notes', { notes: notes.map((n) => ({ ...n, i: (heading.get(n.scene) || {}).i })) });
     const cuts = notes.filter((n) => n.cut).length;
     return {
-      items: notes.map((n) => ({ id: 's' + n.scene, scene: n.scene, i: (heading.get(n.scene) || {}).i, note: n.note, cut: n.cut,
-        text: n.note + (n.cut ? '  — CUT CANDIDATE' : ''),
-        detail: 'Sc ' + n.scene + ' · ' + ((heading.get(n.scene) || {}).heading || '') + (n.quote ? ' · “' + n.quote + '”' : ' · no quote — the one given was not in the scene') })),
+      items: notes.map(toItem),
+      model: run.model,
       note: plural(notes.length, 'scene note', 'scene notes') + ' from ' + plural(run.scenes.length, 'scene', 'scenes') + ' read; '
         + plural(cuts, 'scene', 'scenes') + ' flagged as cut candidates (a flag needs a quote that is in the scene).'
         + (removed ? ' ' + plural(removed, 'quote', 'quotes') + ' removed because not word for word in the script; those notes keep their words and cannot be cut candidates.' : '')
+        + failedNote(run.failed)
     };
   },
   apply(selected, ctx, result, meta) {
@@ -1905,6 +1935,8 @@ const tagsTask = {
   label: 'Breakdown tags',
   kind: 'list',
   editable: false,
+  stream: true,         // cards per part, as each batch of scenes comes back
+  effortSwitch: true,   // low by default (ai-effort.js); Careful raises it one step
   identity(ctx) { try { return 'breakdown-tags:' + AI.scriptSignature(scriptElements(resolve(ctx))); } catch (e) { return 'breakdown-tags'; } },
   input(ctx) {
     const plan = AI.planSceneRead(scriptElements(resolve(ctx)));
@@ -1913,27 +1945,42 @@ const tagsTask = {
       + ', roughly ' + plan.tokensIn.toLocaleString('en-IN') + ' tokens. Every element the page calls for, in all '
       + ScenesM.ELEMENT_CATEGORIES.length + ' categories, each with the words that call for it.\n\nNothing is tagged until you accept, and only what you tick.';
   },
-  async run(input, { onStatus, signal, refine, ctx } = {}) {
+  async run(input, { onStatus, signal, refine, ctx, careful, onItems, onBatchTime } = {}) {
     await ready();
     const c = resolve(ctx);
     const els = scriptElements(c).map((e) => ({ ...e }));
     let title = c.title;
     if (!title) { try { title = ScriptM.projectTitle(); } catch (e) { title = ''; } }
-    const context = withRefineContext(BP.blueprintContext(), refine);
+    /* Extraction needs the page, not the blueprint: only the writer's
+       follow-up (a refine) rides along, so each request carries what the
+       breakdown uses and nothing else. */
+    const context = withRefineContext([], refine);
     const categories = ScenesM.ELEMENT_CATEGORIES.map((k) => ({ id: k.id, label: k.label }));
-    const run = await AI.runSceneBatches(els, (scenes, part, parts) =>
-      AI.breakdownTagsBatch({ scenes, part, parts, title, context, categories }, { onStatus, signal }), { onStatus, signal });
-    const at = new Map(run.scenes.map((sc, i) => [sc.n, { i, heading: sc.heading }]));
+    const effort = AI.taskEffort('breakdown-tags', careful);   // fixed for the run (cache key)
+    const shared = AI.buildBreakdownTagsShared({ title, context, categories });
+    const plan = AI.planSceneRead(els);
+    const at = new Map(plan.scenes.map((sc, i) => [sc.n, { i, heading: sc.heading }]));
     const label = Object.fromEntries(categories.map((k) => [k.id, k.label]));
+    /* A stable id per element (scene, category, name), so a card shown
+       while a later part is still out is the same card in the final list
+       and the reader's untick survives. */
+    const toItem = (e) => ({ id: 't' + e.scene + ':' + e.category + ':' + e.name.toLowerCase(), scene: e.scene, i: (at.get(e.scene) || {}).i, category: e.category, name: e.name,
+      text: 'Sc ' + e.scene + ' · ' + label[e.category] + ': ' + e.name,
+      detail: '“' + e.quote + '”' });
+    const run = await AI.runSceneBatches(els, (scenes, part, parts, o = {}) =>
+      AI.breakdownTagsBatch({ scenes, part, parts, title, context, categories, shared }, { onStatus, signal: o.signal || signal, effort, onStart: o.onStart }), {
+      onStatus, signal, onBatchTime,
+      onPart: onItems ? (p) => onItems(p.elements.map(toItem)) : undefined
+    });
     const found = run.parts.flatMap((p) => p.elements);
     const removed = run.parts.reduce((n, p) => n + p.removed, 0);
     return {
-      items: found.map((e, k) => ({ id: 't' + k, scene: e.scene, i: (at.get(e.scene) || {}).i, category: e.category, name: e.name,
-        text: 'Sc ' + e.scene + ' · ' + label[e.category] + ': ' + e.name,
-        detail: '“' + e.quote + '”' })),
+      items: found.map(toItem),
+      model: run.model,
       note: plural(found.length, 'element', 'elements') + ' across ' + plural(new Set(found.map((e) => e.scene)).size, 'scene', 'scenes') + '.'
         + (removed ? ' ' + plural(removed, 'element', 'elements') + ' removed because the words they cited are not in the scene.' : '')
         + ' Elements already tagged on a scene are skipped, not duplicated.'
+        + failedNote(run.failed)
     };
   },
   apply(selected, ctx, result, meta) {
@@ -2001,7 +2048,8 @@ const tagsTask = {
    ============================================================ */
 function boardJobsFor(c, max) {
   return BoardM.boardJobs({
-    shots: ShotsM.listShots(), scenes: ScenesM.listScenes(), frames: ShotsM.listFrames(),
+    // drafted shots too (Run all, ids 'draft:<n>'), mapped to real ones on Accept
+    shots: ShotsM.listShots().concat(Array.isArray(c.draftShots) ? c.draftShots : []), scenes: ScenesM.listScenes(), frames: ShotsM.listFrames(),
     onlyShotIds: Array.isArray(c.shotIds) && c.shotIds.length ? c.shotIds : null,
     max: max == null ? BoardM.MAX_FRAMES : max
   });
@@ -2013,6 +2061,7 @@ const boardTask = {
   id: 'board-frames',
   label: 'Draw storyboard frames',
   kind: 'list',
+  stream: true,   // each frame shows the moment it is drawn
   provider: 'gemini',
   chips: BOARD_CHIPS,
   modelLabel: () => (AI && AI.imageModelLabel ? AI.imageModelLabel('gemini') : 'image model'),
@@ -2031,7 +2080,7 @@ const boardTask = {
     if (!plan.jobs.length) return 'Every shot already has a drawn frame. Add a shot, or delete a drawn frame to draw it again.';
     return BoardM.boardInput(plan, c.style);
   },
-  async run(input, { onStatus, signal, refine, ctx } = {}) {
+  async run(input, { onStatus, signal, refine, ctx, onItems, onBatchTime } = {}) {
     await ready();
     const gate = DriveImg.currentBoardGate();
     if (!gate.ok) fail(gate.text);
@@ -2041,31 +2090,48 @@ const boardTask = {
     const jobs = parsed.labels.map((l) => byLabel.get(l)).filter(Boolean).slice(0, BoardM.MAX_FRAMES);
     if (!jobs.length) fail('No shot lines are left to draw. Each line starts with a shot label such as 4.12A, then a "|".');
     const { style, notes } = BoardM.styleFromRefine(refine && refine.instructions, parsed.style);
-    const items = [];
-    const missed = [];
-    for (let i = 0; i < jobs.length; i++) {
-      const job = jobs[i];
-      if (signal && signal.aborted) throw new AI.AIError('Stopped. Nothing was changed.', 'aborted');
-      if (onStatus) onStatus('Drawing frame ' + (i + 1) + ' of ' + jobs.length + ' — shot ' + job.label + '…');
-      try {
-        const { blob } = await AI.generateImage({ prompt: BoardM.framePrompt(job, style, notes), aspectRatio: '16:9', signal });
-        items.push({
-          id: job.shotId, shotId: job.shotId, label: job.label, blob,
-          image: URL.createObjectURL(blob),
-          alt: 'Shot ' + job.label + ', ' + BoardM.styleOf(style).label.toLowerCase(),
-          text: 'Shot ' + job.label + ' · ' + BoardM.styleOf(style).label,
-          detail: BoardM.jobLine(job).split(' | ').slice(1).join(' · ')
-        });
-      } catch (e) {
-        // A wrong key, a stop, a dead network or a rate limit ends the run;
-        // a single refused or empty picture does not.
-        if (!e || ['auth', 'nokey', 'aborted', 'network', 'rate'].includes(e.kind)) throw e;
-        missed.push(job.label + ' (' + String(e.message || 'no picture').slice(0, 80) + ')');
-      }
+    const toItem = (job, blob) => ({
+      id: job.shotId, shotId: job.shotId, label: job.label, blob,
+      image: URL.createObjectURL(blob),
+      alt: 'Shot ' + job.label + ', ' + BoardM.styleOf(style).label.toLowerCase(),
+      text: 'Shot ' + job.label + ' · ' + BoardM.styleOf(style).label,
+      detail: BoardM.jobLine(job).split(' | ').slice(1).join(' · ')
+    });
+    /* THREE AT A TIME (BoardM.BOARD_CONCURRENCY) through the same
+       runBatches as the text drafts: a frame shows the moment it is
+       drawn, a 429 drops the run to one at a time and retries that frame
+       once, and one refused picture costs only itself. No warm-first:
+       an image request has no shared prefix to cache. */
+    let drawn = 0;
+    if (onStatus) onStatus('Drawing ' + plural(jobs.length, 'frame', 'frames') + ', ' + Math.min(BoardM.BOARD_CONCURRENCY, jobs.length) + ' at a time…');
+    const out = await AI.runBatchesFor(jobs, {
+      size: 1, concurrency: BoardM.BOARD_CONCURRENCY, warmFirst: false, signal,
+      run: async ([job], { signal: sig, onItems: emit }) => {
+        const { blob, model } = await AI.generateImage({ prompt: BoardM.framePrompt(job, style, notes), aspectRatio: BoardM.imageAspect(job.aspect), signal: sig });
+        const item = toItem(job, blob);
+        emit([item]);
+        return { items: [item], model };
+      },
+      onItems: (items) => {
+        drawn += items.length;
+        if (onStatus) onStatus('Drawn ' + drawn + ' of ' + jobs.length + '…');
+        if (onItems) onItems(items);
+      },
+      onBatch: ({ index, ms, total }) => { if (onBatchTime) onBatchTime({ index, ms, total }); }
+    });
+    const items = out.items;
+    // A wrong key or no key ends the run (runBatches rethrows it when
+    // every frame failed that way); a single refused picture does not.
+    const missed = out.failed.map((f) => f.jobs[0].label + ' (' + String((f.error && f.error.message) || 'no picture').slice(0, 80) + ')');
+    if (!items.length) {
+      if (out.stopped) throw new AI.AIError('Stopped. Nothing was changed.', 'aborted');
+      const hard = out.failed.find((f) => f.error && ['auth', 'nokey', 'network'].includes(f.error.kind));
+      if (hard) throw hard.error;
+      fail(missed.length ? 'No picture came back: ' + missed.join('; ') : 'No picture came back.');
     }
-    if (!items.length) fail(missed.length ? 'No picture came back: ' + missed.join('; ') : 'No picture came back.');
     return {
       items,
+      model: out.model,
       note: 'Nothing is saved until you accept. Accepted frames are uploaded to your own Google Drive; '
         + 'this browser, the shot list and your backup files keep only a link to each picture, never the picture.'
         + (missed.length ? ' Not drawn: ' + missed.join('; ') + '.' : '')
@@ -2074,7 +2140,18 @@ const boardTask = {
   async apply(selected, ctx, result, meta) {
     const c = resolve(ctx);
     const m = metaFor('board-frames', meta);
-    const picked = (selected || []).filter((it) => it && it.shotId && it.blob);
+    /* Only a shot that EXISTS gets a frame. A Run all draft names drafted
+       shots 'draft:<n>' until their shot division is accepted; one whose
+       parent was rejected, or accepted without that shot, still names a
+       draft id here, and addFrame would keep a frame for no shot (and the
+       picture would go to Drive for nothing). Such a frame is left out. */
+    const real = new Set(ShotsM.listShots().map((s) => String(s.id)));
+    const named = (selected || []).filter((it) => it && it.shotId && it.blob);
+    const picked = named.filter((it) => real.has(String(it.shotId)));
+    if (named.length > picked.length) {
+      call(c.say, plural(named.length - picked.length, 'frame was', 'frames were') + ' left out: '
+        + (named.length - picked.length === 1 ? 'its shot is' : 'their shots are') + ' not in the shot list (accept the shot division first).');
+    }
     if (!picked.length) return null;
     // Accept is a click, so this is the one place a lapsed token may be re-asked for.
     if (!DriveM.hasToken()) await DriveM.getToken({ interactive: true });
@@ -2156,7 +2233,7 @@ const tensionTask = {
       user: SA.buildTensionNotesPrompt(a, { title, refine: refineText(refine) }),
       schema: SA.tensionNotesSchema(),
       maxTokens: 6000,
-      effort: 'medium',
+      task: 'tension-notes',
       onStatus, signal,
       progress: (sofar) => 'Reading the tension curve — ' + (sofar.match(/"note"/g) || []).length + ' notes so far'
     });
@@ -2626,6 +2703,14 @@ function blockingJob(c, { withBlock = false } = {}) {
     id: s.id, number: s.number, size: s.size, angle: s.angle, movement: s.movement, lens: s.lens,
     setup: ShotsM.setupOf(s, cams), description: s.description
   }));
+  /* Run all stages a scene on shots that are still DRAFTS (ids
+     'draft:<n>', ai-headless-ctx.js): they are offered like real ones, and
+     acceptDraft maps the ids to the real shots before this task's apply. */
+  for (const s of Array.isArray(c.draftShots) ? c.draftShots : []) {
+    if (!s || String(s.sceneId) !== String(scene.id)) continue;
+    shots.push({ id: s.id, number: s.number, size: s.size, angle: s.angle, movement: s.movement, lens: s.lens,
+      setup: s.setup || '', description: s.description });
+  }
   const blocks = ShotsM.blocksOfScene(scene.id);
   const job = {
     sceneId: scene.id, number: scene.number, slug: slugOf(scene), synopsis: scene.synopsis,
@@ -2705,8 +2790,12 @@ const blockingDraftTask = {
     const skipped = plan.skipped.length
       ? plural(plan.skipped.length, 'shot already has', 'shots already have') + ' a diagram you drew, so ' + (plan.skipped.length === 1 ? 'it was' : 'they were') + ' left as ' + (plan.skipped.length === 1 ? 'it is.' : 'they are.')
       : '';
+    const gone = (plan.missing || []).length;
+    const missing = gone
+      ? plural(gone, 'shot diagram was', 'shot diagrams were') + ' left out: ' + (gone === 1 ? 'its shot is' : 'their shots are') + ' not in the shot list (deleted, or the shot division was not accepted).'
+      : '';
     if (!plan.blocks.length) {
-      call(c.say, ['Nothing was added.', skipped || 'The floor plan already has all of it.'].join(' '));
+      call(c.say, ['Nothing was added.', [skipped, missing].filter(Boolean).join(' ') || 'The floor plan already has all of it.'].join(' '));
       return null;
     }
     /* The history stamp: a diagram the run made is its record; the floor
@@ -2727,7 +2816,8 @@ const blockingDraftTask = {
       plan.floorAdded ? 'Floor plan: ' + plural(plan.floorAdded, 'thing', 'things') + ' added.' : '',
       plan.shotsMade ? plural(plan.shotsMade, 'shot diagram', 'shot diagrams') + ' added.' : '',
       snap.cams.length ? plural(snap.cams.length, 'shot is', 'shots are') + ' now linked to its camera.' : '',
-      skipped
+      skipped,
+      missing
     ].filter(Boolean).join(' '));
     const firstShot = plan.blocks.find((b) => b.shotId);
     call(c.after, firstShot ? firstShot.id : plan.blocks[0].id);
@@ -2829,4 +2919,12 @@ export function registerAll(register) {
 }
 
 export const TASK_IDS = ALL_TASKS.map((t) => t.id);
-export default { registerAll, TASK_IDS };
+
+/** Every task by id, once every model the tasks read has loaded — for a
+    caller that is not the Desk (ai-run-all.js runs and applies tasks with
+    a headless ctx). registerAll() registers once, so a second registrar
+    would get nothing from it; this reads the same list. */
+export function loadTasks() {
+  return Promise.all([loadAll(), ...LANES.map((m) => m.load())]).then(() => new Map(ALL_TASKS.map((t) => [t.id, t])));
+}
+export default { registerAll, loadTasks, TASK_IDS };

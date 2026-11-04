@@ -731,6 +731,14 @@ async function deleteProjectConfirm(id) {
   });
   if (!ok) return;
   Store.deleteProject(id);
+  /* The film's unaccepted AI drafts live in IndexedDB (ai-drafts.js),
+     not under a scoped key, so deleteProject() never reached them
+     (QA r4 H-2). Only once no namespace still lists the film — the
+     same rule deleteProject() wipes the blobs by. Lazy and here, not in
+     store.js: ai-drafts.js is not CORE, and this is the one delete. */
+  if (!Store.listAllProjects().some((x) => x.id === id)) {
+    import('../lib/ai-drafts.js').then((m) => m.forgetDrafts(id)).catch(() => 0);
+  }
   logActivity('studio', 'Project deleted: "' + p.title + '"', '#projects');
   renderProjects();
   renderProjectSwitcher();

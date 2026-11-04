@@ -765,9 +765,12 @@ function fillKit(sec, scenes) {
   const prev = [...days].reverse().find((x) => x.day < day && DPR.kitTally(DPR.getKit(x.day)).items);
 
   const tools = h('div.rp-tools.rp-noprint.pdf-menu-host', {}, [dayPicker('rp-kit-day', days, day)]);
-  if (lines.length) {
-    tools.append(button({ label: `Fill from the budget (${lines.length})`, action: 'kit-seed' }));
-  } else {
+  // The count is what a press would ADD to this day; once the day holds
+  // every budget kit line there is nothing to fill, so no button.
+  const toSeed = DPR.kitLinesToSeed(kit, lines).length;
+  if (toSeed) {
+    tools.append(button({ label: `Fill from the budget (${toSeed})`, action: 'kit-seed' }));
+  } else if (!lines.length) {
     tools.append(button({ label: 'No kit lines in the budget yet', href: 'budget.html' }));
   }
   if (prev) tools.append(button({ label: `Copy from Day ${prev.day}`, action: 'kit-copy', attrs: { 'data-from': String(prev.day) } }));

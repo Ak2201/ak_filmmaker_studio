@@ -431,7 +431,11 @@ const clickUndo = async (page) => {
     ok(await waitFor(() => reqs.length >= 1), 'and runs at once (no second press)');
     ok(await waitFor(async () => (await page.locator('aside.ai-desk label.ai-desk-item').count()) >= 1), 'cards appear');
     ok(await waitFor(async () => await page.locator('aside.ai-desk [data-action="ai-desk-stop"]').count() === 0, 40000), 'the run finishes (the 429 batch is retried once, then reported)');
-    ok(reqs.length >= 4 && reqs.filter((e) => e.ids.includes('gs3')).length === 2, 'six scenes are three requests of two; the 429 one went out twice (' + reqs.length + ' in all)');
+    /* callModel sends a 429 straight to the next model (Opus here), so per
+       runBatches attempt the batch goes out once on the chosen model; the
+       batch is retried once, so twice on the chosen model in all. */
+    const onChosen = reqs.filter((e) => e.ids.includes('gs3') && e.body.model === 'claude-sonnet-5').length;
+    ok(reqs.length >= 4 && onChosen === 2, 'six scenes are three requests of two; the 429 one went out twice on the chosen model (' + onChosen + '; ' + reqs.length + ' in all)');
     ok(reqs.every((e) => /marked WRITE THIS/.test(e.user)), 'every request is a pages request');
     const shared = text(reqs[0].body.messages[0].content);
     ok(Array.isArray(reqs[0].body.messages[0].content) && reqs[0].body.messages[0].content[0].cache_control, 'the run\'s shared block is cached');

@@ -36,19 +36,37 @@ import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
 import * as Script from '../lib/script.js';
 import * as Drafts from '../lib/drafts.js';
+import { printedPages } from '../lib/paginate.js';
 import { pageHeader, button, badge, emptyState } from '../ui/kit/index.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
 import { choiceDialog, installLeavePrompt } from '../ui/leave-prompt.js';
 import { mountRevisionTools, renderCompareTool, renderRevisedPagesTool, renderNumberingTool, presetCompare } from '../ui/write-revisions.js';
 import { subscribe, onWriteElsewhere, currentProjectId } from '../lib/store.js';
 import { exportMeta as exportMetaOf } from '../lib/write-model.js';
-import { formatPages, pageCount } from '../lib/script.js';
 /* What this page says about the drafts: src/lib/screenplay-drafts-model.js. */
 import { TITLE_LABELS, titlePlaceholder as titlePlaceholderFor } from '../lib/write-format.js';
 import {
   draftStateText, titlePageStateText, draftMetaText, nextDraftName, restoreDialogSpec,
-  draftPdfMeta, draftPdfTitles
+  draftPdfMeta, draftPdfTitles, hasWriting
 } from '../lib/screenplay-drafts-model.js';
+/* Draft rows quote the printed page count (src/lib/drafts.js useDraftPager). */
+Drafts.useDraftPager(printedPages);
+
+/* The no-AI twin (docs/RULES-BREAKDOWN.md lane B): a plain button that opens the
+   Desk on a `local: true` task. No key, no Pro, never aiUnlocked(): the page is
+   already walled by its own module. The ctx is read at the click. */
+const rulesCtx = new WeakMap();
+function rulesButton(label, task, ctx, icon, title) {
+  const b = button({ label, icon, size: 'sm', action: 'rules-desk', title });
+  b.dataset.rulesTask = task;
+  rulesCtx.set(b, ctx);
+  return b;
+}
+delegate(document, 'click', '[data-action="rules-desk"]', (e, el) => {
+  import('../ui/ai-desk.js')
+    .then((D) => D.openDesk(el.dataset.rulesTask, rulesCtx.get(el) || {}))
+    .catch((err) => console.warn('[rules] the Desk did not load', err));
+});
 
 const app = document.getElementById('app');
 const typesetter = () => import('../lib/screenplay-export.js');
@@ -168,6 +186,7 @@ delegate(document, 'input', '[data-tp-field]', (e, input) => {
   tpTimer = setTimeout(() => { fresh(); refreshState(); }, 400);
 });
 
+
 /* The AI Desk's 'draft-changes' task: a read of what changed between the
    two drafts the Compare selects name AT THE CLICK. It changes nothing.
    The page hands the two element lists in; src/lib never reads a select. */
@@ -180,13 +199,15 @@ function changesPill() {
     const olderId = val('wr-cmp-from'), newerId = val('wr-cmp-to');
     return { olderId, newerId, older: lists(olderId), newer: lists(newerId), olderLabel: label('wr-cmp-from'), newerLabel: label('wr-cmp-to') };
   };
-  return h('p.dr-ai', {}, [aiPill({
-    label: 'Summarise changes', tasks: ['draft-changes'],
-    ctx: () => {
-      const c = picked();
-      return { olderId: c.olderId, newerId: c.newerId, compare: () => c };
-    }
-  })]);
+  const ctx = () => {
+    const c = picked();
+    return { olderId: c.olderId, newerId: c.newerId, compare: () => c };
+  };
+  return h('p.dr-ai', {}, [
+    rulesButton('Summarise changes', 'draft-changes-rules', () => ({ ...ctx(), say: (m) => StudioUI.toast(m) }), 'rule',
+      'Counts and names from the line-by-line comparison, on this device. No AI.'),
+    aiPill({ label: 'Enhance with AI', tasks: ['draft-changes'], ctx })
+  ]);
 }
 
 /* ---- the list ---------------------------------------------------- */
@@ -288,6 +309,7 @@ function refreshStateClass(main) {
 delegate(document, 'click', '[data-dr="new"]', async (e, btn) => {
   const opener = focusKey(btn);
   fresh();
+  if (!hasWriting(doc)) { say('Nothing to save yet — write a line first.'); return; }
   const name = nextDraftName(doc);
   const res = await choiceDialog({
     title: 'Save as ' + name,
@@ -297,6 +319,7 @@ delegate(document, 'click', '[data-dr="new"]', async (e, btn) => {
   });
   if (res.id !== 'go') return;
   fresh();   // the dialog took time: the script may have moved on
+  if (!hasWriting(doc)) { say('Nothing to save yet — write a line first.'); return; }
   const made = Drafts.saveNewDraft(doc, { note: res.value });
   save();
   say('Saved as ' + made.label + '.', 'success');
@@ -308,6 +331,10 @@ delegate(document, 'click', '[data-dr="update"]', async (e, btn) => {
   fresh();
   const last = Drafts.latestDraft(doc);
   if (!last) return;
+  /* An empty working copy would replace the draft's lines with none, and
+     that draft may hold the only good copy (QA r6 G-1): the same refusal
+     as "Save as new draft", before the dialog and again after it. */
+  if (!hasWriting(doc)) { say('Nothing to save yet — write a line first.'); return; }
   const res = await choiceDialog({
     title: 'Update ' + last.label + '?',
     body: 'Its copy is replaced by the script as it is now. What it held before is not kept.',
@@ -315,6 +342,7 @@ delegate(document, 'click', '[data-dr="update"]', async (e, btn) => {
   });
   if (res.id !== 'go') return;
   fresh();
+  if (!hasWriting(doc)) { say('Nothing to save yet — write a line first.'); return; }
   /* updateDraft() refuses the locked baseline (the change report compares
      the script with it): save a new draft instead and say why. */
   if (Drafts.updateDraft(doc, last.id)) {
@@ -335,10 +363,11 @@ delegate(document, 'click', '[data-dr="restore"]', async (e, btn) => {
   const d = Drafts.listDrafts(doc).find((x) => x.id === id);
   if (!d) return;
   const dirty = Drafts.changedSinceDraft(doc);
-  const res = await choiceDialog(restoreDialogSpec(d, dirty, nextDraftName(doc)));
+  const res = await choiceDialog(restoreDialogSpec(d, dirty, nextDraftName(doc), hasWriting(doc)));
   if (res.id === 'cancel' || res.id === null) return;
-  fresh();
-  if (res.id === 'save') Drafts.saveNewDraft(doc);
+  /* Draft N is made below, after the LAST fresh(): fresh() re-reads the
+     stored script, so a draft added to `doc` before it and never saved
+     was thrown away and the unsaved work went with it (QA r5). */
   /* The Breakdown follows the restore, the way it follows a heading
      deleted in the Writer (QA: a scene the restored script no longer
      has stayed in the Breakdown). The baseline is the headings as they
@@ -348,6 +377,7 @@ delegate(document, 'click', '[data-dr="restore"]', async (e, btn) => {
   let Sync = null;   // loaded at the press: no first-paint cost here
   try { Sync = await import('../lib/scene-sync.js'); } catch (e) { console.warn('[drafts] scene sync', e); }
   fresh();
+  if (res.id === 'save' && hasWriting(doc)) Drafts.saveNewDraft(doc);   // never an empty draft (QA r6 G-2)
   const prev = Sync ? Sync.headingMap(doc.elements) : null;
   Drafts.restoreDraft(doc, id);
   save();
@@ -422,7 +452,7 @@ async function exportRevisedPDF(extra = {}) {
     setup: 'screenplay-wide',
     classes: ['pdf-sn', 'pdf-revmarks'],
     title: Script.projectTitle() + ' — Screenplay',
-    subtitle: [meta.revision, formatPages(pageCount(doc.elements)) + ' pages', extra.note].filter(Boolean).join(' · '),
+    subtitle: [meta.revision, ((n) => n + (n === 1 ? ' page' : ' pages'))(Typeset.paginateDoc(doc).length), extra.note].filter(Boolean).join(' · '),
     before: () => {
       node = Typeset.buildDocument(doc, { ...meta, sceneNumbers: Script.isNumberingLocked(doc.numbering), marks: extra.marks });
       main.append(node);

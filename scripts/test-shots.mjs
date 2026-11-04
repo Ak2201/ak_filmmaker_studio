@@ -409,5 +409,30 @@ eq(R.basicJobs(guessed, gEls, { only: new Set(['c']) }).map((j) => j.sceneId), [
   ok(n.some((x) => x.endsWith('road".')), 'an unfinished line still gets its stop — got ' + JSON.stringify(n));
 }
 
+/* ---- QA r4 E-1: dialogue shots keep ONE full stop too ---------- */
+{
+  const one = R.shotsForScene(job('d1', [el('character', 'MAYA'), el('dialogue', 'I will miss the last bus.')])).map((s) => s.description);
+  ok(one.includes('MCU on MAYA — from "I will miss the last bus."'), 'MCU ends on the quote — got ' + JSON.stringify(one));
+  const two = R.shotsForScene(job('d2', [el('character', 'MAYA'), el('dialogue', 'Go away!'), el('character', 'RAVI'), el('dialogue', 'No?')])).map((s) => s.description);
+  ok(two.some((x) => x.startsWith('OTS on MAYA') && x.endsWith('"Go away!"')), 'OTS ends on the quote — got ' + JSON.stringify(two));
+  const all = [...one, ...two];
+  ok(all.every((x) => !/[.!?…]["”]\.$/.test(x)), 'no dialogue description ends .". — got ' + JSON.stringify(all));
+  const bare = R.shotsForScene(job('d3', [el('character', 'MAYA'), el('dialogue', 'I will go')])).map((s) => s.description);
+  ok(bare.includes('MCU on MAYA — from "I will go".'), 'an unfinished line still gets its stop — got ' + JSON.stringify(bare));
+}
+
+/* ---- QA r6 E-3: a dash-cut line, inner quotes, non-Latin names -- */
+{
+  const d = R.shotsForScene(job('r6a', [el('character', 'RAVI'), el('dialogue', 'Wait —'), el('character', 'MEENA'), el('dialogue', 'No, listen.')])).map((s) => s.description);
+  ok(d.some((x) => x.endsWith('from "Wait —"')), 'a line cut at a dash keeps the dash, no space and no stop — got ' + JSON.stringify(d));
+  const q = R.shotsForScene(job('r6b', [el('character', 'MAYA'), el('dialogue', '"Quoted" text'), el('action', 'Maya looks at the "OPEN" sign.')])).map((s) => s.description);
+  ok(q.some((x) => x.includes('from "\'Quoted\' text"')), 'quotes inside a line become single quotes — got ' + JSON.stringify(q));
+  ok(q.every((x) => !/""|"OPEN"/.test(x)), 'no nested double quotes — got ' + JSON.stringify(q));
+  const t = R.shotsForScene(job('r6c', [el('character', 'ரவி'), el('dialogue', 'வணக்கம்.'), el('character', 'மீனா'), el('dialogue', 'உட்காருங்க.')])).map((s) => s.description);
+  ok(t.some((x) => x.includes('over the shoulder of மீனா')) && t.every((x) => !/[^\x00-\x7F]'s shoulder/.test(x)), 'a Tamil name takes no Latin \'s — got ' + JSON.stringify(t));
+  const cut = R.shotsForScene(job('r6d', [el('character', 'MAYA'), el('dialogue', 'one two three four five six — seven eight')])).map((s) => s.description);
+  ok(cut.some((x) => x.endsWith('six…"')), 'a cut line loses its trailing dash and space — got ' + JSON.stringify(cut));
+}
+
 console.log(`\ntest:shots — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

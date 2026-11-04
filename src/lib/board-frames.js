@@ -27,6 +27,12 @@
 
 /** At most this many pictures per run: each is a separate paid call. */
 export const MAX_FRAMES = 8;
+/** Pictures drawn at once (3 Nov 2026: "Gemini takes longer than
+    expected"). One at a time made eight frames eight full waits; three
+    side by side is a third of that, and a 429 drops the run to one at a
+    time and retries that frame once (ai-batches.js), so the rate limit
+    costs a pause, not the run. */
+export const BOARD_CONCURRENCY = 3;
 
 export const STYLES = [
   { id: 'pencil', label: 'Pencil sketch', prompt: 'a rough black-and-white pencil storyboard sketch, loose lines, light hatching, no colour' },
@@ -104,9 +110,13 @@ export function boardJobs({ shots = [], scenes = [], frames = [], onlyShotIds = 
   const drawn = new Set(frames.filter((f) => f && isDrawnRef(f.ref)).map((f) => f.shotId));
   const only = onlyShotIds ? new Set([].concat(onlyShotIds).map(String)) : null;
   const want = shots.filter((s) => s && (!only || only.has(String(s.id))) && !drawn.has(s.id));
+  /* The shape comes from the shot's own frame when it has one (an
+     undrawn frame the writer set to scope, say), else the default. */
+  const aspectFor = new Map();
+  for (const f of frames) if (f && f.shotId && f.aspect && !aspectFor.has(f.shotId)) aspectFor.set(f.shotId, f.aspect);
   const jobs = want.slice(0, max).map((shot) => {
     const scene = sceneById.get(shot.sceneId) || null;
-    return { shotId: shot.id, label: shotLabel(shot, scene), shot, scene };
+    return { shotId: shot.id, label: shotLabel(shot, scene), shot, scene, aspect: aspectOf(aspectFor.get(shot.id) || '') };
   });
   return { jobs, more: Math.max(0, want.length - jobs.length) };
 }
@@ -164,26 +174,37 @@ export function styleFromRefine(instructions, current = DEFAULT_STYLE) {
   return { style, notes };
 }
 
-/** One shot as an image prompt. No names of real people; the cast are
-    the characters the scene lists. */
+/** One shot as an image prompt — COMPACT (3 Nov 2026): the camera
+    (size, angle, lens, movement), the set, what we see, who is in it and
+    the light, and nothing else. The scene's synopsis rides only when the
+    shot has no description of its own (it is the scene, not the frame).
+    No names of real people; the cast are the characters the scene lists.
+    The shape is the frame's (job.aspect). */
 export function framePrompt(job, style = DEFAULT_STYLE, notes = []) {
   const s = job.shot || {};
   const sc = job.scene || {};
   const castList = sc.elements && Array.isArray(sc.elements.cast) ? sc.elements.cast : [];
-  const cast = castList.map((c) => oneLine(c, 40)).filter(Boolean).slice(0, 8);
+  const cast = castList.map((c) => oneLine(c, 40)).filter(Boolean).slice(0, 6);
+  const cam = [s.size && ('size ' + s.size), s.angle && ('angle ' + s.angle), s.lens && ('lens ' + s.lens), s.movement && ('movement ' + s.movement)].filter(Boolean);
+  const action = oneLine(s.description, 300) || oneLine(sc.synopsis, 200);
   const parts = [
-    'Draw one film storyboard frame as ' + styleOf(style).prompt + '.',
-    'Shot: ' + [s.size && ('size ' + s.size), s.angle && ('angle ' + s.angle), s.lens && ('lens ' + s.lens), s.movement && ('movement ' + s.movement)].filter(Boolean).join(', ') + '.',
-    'Setting: ' + slug(job.scene) + '.',
-    s.description ? 'What we see: ' + oneLine(s.description, 600) + '.' : '',
-    sc.synopsis ? 'The scene: ' + oneLine(sc.synopsis, 400) + '.' : '',
-    cast.length ? 'Characters in the scene: ' + cast.join(', ') + '.' : '',
-    s.rig ? 'Lighting and rig: ' + oneLine(s.rig, 200) + '.' : '',
-    'Frame it as the camera sees it, 16:9. No text, captions, labels, panel borders or watermarks in the image.'
+    'One film storyboard frame, ' + styleOf(style).prompt + '.',
+    cam.length ? 'Shot: ' + cam.join(', ') + '.' : '',
+    'Set: ' + slug(job.scene) + '.',
+    action ? 'Action: ' + action + '.' : '',
+    cast.length ? 'Characters: ' + cast.join(', ') + '.' : '',
+    s.rig ? 'Light: ' + oneLine(s.rig, 120) + '.' : '',
+    'As the camera sees it, ' + aspectOf(job.aspect) + '. No text, captions, labels, panel borders or watermarks.'
   ];
-  for (const n of [].concat(notes || [])) if (n) parts.push('The writer also asks: ' + oneLine(n, 300) + '.');
+  for (const n of [].concat(notes || [])) if (n) parts.push('The writer also asks: ' + oneLine(n, 200) + '.');
   return parts.filter(Boolean).join(' ');
 }
+
+/* The image model takes a short list of ratios; a frame's shape maps to
+   the nearest one it accepts (scope to 21:9, flat to 16:9). The FRAME
+   keeps its own aspect — this is only what is asked for. */
+const IMAGE_RATIO = { '16:9': '16:9', '2.39:1': '21:9', '1.85:1': '16:9', '4:3': '4:3', '1:1': '1:1', '9:16': '9:16' };
+export const imageAspect = (id) => IMAGE_RATIO[aspectOf(id)] || '16:9';
 
 /** The Drive file name: a human scrolling their Drive can tell what it is. */
 export function frameFileName(job, mime = 'image/png', at = new Date()) {
@@ -292,7 +313,7 @@ export function bulkSummary({ made = [], refused = [], failed = [] } = {}) {
 }
 
 export default {
-  MAX_FRAMES, STYLES, DEFAULT_STYLE, styleOf, matchStyle, boardGate, shotLabel, isDrawnRef,
+  MAX_FRAMES, BOARD_CONCURRENCY, imageAspect, STYLES, DEFAULT_STYLE, styleOf, matchStyle, boardGate, shotLabel, isDrawnRef,
   boardJobs, jobLine, boardInput, parseBoardInput, styleFromRefine, framePrompt, frameFileName,
   UPLOAD_EDGE, UPLOAD_QUALITY, UPLOAD_MAX_BYTES, UPLOAD_TYPES, fitWithin, uploadProblem,
   ASPECTS, DEFAULT_ASPECT, aspectOf, runBulkUpload, bulkSummary

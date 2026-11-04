@@ -76,7 +76,7 @@ const draftChangesTask = {
     const facts = changesJob(ctx);
     const { parsed, model, truncated } = await (await ai()).callModelForTask({
       system: M.CHANGES_SYSTEM, user: M.changesUser(facts, refineText(refine)), schema: M.CHANGES_SCHEMA,
-      maxTokens: 3000, effort: 'medium', onStatus, signal
+      maxTokens: 3000, task: 'draft-changes', onStatus, signal
     });
     const res = M.readChanges(parsed, facts.headings);
     if (!res.summary && !res.scenes.length && !res.watch.length) fail('The reply held nothing usable, so nothing is shown.');
@@ -123,7 +123,7 @@ const dayWrapTask = {
     const facts = wrapJob(ctx);
     const { parsed, model } = await (await ai()).callModelForTask({
       system: M.WRAP_SYSTEM, user: M.wrapUser(facts, refineText(refine)), schema: M.WRAP_SCHEMA,
-      maxTokens: 2000, effort: 'medium', onStatus, signal
+      maxTokens: 2000, task: 'day-wrap-summary', onStatus, signal
     });
     const res = M.readWrap(parsed, facts.numbers);
     if (!res.summary && !res.owed.length && !res.tomorrow.length) fail('The reply held nothing usable, so nothing is shown.');
@@ -169,7 +169,7 @@ const editNotesTask = {
     const { facts, rows } = editJob(ctx);
     const { parsed, model, truncated } = await (await ai()).callModelForTask({
       system: M.EDIT_SYSTEM, user: M.editUser(facts, refineText(refine)), schema: M.EDIT_SCHEMA,
-      maxTokens: 6000, effort: 'medium', onStatus, signal
+      maxTokens: 6000, task: 'edit-notes', onStatus, signal
     });
     const res = M.readEditNotes(parsed, { ids: facts.ids, empty: facts.empty, rows });
     if (!res.items.length) fail('The model came back with no usable notes. Nothing was changed.');
@@ -240,7 +240,7 @@ const certReadTask = {
     const facts = certJob();
     const { parsed, model } = await (await ai()).callModelForTask({
       system: M.CERT_SYSTEM, user: M.certUser(facts, refineText(refine)), schema: M.CERT_SCHEMA,
-      maxTokens: 3000, effort: 'medium', onStatus, signal
+      maxTokens: 3000, task: 'cert-read', onStatus, signal
     });
     const res = M.readCert(parsed, Cbfc.ruleById);
     if (!res.read && !res.rules.length && !res.questions.length) fail('The reply held nothing usable, so nothing is shown.');

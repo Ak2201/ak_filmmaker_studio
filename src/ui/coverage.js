@@ -52,6 +52,7 @@ import PDF from '../lib/pdf.js';
 import { apiHost } from '../lib/ai-providers.js';
 import { ask } from './dialog.js';
 import { aiPill } from './ai-pill.js';
+import { button } from './kit/index.js';
 /* Where a coverage report is kept, and how it reads as prose, is logic:
    src/lib/coverage-store.js. This file draws it. */
 import { coverageStore, stamp, VERDICT_WORD, SECTION_LABEL, quotesRemovedSentence, fmtN, plural } from '../lib/coverage-store.js';
@@ -360,9 +361,16 @@ function renderVoicePanel() {
      an Undo. Until a character with two lines is picked there is
      nothing to send, so the button stays a disabled one. */
   const acts = h('div.ai-acts');
+  /* The rules twin (docs/RULES-BREAKDOWN.md C3): what can be MEASURED about
+     the voice, on this device, no key and no plan. The local Desk task
+     `voice-check-rules`; with too few lines it says so. */
+  acts.append(button({
+    label: 'Measure voice', size: 'sm', action: 'cv-voice-rules', icon: 'rule', disabled: !voice.character,
+    title: 'Line length, questions, signature words and shared vocabulary, measured on this device. No AI.'
+  }));
   if (can) {
     const pill = aiPill({
-      label: 'Check ' + voice.character + '’s voice', tasks: ['voice-check'],
+      label: 'Enhance ' + voice.character + '’s voice check with AI', tasks: ['voice-check'],
       ctx: {
         identity: 'voice:' + voice.character + ':' + AIm.scriptSignature(els),
         character: voice.character, elements: () => liveElements(), getDoc: () => getDoc(),
@@ -458,6 +466,15 @@ function wire() {
   delegate(document, 'click', '[data-action="cv-restart"]', () => { discardPartial(); });
   delegate(document, 'change', 'select[data-action="cv-view"]', (e, sel) => { viewId = sel.value; paint(); });
   delegate(document, 'click', '[data-action="cv-print"]', (e, btn) => printReport(btn.dataset.doc));
+  delegate(document, 'click', '[data-action="cv-voice-rules"]', () => {
+    if (!voice.character) return;
+    import('./ai-desk.js')
+      .then((D) => D.openDesk('voice-check-rules', {
+        identity: 'voice-rules:' + voice.character,
+        character: voice.character, elements: () => liveElements(), getDoc: () => getDoc()
+      }))
+      .catch((e) => console.warn('[coverage] the Desk did not load', e));
+  });
   delegate(document, 'change', 'select[data-action="cv-voice-pick"]', (e, sel) => {
     voice.character = sel.value;
     paint();

@@ -159,5 +159,11 @@ eq(inf2.onReturn(2, null), { type: 'dialogue', at: 3 }, 'Return on "Ravi says go
 eq(spoke && spoke.parsed, { name: 'RAVI', paren: '', dialogue: 'Go now.' }, 'speak() gets the parse');
 eq(steps[steps.length - 1].meta, { auto: 'e' }, 'the speech is one auto step');
 
+// QA r6: a closing full stop is a sentence, not a cue.
+eq(cr('SILENCE.', 'action'), null, 'r6: SILENCE. stays action');
+eq(cr('A.', 'action'), null, 'r6: A. stays action');
+eq(cr('DARKNESS.', 'action'), null, 'r6: DARKNESS. stays action');
+eq(cr('J.D.', 'action')?.type, 'character', 'r6: an initialism is still a name');
+eq(cr('SILENCE.', 'action', { names: ['SILENCE.'] })?.type, 'character', 'r6: a known name still wins');
 console.log(`test-inference: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

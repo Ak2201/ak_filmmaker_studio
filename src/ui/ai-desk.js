@@ -17,6 +17,18 @@
      openDesk(taskId, ctx)    open the Desk on that task with that ctx
      closeDesk()              close it; the session (chat + versions)
                               stays in memory until reload
+     openWithDraft(taskId, ctx, result, opts)
+                              open the Desk on a STORED answer (Run all's
+                              draft space, src/ui/draft-space.js): `result`
+                              is shown as v1 without a request, so the
+                              tick list, refine, Accept and Undo all work
+                              as after a run. opts { identity, run, model,
+                              accept(selected, result, info) → undo,
+                              onAccepted(undo) }: `accept` replaces the
+                              task's own apply on Accept (acceptDraft
+                              accepts the draft's parents first, then the
+                              task's apply), so a draft reviewed here and
+                              one accepted from its card take one path.
 
    TASK SHAPE
      {
@@ -151,7 +163,8 @@ import { holdFocus, releaseFocus } from './modal-focus.js';
 import StudioUI from './chrome.js';
 import { disclose, aiMark } from './ai-panel.js';
 import { LOCAL_TASKS, ready as localReady } from '../lib/local-tasks.js';
-import { listenSay, acceptNote, undoNote } from '../lib/ai-desk-outcome.js';
+import { listenSay, acceptNote, undoNote, projectMoved } from '../lib/ai-desk-outcome.js';
+import { currentProjectId } from '../lib/store.js';
 import { newId } from '../lib/record-id.js';
 import { readAiCareful, saveAiCareful } from '../lib/chrome-prefs.js';
 import '../styles/ai.css';
@@ -447,11 +460,25 @@ function answerSection(v) {
   const note = v.live
     ? 'Cards appear as each scene arrives. Nothing is written until you accept.'
     : (v.result.note ? String(v.result.note) : '');
+  const took = timingLine(v);
   return [
     h('div.ai-desk-answerhead', {}, [h('h3.ai-desk-label', { text: 'The answer' }), vers]),
     note ? h('p.ai-desk-note', { text: note }) : null,
+    took ? h('p.ai-desk-timing', { text: took }) : null,
     ...answer
   ];
+}
+
+/* "Took 6.2 s · 3 batches: 2.1 s, 1.9 s, 2.2 s". Shown, never stored. */
+const secs = (ms) => (ms / 1000).toFixed(1) + '\u00a0s';
+function timingLine(v) {
+  const per = (v.batchMs || []).filter((x) => x >= 0);
+  const batches = per.length > 1 || (v.batchMs || []).length > 1
+    ? per.length + (per.length === 1 ? ' batch' : ' batches') + ': ' + per.map(secs).join(', ')
+    : '';
+  if (v.live) return batches ? 'So far · ' + batches : '';
+  if (!(v.ms >= 0)) return '';
+  return 'Took ' + secs(v.ms) + (batches ? ' · ' + batches : '');
 }
 
 /** A live card arrived: patch the answer in place. */
@@ -642,12 +669,21 @@ async function run(refineWith) {
   own.status = refineWith ? 'Refining\u2026' : 'Sending\u2026';
   const runId = newId('air');
   const careful = readAiCareful();          // read once: fixed for the whole run
+  /* The film this draft is FOR: the request reads the open project's
+     models now, so Accept must write into this same one (projectMoved). */
+  const project = currentProjectId();
+  /* TIMING, shown and never stored: how long the run took, and each batch
+     of a batched task. In memory on the version, gone with the page. */
+  const t0 = Date.now();
+  const batchMs = [];
   const previous = refineWith ? own.versions[own.current].result : undefined;
   let live = null;
   if (myTask.stream && !isLocal(myTask)) {
     live = makeVersion(myTask, { items: [] });
     live.live = true;
     live.run = runId;
+    live.project = project;
+    live.batchMs = batchMs;
     own.versions.push(live);
     own.current = own.versions.length - 1;
   }
@@ -657,7 +693,12 @@ async function run(refineWith) {
     let result = await myTask.run(own.input, {
       onStatus: (m) => { if (own.run === ctl) setStatus(m, own); },
       signal: ctl.signal, ctx: myCtx, refine, careful,
-      onItems: live ? (items) => { if (own.run === ctl) addLive(own, live, items); } : undefined
+      onItems: live ? (items) => { if (own.run === ctl) addLive(own, live, items); } : undefined,
+      onBatchTime: ({ index, ms } = {}) => {
+        if (own.run !== ctl || !Number.isInteger(index) || !(ms >= 0)) return;
+        batchMs[index] = ms;
+        if (live && open && sess === own && own.versions[own.current] === live) refreshAnswer();
+      }
     });
     const stopped = ctl.signal.aborted;
     if (stopped && !(live && result && Array.isArray(result.items) && result.items.length)) {
@@ -674,9 +715,12 @@ async function run(refineWith) {
     } else {
       v = makeVersion(myTask, result);
       v.run = runId;
+      v.project = project;
       own.versions.push(v);
       own.current = own.versions.length - 1;
     }
+    v.ms = Date.now() - t0;
+    v.batchMs = batchMs;
     own.status = stopped ? 'Stopped. Nothing is written until you accept.' : 'v' + own.versions.length + ' is ready.';
   } catch (e) {
     const stopped = (e && (e.kind === 'aborted' || e.code === 'aborted' || e.name === 'AbortError')) || ctl.signal.aborted;
@@ -689,6 +733,7 @@ async function run(refineWith) {
           : 'The run ended early (' + msg + ') — the scenes below arrived. Nothing is written until you accept.'
       };
       live.live = false;
+      live.ms = Date.now() - t0;
       own.status = stopped ? 'Stopped. Nothing is written until you accept.' : '';
       own.error = stopped ? '' : msg;
     } else {
@@ -726,6 +771,13 @@ async function accept(all) {
   if (!task || !sess || sess.run) return;
   const v = sess.versions[sess.current];
   if (!v) return;
+  /* Another tab (or anything else) changed the open film after this draft
+     was asked for: every write below would land in THAT film's keys. */
+  if (projectMoved(v.project, currentProjectId())) {
+    sess.error = 'This draft was made while a different film was open, so it was not written into this one. Nothing was changed. Open that film again to accept it, or draft again here.';
+    render();
+    return;
+  }
   let selected;
   if (task.kind === 'text') {
     const ids = v.hunks.map((hk) => hk.id).filter((id) => all || !v.unticked.has(id));
@@ -752,8 +804,13 @@ async function accept(all) {
       run: v.run || newId('air'),
       at: new Date().toISOString()
     };
-    undo = await task.apply(selected, heard.ctx, v.result, meta);
+    /* A stored draft (openWithDraft) accepts through its owner's path,
+       which ends in this same task's apply with this same meta. */
+    undo = typeof sess.acceptVia === 'function'
+      ? await sess.acceptVia(selected, v.result, { all, version: sess.current, meta })
+      : await task.apply(selected, heard.ctx, v.result, meta);
     v.accepted = true;
+    if (typeof sess.onAccepted === 'function') { try { sess.onAccepted(undo); } catch (e) { console.warn('[ai-desk] onAccepted threw', e); } }
   } catch (e) {
     sess.error = (e && e.message) || 'The change could not be written. Nothing was changed.';
     render();
@@ -972,6 +1029,63 @@ export async function openDesk(taskId, ctxArg = {}) {
     && sess.versions.every((x) => x.accepted)) run();
 }
 
+/**
+ * Open the Desk on an answer that already exists (a Run all draft): no
+ * request is sent to show it. The session is keyed by `opts.identity`
+ * (the draft space passes run, key and the draft's end time, so a draft
+ * that ran again opens fresh). A refine is an ordinary run on `ctx`.
+ * Opening it stops a non-background run left in the Desk, as openDesk
+ * does; Run all's own engine is not a Desk session and is never touched.
+ */
+export async function openWithDraft(taskId, ctxArg = {}, result = {}, opts = {}) {
+  if (!PlanGate.aiUnlocked()) return false;          // fails closed, as the pill
+  const from = document.activeElement;
+  ensureDesk();
+  missingText = '';
+  await loadTasks();
+  const t = getTask(taskId);
+  if (!t) {
+    mode = 'missing';
+    task = null;
+    sess = null;
+    missingText = 'This build has no “' + String(taskId) + '” tool, so the draft cannot be reviewed here.';
+  } else {
+    mode = 'task';
+    task = t;
+    ctx = ctxArg || {};
+    const key = t.id + '|draft:' + String(opts.identity ?? '');
+    let s = sessions.get(key);
+    if (!s) {
+      let input = '';
+      try { input = String(t.input ? (t.input(ctx) ?? '') : ''); } catch (e) { input = ''; }
+      s = { key, input, edited: false, versions: [], current: -1, chat: [], draft: '',
+        run: null, bg: false, taskId: t.id, status: '', error: '', promptOpen: false };
+      const v = makeVersion(t, { ...(result || {}), model: (result && result.model) || opts.model || '' });
+      v.run = opts.run || newId('air');
+      v.project = currentProjectId();
+      s.versions.push(v);
+      s.current = 0;
+      sessions.set(key, s);
+    }
+    s.acceptVia = typeof opts.accept === 'function' ? opts.accept : null;
+    s.onAccepted = typeof opts.onAccepted === 'function' ? opts.onAccepted : null;
+    sess = s;
+  }
+  for (const o of sessions.values()) {
+    if (o.run && o !== sess && (!o.bg || (task && o.taskId === task.id))) o.run.abort();
+  }
+  if (sess && !sess.run) { sess.status = 'A stored draft: nothing is written until you accept.'; sess.error = ''; }
+  if (!open) opener = from && from !== document.body ? from : null;
+  open = true;
+  desk.hidden = false;
+  document.documentElement.classList.add('ai-desk-open');
+  render();
+  publishWidth();
+  const first = desk.querySelector(mode === 'task' ? '.ai-desk-ver[aria-pressed="true"]' : '[data-action="ai-desk-close"]');
+  (first || desk).focus();
+  return mode === 'task';
+}
+
 export function closeDesk() {
   if (!desk || !open) return;
   /* Closing stops a request — except a background one, which fills its
@@ -991,7 +1105,7 @@ export function closeDesk() {
   window.dispatchEvent(new Event('ai-desk:closed'));
 }
 
-export default { registerTask, getTask, listTasks, openDesk, closeDesk };
+export default { registerTask, getTask, listTasks, openDesk, openWithDraft, closeDesk };
 
 /* ==== HISTORY TAB (Lane B) ====================================
    docs/AI-FAST-HARNESS.md B6(a): the project's AI-made items grouped by

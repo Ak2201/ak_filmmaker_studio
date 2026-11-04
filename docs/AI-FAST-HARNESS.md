@@ -559,3 +559,115 @@ it.
 ## D. CLAUDE.md status row to add at the merge (#87)
 
 | 87 | AI fast harness + AI history (2 Nov 2026) | Built; **never run against a real provider** | `docs/AI-FAST-HARNESS.md` is the contract. Drafting runs in small batches, 3 at a time (`ai-batches.js` `runBatches`, warm-first so the cache is written once); cards show as each scene parses (`ai-stream-json.js`); effort LOW unless the Desk's Careful switch (`aiCareful` in `fms_studio_prefs_v1`, written on a click only); Anthropic `cache_control` on the system prompt and the run's `shared` block — system, schema, effort and `shared` must be byte-identical across a run's batches (so `pagesSchema` takes the RUN's ids); Gemini has no explicit cache, `shared` goes first. One press runs in the background (`background` tasks survive closing the Desk, not the page); the input is an "Edit prompt" link; a `go: true` button must carry `disclose()`; still nothing before Accept, one Undo per Accept. `genRun`'s unreviewed bulk write is gone. History is DERIVED from stamps on records: `ai` (the creating run) and `aiFill[]` (fills, cap 8), each `{task, model, run, at, h}` — fields, no key; "edited" = the hash differs, never written; legacy `shot.ai === true` still reads truthy. Every apply stamps via `ai-stamp.js` with the Desk's 4th apply argument `meta`; a read path that rebuilds a record must carry both fields (`test:ai-history` round-trips every model and fails on an unstamped task). Shown in the Desk History tab, `dashboard.html#ai` (a disclosure, not a page) and `aiBadge()`. History Undo removes or blanks only unchanged records and says how many it kept; append/replace runs are listed, never undone from History. `test:ai-fast`, `test:ai-history`, `prove:ai-fast`, `prove:ai-history`. |
+
+---
+
+## E. Faster and more precise (L0, 3 Nov 2026)
+
+Owner: "Gemini takes longer than expected; make requests and responses
+precise" — the storyboard and everything else. `npm run test:ai-size`
+(`scripts/test-ai-size.mjs`, Node, faked provider, in `test:all`) holds
+every rule below.
+
+### E1. Effort: ONE table — `src/lib/ai-effort.js` `TASK_EFFORT`
+
+| Kind | Tasks | Effort | Careful |
+| --- | --- | --- | --- |
+| Extraction / classification (the answer is on the page) | `breakdown-tags`, `shot-draft`, `gen-batch`, `shoot-order`, `recce-notes`, `callsheet-notes`, `budget-estimate`, `scene-notes`, `genre-comps`, `blocking-draft`, `character-arcs`, `script-cleanup`, `audience-ask` | `low` | `medium` |
+| Judgement (the thinking is the product) | `coverage`, `audience-test`, `audience-quick`, `beat-critique`, `tension-notes`, `dialogue-pass`, `voice-check`, `logline`, `story-steps`, `story-map`, `scene-story`, `blocking-enhance`, `draft-changes`, `day-wrap-summary`, `edit-notes`, `cert-read`, `gen-scenes`, `synopsis-script` | `medium` | `high` |
+| Not in the table | — | `medium` (never `low` by accident) | `high` |
+
+- `taskEffort(id, careful)` — Careful (`aiCareful` in `fms_studio_prefs_v1`)
+  raises ONE step. The two big drafts keep `draftEffort()` (low, or high when
+  careful), as promised on 2 Nov. The coverage synthesis stays `high`, and
+  `testKey` `low`: the only two effort words typed in `ai.js`.
+- `callModel({ task })` takes its effort from the table when the caller does
+  not fix one; a batched run fixes it ONCE (`AI.taskEffort(id, careful)`) and
+  passes it to every batch, because the effort is part of the cache key.
+  Lane tasks name their `task` at `ask()` and type no effort word.
+- **Gemini** — `geminiThinkingLevel(effort, model)`: Gemini 3 Flash takes
+  minimal / low / medium / high; Gemini 3 Pro (3.0) only low / high, and an
+  unknown level is a 400. So `medium` on a 3.0 Pro rounds UP to `high`, and a
+  word past `high` is `high`. Anthropic keeps `output_config.effort`.
+
+### E2. Ceilings
+
+`callModel`'s default `maxTokens` is 8,000 (was 32,000). Each job sizes its
+own from what its schema returns: shot batches `shotBatchTokens(SHOT_BATCH)`
+(6,000), scene notes `1500 + 160 × scenes` (≤ 8,000), breakdown tags
+`1500 + 700 × scenes` (≤ 12,000), screenplay pages `pagesTokens()` (4,000 +
+3,000 a page, ≤ 32,000), dialogue pass and beat critique 6,000. Gemini
+counts thinking inside `maxOutputTokens`, which low effort keeps small. A
+cut-off reply is still `truncated`, never a silent loss.
+
+### E3. Precise requests and responses
+
+- Scene reads (`scene-notes`, `breakdown-tags`) split each request into the
+  fixed system line, the run's `shared` block (blueprint, rules, categories —
+  byte-identical across the run) and the per-batch part line + scenes.
+  Breakdown tags send NO blueprint (extraction reads the page; only a refine's
+  follow-up rides along).
+- Schemas: every object `additionalProperties: false` with every property
+  required; categories, sizes, angles and movements are enums; open lists
+  carry `maxItems` (shots per scene `SHOTS_PER_SCENE_MAX`, scenes per batch
+  `SHOT_BATCH`, tags per batch). **Anthropic's structured outputs refuse
+  `maxItems` / `maxLength`**, so `anthropicSchema()` moves each limit into
+  the field's description (deterministic, so the cache key holds); Gemini
+  gets them as written. The reader still caps whatever comes back. A refine
+  re-sends the SAME schema.
+
+### E4. Batches, three at a time
+
+- `runSceneBatches` now runs through `runBatches` (warm-first, 3 at a time,
+  a 429 retried once at one at a time) in parts of `SCENE_READ_BATCH_CHARS`
+  (12,000 characters, a third of a coverage batch). Parts come back in script
+  order; a failed part names its scenes in the note ("Not read (rate limited):
+  Sc 7, Sc 8 — run again for these."); every part failing throws the first
+  error; Stop throws `aborted` (nothing is written by a read). Both tasks are
+  `stream: true` (cards per part) and `effortSwitch: true`. A tag card's id
+  is `t<scene>:<category>:<name>`, stable between the live and final lists.
+- **Storyboard frames** (`board-frames`) draw `BOARD_CONCURRENCY` = 3 at a
+  time through the same `runBatches` (`AI.runBatchesFor`, no warm-first: an
+  image has no shared prefix), `stream: true`, the same rate-limit retry. The
+  per-shot prompt is compact (size, angle, lens, movement, set, action,
+  characters, light; the synopsis only when the shot has no description) and
+  the shape is the FRAME's (`job.aspect` from the shot's frame, sent as
+  `imageAspect()`: scope 2.39:1 → 21:9, flat 1.85:1 → 16:9).
+
+### E5. Timing — shown, never stored
+
+The Desk times each run and, for batched tasks (`onBatchTime({ index, ms,
+total })` in run opts, fed by `runBatches`' `onBatch` which now carries
+`index` and `ms`), each batch: `p.ai-desk-timing` "Took 6.2 s · 3 batches:
+2.1 s, 1.9 s, 2.2 s". In memory on the version only.
+
+### E6. Measure it with a real key (owner)
+
+Nothing here has run against a real provider. To measure:
+
+1. Settings → AI: save a Gemini key (and, separately, an Anthropic key), pick
+   the model to measure.
+2. Open the Dragon sample. Run each of: Shot List → Draft shots for all
+   scenes; Breakdown → Breakdown tags; Screenplay → Scene notes; Visualize →
+   Draw storyboard frames (8 shots).
+3. Read the Desk's "Took … · N batches: …" line under the answer. Note it
+   with Careful off and on.
+4. DevTools → Network: each request's payload size (Request body) and, for
+   Anthropic, the response's `usage.cache_read_input_tokens` on the 2nd and
+   later batches (should be > 0 once the shared prefix passes the model's
+   minimum; a small prefix simply does not cache).
+5. If a Gemini call answers 400 naming `thinkingLevel`, the model refused
+   the level: add its prefix to `geminiThinkingLevel()` and say which model.
+6. If replies come back `truncated`, raise that job's ceiling in E2 — not the
+   default.
+
+## F. Run all uses this harness (3 Nov 2026)
+
+"Break down everything" (`docs/AI-RUN-ALL.md`) runs the same tasks through
+the same `callModel`, effort table, ceilings and batches as the Desk. Its
+engine reads Careful once per run and fixes each task's effort for that run,
+so the prompt-cache key holds across a run's batches. Its drafts are kept
+in IndexedDB (`fms-ai-drafts`), never in `localStorage`, and Accept goes
+through each task's own apply, so the stamps and exact undos described above
+hold for drafts too. Pro only (`aiUnlocked()`), and Run all's requests are
+sized by the same rules as E1 to E4.

@@ -63,7 +63,7 @@
    to the department, not to the person.
    ============================================================ */
 import rates from '../data/rates.chennai.2024.json';
-import { parseNum, parseAmount } from './money.js';
+import { parseNum, parseAmount, lineAmount } from './money.js';
 import { normaliseCurrency, projectRegion, currencyForRegion } from './region-core.js';
 import Store from './store.js';
 import { newId as uid } from './record-id.js';
@@ -182,12 +182,27 @@ function cleanPayment(x) {
   for (const k of ['contactId', 'date', 'note']) p[k] = String(p[k] || '').trim();
   return p;
 }
+function typedDays(v) {
+  if (typeof v === 'number') return Number.isFinite(v) && v >= 0 ? v : '';
+  const t = String(v).trim();
+  // A day count is a figure (a typed ½ is one: it is not \d, and was
+  // dropped while "1/2" read 0.5) with at most a day word after it. Any
+  // other letter is a magnitude or an exponent, which a count of days
+  // never carries: "1 lakh" stored 100000 days and a ₹ 1,00,00,00,000 fee.
+  if (!/[\d½¼¾⅓⅔]/.test(t) || /^[-−]/.test(t) || /[a-z]/i.test(t.replace(/(?:days?|shifts?|d)\.?$/i, ''))) return '';
+  const n = num(t);
+  return n >= 0 ? n : '';
+}
 function cleanCrew(x) {
   const c = { ...blankCrew(), ...x };
   c.feeType = oneOf(c.feeType, ['day', 'lump'], 'day');
   c.fee = Math.max(0, num(c.fee));
   // '' means "derive it"; a typed number (0 included) is the person's word.
-  c.days = (c.days === '' || c.days === null || c.days === undefined) ? '' : Math.max(0, num(c.days));
+  // But only a NUMBER is a word: "abc", "TBC", "-3" or an overflow used
+  // to clean to an explicit 0, which beat the schedule's days and
+  // zeroed the fee. Anything that is not a figure of zero or more goes
+  // back to '' (derive), exactly as clearing the box does.
+  c.days = (c.days === '' || c.days === null || c.days === undefined) ? '' : typedDays(c.days);
   c.tdsPct = Math.min(100, Math.max(0, Number(c.tdsPct) || 0));
   for (const k of ['line', 'wageRow', 'note']) c[k] = String(c[k] || '').trim();
   return c;
@@ -327,7 +342,7 @@ export function restoreVersion(row, index) {
 /** A locked version against the budget as it stands. PURE, mutates nothing. */
 export function compareVersion(version, lines = [], grandNow = null) {
   const v = cleanVersion(version);
-  const now = (Array.isArray(lines) ? lines : []).map(cleanVersionLine).map((l) => ({ ...l, estimate: round2(l.days * l.rate) }));
+  const now = (Array.isArray(lines) ? lines : []).map(cleanVersionLine).map((l) => ({ ...l, estimate: round2(lineAmount(l.days, l.rate)) }));
   const nowIds = new Map(now.map((l) => [l.id, l]));
   const thenIds = new Map(v.lines.map((l) => [l.id, l]));
   const sumBy = (list) => { const m = new Map(); for (const l of list) m.set(l.dept, (m.get(l.dept) || 0) + l.estimate); return m; };
@@ -403,6 +418,41 @@ export function removeCrew(contactId) {
   delete crew[contactId];
   writePart('crew', crew);
   writePart('payments', all.payments.filter((p) => p && p.contactId !== contactId));
+}
+/** What a person's removal would take off the costs record: their crew
+    payments (count and sum). The contacts page names it in its confirm. */
+export function contactMoney(contactId) {
+  const mine = readAll().payments.filter((p) => p && p.contactId === contactId);
+  return { payments: mine.length, paid: mine.reduce((s, p) => s + num(p.amount), 0) };
+}
+/** A person was removed from the contacts. Their crew record and fee
+    payments go with them (the confirm said so): a payment to a contact
+    that no longer exists was still counted in the cost report as "Crew
+    not on a budget line", and no screen listed it, so it could never be
+    inspected or deleted. Floats and expenses are cash that really moved,
+    so their rows STAY, with the id rewritten to the person's name (or
+    "Removed person"): the ledger already reads a typed name, and a bare
+    id printed as somebody's name was the other half of the bug. One
+    write, so a reload never sees half of it. */
+export function forgetContact(contactId, name) {
+  if (!contactId) return;
+  const all = readAll();
+  const who = String(name || '').trim() || 'Removed person';
+  const touches = Object.prototype.hasOwnProperty.call(all.crew, contactId)
+    || all.payments.some((p) => p && p.contactId === contactId)
+    || all.floats.some((f) => f && f.to === contactId)
+    || all.expenses.some((e) => e && e.paidBy === contactId);
+  if (!touches) return;                     // no write on a person with no money
+  const crew = { ...all.crew };
+  delete crew[contactId];
+  const next = {
+    ...all,
+    crew,
+    payments: all.payments.filter((p) => p && p.contactId !== contactId),
+    floats: all.floats.map((f) => (f && f.to === contactId ? { ...f, to: who } : f)),
+    expenses: all.expenses.map((e) => (e && e.paidBy === contactId ? { ...e, paidBy: who } : e))
+  };
+  try { localStorage.setItem(COSTS_KEY, JSON.stringify(next)); } catch (e) { /* private mode */ }
 }
 export const listPayments = () => readAll().payments.map(cleanPayment);
 export function addPayment(patch) {
@@ -580,7 +630,7 @@ export function estimateLines(calc, lineMeta = {}) {
     const id = 'ci_' + n;
     const meta = lineMeta[id] || {};
     const dept = DEPT.has(meta.dept) ? meta.dept : defaultDept(name);
-    out.push({ id, n, name: name || 'Line ' + n, days, rate, estimate: days * rate, dept, deptSet: DEPT.has(meta.dept),
+    out.push({ id, n, name: name || 'Line ' + n, days, rate, estimate: lineAmount(days, rate), dept, deptSet: DEPT.has(meta.dept),
       scales: typeof meta.scales === 'boolean' ? meta.scales : null });
   }
   return out;
@@ -734,7 +784,7 @@ export function crewAccount(rec, payments = [], derived = { days: 0, source: '' 
   const r = cleanCrew(rec || {});
   const entered = r.days !== '';
   const days = entered ? r.days : derived.days;
-  const gross = r.feeType === 'lump' ? r.fee : r.fee * days;
+  const gross = r.feeType === 'lump' ? r.fee : lineAmount(r.fee, days);
   const tds = round2(gross * r.tdsPct / 100);
   const net = round2(gross - tds);
   const paid = payments.reduce((s, p) => s + num(p.amount), 0);
@@ -815,7 +865,10 @@ export function costReport({ lines = [], expenses = [], crew = {}, payments = []
       estimate, contingencyPct: pct, contingency, estimateWithContingency: withCont,
       actual, actualNet: sum(depts, 'actualNet'), gst: sum(depts, 'gst'), tds: sum(depts, 'tds'),
       variance: round2(withCont - actual),
-      pctUsed: withCont > 0 ? Math.round((actual / withCont) * 100) : 0,
+      // As a line's and a department's: spend against no estimate has no
+      // percentage (null, a dash), never 0, which pct() prints as '<1%'
+      // beside 'Over budget'.
+      pctUsed: withCont > 0 ? Math.round((actual / withCont) * 100) : (actual > 0 ? null : 0),
       contingencyUsed: round2(Math.max(0, actual - estimate))
     }
   };
@@ -936,7 +989,7 @@ export function actualsCSV(report, currency, india = true) {
   }
   const t = report.totals;
   out.push(['', 'CONTINGENCY', t.contingency, '', '', '', '', '', '']);
-  out.push(['', 'TOTAL', t.estimateWithContingency, t.actual, t.actualNet, t.gst, t.tds, t.variance, t.pctUsed]);
+  out.push(['', 'TOTAL', t.estimateWithContingency, t.actual, t.actualNet, t.gst, t.tds, t.variance, t.pctUsed === null ? '' : t.pctUsed]);
   if (!india) {
     // Columns 3 (excl. GST), 4 (GST) and 5 (TDS) go; "Actual (incl. GST)" is just "Actual".
     const kept = keepCols(out, [4, 5, 6]);
@@ -970,7 +1023,7 @@ export const gstinLooksValid = (s) => /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]
 export default {
   COSTS_KEY, CATEGORIES, METHODS, categoriesFor, methodsFor, deptsFor, GST_RATES, TDS_RATES, DEPTS, GROUPS,
   readAll, listExpenses, addExpense, updateExpense, removeExpense, restoreExpense,
-  listFloats, addFloat, removeFloat, restoreFloat, listCrew, getCrew, setCrew, removeCrew,
+  listFloats, addFloat, removeFloat, restoreFloat, listCrew, getCrew, setCrew, removeCrew, contactMoney, forgetContact,
   listPayments, addPayment, removePayment, restorePayment, setLineDept, setLineScales, snapshotBudget, listVersions, lockVersion, removeVersion, restoreVersion, compareVersion, getSettings, setSettings, setWageOverride,
   estimateLines, readCalc, CALC_CURRENCY, calcHasContent, costsHasContent, resolveCurrency, projectCurrency, budgetCurrency, gstSplit, paymentCost, floatBalances, derivedDays, crewAccount,
   costReport, budgetKpis, topSheet, wageRows, budgetCSV, actualsCSV, expensesCSV, gstinLooksValid,

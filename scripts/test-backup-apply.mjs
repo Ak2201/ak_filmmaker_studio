@@ -200,6 +200,26 @@ eq(all().filter((p) => p.id === 'there').length, 1, 'an id never means two proje
   eq((all().find((p) => p.title === 'Odd') || {}).sample, undefined, 'a malformed stamp is not carried');
 }
 
+/* ---- a restored project keeps its own dates (QA r4 H-1) ------- */
+{
+  const out = buildBackup();
+  out.projects = [{ id: 'dated', title: 'Dated', format: 'short',
+    createdAt: '2026-09-05T10:00:00.000Z', updatedAt: '2026-10-05T10:00:00.000Z', ns: [NS] }];
+  out.data = { dated: { scenes: { scenes: [{ id: 'a' }] } } };
+  out.global = { studio_prefs: { theme: 'ink' } };
+  applyBackup(out, { mode: 'merge', confirm: () => true });
+  const d = all().find((p) => p.id === 'dated');
+  eq(d && [d.createdAt, d.updatedAt], ['2026-09-05T10:00:00.000Z', '2026-10-05T10:00:00.000Z'],
+    'an imported project keeps createdAt and updatedAt from the file');
+  const bad = JSON.parse(JSON.stringify(out));
+  bad.projects[0].id = 'undated'; bad.projects[0].createdAt = 'yesterday'; delete bad.projects[0].updatedAt;
+  bad.data = { undated: out.data.dated };
+  applyBackup(bad, { mode: 'merge', confirm: () => true });
+  const u = all().find((p) => p.id === 'undated');
+  ok(u && !isNaN(Date.parse(u.createdAt)) && u.createdAt.startsWith('20') && Date.now() - Date.parse(u.updatedAt) < 60000,
+    'a malformed or missing date falls back to now');
+}
+
 /* ---- the Supabase config is not part of a backup -------------- */
 ok(!('sync_config' in GLOBAL_KEYS), 'GLOBAL_KEYS does not name the Supabase config');
 mem.set(CFG, JSON.stringify({ url: 'https://mine.supabase.co', key: 'k-mine' }));

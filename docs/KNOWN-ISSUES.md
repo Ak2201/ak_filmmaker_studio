@@ -429,3 +429,16 @@ schema step, a redesign, or not reproduced). Fifteen were then fixed on 28 Oct
 - **Schedule & reports, round 4: Recce print: each of the 17 locations takes its own page, about half empty.** The finding's fixable items (placeholder, native select, screen-only hint) are done. Packing several recce cards per page would change the sheet's layout and break-inside rules, which is a redesign. The one-card-per-page break is deliberate for a per-location recce sheet.
 - **Schedule & reports, round 4: Readiness check 'dates out of order' for the calendar (second half of the duplicate calendar finding).** The on-card note names the cause where the date is typed. A Ready-to-shoot row would add a second opinion about the same data, which readiness.js is built to avoid (it composes existing checks).
 - **Budget & money, 28 Oct 2026: a film made outside India still gets GST, TDS and GSTIN columns in the actuals and expenses CSV exports, and the wage table's overtime placeholder still says "½ batta".** FIXED. `actualsCSV` and `expensesCSV` take a trailing `india` flag (default true, so an India film's file is byte-identical) and the page passes `!filmAbroad()`; abroad, actuals drop Actual (excl. GST), GST and TDS withheld and "Actual (incl. GST)" reads "Actual", expenses drop GST %, GST and GSTIN and "Amount (incl. GST)" reads "Amount". The overtime placeholder reads "e.g. 1.5x after 10 h" abroad. `test:costs` asserts both headers and the India file unchanged. A spreadsheet that imports an international film's CSV by position will see the columns shift.
+
+## Left open by the pre-sale QA (2-4 Nov 2026)
+
+`docs/QA-REPORT-2026-11-02.md` (CLAUDE.md item 91). Six rounds, capped, not two clean
+rounds. None is a data-loss bug. Delete an entry when it is fixed.
+
+- **Import: "INTERIOR." / "EXTERIOR." lines in imported files are not read as scene headings** (r4-C-3, part). The importer's detector (`script-import.js`, about line 117) and `SLUG_START` in `script.js` were left alone: widening them could turn action lines into headings. Headings typed in the writer parse correctly.
+- **First-week list: hiding it is permanent, there is no way to bring it back** (r6-H-1, part). A restore control is a new feature. Only the focus bug was fixed.
+- **Budget: a float issued to a person removed before 4 Nov still shows the raw contact id** (r4-F-2). New removals write the name; old rows need a migration.
+- **Locked outline: two write paths unchecked.** The story kit's `copyBeats` and the Desk's `addOutlineStep` call `Story.addOutlineStep` with no `outlineLockedAt` check (r4-A-1 closed only the beat sheet picker). Not reached from the UI in QA; verify and guard.
+- **Heading parsing, deliberate leftovers:** "INT.KITCHEN-DAY" (no spaces) keeps KITCHEN-DAY as the place; LATER maps to CONTINUOUS and EVENING to NIGHT (tests assert it); "1/2 lakh" is not read as a fraction.
+- **Cost report: the removed-person fix (r4-F-1) is proved by Node tests;** the browser run did not show the header's Actual spent moving. Look at it by hand.
+- **Proofs flake under load:** `prove:gate` (veil under 1200 ms), `prove:script`, `prove:schedule`, `prove:notes`, `prove:rules-preprod`, `prove:ai-coverage` pass alone. Run one at a time on a busy machine. `prove:storage` and `prove:drive` fail only on the sandbox proxy.

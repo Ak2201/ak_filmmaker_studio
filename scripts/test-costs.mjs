@@ -68,6 +68,19 @@ eq(C.getCrew('c-hero').fee, 25000, 'crew fee parsed once');
 eq(C.getCrew('c-hero').days, '', 'days blank = derive');
 C.setCrew('c-hero', { days: '0' });
 eq(C.getCrew('c-hero').days, 0, 'a typed 0 is the person\'s word, not "derive"');
+// QA r5 F-3: text, a negative or an overflow is not a word: back to derive.
+for (const v of ['abc', 'TBC', '-3', '1e400', '1 lakh', '2k', '1e3']) {
+  C.setCrew('c-hero', { days: v });
+  eq(C.getCrew('c-hero').days, '', 'days "' + v + '" reverts to derive');
+}
+C.setCrew('c-hero', { days: '1/2 day' });
+eq(C.getCrew('c-hero').days, 0.5, 'a half day typed with its unit');
+// QA r6 F-7: a typed ½ is a half day, as "1/2" is; "3 days" keeps its word.
+for (const [v, want] of [['½', 0.5], ['1½', 1.5], ['3 days', 3], ['2d', 2]]) {
+  C.setCrew('c-hero', { days: v });
+  eq(C.getCrew('c-hero').days, want, 'days "' + v + '"');
+}
+C.setCrew('c-hero', { days: '0' });
 C.setCrew('c-hero', { days: '' });
 
 const removed = C.removeExpense(e2.id);
@@ -183,6 +196,15 @@ eq(line('unbudgeted:camera:crew').actual, 15000, 'crew with no line lands in the
 eq(line('unbudgeted:camera:crew').pctUsed, null, 'no estimate → % used is null, not Infinity');
 ok(line('unbudgeted:camera:crew').over, 'unbudgeted spend is over by definition');
 const T = rep.totals;
+// QA r6 F-2: money spent against NO estimate has no % used (a dash), not 0 ('<1%').
+{
+  const r0 = C.costReport({ lines: [], expenses: [{ line: '', category: 'misc', amount: 50000 }], crew: {}, payments: [], contacts: [], contingencyPct: 10 });
+  eq([r0.totals.estimateWithContingency, r0.totals.actual, r0.totals.pctUsed], [0, 50000, null], 'spend with no estimate: % used is null');
+  eq(C.actualsCSV(r0).split('\r\n').pop().split(',').pop(), '', 'its CSV TOTAL row leaves % used blank');
+  eq(C.costReport({ lines: [], expenses: [], crew: {}, payments: [], contacts: [] }).totals.pctUsed, 0, 'nothing spent, nothing estimated: 0');
+}
+// QA r6 F-1: a line whose days x rate is not an amount estimates nothing.
+eq(C.estimateLines({ ci_1_custom: 'Test', ci_1_days: '1e300', ci_1_rate: '1e300', ci_2_custom: 'Big', ci_2_days: '1.7e308', ci_2_rate: '2' }).map((l) => l.estimate), [0, 0], 'an unrepresentable line estimates 0');
 const estSum = C.estimateLines(calc).reduce((s, l) => s + l.estimate, 0);
 eq(T.estimate, estSum, 'estimate total = sum of lines');
 eq(T.contingency, Math.round(estSum * 0.1 * 100) / 100, 'contingency is a % of the estimate');
@@ -363,6 +385,29 @@ eq(srep.depts.flatMap((d) => d.lines).filter((l) => !l.unbudgeted).map((l) => l.
   const cmp = C.compareVersion(v, lines, 12000);
   eq([cmp.total.delta, cmp.grand.then, cmp.grand.now, cmp.grand.delta], [0, v.grand, 12000, 12000 - v.grand], 'a contingency move shows in the comparison');
   reset();
+}
+
+// QA r4 F: removing a person takes their crew record and payments with
+// them, and leaves a float or expense row naming them, not their id.
+{
+  reset();
+  C.setCrew('c-gone', { feeType: 'day', fee: '1000' });
+  C.addPayment({ contactId: 'c-gone', amount: '7000' });
+  C.addPayment({ contactId: 'c-stay', amount: '300' });
+  C.addFloat({ to: 'c-gone', amount: '5000' });
+  C.addExpense({ category: 'food', amount: '200', paidBy: 'c-gone' });
+  eq(C.contactMoney('c-gone'), { payments: 1, paid: 7000 }, 'contactMoney counts the person\'s payments');
+  C.forgetContact('c-gone', 'Aravind');
+  eq(C.listPayments().map((p) => p.contactId), ['c-stay'], 'their payments go, others stay');
+  eq('c-gone' in C.listCrew(), false, 'their crew record goes');
+  eq(C.listFloats().map((f) => f.to), ['Aravind'], 'a float keeps its row under the person\'s name');
+  eq(C.listExpenses().map((e) => e.paidBy), ['Aravind'], 'an expense keeps its row under the person\'s name');
+  C.addFloat({ to: 'c-x', amount: '10' });
+  C.forgetContact('c-x', '');
+  ok(C.listFloats().some((f) => f.to === 'Removed person'), 'a nameless person reads "Removed person"');
+  const before = mem.get(KEY);
+  C.forgetContact('c-none', 'Nobody');
+  eq(mem.get(KEY), before, 'a person with no money writes nothing');
 }
 
 reset();

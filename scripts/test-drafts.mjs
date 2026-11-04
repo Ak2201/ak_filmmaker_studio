@@ -181,5 +181,20 @@ ok(D.draftDocument(doc, 'nope') === null, 'draftDocument unknown');
   eq(WM.currentRevision(c), 'Blue — Draft 2', 'the current revision counts issues only');
 }
 
+
+/* QA r5 B-2: a draft's page count is the PRINTED one (paginate.js), the
+   figure the Writer's header quotes, not lines / 55. */
+{
+  const P = await import('../src/lib/paginate.js');
+  const script = (await import('../src/data/sample.dragon.script.json')).default;
+  const els = script.elements || script;
+  const dd = { elements: els.map((e) => ({ ...e })), revisions: [] };
+  D.useDraftPager(P.printedPages);
+  D.saveNewDraft(dd);
+  const row = D.listDrafts(dd)[0];
+  eq(row.pages, P.printedPages(els), 'a draft row quotes the printed page count');
+  ok(Number.isInteger(row.pages), 'a whole number of sheets, never "106.5"');
+}
+
 console.log(fails ? fails + ' FAILED of ' + n : 'drafts: all ' + n + ' checks passed');
 process.exit(fails ? 1 : 0);

@@ -12,7 +12,7 @@
    closure over the page: the page computes it once per render.
    ============================================================ */
 import Store from './store.js';
-import { parseAmount } from './money.js';
+import { parseAmount, lineAmount } from './money.js';
 import { openBudgetCurrency } from './budget-currency.js';
 import { NOTE_PREFIX } from './backup.js';
 import { STAGES, guideJourney, nextGuideStep } from './journey.js';
@@ -167,7 +167,7 @@ export function computeLibraryStatus() {
     // Clamped as costs.estimateLines() clamps: a negative is not a price.
     const days = Math.max(0, parseAmount(r.days, currency));
     const rate = Math.max(0, parseAmount(r.rate, currency));
-    const sub = days * rate;
+    const sub = lineAmount(days, rate);
     if (sub > 0) { count++; total += sub; }
   });
   return { count, total, currency };

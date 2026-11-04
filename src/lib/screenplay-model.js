@@ -140,9 +140,15 @@ export function shotsSummary(list) {
 
 /* ---- import and export ------------------------------------------ */
 /** What a file read as, in one line. */
-export function importReadText(name, plan) {
+/* `printed`, when the page has the typesetter, is the count the file
+   prints at (paginate.js), the one the Writer's header will show once
+   it is in: the estimate said "106.5 pages (est.)" for a script the
+   header then called 115 (QA r5). Without it, the estimate, and says so. */
+const pagesText = (n) => n + (n === 1 ? ' page' : ' pages');
+export function importReadText(name, plan, printed) {
   return 'Read ' + (name ? '“' + name + '” ' : '') + 'as ' + (plan.formatLabel || plan.format) + ': '
-    + plan.elements.length + (plan.elements.length === 1 ? ' line, ' : ' lines, ') + formatPages(plan.pages) + ' pages (est. at 55 lines a page), '
+    + plan.elements.length + (plan.elements.length === 1 ? ' line, ' : ' lines, ')
+    + (printed > 0 ? pagesText(printed) + ', ' : formatPages(plan.pages) + ' pages (est. at 55 lines a page), ')
     + plan.scenes.length + (plan.scenes.length === 1 ? ' scene.' : ' scenes.');
 }
 
@@ -166,5 +172,7 @@ export const importReplaceBody = (sceneCount) =>
     : '');
 
 /** The working-copy PDF's subtitle. */
-export const pdfSubtitle = (doc) =>
-  [draftLabel(doc), formatPages(pageCount(doc.elements)) + ' pages'].filter(Boolean).join(' · ');
+/* `printed`: the sheets this PDF prints (the caller paginates as it
+   prints, fit-to-page included), so the subtitle matches the document. */
+export const pdfSubtitle = (doc, printed) =>
+  [draftLabel(doc), printed > 0 ? pagesText(printed) : formatPages(pageCount(doc.elements)) + ' pages'].filter(Boolean).join(' · ');

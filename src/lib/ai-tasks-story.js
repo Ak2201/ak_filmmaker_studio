@@ -38,9 +38,11 @@ export const load = () => {
 
 const sentence = (...parts) => parts.filter(Boolean).join(' ');
 
-async function ask(system, user, schema, { onStatus, signal, maxTokens = 4000 } = {}) {
+/* `task` names the Desk task, so its effort comes from the ONE table
+   (ai-effort.js TASK_EFFORT; the Careful pref raises it a step). */
+async function ask(system, user, schema, { onStatus, signal, maxTokens = 4000, task } = {}) {
   const { parsed, truncated } = await (await ai()).callModelForTask({
-    system, user, schema, maxTokens, effort: 'medium', onStatus, signal
+    system, user, schema, maxTokens, task, onStatus, signal
   });
   return { parsed, truncated };
 }
@@ -85,7 +87,7 @@ const arcsTask = {
     const c = resolve(ctx);
     const f = arcFacts(c);
     if (!f.characters.length) fail(ARCS_NONE + ' Nothing was changed.');
-    const { parsed, truncated } = await ask(M.ARCS_SYSTEM, M.arcsPrompt(f, refineText(refine, M.arcsPrevious)), M.arcsSchema(), { onStatus, signal });
+    const { parsed, truncated } = await ask(M.ARCS_SYSTEM, M.arcsPrompt(f, refineText(refine, M.arcsPrevious)), M.arcsSchema(), { task: 'character-arcs', onStatus, signal });
     const res = M.readArcs(parsed, f);
     if (!res.items.length) fail('The model came back with no usable arcs. Nothing was changed.');
     const note = sentence(
@@ -216,7 +218,7 @@ const cleanupTask = {
     const refused = cleanRefusal(facts);
     if (refused) fail(refused);
     const { parsed, truncated } = await ask(M.CLEANUP_SYSTEM, M.cleanupPrompt(facts, refineText(refine, M.cleanupPrevious)),
-      M.cleanupSchema(), { onStatus, signal, maxTokens: Math.min(12000, 1200 + Math.ceil(facts.text.length / 2)) });
+      M.cleanupSchema(), { task: 'script-cleanup', onStatus, signal, maxTokens: Math.min(12000, 1200 + Math.ceil(facts.text.length / 2)) });
     const res = M.readCleanup(parsed, facts);
     if (res.rejected) fail(truncated ? 'The reply was cut short, so it could not be checked against your words. Nothing was changed.' : res.rejected);
     const note = sentence(

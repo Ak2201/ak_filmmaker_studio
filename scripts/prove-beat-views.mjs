@@ -241,6 +241,28 @@ const editId = stepsOf(S0, K('catalyst'))[0];
   check('Escape closes the card and the keyboard stays on it', [await page.$eval(`[data-step-row="${editId}"]`, (c) => c.classList.contains('is-open')), await active(page)], [false, 'card:' + editId]);
 }
 
+/* QA r5: a step's held change redraws between the picker summary's click
+   and its async toggle event, which drew the picker closed under the
+   press. The first click after typing must open it. */
+{
+  const pickOpen = () => page.$eval('#st-fw-pick', (d) => d.open);
+  await page.click(`#stStep_${editId}`);
+  await page.keyboard.press('End');
+  await page.keyboard.type('!');
+  await page.click('#st-fw-pick > summary');
+  await page.waitForTimeout(600);
+  const first = await pickOpen();
+  await page.click('#st-fw-pick > summary');
+  await page.waitForTimeout(400);
+  check('picker: the first click after typing in a step opens it, the next closes it', [first, await pickOpen()], [true, false]);
+  await page.fill(`#stStep_${editId}`, 'Lanes edit: the letter arrives.');
+  await page.click('#st-fw-pick > summary');
+  await page.waitForTimeout(600);
+  await page.click('#st-fw-pick > summary');
+  await page.waitForTimeout(400);
+  check('picker: the step text is back as it was, picker closed', [(await story(page)).outline.find((x) => x.id === editId).text, await pickOpen()], ['Lanes edit: the letter arrives.', false]);
+}
+
 /* ---- the keyboard: Alt+arrows, and the buttons ------------------ */
 {
   const cat = K('catalyst'), deb = K('debate');
@@ -436,9 +458,40 @@ check('locked lanes: the same', await page.evaluate(() => document.querySelector
   await page.keyboard.press('Alt+ArrowRight');
   await page.waitForTimeout(300);
   check('locked: Alt+Right moves nothing', JSON.stringify(await story(page)) === s0, true);
+  /* QA r4: a beat sheet change would refile every step into Unassigned,
+     where a locked card has no File select to bring it back. */
+  await page.click('#st-fw-pick > summary');
+  await page.waitForTimeout(200);
+  check('locked: every beat sheet card is disabled', await page.$$eval('[data-st="pick-fw"]', (n) => n.length > 1 && n.every((b) => b.disabled)), true);
+  await page.$$eval('[data-st="pick-fw"]', (n) => { const b = n.find((x) => x.getAttribute('data-fw') !== 'save_the_cat'); b.disabled = false; b.click(); });
+  await page.waitForTimeout(300);
+  check('locked: a forced beat sheet change writes nothing', JSON.stringify(await story(page)) === s0, true);
+  await page.click('#st-fw-pick > summary');
 }
 await page.click('#stLockRow [data-st="unlock"]');
 await page.waitForTimeout(400);
+
+/* ---- QA r4: the first press on More after typing in a step opens it.
+   The field's change holds its redraw until the click lands, and the
+   redraw used to replace the just-opened menu closed, focus on <body>. */
+{
+  await page.click('#stBeatView [data-value="spine"]');
+  await page.waitForTimeout(300);
+  const id = stepsOf(await story(page), K('setup'))[0];
+  await openCard(page, id);
+  await page.click(`#path-outline [data-step-row="${id}"] textarea[data-st-field="step-text"]`);
+  await page.keyboard.type(' Rani wakes');
+  await page.waitForTimeout(1000);
+  const more = page.locator('#main .tb-menu-btn', { hasText: 'More' }).first();
+  await more.click();
+  await page.waitForTimeout(300);
+  check('More after typing: one press opens it, focus on More', await page.evaluate(() => {
+    const b = [...document.querySelectorAll('#main .tb-menu-btn')].find((x) => /More/.test(x.textContent));
+    return [b.getAttribute('aria-expanded'), !b.parentElement.querySelector('.tb-menu-panel').hidden, document.activeElement === b];
+  }), ['true', true, true]);
+  check('More after typing: the step text was saved', (await story(page)).outline.find((x) => x.id === id).text.includes('Rani wakes'), true);
+  await page.keyboard.press('Escape');
+}
 
 /* ---- widths: 1100 and 390, both views ---------------------------- */
 for (const [w, hgt] of [[1100, 900], [390, 844]]) {

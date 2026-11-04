@@ -21,6 +21,13 @@ export function draftStateText(doc) {
   return changedSinceDraft(doc) ? 'Unsaved draft changes since ' + last.label + '.' : 'Up to date with ' + last.label + '.';
 }
 
+/** Whether the working copy holds any writing at all. "Save as new
+    draft" refuses without it, the way Ctrl+S says "Nothing to save yet."
+    and a draft's PDF refuses an empty draft: an empty Draft 1 would be
+    marked Current, print nothing and restore nothing. */
+export const hasWriting = (doc) =>
+  (doc && Array.isArray(doc.elements) ? doc.elements : []).some((el) => String((el && el.text) || '').trim());
+
 /** The title-page card's state line. */
 export const titlePageStateText = (on) => (on
   ? 'Page 1 of every PDF. A draft keeps the title page it was saved with.'
@@ -35,8 +42,19 @@ export const nextDraftName = (doc) => 'Draft ' + nextDraftNumber(doc);
 
 /** The restore dialog for a draft: its title, body and choices.
     `dirty` is whether the working copy has changes no draft holds. */
-export function restoreDialogSpec(d, dirty, nextName) {
+/* `canSave` false (the working script holds no writing) offers no
+   "Save as Draft N" (QA r6 G-2): it would make an empty draft, which takes
+   the Current badge and a number, and the same press on "Save as new
+   draft" is refused. An empty script loses nothing by being replaced. */
+export function restoreDialogSpec(d, dirty, nextName, canSave = true) {
   const choices = [];
+  if (dirty && !canSave) {
+    return {
+      title: 'Restore ' + d.label + ' as the working copy?',
+      body: 'The script you have now is empty, so nothing is lost.',
+      choices: [{ id: 'go', label: 'Restore ' + d.label, primary: true }, { id: 'cancel', label: 'Cancel' }]
+    };
+  }
   if (dirty) choices.push({ id: 'save', label: 'Save as ' + nextName + ', then restore', primary: true });
   choices.push({ id: 'go', label: dirty ? 'Restore anyway' : 'Restore ' + d.label, primary: !dirty, danger: dirty });
   choices.push({ id: 'cancel', label: 'Cancel' });

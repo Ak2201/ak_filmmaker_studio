@@ -21,6 +21,15 @@ import {
   makeRevision, restoreElements, revisionColour, normaliseTitlePage, hasTitlePage, pageCount,
   isNumberingLocked, isHeld
 } from './script.js';
+
+/* What a draft row's page figure counts. The page that SHOWS it
+   (drafts.html) hands in paginate.js printedPages, the count the
+   Writer's header, Stats and the PDF quote (QA r5: the 55-line estimate
+   said "106.5 pages" beside a toolbar saying 115). It is injected, not
+   imported, because screenplay.js imports this module too and keeps the
+   paginator out of its first paint (scripts/budget.json). */
+let countPages = pageCount;
+export function useDraftPager(fn) { if (typeof fn === 'function') countPages = fn; }
 import { isSideCopy, issuedColour } from './script-incoming.js';
 
 /* FNV-1a over the things that make two scripts different. Text, type and
@@ -51,6 +60,7 @@ function describe(rev, index, revs) {
      list; without it (an old caller) the position is all there is. */
   const side = isSideCopy(rev);
   const colour = revs ? issuedColour(revs, index) : revisionColour(index);
+  let pages = null;
   return {
     id: rev.id,
     index,
@@ -61,7 +71,12 @@ function describe(rev, index, revs) {
     savedAt: rev.date || '',
     colour,
     side,
-    pages: pageCount(rev.elements || []),
+    /* useDraftPager() above. A getter, so a list paginates only the
+       drafts somebody reads the figure of. */
+    get pages() {
+      if (pages == null) pages = countPages(rev.elements || []);
+      return pages;
+    },
     lines: (rev.elements || []).length,
     hasTitlePage: !!rev.titlePage,
     rev

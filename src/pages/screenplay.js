@@ -65,7 +65,7 @@ import { autoContdOn } from '../lib/chrome-prefs.js';   // the automatic (CONT'D
 import Scenes from '../lib/scenes.js';
 import { installLeavePrompt } from '../ui/leave-prompt.js';
 import { latestDraft } from '../lib/drafts.js';
-import { sceneOfElement } from '../lib/script-structure.js';
+import { sceneOfElement, sceneBlocks, foldedCount } from '../lib/script-structure.js';
 /* The page's derivations and sentences: src/lib/screenplay-model.js. */
 import {
   draftLabel as draftLabelOf, isBlankScript, showStartHint, typeKeyHint, typeName, tipKeysLine,
@@ -137,6 +137,7 @@ function persist() {
 let savedSig = scriptSignature(doc);
 let savedEls = null;          // the elements this page last saved, if it saved since it last loaded
 let savedLines = null;        // the same, with their ids: what crossedSave() compares (script-incoming.js)
+let savedAt = 0;              // when savedLines were written (ms): crossedSave()'s "typed after this save"
 /* A REFUSED save is not a save. The storage proxy swallows a quota
    failure and says so with storage:error (CLAUDE.md item 57), so
    saveScript() still returns true; without this the status line settled
@@ -155,6 +156,7 @@ function persistNow() {
   savedSig = scriptSignature(doc);
   savedEls = doc.elements.map((e) => [e.type, e.text]);
   savedLines = doc.elements.map((e) => ({ id: e.id, type: e.type, text: e.text }));
+  savedAt = Date.now();
   const settle = () => {
     saving = false;
     if (saveOwed) { saveOwed = false; persistNow(); return; }
@@ -332,7 +334,7 @@ function onIncomingScript(live, where = 'device') {
        that window saw nothing to keep. Settle it instead: one copy on
        the page, the other kept whole in Drafts, the same in both
        windows. Another window only: a synced copy has its own clocks. */
-    if (!gone && where === 'window' && crossedSave(base, savedLines, fresh)) {
+    if (!gone && where === 'window' && crossedSave(base, savedLines, fresh, savedAt)) {
       const { doc: next, mineWon, draft } = settleCrossed(doc, fresh, ARRIVAL_WINDOW_PREFIX + clock());
       doc = next;
       savedEls = null; savedLines = null;
@@ -490,6 +492,21 @@ document.addEventListener('paste', (e) => {
   pasteTarget = row.dataset.el;
   setTimeout(() => { pasteBefore = null; }, 4000);
 }, true);
+/* The Desk ctx the AI pill and the no-AI clean-up share: the same
+   selection, the same type path, the same save and redraw. */
+function deskCtx() {
+  return {
+    identity: 'script:' + (curId || ''),
+    getDoc: () => doc,
+    cursorId: () => curId,
+    getSelection: () => cleanupBlock(),
+    setType: (id, type) => editor.setElementType(id, type),
+    save: () => persistNow(),
+    render: (id) => renderPage(id ? elFocus(id) : null),
+    after: () => refreshDraftLabel(),
+    say: (m) => say(m)
+  };
+}
 function cleanupBlock() {
   const live = new Set(doc.elements.map((x) => x.id));
   const pick = (ids) => (ids || []).filter((id) => live.has(id));
@@ -630,6 +647,12 @@ async function openLockSheet(returnTo, onClose) {
   }
 }
 delegate(document, 'click', '[data-action="sc-lock"]', (e, btn) => { openLockSheet(btn); });
+/* The rules clean-up: the local Desk task, imported at the click so the page
+   loads no Desk code until it is pressed. */
+delegate(document, 'click', '[data-action="sc-cleanup-rules"]', () => {
+  import('../ui/ai-desk.js').then((D) => D.openDesk('script-cleanup-rules', deskCtx))
+    .catch((e) => console.warn('[screenplay] the Desk did not load', e));
+});
 delegate(document, 'click', '[data-action="sc-unlock"]', async (e, btn) => {
   if (!isNumberingLocked(doc.numbering)) {
     tell({ eyebrow: 'Script lock', icon: 'lock_open', title: 'The script is not locked', body: 'The script is not locked. Scene numbers already follow the script.' });
@@ -877,21 +900,16 @@ function buildTop() {
       { id: 'coverage', label: 'Coverage report' },
       { id: 'dialogue-pass', label: 'Dialogue pass (speech at the caret)' },
       { id: 'beat-critique', label: 'Critique this scene' },
-      { id: 'script-cleanup', label: 'Clean up pasted text' }
+      { id: 'script-cleanup', label: 'Enhance clean-up with AI' }
     ],
-    ctx: () => ({
-      identity: 'script:' + (curId || ''),
-      getDoc: () => doc,
-      cursorId: () => curId,
-      /* script-cleanup: the lines selected in a line or just pasted /
-         imported, and the editor's one type path. */
-      getSelection: () => cleanupBlock(),
-      setType: (id, type) => editor.setElementType(id, type),
-      save: () => persistNow(),
-      render: (id) => renderPage(id ? elFocus(id) : null),
-      after: () => refreshDraftLabel(),
-      say: (m) => say(m)
-    })
+    ctx: deskCtx
+  });
+  /* The rules twin (docs/RULES-BREAKDOWN.md C1): no key, no plan, nothing
+     sent. Opens the local Desk task `script-cleanup-rules` on the same
+     selection; never behind aiUnlocked(). */
+  const cleanBtn = button({
+    label: 'Clean up (no AI)', size: 'sm', action: 'sc-cleanup-rules', class: 'sc-cleanup-btn',
+    title: 'Cut the selected or pasted text into screenplay lines by the script’s own rules. Your words are kept exactly.'
   });
 
   /* The shell's `.toolbar` convention is not used: this bar is the
@@ -909,7 +927,7 @@ function buildTop() {
     buildViews(),
     meta,
     h('div.sc-tools', {}, [
-      h('div.sc-tools-l', {}, [typePill, h('span.sc-vsep', { 'aria-hidden': 'true' }), beatsBtn, ai, notesButton({ label: 'Notes' }), h('span#scFocusSlot.sc-focus-slot')]),
+      h('div.sc-tools-l', {}, [typePill, h('span.sc-vsep', { 'aria-hidden': 'true' }), beatsBtn, cleanBtn, ai, notesButton({ label: 'Notes' }), h('span#scFocusSlot.sc-focus-slot')]),
       pos,
       h('div.sc-tools-r', {}, [lockBtn, fileMenu, menu, toolsBtn])
     ]),
@@ -1144,14 +1162,22 @@ delegate(document, 'click', '[data-action="sc-typewriter"]', () => {
 delegate(document, 'click', '[data-action="sc-fold"]', () => {
   const sid = curId ? sceneOfElement(doc.elements, curId) : null;
   if (!sid) { say('Put the caret in a scene first.'); return; }
+  /* A heading with nothing under it folds nothing: say so rather than
+     claim a fold (QA r6: an empty script toasted "Scene folded"). */
+  if (!editor.isFolded(sid) && !foldedCount(doc.elements, sid)) { say('Nothing to fold yet: this scene has no lines under its heading.'); return; }
   const on = editor.toggleFold(sid);
   say(on ? 'Scene folded to its heading.' : 'Scene unfolded.');
 });
 delegate(document, 'click', '[data-action="sc-fold-all"]', () => {
+  if (!sceneBlocks(doc.elements).some((b) => foldedCount(doc.elements, b.id))) { say('Nothing to fold yet: no scene has lines under its heading.'); return; }
   editor.foldAll(true);
   say('Every scene folded to its heading. Unfold all from the ⋯ menu; find and replace opens them too.');
 });
-delegate(document, 'click', '[data-action="sc-unfold-all"]', () => { editor.foldAll(false); say('Every scene unfolded.'); });
+delegate(document, 'click', '[data-action="sc-unfold-all"]', () => {
+  const any = sceneBlocks(doc.elements).some((b) => editor.isFolded(b.id));
+  editor.foldAll(false);
+  say(any ? 'Every scene unfolded.' : 'No scene is folded.');
+});
 delegate(document, 'click', '[data-action="sc-split"]', async () => {
   if (!split) {
     try {
@@ -1259,6 +1285,11 @@ function refreshStats() {
    when the caret's scene changes or at idle (`deep`). */
 let posScene;
 let posBeat = '';
+let posPaged = -1;   // the printed count the strip's beat was read against
+/* The printed pages for the beats (beats-panel.js deriveBeats `paged`):
+   the last idle pagination, or null before the first one has run. */
+const pagedForBeats = () => (pagedNow && Typeset && pagedCount > 0
+  ? { count: pagedCount, index: pagedNow.index, bodyLines: Typeset.BODY_LINES } : null);
 function putPos(k, text, show = !!text) {
   const n = document.querySelector('[data-sc-pos="' + k + '"]');
   if (!n) return;
@@ -1276,7 +1307,7 @@ function refreshPos(deep) {
     posBeat = '';
     if (p) {
       try {
-        const d = deriveBeats(doc.elements, curId, { targetPages: targetPages(), scenes: Scenes.listScenes() });
+        const d = deriveBeats(doc.elements, curId, { targetPages: targetPages(), scenes: Scenes.listScenes(), paged: pagedForBeats() });
         const cur = d.rows.find((r) => r.current);
         posBeat = cur ? 'Beat: ' + (cur.beat.label || cur.beat.id) : '';
       } catch (e) { posBeat = ''; }
@@ -1501,8 +1532,12 @@ function applyBreaks() {
 
   pagedNow = { index: Typeset.pageIndex(pages), labels };
   page.dataset.pages = String(pages.length);
-  if (pagedCount !== pages.length) { pagedCount = pages.length; refreshStats(); }
-  refreshPos(false);
+  if (pagedCount !== pages.length) {
+    pagedCount = pages.length; refreshStats();
+    if (beats) beats.refresh();   // its basis line quotes the printed count
+  }
+  refreshPos(pagedCount !== Number(posPaged));
+  posPaged = pagedCount;
 }
 
 /* REVISION MODE ON THE PAGE. While the script is held, every line that
@@ -1654,6 +1689,7 @@ function setBeats(open) {
         scrollToEl: (id) => editor.scrollToEl(id),
         onJump: ({ id }) => { if (id) editor.focusEl(id); if (isPhone()) setBeats(false); },
         getTargetPages: () => targetPages(),
+        getPaged: pagedForBeats,
         getTarget: () => ({ minutes: target.minutes, source: target.source, estimate: estimateMin })
       });
       if (curId) beats.setCurrent(curId);
@@ -1696,7 +1732,13 @@ function sheetRow(it) {
 function openToolsSheet(opener) {
   const groups = [
     ['File', FILE_ITEMS],
-    ['Write', [{ label: 'Focus mode', action: 'fm-enter', hint: 'only the page', icon: 'center_focus_strong' }]],
+    /* Clean up (no AI) lives here on a phone: its 116px word button left
+       the type pill 18px and the type name unreadable (QA r4). The row
+       clicks the real toolbar button, hidden at this width. */
+    ['Write', [
+      { label: 'Focus mode', action: 'fm-enter', hint: 'only the page', icon: 'center_focus_strong' },
+      { label: 'Clean up (no AI)', action: 'sc-cleanup-rules', hint: 'your words kept', icon: 'segment' }
+    ]],
     ['Tools', TOOL_ITEMS],
     ['Help', HELP_ITEMS]
   ];
@@ -1710,6 +1752,7 @@ function openToolsSheet(opener) {
     const act = row.dataset.scAct;
     closeSheet().then(() => {
       const real = act === 'fm-enter' ? document.getElementById('fm-enter')
+        : act === 'sc-cleanup-rules' ? document.querySelector('#scTop .sc-cleanup-btn')
         : document.querySelector('#scTop .tb-menu-panel [data-action="' + act + '"]');
       if (real) real.click();
     });
@@ -1771,7 +1814,7 @@ async function exportPDF(opts = {}) {
     ...(numbered || marks ? { setup: 'screenplay-wide', classes: marks ? ['pdf-sn', 'pdf-revmarks'] : ['pdf-sn'] } : {}),
     ...(g.lines ? { cheatMm: g.marginMm } : {}),
     title: Script.projectTitle() + ' — Screenplay',
-    subtitle: pdfSubtitle(doc),
+    subtitle: pdfSubtitle(doc, T.paginateDoc(doc, { autoContd: autoContdOn(), ...(g.lines ? { bodyLines: g.bodyLines } : {}) }).length),
     before: () => {
       node = T.buildDocument(doc, {
         title: Script.projectTitle(), revision: '', subtitle: iso.slice(0, 10), date: iso.slice(0, 10), sceneNumbers: numbered,
@@ -1890,7 +1933,7 @@ function drawImport() {
       button({ label: 'Read the pasted text', action: 'sc-imp-paste' })
     );
   } else {
-    body.append(h('p', { text: importReadText(imp.name, imp.plan) }));
+    body.append(h('p', { text: importReadText(imp.name, imp.plan, imp.printed) }));
     /* The reader's own notes, a page it could not read above all
        (QA r3: a lost PDF page was said nowhere on this preview). */
     const notes = (imp.plan.warnings || []).slice(0, 5);
@@ -1962,7 +2005,10 @@ async function takeScript(text, name) {
   try { plan = Parser.parseScript(text, name); }
   catch (e) { console.warn('[script] import', e); say('That file could not be read as a screenplay.'); return; }
   if (plan.fatal || !plan.elements.length) { say(plan.warnings[0] || 'Nothing in that file looked like a screenplay.'); return; }
-  imp = { plan, name: name || '', replace: false };
+  /* The count it will print at, as the header will say it (QA r5). */
+  let printed = 0;
+  try { const T = Typeset || (Typeset = await typesetter()); printed = T.paginate(plan.elements).length; } catch (e) { printed = 0; }
+  imp = { plan, name: name || '', replace: false, printed };
   drawImport();
 }
 

@@ -15,6 +15,7 @@
         empty storyboard links to the step that comes first
      7  a blocking mark removed by the Delete key offers Undo
     30  a shot row opens ITS blocking diagram, drawn over the floor plan
+    31  a setup's name and note are saved as typed, with no blur
      8  the scene board prints "2 2/8 pgs", its empty Shots line is
         padded like its neighbours, and the five Visualise tabs have
         five distinct icons
@@ -233,6 +234,28 @@ ok(/Removed Actor/.test(toast) && /Undo/.test(toast), '7  the Delete key offers 
   ok(await page.evaluate(() => !!document.querySelector('#blocking .vz-blk[data-block="bkProveFloor"]')), '30 "Floor plan" goes back to the floor');
 }
 
+/* ---- 31 a setup's name and note save as they are typed (QA r5 E) -- */
+{
+  await page.goto(url('visualize.html#blocking'), { waitUntil: 'networkidle' });
+  await settle(page);
+  await page.click('[data-action="blk-add"]');
+  await settle(page, 300);
+  const B = await page.evaluate(() => [...document.querySelectorAll('#blocking .vz-blk[data-block]')].pop()?.dataset.block);
+  const card = `#blocking .vz-blk[data-block="${B}"]`;
+  await page.click(`${card} .vz-blk-name`);
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('Renamed unblurred');
+  await page.click(`${card} .vz-blk-note`);
+  await page.keyboard.type('Typed and never blurred');
+  await settle(page, 1200);
+  const stored = (await shotsDoc()).blocks?.find((b) => b.id === B) || {};
+  await page.reload({ waitUntil: 'networkidle' });
+  await settle(page);
+  const back = await page.evaluate((c) => ({ name: document.querySelector(c + ' .vz-blk-name')?.value, note: document.querySelector(c + ' .vz-blk-note')?.value }), card);
+  ok(stored.name === 'Renamed unblurred' && stored.note === 'Typed and never blurred' && back.name === stored.name && back.note === stored.note,
+    '31 a setup\'s name and note are saved while the cursor is still in them', { stored: { name: stored.name, note: stored.note }, back });
+}
+
 /* ---- 5 contacts' New shoot day ----------------------------------- */
 await page.goto(url('contacts.html#contacts'), { waitUntil: 'networkidle' });
 await settle(page);
@@ -441,6 +464,22 @@ await page.keyboard.press('Tab');
 await settle(page, 300);
 ok(await page.evaluate(() => document.activeElement !== document.body && document.activeElement.dataset.action === 'mk-turn'), '29 a mark label keeps the focus moving on (to the turn buttons)', await activeDesc());
 ok(/Hero/.test(await page.$eval('.vz-map.is-editable', (m) => m.textContent)), '29 and the map shows the label');
+/* QA r6 E-1: a label typed and left by CLICKING another mark lands on
+   the mark it was typed for, never on the one just clicked. */
+{
+  await page.click('#blocking .vz-blk >> nth=0 >> [data-action="blk-add-mark"][data-kind="actor"]');
+  await settle(page, 200);
+  const B = await page.$eval('#blocking .vz-blk', (c) => c.dataset.block);
+  const marksOf = async () => ((await shotsDoc()).blocks || []).find((b) => b.id === B).marks.map((m) => ({ id: m.id, label: m.label }));
+  const was = await marksOf();
+  const sel = async (id) => { const bx = await page.$(`#blocking .vz-blk[data-block="${B}"] .vz-map.is-editable [data-mark="${id}"]`).then((n) => n.boundingBox()); await page.mouse.click(bx.x + bx.width / 2, bx.y + bx.height / 2); };
+  await sel(was[0].id); await settle(page, 300);
+  await page.click(`#blocking .vz-blk[data-block="${B}"] .vz-blk-label`);
+  await page.keyboard.press('Control+A'); await page.keyboard.type('Meena');
+  await sel(was[1].id); await settle(page, 900);
+  const now = await marksOf();
+  ok(now[0].label === 'Meena' && now[1].label === was[1].label, 'R6 a label left by clicking another mark stays on its own mark', { was, now });
+}
 
 /* ---- round 3 findings -------------------------------------------- */
 // R1 scene board: Shots table fits its panel at 1440, no mid-word breaks

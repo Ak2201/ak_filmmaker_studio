@@ -89,6 +89,11 @@ export function parseTimecode(str) {
   const s = String(str == null ? '' : str).trim();
   if (!/^\d{1,6}(:\d{1,3}){0,3}$/.test(s)) return null;
   const p = s.split(':').map(Number);
+  /* A fourth part is only a frame count when the whole thing reads as
+     one, HH:MM:SS:FF with two-digit fields and frames under 60 (QA r5:
+     '1:2:3:4' was taken as 1:02:03 and its last part dropped without a
+     word). Anything looser is refused, like any other garbage. */
+  if (p.length === 4 && (!/^\d{1,6}:\d{2}:\d{2}:\d{2}$/.test(s) || p[3] > 59)) return null;
   let sec;
   if (p.length === 1) sec = p[0];
   else if (p.length === 2) { if (p[1] > 59) return null; sec = p[0] * 60 + p[1]; }
@@ -461,6 +466,23 @@ export function restoreCutNote(cutId, row, index) {
   return row;
 }
 
+/** A note's Undo when its CUT may have been removed since (QA r6 G-3).
+    restoreCutNote() alone refuses a note whose cut is gone, and the cut's
+    own Undo snapshot was taken AFTER the note left it, so pressing both
+    Undos gave back the cut with no note: the note was lost although Undo
+    was pressed for it. A note cannot exist outside its cut, so when the
+    cut is gone and its removed copy (`cutRow`, at `cutAt`) is in hand,
+    the cut comes back with the note in it. Returns 'note' (put back in
+    its cut), 'cut' (the cut came back carrying it) or null. */
+export function restoreCutNoteWithCut(cutId, row, index, cutRow, cutAt) {
+  if (!row || !row.id) return null;
+  if (loadEdit().cuts.some((c) => c.id === cutId)) return restoreCutNote(cutId, row, index) ? 'note' : null;
+  if (!cutRow || cutRow.id !== cutId) return null;
+  const notes = (Array.isArray(cutRow.notes) ? cutRow.notes : []).filter((n) => n && n.id !== row.id);
+  notes.splice(Math.max(0, Math.min(Number(index) || 0, notes.length)), 0, row);
+  return restoreCut({ ...cutRow, notes }, cutAt) ? 'cut' : null;
+}
+
 /** A cut's notes as plain text for an email: a heading, the open
     notes in time order, then the done ones marked. `sceneLabel` maps a
     sceneId to its label ('Sc 12'); '' or absent leaves the scene out. */
@@ -762,6 +784,6 @@ export default {
   parseTimecode, formatTimecode, addSceneLink, removeSceneLink,
   dayLinks, addDayLink, removeDayLink,
   listCuts, addCut, updateCut, removeCut, restoreCut, addCutLink, removeCutLink,
-  addCutNote, updateCutNote, removeCutNote, restoreCutNote, cutNotesText,
+  addCutNote, updateCutNote, removeCutNote, restoreCutNote, restoreCutNoteWithCut, cutNotesText,
   verdict, coverage, pickupText, localISO
 };

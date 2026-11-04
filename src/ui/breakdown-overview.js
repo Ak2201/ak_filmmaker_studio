@@ -13,7 +13,7 @@
    The section id (#overview) is always present, empty state included —
    a nav target must not depend on data existing.
    ============================================================ */
-import { h } from '../lib/dom.js';
+import { h, delegate } from '../lib/dom.js';
 import { button } from './kit/index.js';
 import { aiPill } from './ai-pill.js';   // light: the model code loads at the click
 import { formatEighths } from '../lib/scenes.js';
@@ -153,7 +153,7 @@ export const setFlowHooks = (fn) => { hooksFor = typeof fn === 'function' ? fn :
  *  page repaints on. */
 export function breakdownAiPill(refreshTab) {
   return aiPill({
-    label: 'Breakdown with AI',
+    label: 'Enhance with AI',
     tasks: [{ id: 'shot-draft', label: 'Breakdown with AI' }],
     ctx: async () => {
       const flow = await import('./breakdown-flow.js');
@@ -162,10 +162,34 @@ export function breakdownAiPill(refreshTab) {
   });
 }
 
+/** "Shots without AI": the rules' shots for the scenes that have none, in
+ *  the Desk's own tick list (the local task `shot-basic`: no key, no plan,
+ *  nothing sent). Beside the AI pill; never behind aiUnlocked(). */
+export function shotsBasicButton() {
+  return button({
+    variant: 'secondary', action: 'bd-shots-basic', label: 'Shots without AI',
+    title: 'Propose a master, coverage on each speaker and inserts for the scenes with no shots, by rule. You tick what to keep.'
+  });
+}
+delegate(document, 'click', '[data-action="bd-shots-basic"]', async () => {
+  try {
+    const [Sc, Sh, Ex, D] = await Promise.all([
+      import('../lib/scenes.js'), import('../lib/shots.js'), import('../lib/breakdown-extras.js'), import('./ai-desk.js')
+    ]);
+    const have = Ex.scenesWithShots(Sh.listShots());
+    const ids = Sc.listScenes().filter((s) => !have.has(String(s.id))).map((s) => s.id);
+    if (!ids.length) { say('Every scene already has shots, so there is nothing new to propose.'); return; }
+    await D.openDesk('shot-basic', {
+      sceneIds: ids,
+      after: (made) => { const f = hooksFor('#overview'); if (made && made.length && f && typeof f.refresh === 'function') f.refresh(made); }
+    });
+  } catch (e) { console.warn('[breakdown-overview] shots without AI', e); }
+});
+
 function startBlock({ scriptPages, hasScript, hasScenes }) {
   const row = h('div.bdo-start');
   if (hasScript) {
-    row.append(
+    row.append(...[
       /* Once the script is broken down the result is the page and a
          re-run is the secondary act; before, the run IS the page.
          "Break down everything" is the whole run by rules, one Undo
@@ -181,8 +205,9 @@ function startBlock({ scriptPages, hasScript, hasScenes }) {
         label: 'Manual breakdown',
         title: hasScenes ? 'Break down the whole script again' : `Break down my script (${formatPages(scriptPages)} pages)`
       }),
+      hasScenes ? shotsBasicButton() : null,
       breakdownAiPill('#overview')
-    );
+    ].filter(Boolean));   // append(null) would print "null"
   }
   if (!hasScenes || !hasScript) {
     row.append(h('label' + (hasScript ? '.k-btn' : '.k-btn.k-btn--primary.k-btn--pill.bd-cta') + '.bdo-upload', {}, [

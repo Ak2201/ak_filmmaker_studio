@@ -170,8 +170,44 @@ function render() {
     main.append(nav);
     main.append(h('div.pp-body', {}, steps.map(stepPanel)));
   }
-  if (!commitMain(app, main, mountShell)) { nav = document.querySelector('#main > .tabs[data-sm-self]') || nav; return; }
+  /* Run all's draft space (src/ui/draft-space.js, lazy). The section
+     always renders, film or no film, so #drafts resolves before any data
+     or code arrives; its contents are the lazy module's, and patch()
+     above never touches it (it is outside .pp-body). */
+  main.append(h('section.pp-drafts', { id: 'drafts', 'aria-labelledby': 'ds-title' }, [h('h2', { id: 'ds-title', text: 'Draft space' })]));
+  if (!commitMain(app, main, mountShell)) { nav = document.querySelector('#main > .tabs[data-sm-self]') || nav; mountDrafts(); return; }
+  mountDrafts();
   try { StudioUI.autoAriaLabels(); StudioUI.wireGlossaryPopovers(); StudioUI.polishEmptyStates(); } catch (e) { console.warn('[preprod] chrome', e); }
+}
+
+/* The draft space and the Run all engine are fetched when the section
+   comes near the screen (or the address asks for #drafts), not with the
+   page: the path is what this page is for, and the AI code is ~60 KB. */
+let draftsSeen = false;
+let draftsWatch = null;
+function mountDrafts() {
+  const host = document.getElementById('drafts');
+  if (!host) return;
+  const load = () => import('../ui/draft-space.js').then((m) => m.mountDraftSpace(host))
+    .catch((e) => { console.warn('[preprod] draft space', e); });
+  if (draftsWatch) { draftsWatch.disconnect(); draftsWatch = null; }
+  /* No film open: nothing to draft, so no AI code is fetched at all and
+     the section says so itself (the same words draft-space.js prints).
+     This is also what keeps the engine out of the signed-out first
+     paint the gate budgets. */
+  let pid = '';
+  try { pid = String(Store.currentProjectId() || ''); } catch (e) { pid = ''; }
+  if (!pid && !draftsSeen) {
+    if (!host.querySelector('.ds-nofilm')) host.append(h('p.pp-facts.ds-nofilm', { text: 'Open a film first: its drafts appear here.' }));
+    return;
+  }
+  host.querySelector('.ds-nofilm')?.remove();
+  if (draftsSeen || hashId() === 'drafts' || typeof IntersectionObserver !== 'function') { draftsSeen = true; load(); return; }
+  draftsWatch = new IntersectionObserver((seen) => {
+    if (!seen.some((x) => x.isIntersecting)) return;
+    draftsWatch.disconnect(); draftsWatch = null; draftsSeen = true; load();
+  }, { rootMargin: '0px 0px 200px 0px' });
+  draftsWatch.observe(host);
 }
 
 function go(id) {
@@ -197,6 +233,10 @@ delegate(document, 'click', '[data-action="ready-pdf"]', async (e, el) => {
     StudioUI.toastError('The page could not be prepared.');
   } finally { el.disabled = false; }
 });
-window.addEventListener('hashchange', () => { const id = hashId().replace(/^step-/, ''); if (id && id !== cur) go(id); });
+window.addEventListener('hashchange', () => {
+  const id = hashId().replace(/^step-/, '');
+  if (id === 'drafts') { mountDrafts(); return; }
+  if (id && id !== cur) go(id);
+});
 Store.subscribe('current:changed', render);
 render();

@@ -3703,3 +3703,49 @@ In rough priority order. The reasoning behind the ordering is in the revamp plan
       dialogue. Each is listed with its reason in the parity doc.
     - **Not pushed.** Lane branches `fd/l1-flow` to `fd/l7-production` are
       merged into `fd/parity`.
+82. **Break down everything, and a faster harness (3 Nov 2026).** Three lanes
+    built in parallel, integrated on `develop`, then one review-fix commit.
+    Contract: `docs/AI-RUN-ALL.md`. Harness detail: `docs/AI-FAST-HARNESS.md`
+    sections E and F.
+    - **Harness (L0, `ar/l0-harness`, `8731efd`).** One effort table
+      (`TASK_EFFORT` in `ai-effort.js`); unlisted tasks are `medium`. Careful
+      raises one step. `callModel` takes `task` and defaults to 8000 tokens;
+      each job sizes its own ceiling. Anthropic schemas go through
+      `anthropicSchema()`, which moves `maxItems` into descriptions. Scene
+      reads run in 12000-character parts through `runBatches`, and storyboard
+      frames three at a time. The Desk shows "Took N s · K batches". `test:ai-size` (213).
+    - **Engine (L1, `ar/l1-engine`, `f120d18`).** `ai-run-all-model.js` plans
+      (pure), `ai-run-all.js` runs three at a time headless,
+      `ai-drafts.js` keeps drafts in IndexedDB `fms-ai-drafts` (no `localStorage`,
+      14-day sweep), `ai-headless-ctx.js` builds each ctx from the models.
+      `acceptDraft` accepts ready parents first, maps `draft:<n>` ids, and
+      returns one undo. `test:ai-run-all`.
+    - **Space (L2, `ar/l2-space`, `301cb98`).** `preprod.html#drafts` always
+      renders, with a lazy `draft-space.js`. Review opens the Desk through
+      `openWithDraft()` with no request, and Accept all goes through
+      `acceptDraft`. Entry points in the Breakdown header and the lock's done state.
+    - **Integration (`3abc0c5`).** The lazy engine import became a plain
+      `import()`. Careful is read once per run. preprod's budget row went back
+      to develop's 968704 bytes (L2 had raised it by hand). `gate.yml` runs
+      `prove:ai-run-all`.
+    - **Review fixes (`c7246c2`).** Eight findings, all fixed. The engine stops
+      when the open film moves. Resume re-runs children skipped for their
+      parent. Accept is Pro-gated and fails closed. Storyboard pictures are
+      re-created from their Blobs after a reload. A refined draft keeps its
+      Blobs. A child records its parent's `rev` and goes `failed (stale)` when
+      the parent changed. Board-frame Accept keeps only shots that exist. A
+      combined undo keeps a parent a later sibling leans on.
+    - **Checks.** `test:ai-run-all` 96/0 (re-run for this item), `test:ai-size`
+      213/0 (re-run), `test:all` PASS on the integration (with
+      `PGHOST=/tmp PGPORT=5439 PGUSER=postgres`), `build:open`, `verify`, and
+      `prove:ai-run-all` 37/0, `prove:ai-desk` 172/0, `prove:ai-everywhere`
+      67/0, `prove:ai-fast` 74/0, `prove:ai-history` 29/0, `prove:scroll` (58
+      pages × 3 widths, 0 findings), `prove:nav`, `prove:pills` on the
+      integration. `prove:storage` and `prove:drive` fail in the sandbox proxy
+      as before. `verify` once failed on `plan.html#calendar` behind the band
+      and passed on re-run, so it looks flaky and is not investigated here.
+    - **Not done.** Coverage, audience-test and voice-check still run in series
+      (their checkpoint and Resume depend on it). Accept takes every item of a
+      ready parent. A rejected parent leaves its children ready. Reset and
+      project deletion do not clear drafts. Gemini 3.0 Pro's thinking level is
+      unverified. Nothing has run against a real provider. Not pushed.

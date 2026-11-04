@@ -36,6 +36,7 @@ import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
 import PDF from '../lib/pdf.js';
 import Contacts from '../lib/contacts.js';
+import Costs from '../lib/costs.js';
 import Scenes, { formatEighths, ELEMENT_CATEGORIES } from '../lib/scenes.js';
 
 /* "1 page" for exactly one page, as the Stripboard, Shoot Day and DPR
@@ -433,29 +434,42 @@ function renderDayCard(sheet, scenes) {
    only while it is empty and keeps no other copy; the unit message it
    also drafts is offered to copy in a toast, never stored. The page hands
    in the facts it already builds for the WhatsApp text. */
-function notesAi(sheetId) {
+const notesCtx = (sheetId) => {
   const find = () => Contacts.listCallSheets().find((x) => x.id === sheetId) || null;
-  return h('div.ct-ai-row', {}, [aiPill({
-    label: 'Draft notes', tasks: ['callsheet-notes'],
-    ctx: () => ({
-      sheetId,
-      facts: () => { const sh = find(); return sh ? factsOf(sh, Scenes.listScenes()) : null; },
-      say: (m) => StudioUI.toast(m),
-      offerUnit: (text) => StudioUI.toast('A unit message is ready to copy.', {
-        action: 'Copy it',
-        onAction: () => { copyText(text).then((ok) => StudioUI.toast(ok ? 'Unit message copied.' : 'Could not reach the clipboard.')); }
-      }),
-      after: () => {
-        const card = document.querySelector('.ct-sheet[data-sheet="' + sheetId + '"]');
-        const sh = find();
-        const box = card && card.querySelector('.ct-sheet-notes');
-        if (!box || !sh) return;
-        box.value = sh.notes || '';
-        syncDoc(box);
-      }
-    })
+  return {
+    sheetId,
+    facts: () => { const sh = find(); return sh ? factsOf(sh, Scenes.listScenes()) : null; },
+    sceneIds: () => { const sh = find(); return sh ? sh.sceneIds || [] : []; },
+    say: (m) => StudioUI.toast(m),
+    offerUnit: (text) => StudioUI.toast('A unit message is ready to copy.', {
+      action: 'Copy it',
+      onAction: () => { copyText(text).then((ok) => StudioUI.toast(ok ? 'Unit message copied.' : 'Could not reach the clipboard.')); }
+    }),
+    after: () => {
+      const card = document.querySelector('.ct-sheet[data-sheet="' + sheetId + '"]');
+      const sh = find();
+      const box = card && card.querySelector('.ct-sheet-notes');
+      if (!box || !sh) return;
+      box.value = sh.notes || '';
+      syncDoc(box);
+    }
+  };
+};
+
+/* Write notes (callsheet-notes-rules, no AI): one line per fact on the
+   sheet, in the Desk's tick list; the AI pill beside it drafts prose. */
+function notesAi(sheetId) {
+  return h('div.ct-ai-row', {}, [button({
+    label: 'Write notes', size: 'sm', action: 'sheet-notes-rules', attrs: { 'data-sheet-id': sheetId }
+  }), aiPill({
+    label: 'Enhance with AI', tasks: ['callsheet-notes'], ctx: () => notesCtx(sheetId)
   })]);
 }
+
+delegate(document, 'click', '[data-action="sheet-notes-rules"]', (e, el) => {
+  const sheetId = el.dataset.sheetId;
+  import('../ui/ai-desk.js').then((D) => D.openDesk('callsheet-notes-rules', notesCtx(sheetId)));
+});
 
 function renderSheetEdit(sheet, contacts, scenes) {
   const edit = h('div.ct-edit');
@@ -955,7 +969,13 @@ delegate(document, 'click', '[data-action="contact-del"]', async (e, el) => {
   const id = contactIdOf(el);
   const c = Contacts.listContacts().find((x) => x.id === id);
   const label = c && c.name ? ' ' + c.name : '';
-  if (!await askDanger('Remove' + label + '? They come off every call sheet too.', { confirm: 'Remove person' })) return;
+  /* Their crew payments go with them (Costs.forgetContact): say so and
+     say how many, so the confirm is not the first a producer hears of it. */
+  const money = Costs.contactMoney(id);
+  const paid = money.payments
+    ? ' Their ' + (money.payments === 1 ? 'crew payment comes' : money.payments + ' crew payments come') + ' off the budget too.'
+    : '';
+  if (!await askDanger('Remove' + label + '? They come off every call sheet too.' + paid, { confirm: 'Remove person' })) return;
   /* The card the focused ✕ sits on is about to go: name its neighbour
      first (by id), or the Add button, so a keyboard user is not sent
      back to <body>. */
@@ -964,6 +984,7 @@ delegate(document, 'click', '[data-action="contact-del"]', async (e, el) => {
   const next = cards[at + 1] || cards[at - 1] || null;
   const nextId = next ? next.dataset.contact : '';
   Contacts.removeContact(id);
+  Costs.forgetContact(id, c && c.name);
   render();
   const target = (nextId && document.querySelector('.ct-person[data-contact="' + CSS.escape(nextId) + '"] .ct-name'))
     || document.querySelector('[data-action="contact-add"]');

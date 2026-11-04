@@ -477,6 +477,36 @@ for (const [id, tag, csvName] of [['cast-matrix', 'castmatrix', 'cast-matrix.csv
 /* ---- round 3 -------------------------------------------------- */
 const daysOf = async () => (await scenes()).map((s) => [s.id, Number(s.shootDay) || 0]);
 const activeAction = () => page.evaluate(() => document.activeElement?.getAttribute('data-action') || document.activeElement?.tagName);
+/* QA r5 D-1: a scene marked shot keeps its day through Clear days and
+   Schedule by location (its day is held, as the Desk's planner holds it). */
+{
+  const held = (await scenes()).find((x) => Number(x.shootDay) > 0);
+  const heldDay = Number(held.shootDay);
+  await writeScenes(`for (const s of scenes) { s.shotState = ''; } scenes.find((s) => s.id === ${JSON.stringify(held.id)}).shotState = 'shot';`);
+  await page.goto(url('stripboard.html#stripboard'), { waitUntil: 'networkidle' });
+  await settle(page, 1000);
+  const before = await daysOf();
+  await page.click('[data-action="sb-clear"]');
+  await settle(page, 300);
+  const body = await page.locator('.dlg').innerText().catch(() => '');
+  ok(new RegExp(`Day ${heldDay} has begun shooting`).test(body), 'r5 Clear days says the shot day is kept', body);
+  await page.locator('.dlg button', { hasText: /^Clear days$/ }).click();
+  await settle(page, 500);
+  const after = new Map(await daysOf());
+  ok(after.get(held.id) === heldDay, 'r5 a shot scene keeps its day through Clear days', after.get(held.id));
+  ok(before.filter(([, d]) => d === heldDay).every(([id]) => after.get(id) === heldDay), 'r5 the held day keeps every scene');
+  await page.click('[data-action="sb-auto"]');
+  await settle(page, 300);
+  await page.locator('.dlg button', { hasText: /^Re-schedule$/ }).click();
+  await settle(page, 500);
+  const auto = await daysOf();
+  ok(new Map(auto).get(held.id) === heldDay, 'r5 a shot scene keeps its day through Schedule by location');
+  ok(auto.filter(([, d]) => d === heldDay).length === before.filter(([, d]) => d === heldDay).length, 'r5 no new scene lands on the held day');
+  // Put the hand-made schedule back for the rest of round 3 (Auto's Undo only reaches the cleared board).
+  await writeScenes(`const d = new Map(${JSON.stringify(before)}); for (const s of scenes) if (d.has(s.id)) s.shootDay = d.get(s.id);`);
+}
+// The rest of round 3 clears EVERY day, so nothing may be shot.
+await writeScenes(`for (const s of scenes) { s.shotState = ''; }`);
 await page.goto(url('stripboard.html#stripboard'), { waitUntil: 'networkidle' });
 await settle(page, 1000);
 const days0 = await daysOf();

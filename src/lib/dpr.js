@@ -547,20 +547,28 @@ export function readCalcLines() {
  * the day (same name, any case) are skipped, so pressing it twice adds
  * nothing the second time. Returns how many were added.
  */
-export function seedKitFromCalc(day, lines) {
-  const src = lines || readCalcLines();
-  const kit = getKit(day);
-  const have = new Set(DEPT_IDS.flatMap((d) => kit[d].map((x) => x.item.toLowerCase())));
-  let added = 0;
-  for (const line of src) {
+/** The budget's kit lines a day does not list yet, one per item, with
+    their department. PURE. The Fill button counts THIS, not every kit
+    line in the budget, or it kept saying "(8)" over a day already
+    holding all eight. */
+export function kitLinesToSeed(kit, lines) {
+  const have = new Set(DEPT_IDS.flatMap((d) => (kit[d] || []).map((x) => x.item.toLowerCase())));
+  const out = [];
+  for (const line of lines) {
     const dept = classifyEquipment(line.item);
     if (!dept || have.has(line.item.toLowerCase())) continue;
-    kit[dept].push(blankKitItem({ item: line.item }));
     have.add(line.item.toLowerCase());
-    added++;
+    out.push({ dept, item: line.item });
   }
-  if (added) saveKit(day, kit);
-  return added;
+  return out;
+}
+
+export function seedKitFromCalc(day, lines) {
+  const kit = getKit(day);
+  const todo = kitLinesToSeed(kit, lines || readCalcLines());
+  for (const x of todo) kit[x.dept].push(blankKitItem({ item: x.item }));
+  if (todo.length) saveKit(day, kit);
+  return todo.length;
 }
 
 /** Copy one day's lists to another, ticks cleared — the next day's
@@ -645,6 +653,6 @@ export default {
   removeBanner, bannerText, layoutDay, impliedMoves,
   DEFAULT_PAGE_TARGET, DAY_HOURS, pageTarget, setPageTarget, dayLoad, estimateHours,
   DEPARTMENTS, blankKitItem, getKit, saveKit, addKitItem, updateKitItem, removeKitItem, findKitItem, restoreKitItem, kitTally,
-  classifyEquipment, calcLines, readCalcLines, seedKitFromCalc, copyKit, CALC_KEY,
+  classifyEquipment, calcLines, readCalcLines, kitLinesToSeed, seedKitFromCalc, copyKit, CALC_KEY,
   castNumbers, oneLiner
 };

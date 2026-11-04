@@ -35,8 +35,50 @@
  * after the figure ("25k/day", "2 lakh per day").
  * @returns {number} rupees, or 0 for anything unparseable.
  */
+/* A FRACTION is a quantity, and parseFloat reads only its front: a
+   half day typed "1/2" came back as 1 and silently doubled the line.
+   Taken only as the WHOLE string ("1/2", "1 1/2"), checked before the
+   spaces are stripped (or "1 1/2" would read as 11/2), and never with
+   a zero below the line. Returns null when the string is not one.
+   A DAY WORD after it ("1/2 day", "1/2d", "1 1/2 days") is a unit,
+   not a magnitude, and is taken whole like parseNum's rate tail:
+   without it "1/2 day" fell through to parseFloat and read 1, the
+   same doubled line by one more word. A magnitude word ("1/2 lakh")
+   is NOT taken, so that keeps whatever it read before. The typed
+   vulgar fractions (½ ¼ ¾ ⅓ ⅔) are spelt out first: "½" read 0 and
+   "1½" read 1. */
+const VULGAR = { '½': '1/2', '¼': '1/4', '¾': '3/4', '⅓': '1/3', '⅔': '2/3' };
+function fraction(s) {
+  const t = String(s).replace(/[½¼¾⅓⅔]/g, (c) => ' ' + VULGAR[c]).trim();
+  const m = t.match(/^(?:(\d+)\s+)?(\d+)\s*\/\s*(\d+)(?:\s*(?:d|days?|shifts?)\.?)?$/i);
+  if (!m || !+m[3]) return null;
+  return (m[1] ? +m[1] : 0) + (+m[2] / +m[3]);
+}
+
+/* A figure too big for a double ("1e400", or four hundred nines) is
+   Infinity, and Infinity is not an amount: it passed every "> 0"
+   check, printed ₹ ∞ in one total and ₹ 0 in the next (a later
+   clean-up had zeroed it), so the header, the top sheet and the cost
+   report disagreed about one line. Nothing typed is ever that big,
+   so it reads as unparseable, the same 0 as "abc".
+   NOR IS A FINITE FIGURE PAST 2^53. "1e300" parses, and printed 300
+   digits; 99999999999 x 99999999999 is 1e22 and printed
+   '999999999980000.1 Cr'; and 1e300 x 1e300 overflowed to Infinity
+   past this guard, because only the single parse was checked. Nothing
+   above Number.MAX_SAFE_INTEGER (90 lakh crore crore) is an amount
+   anybody budgets, and above it a rupee is no longer exact. */
+const finite = (n) => (Number.isFinite(n) && Math.abs(n) <= Number.MAX_SAFE_INTEGER ? n : 0);
+
+/** A line's days x rate, read as nothing when it is not a representable
+    amount. Two figures that each parse can still multiply past the
+    guard above, so every days x rate goes through here, or the row,
+    the total, the header and the top sheet disagree about one line. */
+export const lineAmount = (days, rate) => finite((+days || 0) * (+rate || 0));
+
 export function parseNum(s) {
   if (!s) return 0;
+  const frac = fraction(s);
+  if (frac !== null) return frac;
   s = String(s).toLowerCase().replace(/[,\s₹$]/g, '').replace(/rs\.?/g, '').replace(/^inr\.?|inr$/g, '');
   // "/-" (or "/=") is the Indian "and no paise" mark — "Rs. 25,000/-".
   // Left on, it broke the whole-string match below, so "25k/-" fell
@@ -70,10 +112,18 @@ export function parseNum(s) {
             : /^(lakhs?|lacs?|l)$/.test(suffix)     ? 100000
             : /^(thousands?|thou|k)$/.test(suffix)  ? 1000
             : 1;
-    return parseFloat(parts[1]) * m;
+    return finite(parseFloat(parts[1]) * m);
   }
-  const n = parseFloat(s);
-  return isNaN(n) ? 0 : n;
+  return finite(parseFloat(s));
+}
+
+/** A SUM OF MONEY someone typed: parseAmount, except that a fraction
+    or a fraction of a day ("1/2", "1/2 day", "½") is a quantity, not
+    an amount, and reads as 0, the same refusal as "abc". parseNum
+    takes fractions for day counts; a payment of "1/2 day" was being
+    recorded as ₹ 0.50. */
+export function moneyOf(s, currency) {
+  return s && fraction(s) !== null ? 0 : parseAmount(s, currency);
 }
 
 /** Abbreviated — lossy by design. Glanceable magnitude only. */
@@ -124,16 +174,17 @@ const USD2 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumF
 export function parseAmount(s, currency) {
   if (currency !== 'USD') return parseNum(s);
   if (!s) return 0;
+  const frac = fraction(s);
+  if (frac !== null) return frac;
   s = String(s).toLowerCase().replace(/[,\s$]/g, '').replace(/^usd?/, '').replace(/usd$/, '');
   // Same shape as parseNum's: the plural, and a rate tail taken whole
   // after the number and its suffix ("1.5k/day", "500 per day").
   const parts = s.match(/^(\d*\.?\d+)(millions?|mn|m|thousands?|thou|k)?(?:(?:\/|per)[a-z]+)?$/);
   if (parts) {
     const suffix = parts[2] || '';
-    return parseFloat(parts[1]) * (/^m/.test(suffix) ? 1000000 : suffix ? 1000 : 1);
+    return finite(parseFloat(parts[1]) * (/^m/.test(suffix) ? 1000000 : suffix ? 1000 : 1));
   }
-  const n = parseFloat(s);
-  return isNaN(n) ? 0 : n;
+  return finite(parseFloat(s));
 }
 
 /** A budget figure in `currency`: exact and grouped by default

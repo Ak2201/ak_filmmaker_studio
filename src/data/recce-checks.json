@@ -1,0 +1,52 @@
+{
+  "_about": "The phrases and thresholds behind the no-AI recce checklist and call sheet notes (src/lib/rules-preprod.js, docs/RULES-BREAKDOWN.md A2 and A4). Every recce line is something to CHECK or ASK on the visit, never a statement about the place, and is written only when a real fact in the script or the schedule triggers it. {placeholders} are filled from those facts. The same file carries the call sheet's note lines because both read the scene tags and speak the same way: a line per fact present, none invented.",
+  "prefix": "To check: ",
+  "thresholds": {
+    "extrasParking": 10,
+    "extrasToilets": 15,
+    "scenesToilets": 4,
+    "eighthsToilets": 24,
+    "scenesNotes": 2
+  },
+  "tagCategories": {
+    "power": ["sfx", "vfx", "special", "sound"],
+    "parking": ["vehicles"]
+  },
+  "recce": {
+    "bestTime": "{mix} scenes are planned here; look at the light at those hours.{light}",
+    "bestTimeLight": " Calculated for the shoot date on Day {day}: sunrise {sunrise}, sunset {sunset} (not a forecast).",
+    "power": "a power source for {why}: is there a socket, an owner's supply or room for a generator?",
+    "powerWhy": {
+      "interior": "{count} set indoors",
+      "night": "{count} at night",
+      "tags": "the {what} tagged in the breakdown"
+    },
+    "parking": "where {what} can stand, with the crew vehicles, and whether the road allows it.",
+    "parkingWhat": {
+      "vehicles": "the vehicles tagged for Sc {sc} ({names})",
+      "extras": "a background crowd of {peak} (Sc {sc})"
+    },
+    "toilets": "toilets for the unit{because}: are there any on site, and how far?",
+    "toiletsBecause": {
+      "extras": ", with a background of {peak} (Sc {sc})",
+      "load": ", with {count} and {pages} shot here"
+    },
+    "notes": "{count} here ({detail})."
+  },
+  "callsheet": {
+    "childAgeUnder": 14,
+    "light": "Sunrise {sunrise}, sunset {sunset}{zone}{fallback}.",
+    "lightFallback": " (a default place; pin the location for exact times)",
+    "night": "Night shoot: Sc {sc} {are} after sunset.",
+    "wrapAfterSunset": "Wrap is {wrap}, after sunset ({sunset}).",
+    "daylightRisk": "Exterior day scenes, Sc {sc}: wrap is {wrap}, after sunset ({sunset}).",
+    "move": "Company move: {from} to {to}, after Sc {after}.",
+    "moreMoves": "{n} more company move(s) on the day.",
+    "vehicles": "Vehicles ({names}) in Sc {sc}.",
+    "animals": "Animals ({names}) in Sc {sc}.",
+    "stunts": "Stunts in Sc {sc}: stunt crew and safety on set.",
+    "sfx": "Special effects in Sc {sc}.",
+    "child": "Child artist ({names}) in Sc {sc}: a guardian on set, and the working hours are limited.",
+    "pages": "{pages} across {count}."
+  }
+}

@@ -5,7 +5,7 @@
 import { diffLines, mergeHunks, normalise } from '../src/lib/ai-diff.js';
 import { refineBlock, withRefine } from '../src/lib/ai-refine.js';
 import { readFileSync } from 'node:fs';
-import { listenSay, acceptNote, undoNote } from '../src/lib/ai-desk-outcome.js';
+import { listenSay, acceptNote, undoNote, projectMoved } from '../src/lib/ai-desk-outcome.js';
 import { resolve as kitResolve, call as kitCall } from '../src/lib/ai-task-kit.js';
 
 let fail = 0, pass = 0;
@@ -124,6 +124,17 @@ console.log('ai-desk-outcome (no second toast that contradicts the task)');
   ok(/task\.apply\(selected, heard\.ctx/.test(deskSrc) && /undoNote\(/.test(deskSrc) && /acceptNote\(/.test(deskSrc)
     && !/toastSuccess\(label \+ ': applied\.'\)/.test(deskSrc) && !/then\(\(\) => StudioUI\.toast\('Undone\./.test(deskSrc),
     'ai-desk.js routes Accept and Undo toasts through ai-desk-outcome.js');
+
+  // QA r4 K-1: a draft asked for in film A is never accepted into film B.
+  ok(projectMoved('A', 'B') && projectMoved('A', null) && projectMoved(null, 'B'),
+    'a version stamped for one film is refused once another is open');
+  ok(!projectMoved('A', 'A') && !projectMoved(null, null) && !projectMoved(undefined, 'B'),
+    'same film (or an unstamped version) accepts as before');
+  const acc = deskSrc.slice(deskSrc.indexOf('async function accept('));
+  ok(/projectMoved\(v\.project, currentProjectId\(\)\)/.test(acc)
+    && acc.indexOf('projectMoved(') < acc.indexOf('task.apply(')
+    && (deskSrc.match(/\.project = (project|currentProjectId\(\))/g) || []).length >= 3,
+    'ai-desk.js stamps every version with its film and checks it before any apply');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

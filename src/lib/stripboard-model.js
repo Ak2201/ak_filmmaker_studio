@@ -18,6 +18,7 @@ import { formatEighths, totalEighths } from './scenes.js';
 import Locations from './locations.js';
 import * as Songs from './songs.js';
 import DPR from './dpr.js';
+import { closedDays, movable } from './ai-preprod-model.js';
 /* Pure and import-free: the paperwork's date style (docs/US-MARKET-PLAN.md §A4). */
 import { paperDate } from './paper-date.js';
 
@@ -257,14 +258,36 @@ export function describeMove(rec, scene, total) {
   return `${n} ${where}.`;
 }
 
+/** The days a schedule rewrite (Clear days, Schedule by location) must
+ *  leave alone: any day holding a scene the unit has begun to shoot.
+ *  The SAME rule the Desk's "Plan shoot days" states and keeps
+ *  (closedDays / movable in ai-preprod-model.js), so the board's two
+ *  rewrites and the planner cannot disagree about what is fixed. A shot
+ *  scene moved off its day takes its DPR record with it: Day 1 then
+ *  reads "Scenes shot 0 / 1" for a day the unit really did shoot. */
+export const heldDays = (scenes) => closedDays(scenes);
+/** The scenes a rewrite may touch: not shot, not on a held day. */
+export function movableScenes(scenes) {
+  const closed = closedDays(scenes);
+  return (scenes || []).filter((s) => movable(s, closed));
+}
+
 /** Schedule by location: each place becomes a day, in script order.
+ *  Only movable scenes are planned, and the day numbers skip every held
+ *  day, so a scene already shot keeps its day and gets no new company.
  *  Returns the scene → day plan; the caller writes it. */
 export function scheduleByLocation(scenes) {
+  const closed = closedDays(scenes);
   const dayFor = new Map();
   const plan = [];
+  let next = 0;
   for (const scene of scenes) {
-    const key = locationOf(scene).toLowerCase() || '￿';
-    if (!dayFor.has(key)) dayFor.set(key, dayFor.size + 1);
+    if (!movable(scene, closed)) continue;
+    const key = locationOf(scene).toLowerCase() || '\uffff';
+    if (!dayFor.has(key)) {
+      do next += 1; while (closed.has(next));
+      dayFor.set(key, next);
+    }
     plan.push({ id: scene.id, day: dayFor.get(key) });
   }
   return { plan, days: dayFor.size };

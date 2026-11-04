@@ -112,13 +112,26 @@ const LOOK = /\b(sees|looks (?:at|up at|down at|across at|over at)|stares at|sta
 const clean = (t) => String(t || '').replace(/\s+/g, ' ').trim();
 /** The first few words of a line, quoted, for a description. */
 function excerpt(t, n = 7) {
-  const w = clean(t).split(' ');
-  return '"' + w.slice(0, n).join(' ').replace(/[,;:—–-]+$/, '') + (w.length > n ? '…' : '') + '"';
+  /* Quotes INSIDE the line become single quotes, or the excerpt's own
+     pair closes early: "the "OPEN" sign." (QA r6 E-3). */
+  const w = clean(t).replace(/["“”]/g, "'").split(' ');
+  /* A whole line keeps its own ending — "Wait —" is an interrupted line.
+     Only a CUT line loses its trailing punctuation (and the space before
+     it, or "Wait —" printed as "Wait ") before the ellipsis. */
+  if (w.length <= n) return '"' + w.join(' ') + '"';
+  return '"' + w.slice(0, n).join(' ').replace(/[\s,;:—–-]+$/, '') + '…"';
 }
 /* A description that ends on a quoted excerpt takes a full stop only
    when the quote did not already close a sentence: 'Ravi sleeps.'
-   must not print as "Ravi sleeps.". (QA r3 E-1). */
-const sentence = (s) => /[.!?…]["”]?$/.test(s) ? s : s + '.';
+   must not print as "Ravi sleeps.". (QA r3 E-1; the dialogue MCU/OTS/
+   single lines in closeExchange() go through it too, QA r4 E-1). */
+/* Nor does a quote that ends on a dash: "Wait —" is a line cut off, and
+   'from "Wait —".' prints a stray stop after it (QA r6 E-3). A quote with
+   no end punctuation at all still takes one (test:shots). */
+const sentence = (s) => /[.!?…]["”]?$|[—–]["”]$/.test(s) ? s : s + '.';
+/* "over MEENA's shoulder" — but a Latin 's on a Tamil (or any non-Latin)
+   name reads wrong, so those take "over the shoulder of மீனா". */
+const overShoulder = (n) => /\p{Script=Latin}$/u.test(n) ? 'over ' + n + "'s shoulder" : 'over the shoulder of ' + n;
 const OFFSCREEN = /\((?:[^)]*\b(?:V\.?\s?O|O\.?\s?S|O\.?\s?C)\b[^)]*)\)/i;
 // Not \b: "RAGAVAN'S" must become "Ragavan's", not "Ragavan'S".
 const titleCase = (s) => s.toLowerCase().replace(/(^|[\s,(/-])(\p{L})/gu, (m, a, c) => a + c.toUpperCase());
@@ -250,22 +263,22 @@ export function shotsForScene(job) {
     const line = (n) => exchange.first.get(n) ? ' — from ' + excerpt(exchange.first.get(n)) : '';
     if (sp.length === 1) {
       push(P.talk, 'mcu:' + sp[0], {
-        size: 'MCU', description: 'MCU on ' + sp[0] + line(sp[0]) + '.'
+        size: 'MCU', description: sentence('MCU on ' + sp[0] + line(sp[0]))
       });
     } else if (sp.length === 2) {
       const [a, b] = sp;
       push(P.talk, 'ots:' + a + '>' + b, {
-        size: 'MCU', description: 'OTS on ' + a + ', over ' + b + "'s shoulder" + line(a) + '.'
+        size: 'MCU', description: sentence('OTS on ' + a + ', ' + overShoulder(b) + line(a))
       });
       push(P.talk, 'ots:' + b + '>' + a, {
-        size: 'MCU', description: 'OTS on ' + b + ', over ' + a + "'s shoulder" + line(b) + '.'
+        size: 'MCU', description: sentence('OTS on ' + b + ', ' + overShoulder(a) + line(b))
       });
     } else if (sp.length > 2) {
       push(P.talk, 'group:' + [...sp].sort().join(','), {
         size: 'MS', description: 'Group MS — ' + listNames(sp) + ', holding the exchange.'
       });
       sp.slice(0, 4).forEach((n) => push(P.single, 'mcu:' + n, {
-        size: 'MCU', description: 'Single on ' + n + line(n) + '.'
+        size: 'MCU', description: sentence('Single on ' + n + line(n))
       }));
     }
     exchange = null;

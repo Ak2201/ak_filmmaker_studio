@@ -88,13 +88,27 @@ ok('screenplay model', () => {
   assert.match(S.importReplaceBody(1), /scene goes to its bin, with its shots/);
   assert.match(S.importReplaceBody(3), /with their shots/);
   assert.match(S.importReadText('', { format: 'fountain', elements: [{}], pages: 1, scenes: [] }), /: 1 line, /);
+  // QA r5 B-2: with the printed count it quotes that, and claims no estimate.
+  assert.equal(S.importReadText('a.fdx', { format: 'fdx', formatLabel: 'Final Draft', elements: [{}, {}], pages: 106.5, scenes: [] }, 115),
+    'Read “a.fdx” as Final Draft: 2 lines, 115 pages, 0 scenes.');
+  assert.match(S.pdfSubtitle({ elements: [] }, 115), /115 pages/);
   assert.equal(S.importReplaceBody(0), 'A draft of the current one is saved first, so it can be restored.');
+});
+
+ok('drafts model: hasWriting (QA r4 G-2)', () => {
+  assert.equal(D.hasWriting({ elements: [] }), false);
+  assert.equal(D.hasWriting({ elements: [{ type: 'action', text: '   ' }] }), false);
+  assert.equal(D.hasWriting({}), false);
+  assert.equal(D.hasWriting({ elements: [{ type: 'scene', text: 'INT. ROOM - DAY' }] }), true);
 });
 
 ok('drafts model', () => {
   const d = { label: 'Draft 2', colour: { name: 'Blue' }, savedAt: new Date(2026, 9, 1, 9, 3).toISOString(), pages: 1, lines: 2 };
   assert.equal(D.draftMetaText(d), '1 Oct 2026, 09:03 · 1 page · 2 lines');
   assert.equal(D.restoreDialogSpec(d, true, 'Draft 3').choices[0].label, 'Save as Draft 3, then restore');
+  const empty = D.restoreDialogSpec(d, true, 'Draft 3', false);   // QA r6 G-2
+  assert.ok(!empty.choices.some((c) => c.id === 'save'), 'an empty script offers no Save as Draft N');
+  assert.deepEqual(empty.choices.map((c) => c.id), ['go', 'cancel']);
   assert.equal(D.draftPdfMeta(d, 'T').revision, 'Blue — Draft 2');
 });
 

@@ -316,6 +316,14 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
     eq(shape(parseScript2(f)), shape(doc), '6: no ! leaks on any line of a forced action block');
     eq(tx('INT. A - DAY\n\n!ONE\n!TWO\nthree', 'x.fountain').slice(1), ['ONE\nTWO\nthree'], '6: every leading ! in a forced block is stripped');
   }
+  // QA r6: the writer's own [[ ]] and /* */ and two dialogues in a row survive a Fountain round trip.
+  {
+    const doc = [E('scene', 'INT. A - DAY'), E('action', 'He says [[a note]] to her.'), E('action', '/* not a boundary */ text'),
+      E('character', 'RAVI'), E('dialogue', 'First thought.'), E('dialogue', 'Second thought.'), E('action', 'He leaves.')];
+    const f = S.toFountain({ elements: doc }, { title: 'T', date: '2026-10-06' });
+    eq(shape(parseScript2(f)), shape(doc), 'QA r6: notes, boneyard marks and two consecutive dialogues round-trip');
+    eq(tx('INT. A - DAY\n\nHe says [[a real note]] to her.', 'x.fountain').slice(1), ['He says  to her.'], 'QA r6: a real Fountain note is still left out');
+  }
 
   // 7 / 8 / 9 / 15. slug lines
   eq(pin(I.scenesFrom([E('scene', 'INT. KITCHEN - DAY #12#')]).rows[0]).slice(0, 4), ['12', 'INT', 'DAY', 'KITCHEN'], '7: Fountain #12# scene number');
@@ -329,6 +337,24 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
   eq(I.parseSlug('EST. SKYLINE - DAY').intExt, 'EXT', '9: EST is exterior');
   eq(I.parseSlug('INT. CAR - LATER').dayNight + '|' + I.parseSlug('INT. CAR - LATER').location, 'CONTINUOUS|CAR', '15: LATER is a time, not part of the place');
   eq(['MOMENTS LATER', 'SAME', 'EVENING', 'DAWN', 'DUSK', 'NOON', 'MIDNIGHT', 'MORNING'].map((w) => I.parseSlug('INT. X - ' + w).location), Array(8).fill('X'), '15: time words leave the location alone');
+  // QA r4: long forms, a bracketed or bare time, a compound time, a dash with no place.
+  const sl = (t) => { const p = I.parseSlug(t); return [p.intExt, p.dayNight, p.location, p.guessedTime].join('|'); };
+  eq(sl('INTERIOR. KITCHEN - DAY'), 'INT|DAY|KITCHEN|false', 'r4: INTERIOR is INT, the word leaves the place');
+  eq(sl('EXTERIOR. STREET - DAY'), 'EXT|DAY|STREET|false', 'r4: EXTERIOR is EXT');
+  eq(sl('INTERIOR/EXTERIOR HOUSE - DAY'), 'INT/EXT|DAY|HOUSE|false', 'r5: the combined long form is INT/EXT');
+  eq(sl('EXTERIOR/INTERIOR CAR - NIGHT'), 'INT/EXT|NIGHT|CAR|false', 'r5: EXTERIOR/INTERIOR is INT/EXT');
+  // QA r6: a continuity word after a real time keeps the time and the place.
+  eq(sl('INT. KITCHEN - NIGHT - CONTINUOUS'), 'INT|NIGHT|KITCHEN|false', 'r6: NIGHT - CONTINUOUS is NIGHT in KITCHEN');
+  eq(sl('INT. KITCHEN – NIGHT – LATER'), 'INT|NIGHT|KITCHEN|false', 'r6: en-dash NIGHT – LATER');
+  eq(sl('INT. KITCHEN - CONTINUOUS'), 'INT|CONTINUOUS|KITCHEN|false', 'r6: CONTINUOUS alone stays CONTINUOUS');
+  eq(sl('INT. HALL - CONTINUOUS - CONTINUOUS'), 'INT|CONTINUOUS|HALL - CONTINUOUS|false', 'r6: no real time before it, unchanged');
+  eq(sl('INT. KITCHEN (NIGHT)'), 'INT|NIGHT|KITCHEN|false', 'r4: a bracketed time is the time');
+  eq(sl('INT KITCHEN NIGHT'), 'INT|NIGHT|KITCHEN|false', 'r4: a bare last NIGHT is the time');
+  eq(sl('INT. KITCHEN - DUSK/NIGHT'), 'INT|DUSK|KITCHEN|false', 'r4: a compound time leaves the place');
+  eq(sl('EXT. - DAY'), 'EXT|DAY||false', 'r4: a dash with no place gives no place, not DAY');
+  eq(sl('INT. THE NIGHT CLUB'), 'INT|DAY|THE NIGHT CLUB|true', 'r4: a time word inside a place stays there');
+  eq(sl('EXT. HIGH NOON'), 'EXT|DAY|HIGH NOON|true', 'r4: a bare synonym is a place, not a time');
+  eq(sl('INT. ROOM (2014)'), 'INT|DAY|ROOM (2014)|true', 'r4: a bracketed year is not a time');
   // A qualifier after the time is not the time, and leaves the place (QA r2).
   for (const [h, loc, dn] of [
     ['INT. HOUSE - NIGHT (1995)', 'HOUSE', 'NIGHT'],
@@ -457,6 +483,12 @@ function parseScript2(f) { return I.parseScript(f, 'x.fountain').elements; }
     'docx: "heading N" is not a scene-heading style');
   const acts = I.docxScreenplayText([{ text: 'Act One', style: 'heading 1' }, { text: 'INT. A - DAY' }, { text: 'Rain.' }]);
   eq([acts.styled, String(acts.text).split('\n')[0]], [0, 'Act One'], 'docx: a Heading 1 line keeps its case and does not count as styled');
+  // QA r6: a styled line is typed text: spaces, tabs and a typed (CONT'D) stay.
+  {
+    const typedWs = I.parseScript(I.docxScreenplayText([{ text: 'INT. A - DAY', style: 'Scene Heading' }, { text: 'Two  spaces   inside.', style: 'Action' },
+      { text: 'A\ttab.', style: 'Action' }, { text: "RAVI (CONT'D)", style: 'Character' }, { text: 'Hi.', style: 'Dialogue' }]).text, 'x.docx');
+    eq(typedWs.elements.map((e) => e.text), ['INT. A - DAY', 'Two  spaces   inside.', 'A\ttab.', "RAVI (CONT'D)", 'Hi.'], 'QA r6: styled Word lines keep their spaces, tabs and typed (CONT\'D)');
+  }
 
   // A non-breaking hyphen is a hyphen; a soft one is nothing.
   const hy = D.documentXmlToParagraphs('<w:body><w:p><w:r><w:t>SELF</w:t><w:noBreakHyphen/><w:t>DE</w:t><w:softHyphen/><w:t>STRUCT</w:t></w:r></w:p></w:body>');

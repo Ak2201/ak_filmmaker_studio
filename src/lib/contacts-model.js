@@ -164,7 +164,7 @@ export function lateText(sheet, onSheet, light, late) {
   return 'Wrap ' + wrapOf(sheet, onSheet) + ' is after sunset (' + light.sunset + '). '
     + (late.length === 1 ? 'Exterior scene ' : 'Exterior scenes ')
     + late.map((s) => s.number || '—').join(', ')
-    + ' need the light — shoot ' + (late.length === 1 ? 'it' : 'them') + ' before ' + light.sunset + '.';
+    + (late.length === 1 ? ' needs' : ' need') + ' the light — shoot ' + (late.length === 1 ? 'it' : 'them') + ' before ' + light.sunset + '.';
 }
 
 /* ---- route & safety ------------------------------------------- */

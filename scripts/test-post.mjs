@@ -111,7 +111,7 @@ ok(!/Sc 5/.test(txt), 'a cut-out scene is owed nothing');
 const P = E.parseTimecode;
 [['42', 42], ['0', 0], ['0:42', 42], ['1:05', 65], ['90:00', 5400], ['1:02:03', 3723], ['01:02:03:24', 3723],
  [' 2:30 ', 150], [42, 42]].forEach(([i, o]) => eq(P(i), o, 'parseTimecode ' + JSON.stringify(i)));
-['', 'abc', '-5', '1:75', '1:61:00', '1:02:61', '1.5', '1::2', '1:2:3:4:5', '12:xx', null, undefined, -1, 1.5, '999999999']
+['', 'abc', '-5', '1:75', '1:61:00', '1:02:61', '1.5', '1::2', '1:2:3:4:5', '1:2:3:4', '01:02:03:4', '01:02:03:75', '12:xx', null, undefined, -1, 1.5, '999999999']
   .forEach((i) => eq(P(i), null, 'parseTimecode refuses ' + JSON.stringify(i)));
 [[0, '0:00'], [42, '0:42'], [65, '1:05'], [3599, '59:59'], [3600, '1:00:00'], [3723, '1:02:03'], [-4, '0:00'], ['x', '0:00']]
   .forEach(([i, o]) => eq(E.formatTimecode(i), o, 'formatTimecode ' + i));
@@ -206,6 +206,18 @@ E.removeCutNote(k2.id, nn.id);
 eq(E.listCuts()[1].notes, [], 'a note is removed');
 E.restoreCutNote(k2.id, nn, 0);
 eq(E.listCuts()[1].notes.map((n) => n.id), [nn.id], 'and restored');
+/* QA r6 G-3: note removed, then its cut, then the NOTE's Undo first */
+const cutSnap = () => JSON.parse(JSON.stringify(E.listCuts()[1]));
+E.removeCutNote(k2.id, nn.id);
+const cutGone = cutSnap();
+E.removeCut(k2.id);
+eq(E.restoreCutNoteWithCut(k2.id, nn, 0, null, 1), null, 'no cut copy: the note cannot come back');
+eq(E.restoreCutNoteWithCut(k2.id, nn, 0, cutGone, 1), 'cut', 'the note Undo brings its cut back');
+eq(E.listCuts()[1].notes.map((n) => n.id), [nn.id], 'with the note in it');
+eq(E.restoreCut(cutGone, 1), null, 'and the cut Undo after it adds nothing');
+E.removeCutNote(k2.id, nn.id);
+eq(E.restoreCutNoteWithCut(k2.id, nn, 0, cutGone, 1), 'note', 'a cut still there takes the note back plainly');
+eq(E.listCuts().map((c) => c.name), ['One', 'Two b', 'Three'], 'no second copy of the cut');
 
 /* cutNotesText */
 const tcut = { name: 'Assembly', date: '2026-10-01', notes: [

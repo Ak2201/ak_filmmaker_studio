@@ -195,7 +195,11 @@ async function route(r) {
   requests.push({ provider, url, user, key: headers['x-api-key'] || headers['x-goog-api-key'] || '' });
   if (failPart2Once && /This is part 2 of/.test(user)) {
     failPart2Once = false;
-    return r.fulfill({ status: 529, contentType: 'application/json', body: JSON.stringify({ type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } }) });
+    /* A 500, not a 529: since the busy-model retry (ai.js callModel) a
+       529 is asked again and succeeds, so the run never failed and this
+       proof's checkpoint/Resume half never ran (QA r4 K-4). A server
+       error is not retried, which is the failure this half is about. */
+    return r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ type: 'error', error: { type: 'api_error', message: 'Internal server error' } }) });
   }
   if (holdAudPart2 && /— part 2 of/.test(user) && /THE PANEL \(id/.test(user)) {
     holdAudPart2 = false;
@@ -219,7 +223,7 @@ async function session({ width, theme, provider }) {
   /* A failed resource is judged by its URL, not by the console line,
      which carries none. Two are this harness's own doing and are not
      findings: every off-origin request is aborted below (ERR_FAILED),
-     and the fake answers the "failed run" with a 529 on purpose. */
+     and the fake answers the "failed run" with a 500 on purpose. */
   page.on('console', (m) => {
     /* Signed in, the client opens Supabase realtime; a WebSocket is
        not routed by page.route, so it fails to connect here. Not a finding. */
@@ -227,7 +231,7 @@ async function session({ width, theme, provider }) {
   });
   page.on('response', (r) => {
     const u = r.url();
-    if (r.status() >= 400 && !(r.status() === 529 && /anthropic\.com|googleapis\.com/.test(u))) errors.push(r.status() + ' ' + u);
+    if (r.status() >= 400 && !(r.status() === 500 && /anthropic\.com|googleapis\.com/.test(u))) errors.push(r.status() + ' ' + u);
   });
   // ERR_ABORTED is the browser cancelling a request because the page
   // navigated or a lazy import was superseded — not a failure to load.
@@ -270,6 +274,13 @@ async function openPill(page, sel) {
   }, null, { timeout: 10000 });
   await page.waitForTimeout(300);
 }
+/** Wait for the pill to unlock: it is 'locked' (fails closed) until the
+    plan has arrived, which on a loaded machine is later than any fixed
+    delay. A signal, never a fixed wait; false after 15s. */
+const pillReady = (page, sel) => page.waitForFunction((s) => {
+  const el = document.querySelector(s);
+  return !!el && el.dataset.aiState === 'ready';
+}, sel, { timeout: 15000 }).then(() => true, () => false);
 const deskSays = async (page, sel) => ((await page.locator('aside.ai-desk ' + sel).first().textContent().catch(() => '')) || '');
 
 for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'ink', 'gemini'], [390, 'ink', 'anthropic'], [1280, 'ink', 'gemini']]   /* one theme since 14 Oct 2026 */) {
@@ -310,7 +321,7 @@ for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'ink',
   check(tag + 'nothing was sent on load', requests.length === 0, requests.length);
 
   const PILL = '#coverage .cv-run .ai-pill';
-  check(tag + 'the run is an AI pill, unlocked on Pro with a key', await page.locator(PILL).first().evaluate((el) => el.dataset.aiState) === 'ready');
+  check(tag + 'the run is an AI pill, unlocked on Pro with a key', await pillReady(page, PILL));
 
   /* ---- a run that fails on part 2, then resumes ------------------- */
   failPart2Once = true;
@@ -376,7 +387,7 @@ for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'ink',
      Run sends, the suggested rewrites are the items, Accept adds the
      ticked ones as takes. */
   const VPILL = '#coverage .cv-voice .ai-pill';
-  check(tag + 'the voice check is an AI pill, unlocked on Pro with a key', await page.locator(VPILL).first().evaluate((el) => el.dataset.aiState) === 'ready');
+  check(tag + 'the voice check is an AI pill, unlocked on Pro with a key', await pillReady(page, VPILL));
   requests.length = 0;
   await openPill(page, VPILL);
   check(tag + 'the voice pill opens the Desk on the voice check', /Voice check/.test(await deskSays(page, '.ai-desk-title')));

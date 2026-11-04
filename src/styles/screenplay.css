@@ -907,6 +907,12 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   gap: var(--s1) var(--s4);
   margin: 0;
   min-width: 0;
+  /* It is a <p>, and base.css caps every <p> at --measure (~497px in
+     this face). Below 720px it must take the whole line (flex-basis
+     100%): capped, it left room beside it from 540px up, the tools
+     joined its line, and the type pill was squeezed to "Sc…" with the
+     row 40px past the screen (QA r5). It is a strip, not prose. */
+  max-width: none;
   font-family: var(--f-body); font-variant-numeric: tabular-nums;
   font-size: var(--t-micro);
   letter-spacing: 0;
@@ -1070,12 +1076,13 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   .sc-tools > .sc-pos { order: -1; flex: 1 1 100%; }
   .sc-runtime { padding-inline: var(--s3); }
 
-  /* One row that fits: type · Beats · AI · Tools. File, ⋯ and Focus
-     move into the Tools sheet; nothing is dropped. */
+  /* One row that fits: type · Beats · AI · Tools. File, ⋯, Focus and
+     Clean up move into the Tools sheet; nothing is dropped. */
   .sc-tools { overflow: visible; }
   .sc-tools-l { flex: 1 1 auto; min-width: 0; }
   .sc-tools-r .tb-menu,
-  .sc-focus-slot > #fm-enter { display: none; }
+  .sc-focus-slot > #fm-enter,
+  .sc-tools-l > .sc-cleanup-btn { display: none; }   /* in the Tools sheet (QA r4: it squeezed the type pill to 18px) */
   .sc-tools-sheet-btn { display: inline-flex; }
   .sc-typekey { display: none; }
   .sc-typepill { height: var(--tap-min, 44px); }
@@ -1087,7 +1094,9 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   .sc-tools-l { flex: 1 1 0; flex-wrap: nowrap; }
   .sc-tools-r { flex: none; flex-wrap: nowrap; }
   .sc-tools-l > :not(.sc-typepill) { flex: none; }
-  .sc-typepill { min-width: 0; flex: 0 1 auto; white-space: nowrap; }
+  /* The floor is a thumb, never 0: with min-width 0 a crowded row once
+     squeezed the pill to an 18px blank sliver (QA r4 J). */
+  .sc-typepill { min-width: var(--tap-min, 44px); flex: 0 1 auto; white-space: nowrap; }
   .sc-typename { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .sc-tools .ai-pill { height: var(--tap-min, 44px); }
   .sc-tools .nt-open, .sc-beats-btn { min-width: var(--tap-min, 44px); justify-content: center; }
@@ -1148,6 +1157,17 @@ html.fm-on .sc-sheet .wr-el:focus-within::after { display: none; }
   /* The panel inside the sheet is the sheet: no second floating card. */
   .sc-beats > .bp.is-open { position: static; box-shadow: none; border: 0; background: transparent; }
   .sc-beats .bp-body { max-height: none; overflow: visible; }
+}
+/* A small phone (320-379px): the row's five 44px targets left the type
+   pill 46px and every name but "Shot" clipped (QA r5). The AI pill goes
+   to its glyph, as Beats and Notes already have; its words stay for a
+   screen reader, visually hidden, and the hover title still says Pro.
+   The gaps close to --s1. The pill gets its name back. */
+@media (max-width: 379px) {
+  .sc-tools-l, .sc-tools-r { gap: var(--s1); }
+  .sc-tools { column-gap: var(--s1); }
+  .sc-tools .ai-pill { min-width: var(--tap-min, 44px); justify-content: center; padding-inline: var(--s2); }
+  .sc-tools .ai-pill .ai-pill-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
 @media print { .sc-pos, .sc-runtime, .sc-beats-scrim { display: none; } }
 

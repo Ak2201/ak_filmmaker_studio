@@ -722,8 +722,11 @@ async function worker() {
     await ctx.addInitScript(PIN);
     const page = await ctx.newPage();
     const out = { ...job, findings: [] };
+    let target = BASE + job.file;
+    for (let attempt = 0; attempt < 2; attempt++) {
+    out.findings = []; delete out.error;
     try {
-      await page.goto(BASE + job.file, { waitUntil: 'networkidle', timeout: 45000 });
+      await page.goto(target, { waitUntil: 'networkidle', timeout: 45000 });
       await page.evaluate(() => new Promise((r) => (window.requestIdleCallback
         ? requestIdleCallback(() => r(), { timeout: 4000 }) : setTimeout(r, 1200))));
       await page.waitForTimeout(700);
@@ -745,6 +748,14 @@ async function worker() {
       }
     } catch (e) {
       out.error = String(e.message || e).split('\n')[0];
+    }
+    /* a redirect stub (write.html, feature.html) can navigate AFTER
+       networkidle on a loaded machine, which destroys the context under
+       the probe: that is the stub doing its job, so load it once more
+       (the second load opens where the stub sent it) */
+    if (!out.error || !/context was destroyed|navigation/i.test(out.error)) break;
+    await page.waitForLoadState('networkidle').catch(() => {});
+    target = page.url();
     }
     results.push(out);
     await ctx.close();

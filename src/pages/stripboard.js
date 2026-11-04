@@ -82,7 +82,7 @@ import Board from '../lib/board-stats.js';
 import {
   CAST, GROUPINGS, shootDayOf, castOf, locationOf, shootDays, groupScenes as groupBy, localDate as localDateIn, dayMonth, todayISO,
   daysNote as daysNoteFor, runtimeNote, screenTimeByDay, uncoveredMoves, nextUncoveredMove,
-  doodRows as doodRowsFor, LONG, describeMove as moveSentence, scheduleByLocation,
+  doodRows as doodRowsFor, LONG, describeMove as moveSentence, scheduleByLocation, heldDays, movableScenes,
   latestDraft, boardSummary, boardCsv, doodCsv
 } from '../lib/stripboard-model.js';
 import {
@@ -427,9 +427,13 @@ function renderControls() {
     h('div.sb-seg', {}, [h('span.sb-seg-lab', { text: 'Group by', 'aria-hidden': 'true' }), seg]),
     h('div.sb-acts.pdf-menu-host', {}, [
       button({ label: 'Schedule by location', icon: 'auto_awesome', action: 'sb-auto', class: 'sb-btn' }),
+      /* Plan days (shoot-order-rules, src/lib/local-tasks-preprod.js): the
+         no-AI plan, in the Desk's own tick list, with no key and no plan
+         check beyond this page's. Written only on Accept, by placeScene(). */
+      button({ label: 'Plan days', action: 'sb-plan-days', class: 'sb-btn', title: 'Plan shoot days by rules, no AI' }),
       /* The AI Desk's day order (shoot-order, src/lib/ai-tasks-preprod.js):
          a draft to tick, written only on Accept, by placeScene(). */
-      aiPill({ label: 'Suggest day order', tasks: ['shoot-order'], ctx: () => ({ say: (m) => toast(m), after: render }) }),
+      aiPill({ label: 'Enhance with AI', tasks: ['shoot-order'], ctx: () => ({ say: (m) => toast(m), after: render }) }),
       exportMenu,
       /* The destructive one stands apart from the action it undoes (it
          sat touching "Schedule by location"). It stays pressable when no
@@ -1042,6 +1046,10 @@ function fillLock() {
   }).catch((e) => console.warn('[stripboard] lock state', e));
 }
 
+delegate(document, 'click', '[data-action="sb-plan-days"]', () => {
+  import('../ui/ai-desk.js').then((D) => D.openDesk('shoot-order-rules', { say: (m) => toast(m), after: render }));
+});
+
 delegate(document, 'click', '[data-action="sb-unlock"]', async () => {
   let U;
   try { U = await import('../ui/script-lock-ui.js'); } catch (e) {
@@ -1441,13 +1449,31 @@ function undoableToast(said, before, after, bannerAction, undone) {
    becomes a day. It is a starting point, not a schedule — which is
    why it says so before it overwrites anything, and why the overwrite
    can be undone. */
+/* A day the unit has begun shooting is held by both rewrites, as the
+   Desk's planner holds it: its scenes keep their day and its per-day order
+   survives. heldNote() says so in the dialog, before anything is written. */
+const heldNote = (closed) => closed.size
+  ? ` ${closed.size === 1 ? 'Day ' + [...closed][0] + ' has' : 'Days ' + [...closed].sort((a, b) => a - b).join(', ') + ' have'} begun shooting, so `
+    + `${closed.size === 1 ? 'it keeps its' : 'they keep their'} scenes and order.`
+  : '';
+function clearOpenDayOrders(closed) {
+  const kept = Object.entries(Locations.listDayOrder()).filter(([d]) => closed.has(parseInt(d, 10)));
+  Locations.clearDayOrders();
+  kept.forEach(([d, ids]) => Locations.setDayOrder(d, ids));
+}
+
 delegate(document, 'click', '[data-action="sb-auto"]', async () => {
   const scenes = Scenes.listScenes();
   if (!scenes.length) return;
-  const already = scenes.filter((s) => shootDayOf(s)).length;
-  if (already && !await askDanger({
-    title: `Re-schedule ${already === 1 ? 'the scene that has' : `the ${already} scenes that have`} a shoot day?`,
-    body: 'Every scene is moved to a day by location and the per-day order is lost. Undo brings the old schedule back.',
+  const closed = heldDays(scenes);
+  const free = movableScenes(scenes);
+  if (!free.length) { toast('Every scene is shot or on a day that has begun shooting, so there is nothing to schedule.'); return; }
+  const already = free.filter((s) => shootDayOf(s)).length;
+  if ((already || closed.size) && !await askDanger({
+    title: already ? `Re-schedule ${already === 1 ? 'the scene that has' : `the ${already} scenes that have`} a shoot day?`
+      : 'Schedule the scenes around the days already shot?',
+    body: 'Every scene not yet shot is moved to a day by location and the per-day order is lost.'
+      + heldNote(closed) + ' Undo brings the old schedule back.',
     confirm: 'Re-schedule'
   })) return;
 
@@ -1455,8 +1481,8 @@ delegate(document, 'click', '[data-action="sb-auto"]', async () => {
   const before = snapshotSchedule();
   const { plan, days } = scheduleByLocation(scenes);
   for (const p of plan) Scenes.updateScene(p.id, { shootDay: p.day });
-  // A fresh schedule starts in script order within each day.
-  Locations.clearDayOrders();
+  // A fresh schedule starts in script order within each day (a held day keeps its own).
+  clearOpenDayOrders(closed);
   view.group = 'day';
   render();
   refocus('sb-auto');
@@ -1465,19 +1491,26 @@ delegate(document, 'click', '[data-action="sb-auto"]', async () => {
 });
 
 delegate(document, 'click', '[data-action="sb-clear"]', async () => {
-  const scenes = Scenes.listScenes().filter((s) => shootDayOf(s));
-  if (!scenes.length) { toast('No strip has a shoot day yet, so there is nothing to clear.'); return; }
+  const all = Scenes.listScenes();
+  const closed = heldDays(all);
+  const scenes = movableScenes(all).filter((s) => shootDayOf(s));
+  if (!scenes.length) {
+    toast(closed.size ? 'Every scheduled strip is on a day that has begun shooting, so there is nothing to clear.'
+      : 'No strip has a shoot day yet, so there is nothing to clear.');
+    return;
+  }
   const n = scenes.length;
   if (!await askDanger({
     title: `Clear the shoot day from ${n} ${n === 1 ? 'scene' : 'scenes'}?`,
-    body: 'Every strip goes back to unscheduled and the per-day order is lost. The scenes themselves are untouched.',
+    body: 'Every strip not yet shot goes back to unscheduled and the per-day order is lost.'
+      + heldNote(closed) + ' The scenes themselves are untouched.',
     confirm: 'Clear days'
   })) return;
   dropMoveToast();
   const before = snapshotSchedule();
   scenes.forEach((s) => Scenes.updateScene(s.id, { shootDay: 0 }));
   // No days, no order within them: a list for a day nothing is on is stranded data.
-  Locations.clearDayOrders();
+  clearOpenDayOrders(closed);
   render();
   refocus('sb-clear');
   undoableToast(`Cleared the shoot day from ${n} ${n === 1 ? 'scene' : 'scenes'}.`,

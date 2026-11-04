@@ -36,6 +36,7 @@ import { mountShell } from '../ui/shell.js';
 import { h, delegate } from '../lib/dom.js';
 import * as Script from '../lib/script.js';
 import * as Drafts from '../lib/drafts.js';
+import { printedPages } from '../lib/paginate.js';
 import { pageHeader, button, badge, emptyState } from '../ui/kit/index.js';
 import { aiPill } from '../ui/ai-pill.js';   // the one way into AI; the Desk loads at a click
 import { choiceDialog, installLeavePrompt } from '../ui/leave-prompt.js';
@@ -48,6 +49,8 @@ import {
   draftStateText, titlePageStateText, draftMetaText, nextDraftName, restoreDialogSpec,
   draftPdfMeta, draftPdfTitles, hasWriting
 } from '../lib/screenplay-drafts-model.js';
+/* Draft rows quote the printed page count (src/lib/drafts.js useDraftPager). */
+Drafts.useDraftPager(printedPages);
 
 /* The no-AI twin (docs/RULES-BREAKDOWN.md lane B): a plain button that opens the
    Desk on a `local: true` task. No key, no Pro, never aiUnlocked(): the page is

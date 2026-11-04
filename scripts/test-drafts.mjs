@@ -189,6 +189,7 @@ ok(D.draftDocument(doc, 'nope') === null, 'draftDocument unknown');
   const script = (await import('../src/data/sample.dragon.script.json')).default;
   const els = script.elements || script;
   const dd = { elements: els.map((e) => ({ ...e })), revisions: [] };
+  D.useDraftPager(P.printedPages);
   D.saveNewDraft(dd);
   const row = D.listDrafts(dd)[0];
   eq(row.pages, P.printedPages(els), 'a draft row quotes the printed page count');

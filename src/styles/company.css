@@ -59,6 +59,12 @@ select.co-input { appearance: auto; }
 .co-mail-l { font-size: var(--t-small); color: var(--ink-muted); }
 .co-mail-a { min-width: 0; max-width: 100%; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; justify-self: start; }
 .co-copy { justify-self: start; }
+/* A standalone link, not one inside a sentence: on a touch screen it gets the
+   44px tap floor base.css gives buttons (it measured 235x28). inline-flex so
+   min-height takes on an <a>; the address still wraps inside its span. */
+@media (pointer: coarse) {
+  .co-mail-a { display: inline-flex; align-items: center; min-height: 44px; }
+}
 .co-mail-v { font-family: var(--f-mono, monospace); font-size: var(--t-lg); color: var(--ink); overflow-wrap: anywhere; user-select: all; }
 .co-note { display: grid; gap: var(--s2); padding-top: var(--s5); border-top: 1px solid var(--border-default); }
 .co-note-h { margin: 0; font-family: var(--face-display); font-size: var(--t-lg); font-weight: 700; color: var(--ink); }

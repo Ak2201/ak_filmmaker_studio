@@ -418,14 +418,37 @@ async function accept(runId, key, selected) {
   return undo;
 }
 
+/* Focus after a press goes to the REPLACEMENT control, never <body>.
+   Two things drop it there: disabling the pressed button blurs it, so
+   paint() sees nothing of ours focused and has nothing to restore; and
+   paint() replaces every card, so the Review button the Desk saved as
+   its opener is disconnected by the time the Desk closes and its own
+   restore is skipped. So the spot is taken BEFORE the disable, and put
+   back after the paint, or after the Desk closes when the press opened
+   it. Only when focus is lost: a control the reader moved to is theirs. */
+function focusLost() {
+  const a = document.activeElement;
+  /* A control inside the Desk that has just been hidden is still the
+     activeElement when 'ai-desk:closed' fires: Chromium moves focus off
+     a hidden element only at its next style update, onto <body>. */
+  return !a || a === document.body || !a.isConnected || !!a.closest('[hidden]');
+}
+function settleFocus(spot) {
+  if (!spot) return;
+  const back = () => { if (S.host && S.host.isConnected && focusLost()) restore(spot); };
+  if (document.documentElement.classList.contains('ai-desk-open')) window.addEventListener('ai-desk:closed', back, { once: true });
+  else back();
+}
+
 async function press(el, fn) {
   const card = el.closest('[data-ds-key]');
   const tag = card ? card.dataset.dsRun + '|' + card.dataset.dsKey : '';
   if (tag && S.busy.has(tag)) return;
+  const spot = el.contains(document.activeElement) || focusLost() ? focusSpot(el) : null;
   if (tag) { S.busy.add(tag); el.disabled = true; }
   try { await fn(card ? card.dataset.dsRun : '', card ? card.dataset.dsKey : ''); }
   catch (e) { StudioUI.toastError((e && e.message) || 'That did not work. Nothing was changed.'); }
-  finally { if (tag) S.busy.delete(tag); paint(); }
+  finally { if (tag) S.busy.delete(tag); paint(); settleFocus(spot); }
 }
 
 let wired = false;

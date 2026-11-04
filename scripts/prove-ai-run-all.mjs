@@ -245,6 +245,11 @@ try {
   await page.click('aside.ai-desk [data-action="ai-desk-skip"]');
   await page.waitForTimeout(400);
   ok(await modelWrites(page) === w0, 'Skip wrote nothing');
+  /* The press repaints every card, so the Desk's saved opener is gone by
+     the time it closes: focus must land on the REPLACEMENT Review, never
+     <body> (QA r5 K). */
+  const backTo = await page.evaluate(() => { const a = document.activeElement; const c = a && a.closest('[data-ds-key]'); return { tag: a && a.tagName, action: a && a.dataset.action, key: c && c.dataset.dsKey }; });
+  ok(backTo.action === 'ds-review' && backTo.key === 'shot-draft', 'closing the Desk returns focus to the card\'s Review, not <body>', backTo);
 
   console.log('(d) Accept all on a blocking card accepts the shots first');
   await page.click('#drafts [data-ds-key="blocking-draft:sc1"] [data-action="ds-accept"]');
@@ -286,6 +291,8 @@ try {
   await waitFor(async () => (await statusOf(page, 'blocking-draft:sc1')) === 'rejected', 5000);
   ok((await statusOf(page, 'blocking-draft:sc1')) === 'rejected', 'the card says Rejected');
   ok(await modelWrites(page) === w1, 'Reject wrote nothing to the film');
+  const afterReject = await page.evaluate(() => { const a = document.activeElement; const c = a && a.closest('[data-ds-key]'); return { tag: a && a.tagName, key: c && c.dataset.dsKey }; });
+  ok(afterReject.key === 'blocking-draft:sc1', 'after Reject focus stays on that card, not <body>', afterReject);
 
   console.log('idle');
   const idle0 = await page.evaluate(() => window.__writes.length);

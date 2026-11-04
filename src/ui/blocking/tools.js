@@ -166,7 +166,11 @@ const eyebrow = (a, b) => h('p.k-eyebrow', {}, [h('span', { text: a }), h('span.
 
 function markPanel(block, m, chars, hues) {
   const kind = (BLOCK_KINDS.find((k) => k.id === m.kind) || { label: m.kind }).label;
-  const grp = h('div.vz-blk-sel', { role: 'group', 'aria-label': 'Selected: ' + (m.label || kind) }, [
+  /* `data-sel-item` names the mark these fields edit. A field's closing
+     `change` fires on blur, which comes AFTER a click on another mark has
+     moved the selection, so the handlers read the id from here and never
+     from S.sel.primary (QA r6: a typed label landed on the next mark). */
+  const grp = h('div.vz-blk-sel', { role: 'group', 'aria-label': 'Selected: ' + (m.label || kind), 'data-sel-item': m.id }, [
     eyebrow('Selected', kind),
     h('div.k-control.vz-blk-labelbox', {}, [
       h('input.k-input.vz-blk-label', { type: 'text', value: m.label, placeholder: 'Label', 'data-mark-field': 'label', 'aria-label': 'Label of the selected mark' })
@@ -233,7 +237,7 @@ function piecePanel(block, p) {
       h('span.vz-blk-addon', { text: u.addon, 'aria-hidden': 'true' })
     ])
   ]);
-  return h('div.vz-blk-sel', { role: 'group', 'aria-label': 'Selected: ' + (p.label || SET_LABEL[p.kind]) }, [
+  return h('div.vz-blk-sel', { role: 'group', 'aria-label': 'Selected: ' + (p.label || SET_LABEL[p.kind]), 'data-sel-item': p.id }, [
     eyebrow('Selected', SET_LABEL[p.kind] || 'Set piece'),
     h('div.k-control.vz-blk-labelbox', {}, [
       h('input.k-input.vz-blk-label', { type: 'text', value: p.label, placeholder: 'Label (optional)', 'data-piece-field': 'label', 'aria-label': 'Label of the selected set piece' })

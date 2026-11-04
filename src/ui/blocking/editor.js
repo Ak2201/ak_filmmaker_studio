@@ -1056,7 +1056,6 @@ delegate(document, 'click', '[data-action="blk-add-mark"]', (e, el) => {
   const B = blockIdOf(el);
   const before = Shots.getBlock(B);
   if (!before) return;
-  History.record(before);
   const m = Shots.addMark(B, el.dataset.kind);
   if (!m) {
     if (el.dataset.kind === 'camera' && Shots.hasShotCamera(before)) {
@@ -1064,6 +1063,8 @@ delegate(document, 'click', '[data-action="blk-add-mark"]', (e, el) => {
     }
     return;
   }
+  // History only for an add that happened: a refused one is no Undo step (QA r6).
+  History.record(before);
   select(B, [m.id]);
   afterWrite(B, before, Shots.getBlock(B), { focus: itemSel(B, m.id) });
 });
@@ -1071,9 +1072,9 @@ delegate(document, 'click', '[data-action="blk-add-set"]', (e, el) => {
   const B = blockIdOf(el);
   const before = Shots.getBlock(B);
   if (!before) return;
-  History.record(before);
   const p = Shots.addSetPiece(B, el.dataset.kind);
   if (!p) return;
+  History.record(before);
   select(B, [p.id]);
   redrawCard(B, itemSel(B, p.id));
 });
@@ -1185,11 +1186,18 @@ delegate(document, 'change', '[data-block-field]', (e, el) => {
 const titleCase = (s) => String(s || '').toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
 const DEFAULT_ACTOR = /^Actor \d+$/;
 
+/* The item an inspector field edits is the one its panel was drawn for
+   (`data-sel-item`), NOT S.sel.primary: blur — and so the closing
+   `change` — arrives after a click on another mark has already moved
+   the selection, and reading the selection then wrote the typed label
+   onto the mark just clicked (QA r6). */
+const fieldItem = (el) => { const g = el.closest('[data-sel-item]'); return g ? g.dataset.selItem : ''; };
+
 /* The inspector's fields are patched IN PLACE (map only): a card
    redraw on `change` would destroy the element Tab is moving to. */
 delegate(document, 'change', '[data-mark-field]', (e, el) => {
   const B = blockIdOf(el);
-  const markId = S.sel.blockId === B ? S.sel.primary : '';
+  const markId = fieldItem(el);
   if (!markId) return;
   const f = el.dataset.markField;
   let label = null;
@@ -1226,7 +1234,7 @@ delegate(document, 'change', '[data-mark-field]', (e, el) => {
 });
 delegate(document, 'change', '[data-piece-field]', (e, el) => {
   const B = blockIdOf(el);
-  const pieceId = S.sel.blockId === B ? S.sel.primary : '';
+  const pieceId = fieldItem(el);
   if (!pieceId) return;
   const f = el.dataset.pieceField;
   const before = Shots.getBlock(B);
@@ -1245,7 +1253,7 @@ delegate(document, 'change', '[data-piece-field]', (e, el) => {
 });
 delegate(document, 'change', '[data-beat-field]', (e, el) => {
   const B = blockIdOf(el);
-  const markId = S.sel.blockId === B ? S.sel.primary : '';
+  const markId = fieldItem(el);
   const i = Number(el.dataset.beatField);
   commit(B, (b) => {
     const m = b.marks.find((x) => x.id === markId);

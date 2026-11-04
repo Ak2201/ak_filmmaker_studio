@@ -409,5 +409,17 @@ eq(R.basicJobs(guessed, gEls, { only: new Set(['c']) }).map((j) => j.sceneId), [
   ok(n.some((x) => x.endsWith('road".')), 'an unfinished line still gets its stop — got ' + JSON.stringify(n));
 }
 
+/* ---- QA r4 E-1: dialogue shots keep ONE full stop too ---------- */
+{
+  const one = R.shotsForScene(job('d1', [el('character', 'MAYA'), el('dialogue', 'I will miss the last bus.')])).map((s) => s.description);
+  ok(one.includes('MCU on MAYA — from "I will miss the last bus."'), 'MCU ends on the quote — got ' + JSON.stringify(one));
+  const two = R.shotsForScene(job('d2', [el('character', 'MAYA'), el('dialogue', 'Go away!'), el('character', 'RAVI'), el('dialogue', 'No?')])).map((s) => s.description);
+  ok(two.some((x) => x.startsWith('OTS on MAYA') && x.endsWith('"Go away!"')), 'OTS ends on the quote — got ' + JSON.stringify(two));
+  const all = [...one, ...two];
+  ok(all.every((x) => !/[.!?…]["”]\.$/.test(x)), 'no dialogue description ends .". — got ' + JSON.stringify(all));
+  const bare = R.shotsForScene(job('d3', [el('character', 'MAYA'), el('dialogue', 'I will go')])).map((s) => s.description);
+  ok(bare.includes('MCU on MAYA — from "I will go".'), 'an unfinished line still gets its stop — got ' + JSON.stringify(bare));
+}
+
 console.log(`\ntest:shots — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

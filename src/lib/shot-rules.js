@@ -117,7 +117,8 @@ function excerpt(t, n = 7) {
 }
 /* A description that ends on a quoted excerpt takes a full stop only
    when the quote did not already close a sentence: 'Ravi sleeps.'
-   must not print as "Ravi sleeps.". (QA r3 E-1). */
+   must not print as "Ravi sleeps.". (QA r3 E-1; the dialogue MCU/OTS/
+   single lines in closeExchange() go through it too, QA r4 E-1). */
 const sentence = (s) => /[.!?…]["”]?$/.test(s) ? s : s + '.';
 const OFFSCREEN = /\((?:[^)]*\b(?:V\.?\s?O|O\.?\s?S|O\.?\s?C)\b[^)]*)\)/i;
 // Not \b: "RAGAVAN'S" must become "Ragavan's", not "Ragavan'S".
@@ -250,22 +251,22 @@ export function shotsForScene(job) {
     const line = (n) => exchange.first.get(n) ? ' — from ' + excerpt(exchange.first.get(n)) : '';
     if (sp.length === 1) {
       push(P.talk, 'mcu:' + sp[0], {
-        size: 'MCU', description: 'MCU on ' + sp[0] + line(sp[0]) + '.'
+        size: 'MCU', description: sentence('MCU on ' + sp[0] + line(sp[0]))
       });
     } else if (sp.length === 2) {
       const [a, b] = sp;
       push(P.talk, 'ots:' + a + '>' + b, {
-        size: 'MCU', description: 'OTS on ' + a + ', over ' + b + "'s shoulder" + line(a) + '.'
+        size: 'MCU', description: sentence('OTS on ' + a + ', over ' + b + "'s shoulder" + line(a))
       });
       push(P.talk, 'ots:' + b + '>' + a, {
-        size: 'MCU', description: 'OTS on ' + b + ', over ' + a + "'s shoulder" + line(b) + '.'
+        size: 'MCU', description: sentence('OTS on ' + b + ', over ' + a + "'s shoulder" + line(b))
       });
     } else if (sp.length > 2) {
       push(P.talk, 'group:' + [...sp].sort().join(','), {
         size: 'MS', description: 'Group MS — ' + listNames(sp) + ', holding the exchange.'
       });
       sp.slice(0, 4).forEach((n) => push(P.single, 'mcu:' + n, {
-        size: 'MCU', description: 'Single on ' + n + line(n) + '.'
+        size: 'MCU', description: sentence('Single on ' + n + line(n))
       }));
     }
     exchange = null;

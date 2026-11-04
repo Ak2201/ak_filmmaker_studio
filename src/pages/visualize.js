@@ -1142,7 +1142,10 @@ function renderNoFrames(firstShotId) {
           + 'shot. A frame that answers those three is doing its job.'
     }),
     h('div.bd-how', {}, [
-      how('1', 'Pick the shot', 'Every frame belongs to a shot from the list above, so the board is always in order.'),
+      /* The Shot List is another tab, so this names it rather than a "list
+         above" this tab does not have; and the button below starts on the
+         first shot, so the copy says that before the cards appear (QA r4 E-2). */
+      how('1', 'Pick the shot', 'Every frame belongs to a shot from the Shot List tab, so the board is always in order. The first frame starts on the first shot; after that every shot has its own Frame button.'),
       how('2', 'Point at the image', 'Paste the link to a drawing or a photograph you already have somewhere.'),
       how('3', 'Or write it', 'Describe the frame in one sentence. On a small film that is faster and just as useful.')
     ]),

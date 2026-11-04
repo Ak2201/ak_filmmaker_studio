@@ -632,17 +632,8 @@ export function listAllProjects() { return allProjectMeta(); }
 export function purgeProjectEverywhere(id) {
   saveAllProjects(allProjectMeta().filter((p) => p.id !== id));
   SCOPED_KEYS.forEach((k) => rawRemove(k + '__' + id));
-  forgetAiDrafts(id);
   _invalidateCurrent();
   return true;
-}
-
-/* A film's unaccepted AI drafts live in IndexedDB (ai-drafts.js), not
-   under a scoped key, so wiping the blobs never reached them (QA r4 H-2).
-   Lazy on purpose: ai-drafts.js is not CORE, and a delete is rare. Fire
-   and forget — a browser without IndexedDB has no drafts to forget. */
-function forgetAiDrafts(id) {
-  return import('./ai-drafts.js').then((m) => m.forgetDrafts(id)).catch(() => 0);
 }
 
 /* Every per-namespace open-project pointer, so a total wipe can clear
@@ -929,7 +920,7 @@ export function deleteProject(id) {
     else             { arr.splice(idx, 1); }
     saveAllProjects(arr);
   }
-  if (gone) { SCOPED_KEYS.forEach(k => rawRemove(k + '__' + id)); forgetAiDrafts(id); }
+  if (gone) SCOPED_KEYS.forEach(k => rawRemove(k + '__' + id));
   _invalidateCurrent();
   if (rawGet(currentKeyFor(_ns)) === id) {
     const mine = listProjects();

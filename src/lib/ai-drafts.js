@@ -141,8 +141,8 @@ async function sweepAll(b, maxAgeDays = KEEP_DAYS, now = Date.now()) {
  * project. The sweep alone was not enough: it runs only when a drafts
  * view opens, so deleting a film or "Erase everything" left that film's
  * unaccepted rewrites and pictures in IndexedDB on a device that never
- * opened the Draft space again (QA r4 H-2). store.js deleteProject() /
- * purgeProjectEverywhere() and hub-reset.js call it, lazily.
+ * opened the Draft space again (QA r4 H-2). The hub's project delete and
+ * hub-reset.js (Erase everything) call it, lazily.
  */
 export async function forgetDrafts(projectId, { backend: given } = {}) {
   const b = given || current();

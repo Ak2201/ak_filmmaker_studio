@@ -164,4 +164,29 @@ export function planRun({ ticks, project } = {}) {
   return { nodes };
 }
 
-export default { WAVE1, WAVE2, OPT_IN, LABELS, planRun, tickSet, draftShotId, isDraftId };
+/**
+ * requestCount(nodes, project) → about how many requests a run sends, for
+ * the Draft space's consent line. A NODE is not a request: the scene reads
+ * (breakdown-tags, scene-notes) go in project.sceneReads batches and the
+ * shot division in batches of project.shotBatch scenes (ai.js
+ * planSceneRead / SHOT_BATCH), and the disclosure counted nodes, so the
+ * Dragon sample read "about 44" and sent 84 (QA r4 K-3). Unknown batch
+ * figures fall back to one request, never to zero.
+ */
+export function requestCount(nodes, project = {}) {
+  const p = project && typeof project === 'object' ? project : {};
+  const reads = Math.max(1, Math.floor(Number(p.sceneReads)) || 1);
+  const batch = Math.max(1, Math.floor(Number(p.shotBatch)) || 1);
+  let n = 0;
+  for (const node of nodes || []) {
+    if (!node || node.skip) continue;
+    if (node.taskId === 'breakdown-tags' || node.taskId === 'scene-notes') n += reads;
+    else if (node.taskId === 'shot-draft') {
+      const ids = node.ctx && Array.isArray(node.ctx.sceneIds) ? node.ctx.sceneIds.length : 0;
+      n += Math.max(1, Math.ceil(ids / batch));
+    } else n += 1;
+  }
+  return n;
+}
+
+export default { WAVE1, WAVE2, OPT_IN, LABELS, planRun, tickSet, draftShotId, isDraftId, requestCount };

@@ -2790,8 +2790,12 @@ const blockingDraftTask = {
     const skipped = plan.skipped.length
       ? plural(plan.skipped.length, 'shot already has', 'shots already have') + ' a diagram you drew, so ' + (plan.skipped.length === 1 ? 'it was' : 'they were') + ' left as ' + (plan.skipped.length === 1 ? 'it is.' : 'they are.')
       : '';
+    const gone = (plan.missing || []).length;
+    const missing = gone
+      ? plural(gone, 'shot diagram was', 'shot diagrams were') + ' left out: ' + (gone === 1 ? 'its shot is' : 'their shots are') + ' not in the shot list (deleted, or the shot division was not accepted).'
+      : '';
     if (!plan.blocks.length) {
-      call(c.say, ['Nothing was added.', skipped || 'The floor plan already has all of it.'].join(' '));
+      call(c.say, ['Nothing was added.', [skipped, missing].filter(Boolean).join(' ') || 'The floor plan already has all of it.'].join(' '));
       return null;
     }
     /* The history stamp: a diagram the run made is its record; the floor
@@ -2812,7 +2816,8 @@ const blockingDraftTask = {
       plan.floorAdded ? 'Floor plan: ' + plural(plan.floorAdded, 'thing', 'things') + ' added.' : '',
       plan.shotsMade ? plural(plan.shotsMade, 'shot diagram', 'shot diagrams') + ' added.' : '',
       snap.cams.length ? plural(snap.cams.length, 'shot is', 'shots are') + ' now linked to its camera.' : '',
-      skipped
+      skipped,
+      missing
     ].filter(Boolean).join(' '));
     const firstShot = plan.blocks.find((b) => b.shotId);
     call(c.after, firstShot ? firstShot.id : plan.blocks[0].id);

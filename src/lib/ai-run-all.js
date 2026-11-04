@@ -142,7 +142,19 @@ export async function projectState({ ticks } = {}) {
     board = await import('./drive-board.js').then((m) => m.currentBoardGate())
       .catch(() => ({ ok: false, text: 'The Drive tools did not load.' }));
   }
+  /* The batch figures behind requestCount() (ai-run-all-model.js): a
+     scene read goes in planSceneRead's batches, a shot division in
+     SHOT_BATCH scenes a request. Only when a ticked tool needs them. */
+  let sceneReads = 0, shotBatch = 0;
+  if (!want || want.has('breakdown-tags') || want.has('scene-notes') || want.has('shot-draft')) {
+    try {
+      const AI = await import('./ai.js');
+      sceneReads = safe(() => AI.planSceneRead(els).requests, 0);
+      shotBatch = Number(AI.SHOT_BATCH) || 0;
+    } catch (e) { /* the estimate falls back to one request a tool */ }
+  }
   return {
+    sceneReads, shotBatch,
     scriptScenes: els.filter((e) => e && e.type === 'scene').length,
     scenes: scenes.map((s) => ({ id: s.id, number: s.number, shots: per.get(s.id) || 0 })),
     shootable: safe(() => PM.shootOrderFacts(scenes, { pageTarget: (Lo.schedulePrefs() || {}).pageTarget || 0 }).scenes.length, 0),
@@ -476,7 +488,7 @@ export async function acceptDraft(projectId, runId, key, selected, deps = {}) {
       const task = env.task(d.taskId);
       if (!task || typeof task.apply !== 'function') throw new Error('“' + (d.label || d.taskId) + '” has nothing to accept.');
       /* Any id that never became real stays 'draft:<n>': the child's own
-         apply skips a shot it cannot find (planDraftApply → skipped). */
+         apply skips a shot it cannot find (planDraftApply → missing). */
       const map = {};
       for (const k of d.parents || []) Object.assign(map, (byKey.get(k) || {}).made || {});
       const result = pinMemo(mapDraftIds(d.result, map), mapDraftIds(d.memo, map));

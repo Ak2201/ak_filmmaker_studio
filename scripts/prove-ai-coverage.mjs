@@ -195,7 +195,11 @@ async function route(r) {
   requests.push({ provider, url, user, key: headers['x-api-key'] || headers['x-goog-api-key'] || '' });
   if (failPart2Once && /This is part 2 of/.test(user)) {
     failPart2Once = false;
-    return r.fulfill({ status: 529, contentType: 'application/json', body: JSON.stringify({ type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } }) });
+    /* A 500, not a 529: since the busy-model retry (ai.js callModel) a
+       529 is asked again and succeeds, so the run never failed and this
+       proof's checkpoint/Resume half never ran (QA r4 K-4). A server
+       error is not retried, which is the failure this half is about. */
+    return r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ type: 'error', error: { type: 'api_error', message: 'Internal server error' } }) });
   }
   if (holdAudPart2 && /— part 2 of/.test(user) && /THE PANEL \(id/.test(user)) {
     holdAudPart2 = false;
@@ -219,7 +223,7 @@ async function session({ width, theme, provider }) {
   /* A failed resource is judged by its URL, not by the console line,
      which carries none. Two are this harness's own doing and are not
      findings: every off-origin request is aborted below (ERR_FAILED),
-     and the fake answers the "failed run" with a 529 on purpose. */
+     and the fake answers the "failed run" with a 500 on purpose. */
   page.on('console', (m) => {
     /* Signed in, the client opens Supabase realtime; a WebSocket is
        not routed by page.route, so it fails to connect here. Not a finding. */
@@ -227,7 +231,7 @@ async function session({ width, theme, provider }) {
   });
   page.on('response', (r) => {
     const u = r.url();
-    if (r.status() >= 400 && !(r.status() === 529 && /anthropic\.com|googleapis\.com/.test(u))) errors.push(r.status() + ' ' + u);
+    if (r.status() >= 400 && !(r.status() === 500 && /anthropic\.com|googleapis\.com/.test(u))) errors.push(r.status() + ' ' + u);
   });
   // ERR_ABORTED is the browser cancelling a request because the page
   // navigated or a lazy import was superseded — not a failure to load.

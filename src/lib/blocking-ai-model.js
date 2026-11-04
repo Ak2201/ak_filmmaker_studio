@@ -628,7 +628,11 @@ export function pickDraft(draft, selected) {
  *           writeBlocking() fills it only where the shot names none.
  * `make.block/mark/piece` give ids (shots.js blankBlock/blankMark/
  * blankSetPiece); `shotOf(id)` is the shot record; `blockOfShot(id)` its
- * diagram. → { blocks, cams, skipped: [shotId], floorAdded, shotsMade }
+ * diagram. → { blocks, cams, skipped: [shotId], missing: [shotId], floorAdded, shotsMade }
+ * `skipped` is a shot a PERSON drew; `missing` a shot that is not in the
+ * shot list (deleted since, or its Shot division was rejected in the
+ * Draft space). Two lists because the caller words them differently, and
+ * calling a shot that does not exist "a diagram you drew" is false.
  */
 export function planDraftApply(pick, {
   sceneId, floor = null, blockOfShot = () => null, shotOf = () => null, floorName = '',
@@ -637,7 +641,7 @@ export function planDraftApply(pick, {
   const mkBlock = make.block || ((p) => ({ id: localId('bk'), shotId: '', marks: [], set: [], axis: null, ...p }));
   const mkMark = make.mark || ((p) => ({ id: localId('mk'), ...p }));
   const mkPiece = make.piece || ((p) => ({ id: localId('st'), ...p }));
-  const out = { blocks: [], cams: [], skipped: [], floorAdded: 0, shotsMade: 0 };
+  const out = { blocks: [], cams: [], skipped: [], missing: [], floorAdded: 0, shotsMade: 0 };
   const f = pick && pick.floor;
   if (f) {
     const actors = (f.actors || []).map((m) => mkMark({ ...m }));
@@ -664,7 +668,7 @@ export function planDraftApply(pick, {
   }
   for (const sh of (pick && pick.shots) || []) {
     const shot = shotOf(sh.shotId);
-    if (!shot) { out.skipped.push(sh.shotId); continue; }
+    if (!shot) { out.missing.push(sh.shotId); continue; }
     const have = blockOfShot(sh.shotId);
     if (have && Array.isArray(have.marks) && have.marks.length) { out.skipped.push(sh.shotId); continue; }
     const marks = sh.marks.map((m) => mkMark({ ...m }));

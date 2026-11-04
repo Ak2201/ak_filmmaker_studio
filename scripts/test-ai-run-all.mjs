@@ -511,5 +511,18 @@ ok((await R.acceptDraft('pR', runId, 'nope', undefined, { drafts: store, tasks, 
   eq(B.scheduleFacts(as).days, 2, 'budget: scheduleFacts reads a given scene list (pure over it)');
 }
 
+/* QA r4 K-3: the consent line counts REQUESTS (batches), not tools */
+{
+  const scenes = Array.from({ length: 36 }, (_, i) => ({ id: 's' + i, number: String(i + 1), shots: 0 }));
+  const project = { scriptScenes: 36, scenes, shootable: 36, places: 3, characters: 4, callSheets: [], sceneReads: 16, shotBatch: 3 };
+  const { nodes } = P.planRun({ project });
+  const live = nodes.filter((n) => !n.skip).length;
+  const n = P.requestCount(nodes, project);
+  // 16 tags + 16 notes + 12 shot batches + 36 blocking + the single ones
+  ok(n > live && n === 16 + 16 + 12 + 36 + (live - 3 - 36), 'requestCount: batches, not nodes — got ' + n + ' for ' + live + ' tools');
+  eq(P.requestCount(nodes.map((x) => ({ ...x, skip: 'no' })), project), 0, 'requestCount: every tool skipped → 0 (the line then says nothing is sent)');
+  eq(P.requestCount([{ taskId: 'breakdown-tags' }, { taskId: 'shot-draft', ctx: { sceneIds: ['a'] } }], {}), 2, 'requestCount: unknown batch figures fall back to one request a tool');
+}
+
 console.log((fails ? '✗' : '✓') + ' ai-run-all: ' + pass + ' passed, ' + fails + ' failed');
 process.exit(fails ? 1 : 0);

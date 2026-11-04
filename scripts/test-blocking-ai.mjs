@@ -153,7 +153,8 @@ eq([none.floor, none.shots.length], [null, 0], 'pickDraft: nothing ticked, nothi
   const full = { ...nf };
   plan = M.planDraftApply(M.pickDraft(d, [{ id: 'floor' }]), { sceneId: 'sc1', floor: full, make });
   eq(plan.blocks.length, 0, 'plan: a floor that already has it all is not rewritten (idempotent)');
-  eq(M.planDraftApply(M.pickDraft(d, [{ id: 'shot:sh1' }]), { sceneId: 'sc1', shotOf: () => null, make }).skipped, ['sh1'], 'plan: a shot deleted since is skipped');
+  eq(M.planDraftApply(M.pickDraft(d, [{ id: 'shot:sh1' }]), { sceneId: 'sc1', shotOf: () => null, make }).missing, ['sh1'], 'plan: a shot deleted since is MISSING (never worded as one a person drew)');
+  eq(M.planDraftApply(M.pickDraft(d, [{ id: 'shot:sh1' }]), { sceneId: 'sc1', shotOf: () => null, make }).skipped, [], 'plan: a missing shot is not in skipped');
 }
 
 /* ---- the whole Accept against shots.js, with a faked model reply ---- */

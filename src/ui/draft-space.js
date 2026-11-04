@@ -136,7 +136,7 @@ function estimate() {
       const project = await S.E.run.projectState({ ticks: [...S.ticks] });
       const { nodes } = S.E.model.planRun({ ticks: [...S.ticks], project });
       const runs = nodes.filter((n) => !n.skip);
-      S.estimate = { requests: runs.length, skipped: nodes.length - runs.length, shots: runs.some((n) => n.taskId === 'shot-draft'), frames: runs.some((n) => n.taskId === 'board-frames') };
+      S.estimate = { requests: S.E.model.requestCount(nodes, project), skipped: nodes.length - runs.length, shots: runs.some((n) => n.taskId === 'shot-draft'), frames: runs.some((n) => n.taskId === 'board-frames') };
     } catch (e) { S.estimate = null; }
     const el = S.host && S.host.querySelector('.ds-disclose p');
     if (el) el.textContent = discloseText(); else paint();
@@ -146,10 +146,16 @@ function estimate() {
 /* ---- drawing ------------------------------------------------------ */
 function discloseText() {
   const e = S.estimate;
-  const n = e ? (e.requests === 1 ? 'about one request' : 'about ' + e.requests + ' requests') : 'one request per tool';
+  /* requestCount() counts the batches a tool sends, not the tools; with
+     nothing to run it says so instead of "about 0 requests". */
+  if (e && !e.requests) {
+    return 'Every ticked tool has nothing to work on in this film yet, so Break down everything sends nothing to '
+      + apiName() + '. Each answer is kept as a draft in this browser for 14 days; nothing reaches the film until you accept it.';
+  }
+  const n = e ? (e.requests === 1 ? 'about one request' : 'about ' + e.requests + ' requests') : 'a request or more per tool';
   return 'When you press Break down everything, the script, the scene list and what each ticked tool reads (shots, characters, '
     + 'locations, call sheets) are sent to ' + apiName() + ' at ' + apiHost() + ' with your ' + providerLabel() + ' key, '
-    + n + (e && e.shots ? ', and more for shot division on a long script (it asks a few scenes at a time)' : '') + '. '
+    + n + (e && e.shots ? ' (shot division asks a few scenes at a time)' : '') + '. '
     + (e && e.frames ? 'Storyboard frames are drawn by ' + apiName('gemini') + ' with your ' + providerLabel('gemini') + ' key and kept in your Google Drive. ' : '')
     + 'Each answer is kept as a draft in this browser for 14 days; nothing reaches the film until you accept it.';
 }

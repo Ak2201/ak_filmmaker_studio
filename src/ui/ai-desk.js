@@ -163,7 +163,8 @@ import { holdFocus, releaseFocus } from './modal-focus.js';
 import StudioUI from './chrome.js';
 import { disclose, aiMark } from './ai-panel.js';
 import { LOCAL_TASKS, ready as localReady } from '../lib/local-tasks.js';
-import { listenSay, acceptNote, undoNote } from '../lib/ai-desk-outcome.js';
+import { listenSay, acceptNote, undoNote, projectMoved } from '../lib/ai-desk-outcome.js';
+import { currentProjectId } from '../lib/store.js';
 import { newId } from '../lib/record-id.js';
 import { readAiCareful, saveAiCareful } from '../lib/chrome-prefs.js';
 import '../styles/ai.css';
@@ -668,6 +669,9 @@ async function run(refineWith) {
   own.status = refineWith ? 'Refining\u2026' : 'Sending\u2026';
   const runId = newId('air');
   const careful = readAiCareful();          // read once: fixed for the whole run
+  /* The film this draft is FOR: the request reads the open project's
+     models now, so Accept must write into this same one (projectMoved). */
+  const project = currentProjectId();
   /* TIMING, shown and never stored: how long the run took, and each batch
      of a batched task. In memory on the version, gone with the page. */
   const t0 = Date.now();
@@ -678,6 +682,7 @@ async function run(refineWith) {
     live = makeVersion(myTask, { items: [] });
     live.live = true;
     live.run = runId;
+    live.project = project;
     live.batchMs = batchMs;
     own.versions.push(live);
     own.current = own.versions.length - 1;
@@ -710,6 +715,7 @@ async function run(refineWith) {
     } else {
       v = makeVersion(myTask, result);
       v.run = runId;
+      v.project = project;
       own.versions.push(v);
       own.current = own.versions.length - 1;
     }
@@ -765,6 +771,13 @@ async function accept(all) {
   if (!task || !sess || sess.run) return;
   const v = sess.versions[sess.current];
   if (!v) return;
+  /* Another tab (or anything else) changed the open film after this draft
+     was asked for: every write below would land in THAT film's keys. */
+  if (projectMoved(v.project, currentProjectId())) {
+    sess.error = 'This draft was made while a different film was open, so it was not written into this one. Nothing was changed. Open that film again to accept it, or draft again here.';
+    render();
+    return;
+  }
   let selected;
   if (task.kind === 'text') {
     const ids = v.hunks.map((hk) => hk.id).filter((id) => all || !v.unticked.has(id));
@@ -1049,6 +1062,7 @@ export async function openWithDraft(taskId, ctxArg = {}, result = {}, opts = {})
         run: null, bg: false, taskId: t.id, status: '', error: '', promptOpen: false };
       const v = makeVersion(t, { ...(result || {}), model: (result && result.model) || opts.model || '' });
       v.run = opts.run || newId('air');
+      v.project = currentProjectId();
       s.versions.push(v);
       s.current = 0;
       sessions.set(key, s);

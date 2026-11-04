@@ -223,7 +223,11 @@ function focusSpot(el) {
     : el.id ? '#' + CSS.escape(el.id)
     : el.hasAttribute('href') ? 'a[href="' + CSS.escape(el.getAttribute('href')) + '"]' : '';
   const words = el.textContent;
-  const same = attrs.length || el.id ? () => true : (x) => x.textContent === words;   // a link with no ids: told apart by its words
+  /* A menu opener's only data-* is data-action="tb-menu-toggle", shared
+     with menus the shell adds to #app after a redraw (the band's ⋯), so
+     its position among them moves: tell it apart by its words too. */
+  const byWords = !(attrs.length || el.id) || el.matches('[data-action="tb-menu-toggle"]');
+  const same = byWords ? (x) => x.textContent === words : () => true;   // a link with no ids: told apart by its words
   return { el, sel, same, index: sel ? [...app.querySelectorAll(sel)].filter(same).indexOf(el) : -1 };
 }
 function keepFocus(spot) {
@@ -612,12 +616,19 @@ function renderFwPicker(s) {
   box.append(h('p.st-muted', {
     text: 'The order your story’s big moments come in. Pick one to lay the outline out against; you do not have to. Switching later is a view change: your steps keep the beat they were written under, and anything that does not fit the new beat sheet waits in Unassigned rather than being lost.'
   }));
+  /* A locked outline refuses a beat sheet change too (QA r4): switching moves
+     every step that does not fit into Unassigned, and a locked card draws no
+     File select or move controls, so the writer could not refile them until
+     they unlocked. The cards stay visible to read, disabled, with the reason. */
+  const locked = !!s.outlineLockedAt;
+  if (locked) box.append(h('p.st-using', { role: 'note', text: 'The outline is locked. Unlock it to change the beat sheet.' }));
   const grid = h('div.st-fw-grid');
   for (const f of Story.frameworks()) {
     const on = s.frameworkChosen && f.id === s.framework;
     const peak = peakBeat(f);
     grid.append(h('button.st-fw' + (on ? '.is-on' : ''), {
-      type: 'button', 'data-st': 'pick-fw', 'data-fw': f.id, 'aria-pressed': String(on)
+      type: 'button', 'data-st': 'pick-fw', 'data-fw': f.id, 'aria-pressed': String(on),
+      disabled: locked ? '' : null
     }, [
       h('span.st-fw-top', {}, [
         h('span.st-fw-name', { text: f.label }),
@@ -1432,8 +1443,18 @@ function render() {
   const wasId = was && was.id && /^(INPUT|TEXTAREA|SELECT)$/.test(was.tagName) && app.contains(was) ? was.id : '';
   const top0 = wasId ? was.getBoundingClientRect().top : 0;
   const spot = focusSpot(was);
+  /* The menu the click just opened (More), redrawn closed under it: a
+     field's change holds its redraw until the click has landed, so the
+     click opened the OLD menu and the first press looked dead (QA r4). */
+  const menuOpen = !!(spot && was.matches('[data-action="tb-menu-toggle"][aria-expanded="true"]'));
   const board = boardScroll();
-  try { preservingFocus(draw); restoreBoardScroll(board); keepFocus(spot); } finally {
+  try {
+    preservingFocus(draw); restoreBoardScroll(board); keepFocus(spot);
+    /* Opened again through the menu's own handler (it clamps the panel);
+       detail 1 is a pointer press, so the focus stays on the button. */
+    const back = menuOpen && document.activeElement;
+    if (back && back.matches('[data-action="tb-menu-toggle"][aria-expanded="false"]')) back.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+  } finally {
     if (wasId) {
       const now = document.activeElement;
       if (now && now.id === wasId) {
@@ -1876,6 +1897,8 @@ delegate(document, 'click', '[data-st]', async (e, el) => {
     if (f === 'idea') s.idea = bpIdea(); else if (f === 'logline') s.logline = bpLogline();
     commit(s);
   } else if (act === 'pick-fw') {
+    /* Same rule as moveStepTo(): a locked outline takes no structural edit. */
+    if (s.outlineLockedAt) { StudioUI.toast('The outline is locked. Unlock it to change the beat sheet.'); return; }
     s.framework = el.getAttribute('data-fw'); s.frameworkChosen = true; litBeat = '';
     fwPickOpen = false;   // chosen: the picker folds back into the Beat Sheet's head
     commit(s);

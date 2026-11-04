@@ -481,6 +481,32 @@ export async function acceptDraft(projectId, runId, key, selected, deps = {}) {
     order.push(d);
   })(target);
 
+  /* A shot division was planned for scenes that had NO shots (planRun
+     divides only those), and its apply APPENDS. So a scene that has shots
+     by Accept time got them since: another run's division accepted first,
+     or shots typed by hand. Accepting would add a second set beside them
+     (two Ready runs, two Accept alls: every shot doubled), so it is
+     refused before anything is written, the parent of a blocking included. */
+  for (const d of order) {
+    if (d.taskId !== 'shot-draft') continue;
+    const pick = d === target && Array.isArray(selected) ? selected : itemsOf(d.result);
+    const want = new Set((pick || []).map((it) => it && it.sceneId).filter(Boolean).map(String));
+    if (!want.size) continue;
+    let shots = [], scenes = [];
+    try {
+      const [Sh, Sc] = await Promise.all([import('./shots.js'), import('./scenes.js')]);
+      shots = Sh.listShots();
+      scenes = Sc.listScenes();
+    } catch (e) { shots = []; }
+    const has = new Set(shots.map((s) => String(s.sceneId)).filter((id) => want.has(id)));
+    if (has.size) {
+      const num = new Map(scenes.map((s) => [String(s.id), s.number]));
+      const names = [...has].map((id) => 'Sc ' + (num.get(id) || '?')).join(', ');
+      throw new Error(names + (has.size > 1 ? ' already have' : ' already has')
+        + ' shots, so this shot division would add a second set. Nothing was added. Reject this draft, or delete those shots first.');
+    }
+  }
+
   const done = [];   // [{ d, undo, made }]
   const wrote = [];
   try {

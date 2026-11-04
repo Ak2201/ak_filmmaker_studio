@@ -274,6 +274,13 @@ async function openPill(page, sel) {
   }, null, { timeout: 10000 });
   await page.waitForTimeout(300);
 }
+/** Wait for the pill to unlock: it is 'locked' (fails closed) until the
+    plan has arrived, which on a loaded machine is later than any fixed
+    delay. A signal, never a fixed wait; false after 15s. */
+const pillReady = (page, sel) => page.waitForFunction((s) => {
+  const el = document.querySelector(s);
+  return !!el && el.dataset.aiState === 'ready';
+}, sel, { timeout: 15000 }).then(() => true, () => false);
 const deskSays = async (page, sel) => ((await page.locator('aside.ai-desk ' + sel).first().textContent().catch(() => '')) || '');
 
 for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'ink', 'gemini'], [390, 'ink', 'anthropic'], [1280, 'ink', 'gemini']]   /* one theme since 14 Oct 2026 */) {
@@ -314,7 +321,7 @@ for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'ink',
   check(tag + 'nothing was sent on load', requests.length === 0, requests.length);
 
   const PILL = '#coverage .cv-run .ai-pill';
-  check(tag + 'the run is an AI pill, unlocked on Pro with a key', await page.locator(PILL).first().evaluate((el) => el.dataset.aiState) === 'ready');
+  check(tag + 'the run is an AI pill, unlocked on Pro with a key', await pillReady(page, PILL));
 
   /* ---- a run that fails on part 2, then resumes ------------------- */
   failPart2Once = true;
@@ -380,7 +387,7 @@ for (const [width, theme, provider] of [[1280, 'ink', 'anthropic'], [390, 'ink',
      Run sends, the suggested rewrites are the items, Accept adds the
      ticked ones as takes. */
   const VPILL = '#coverage .cv-voice .ai-pill';
-  check(tag + 'the voice check is an AI pill, unlocked on Pro with a key', await page.locator(VPILL).first().evaluate((el) => el.dataset.aiState) === 'ready');
+  check(tag + 'the voice check is an AI pill, unlocked on Pro with a key', await pillReady(page, VPILL));
   requests.length = 0;
   await openPill(page, VPILL);
   check(tag + 'the voice pill opens the Desk on the voice check', /Voice check/.test(await deskSays(page, '.ai-desk-title')));

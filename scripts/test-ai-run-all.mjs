@@ -488,6 +488,27 @@ await acc4.undo();
 ok(Shots.listBlocks().some((b) => b.note === 'Edited by me after Accept.'), 'undo: a diagram edited after Accept is kept');
 ok((await R.acceptDraft('pR', runId, 'nope', undefined, { drafts: store, tasks, unlocked: () => true }).catch((e) => e)) instanceof Error, 'accept: a missing draft refuses');
 
+/* Two Ready shot divisions of the same scene (a second run started before
+   the first was accepted): the second Accept is refused, nothing doubles. */
+{
+  eq(Shots.listShots().filter((s) => s.sceneId === 'r1').length, 0, 'double: r1 starts with no shots');
+  const st = D.openDrafts('pD', { backend: D.memoryBackend() });
+  const a = await R.startRun({ projectId: 'pD', ticks: ['shot-draft'], drafts: st, tasks, unlocked: () => true, retryDelayMs: 0 });
+  await a.done;
+  const b = await R.startRun({ projectId: 'pD', ticks: ['shot-draft'], drafts: st, tasks, unlocked: () => true, retryDelayMs: 0 });
+  await b.done;
+  const first = await R.acceptDraft('pD', b.runId, 'shot-draft', undefined, { drafts: st, tasks, unlocked: () => true });
+  const after1 = Shots.listShots().filter((s) => s.sceneId === 'r1').length;
+  const e = await R.acceptDraft('pD', a.runId, 'shot-draft', undefined, { drafts: st, tasks, unlocked: () => true }).catch((x) => x);
+  ok(e instanceof Error && /Sc 1 already has shots/.test(e.message), 'double: the second shot division is refused, naming the scene — ' + (e && e.message));
+  eq([after1, Shots.listShots().filter((s) => s.sceneId === 'r1').length], [2, 2], 'double: the refusal wrote nothing (shots not doubled)');
+  eq((await st.get(a.runId, 'shot-draft')).status, 'ready', 'double: the refused draft stays ready (Reject is still offered)');
+  await first.undo();
+  const again = await R.acceptDraft('pD', a.runId, 'shot-draft', undefined, { drafts: st, tasks, unlocked: () => true });
+  eq(Shots.listShots().filter((s) => s.sceneId === 'r1').length, 2, 'double: once the first is undone, the other run accepts');
+  await again.undo();
+}
+
 /* board-frames: a frame for a shot that does not exist is never kept or uploaded */
 {
   const said = [];

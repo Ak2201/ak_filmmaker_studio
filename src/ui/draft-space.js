@@ -294,7 +294,14 @@ function restore(f) {
     const card = host.querySelector('[data-ds-run="' + CSS.escape(f.run) + '"] [data-ds-key="' + CSS.escape(f.key) + '"]');
     el = card && (card.querySelector('[data-action="' + CSS.escape(f.action) + '"]:not([disabled])') || card.querySelector('button:not([disabled])'));
     if (!el && card) { card.tabIndex = -1; el = card; }
-  } else if (f.action) el = host.querySelector('[data-action="' + CSS.escape(f.action) + '"]:not([disabled])') || host.querySelector('[data-action="ds-start"]');
+  } else if (f.action) {
+    /* Break down everything is disabled while its run is live, and a
+       disabled button cannot hold focus: the press's natural next target
+       is the Stop beside it (and Stop's, once the run ends, the start). */
+    el = host.querySelector('[data-action="' + CSS.escape(f.action) + '"]:not([disabled])')
+      || (f.action === 'ds-start' ? host.querySelector('[data-action="ds-stop"]') : null)
+      || host.querySelector('[data-action="ds-start"]');
+  }
   if (el) try { el.focus({ preventScroll: true }); } catch (e) { /* gone */ }
 }
 
@@ -391,14 +398,28 @@ function parentsResults(runId, d) {
   return out;
 }
 
-function undoToast(text, undo, pid) {
+/* The toast's Undo is removed with the toast, so focus would fall to
+   <body>: after the repaint it goes to the card the Undo put back (its
+   Review, else its first live control). Only when focus is lost, and the
+   pressed Undo counts as lost: the toast is still leaving (it is removed
+   ~180ms after the press, chrome.js) when the repaint can already be done. */
+function refocusCard(pid, runId, key) {
+  if (pid !== S.pid) return Promise.resolve();
+  return reload().then(() => {
+    const a = document.activeElement;
+    if (S.host && S.host.isConnected && (focusLost() || !!(a && a.closest('.toast'))))
+      restore({ action: 'ds-review', tick: '', key, run: runId });
+  });
+}
+
+function undoToast(text, undo, pid, runId, key) {
   StudioUI.toast(text, {
     action: 'Undo',
     onAction: () => {
       Promise.resolve().then(() => undo())
         .then((ret) => { StudioUI.toast(ret === false ? 'Nothing to undo: it was changed since.' : 'Undone. The draft is ready to review again.', { type: 'info' }); })
         .catch(() => StudioUI.toastError('It could not be undone.'))
-        .finally(() => { if (pid === S.pid) reload(); });
+        .finally(() => refocusCard(pid, runId, key));
     }
   });
 }
@@ -482,7 +503,7 @@ function wire() {
     const d = rowOf(runId, key);
     const undo = await accept(runId, key);
     say(((d && d.label) || key) + ': accepted.');
-    undoToast(undo.said, undo, S.pid);
+    undoToast(undo.said, undo, S.pid, runId, key);
   }));
   delegate(document, 'click', '#drafts [data-action="ds-reject"]', (e, el) => press(el, async (runId, key) => {
     const d = rowOf(runId, key);
@@ -525,7 +546,7 @@ async function review(runId, key) {
       }
       const undo = await accept(runId, key, selected);
       const inner = undo;
-      const wrapped = async () => { const r = await inner(); if (pid === S.pid) reload(); return r; };
+      const wrapped = async () => { const r = await inner(); refocusCard(pid, runId, key); return r; };
       wrapped.said = inner.said;
       return wrapped;
     },

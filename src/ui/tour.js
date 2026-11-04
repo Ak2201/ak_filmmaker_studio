@@ -436,7 +436,19 @@ function wire() {
     else if (act === 'finish') end({ finished: true });
     else if (act === 'start') startTour();
     else if (act === 'resume') resumeTour();
-    else if (act === 'hide-list') { writeTour({ hideList: true }); renderChecklist(); }
+    else if (act === 'hide-list') {
+      /* The list leaves with the button that was pressed, so focus has to
+         go somewhere on purpose or it falls to <body> and a keyboard
+         reader starts again from the top of the page. It goes to the
+         first control AFTER the list (else before it, else #main), with
+         preventScroll — the rule is the replacement control, never body
+         and never a scroll. Found before the removal; nothing is written
+         but the one flag. */
+      const next = listHost && listHost.isConnected ? focusAfterList(listHost) : null;
+      writeTour({ hideList: true });
+      renderChecklist();
+      if (next && next.isConnected) next.focus({ preventScroll: true });
+    }
     else if (act === 'sample') {
       /* The sample is opened by the hub's own URL handler, the same one
          start.html links to; the tour stays on step 1 and redraws with
@@ -478,6 +490,20 @@ function renderInvite() {
 }
 
 /* ---- the hub's checklist ------------------------------------------- */
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+/** Where focus goes when the checklist is hidden: the first visible
+ *  control after it in the document, else the last one before it, else
+ *  #main (made programmatically focusable). Exported for the test. */
+export function focusAfterList(sec, root = document) {
+  const all = [...root.querySelectorAll(FOCUSABLE)].filter((el) => !sec.contains(el) && el.getClientRects().length);
+  const after = all.find((el) => sec.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+  if (after) return after;
+  const before = all.filter((el) => sec.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_PRECEDING).pop();
+  if (before) return before;
+  const main = root.getElementById ? root.getElementById('main') : null;
+  if (main && !main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1');
+  return main;
+}
 let listHost = null;
 function renderChecklist() {
   if (pageId() !== 'index') return;

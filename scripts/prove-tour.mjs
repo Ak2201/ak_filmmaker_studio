@@ -268,6 +268,15 @@ for (const width of [1440, 390]) {
     st = await tourState(page);
     ok(st && st.active === false && st.step === 1, 'Pause keeps the step');
   }
+  /* Hide this list, by keyboard: the list leaves with the pressed button,
+     and focus must land on a real control, never <body> (QA r6 H-1). */
+  await page.goto(BASE + 'index.html'); await page.waitForTimeout(1500);
+  if (await page.$('#firstweek [data-tour-act="hide-list"]')) {
+    await page.focus('#firstweek [data-tour-act="hide-list"]');
+    await page.keyboard.press('Enter'); await page.waitForTimeout(300);
+    const f = await page.evaluate(() => { const a = document.activeElement; return { tag: a ? a.tagName : '', gone: !document.getElementById('firstweek'), y: scrollY }; });
+    ok(f.gone && f.tag && f.tag !== 'BODY' && f.tag !== 'HTML', `Hide this list hides it and keeps focus off <body> (got ${f.tag})`);
+  } else ok(false, 'Home shows the first-week list with Hide this list');
   t0 = await now(page); await page.waitForTimeout(4000);
   ok((await localWrites(page, t0)).length === 0, 'idle writes nothing');
   ok(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''));

@@ -365,6 +365,29 @@ eq(srep.depts.flatMap((d) => d.lines).filter((l) => !l.unbudgeted).map((l) => l.
   reset();
 }
 
+// QA r4 F: removing a person takes their crew record and payments with
+// them, and leaves a float or expense row naming them, not their id.
+{
+  reset();
+  C.setCrew('c-gone', { feeType: 'day', fee: '1000' });
+  C.addPayment({ contactId: 'c-gone', amount: '7000' });
+  C.addPayment({ contactId: 'c-stay', amount: '300' });
+  C.addFloat({ to: 'c-gone', amount: '5000' });
+  C.addExpense({ category: 'food', amount: '200', paidBy: 'c-gone' });
+  eq(C.contactMoney('c-gone'), { payments: 1, paid: 7000 }, 'contactMoney counts the person\'s payments');
+  C.forgetContact('c-gone', 'Aravind');
+  eq(C.listPayments().map((p) => p.contactId), ['c-stay'], 'their payments go, others stay');
+  eq('c-gone' in C.listCrew(), false, 'their crew record goes');
+  eq(C.listFloats().map((f) => f.to), ['Aravind'], 'a float keeps its row under the person\'s name');
+  eq(C.listExpenses().map((e) => e.paidBy), ['Aravind'], 'an expense keeps its row under the person\'s name');
+  C.addFloat({ to: 'c-x', amount: '10' });
+  C.forgetContact('c-x', '');
+  ok(C.listFloats().some((f) => f.to === 'Removed person'), 'a nameless person reads "Removed person"');
+  const before = mem.get(KEY);
+  C.forgetContact('c-none', 'Nobody');
+  eq(mem.get(KEY), before, 'a person with no money writes nothing');
+}
+
 reset();
 console.log(`test:costs — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

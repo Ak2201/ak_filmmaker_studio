@@ -35,8 +35,21 @@
  * after the figure ("25k/day", "2 lakh per day").
  * @returns {number} rupees, or 0 for anything unparseable.
  */
+/* A FRACTION is a quantity, and parseFloat reads only its front: a
+   half day typed "1/2" came back as 1 and silently doubled the line.
+   Taken only as the WHOLE string ("1/2", "1 1/2"), checked before the
+   spaces are stripped (or "1 1/2" would read as 11/2), and never with
+   a zero below the line. Returns null when the string is not one. */
+function fraction(s) {
+  const m = String(s).trim().match(/^(?:(\d+)\s+)?(\d+)\s*\/\s*(\d+)$/);
+  if (!m || !+m[3]) return null;
+  return (m[1] ? +m[1] : 0) + (+m[2] / +m[3]);
+}
+
 export function parseNum(s) {
   if (!s) return 0;
+  const frac = fraction(s);
+  if (frac !== null) return frac;
   s = String(s).toLowerCase().replace(/[,\s₹$]/g, '').replace(/rs\.?/g, '').replace(/^inr\.?|inr$/g, '');
   // "/-" (or "/=") is the Indian "and no paise" mark — "Rs. 25,000/-".
   // Left on, it broke the whole-string match below, so "25k/-" fell
@@ -124,6 +137,8 @@ const USD2 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumF
 export function parseAmount(s, currency) {
   if (currency !== 'USD') return parseNum(s);
   if (!s) return 0;
+  const frac = fraction(s);
+  if (frac !== null) return frac;
   s = String(s).toLowerCase().replace(/[,\s$]/g, '').replace(/^usd?/, '').replace(/usd$/, '');
   // Same shape as parseNum's: the plural, and a rate tail taken whole
   // after the number and its suffix ("1.5k/day", "500 per day").

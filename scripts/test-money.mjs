@@ -1,5 +1,5 @@
 // parseNum / fmtINR: the cases CLAUDE.md names. Node, no browser.
-import { parseNum, fmtINR, fmtMoney } from '../src/lib/money.js';
+import { parseNum, parseAmount, fmtINR, fmtMoney } from '../src/lib/money.js';
 let bad = 0;
 const eq = (name, got, want) => { if (got !== want) { bad++; console.error('FAIL', name, 'got', got, 'want', want); } };
 eq('1500 per roll', parseNum('1500 per roll'), 1500);
@@ -55,5 +55,11 @@ eq('usd short 1.25M', fmtMoney(1250000, 'USD', true), '$1.25M');
 // QA r2: a negative figure uses the page's own minus and grouping
 eq('fmt -5000', fmtINR(-5000), '−₹ 5k');
 eq('fmt -494000', fmtINR(-494000), '−₹ 4.94 L');
+// QA r4 F: a fraction is read whole, not as its numerator.
+eq('1/2', parseNum('1/2'), 0.5);
+eq('1 1/2', parseNum('1 1/2'), 1.5);
+eq('3/4 usd', parseAmount('3/4', 'USD'), 0.75);
+eq('1/0 is not a fraction', parseNum('1/0'), 1);
+eq('25,000/- still', parseNum('25,000/-'), 25000);
 if (bad) process.exit(1);
 console.log('test-money: all passed');

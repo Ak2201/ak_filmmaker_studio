@@ -373,7 +373,7 @@ function renderCrewCard(ctx, c) {
       : 'No published figure for ' + picked.craft + '. Set your own on the wage table tab.';
   }
   const daysHint = acct.daysSource === 'entered'
-    ? (derived.days ? 'You set this. The ' + derived.source + ' say ' + derived.days + '.' : 'You set this.')
+    ? (derived.days ? 'You set this. The ' + derived.source + (derived.source === 'schedule' ? ' says ' : ' say ') + derived.days + '.' : 'You set this.')
     : derived.days ? 'From the ' + derived.source + '. Type a number to override.' : 'Nothing to count from yet — type the days.';
   const body = h('div.cx-crew-body', {}, [
     h('div.cx-quick-row', {}, [

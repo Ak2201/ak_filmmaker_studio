@@ -36,6 +36,7 @@ import { h, delegate } from '../lib/dom.js';
 import { saveOnInput } from '../lib/autosave.js';
 import PDF from '../lib/pdf.js';
 import Contacts from '../lib/contacts.js';
+import Costs from '../lib/costs.js';
 import Scenes, { formatEighths, ELEMENT_CATEGORIES } from '../lib/scenes.js';
 
 /* "1 page" for exactly one page, as the Stripboard, Shoot Day and DPR
@@ -968,7 +969,13 @@ delegate(document, 'click', '[data-action="contact-del"]', async (e, el) => {
   const id = contactIdOf(el);
   const c = Contacts.listContacts().find((x) => x.id === id);
   const label = c && c.name ? ' ' + c.name : '';
-  if (!await askDanger('Remove' + label + '? They come off every call sheet too.', { confirm: 'Remove person' })) return;
+  /* Their crew payments go with them (Costs.forgetContact): say so and
+     say how many, so the confirm is not the first a producer hears of it. */
+  const money = Costs.contactMoney(id);
+  const paid = money.payments
+    ? ' Their ' + (money.payments === 1 ? 'crew payment comes' : money.payments + ' crew payments come') + ' off the budget too.'
+    : '';
+  if (!await askDanger('Remove' + label + '? They come off every call sheet too.' + paid, { confirm: 'Remove person' })) return;
   /* The card the focused ✕ sits on is about to go: name its neighbour
      first (by id), or the Add button, so a keyboard user is not sent
      back to <body>. */
@@ -977,6 +984,7 @@ delegate(document, 'click', '[data-action="contact-del"]', async (e, el) => {
   const next = cards[at + 1] || cards[at - 1] || null;
   const nextId = next ? next.dataset.contact : '';
   Contacts.removeContact(id);
+  Costs.forgetContact(id, c && c.name);
   render();
   const target = (nextId && document.querySelector('.ct-person[data-contact="' + CSS.escape(nextId) + '"] .ct-name'))
     || document.querySelector('[data-action="contact-add"]');

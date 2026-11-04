@@ -337,7 +337,7 @@ function redrawCalc() {
 }
 
 async function resetCalc() {
-  if (!await askDanger('Clear all calculator rows?')) return;
+  if (!await askDanger('Clear all calculator rows?', { confirm: 'Clear rows' })) return;
   // A row number is a line's identity in fms_costs_v1 (expenses, crew,
   // department moves, locked versions). Counting from 1 again would bind
   // the old camera spend to whatever new item lands in row 3, so the new

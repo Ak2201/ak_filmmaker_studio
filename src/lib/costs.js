@@ -404,6 +404,41 @@ export function removeCrew(contactId) {
   writePart('crew', crew);
   writePart('payments', all.payments.filter((p) => p && p.contactId !== contactId));
 }
+/** What a person's removal would take off the costs record: their crew
+    payments (count and sum). The contacts page names it in its confirm. */
+export function contactMoney(contactId) {
+  const mine = readAll().payments.filter((p) => p && p.contactId === contactId);
+  return { payments: mine.length, paid: mine.reduce((s, p) => s + num(p.amount), 0) };
+}
+/** A person was removed from the contacts. Their crew record and fee
+    payments go with them (the confirm said so): a payment to a contact
+    that no longer exists was still counted in the cost report as "Crew
+    not on a budget line", and no screen listed it, so it could never be
+    inspected or deleted. Floats and expenses are cash that really moved,
+    so their rows STAY, with the id rewritten to the person's name (or
+    "Removed person"): the ledger already reads a typed name, and a bare
+    id printed as somebody's name was the other half of the bug. One
+    write, so a reload never sees half of it. */
+export function forgetContact(contactId, name) {
+  if (!contactId) return;
+  const all = readAll();
+  const who = String(name || '').trim() || 'Removed person';
+  const touches = Object.prototype.hasOwnProperty.call(all.crew, contactId)
+    || all.payments.some((p) => p && p.contactId === contactId)
+    || all.floats.some((f) => f && f.to === contactId)
+    || all.expenses.some((e) => e && e.paidBy === contactId);
+  if (!touches) return;                     // no write on a person with no money
+  const crew = { ...all.crew };
+  delete crew[contactId];
+  const next = {
+    ...all,
+    crew,
+    payments: all.payments.filter((p) => p && p.contactId !== contactId),
+    floats: all.floats.map((f) => (f && f.to === contactId ? { ...f, to: who } : f)),
+    expenses: all.expenses.map((e) => (e && e.paidBy === contactId ? { ...e, paidBy: who } : e))
+  };
+  try { localStorage.setItem(COSTS_KEY, JSON.stringify(next)); } catch (e) { /* private mode */ }
+}
 export const listPayments = () => readAll().payments.map(cleanPayment);
 export function addPayment(patch) {
   const p = cleanPayment(patch);
@@ -970,7 +1005,7 @@ export const gstinLooksValid = (s) => /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]
 export default {
   COSTS_KEY, CATEGORIES, METHODS, categoriesFor, methodsFor, deptsFor, GST_RATES, TDS_RATES, DEPTS, GROUPS,
   readAll, listExpenses, addExpense, updateExpense, removeExpense, restoreExpense,
-  listFloats, addFloat, removeFloat, restoreFloat, listCrew, getCrew, setCrew, removeCrew,
+  listFloats, addFloat, removeFloat, restoreFloat, listCrew, getCrew, setCrew, removeCrew, contactMoney, forgetContact,
   listPayments, addPayment, removePayment, restorePayment, setLineDept, setLineScales, snapshotBudget, listVersions, lockVersion, removeVersion, restoreVersion, compareVersion, getSettings, setSettings, setWageOverride,
   estimateLines, readCalc, CALC_CURRENCY, calcHasContent, costsHasContent, resolveCurrency, projectCurrency, budgetCurrency, gstSplit, paymentCost, floatBalances, derivedDays, crewAccount,
   costReport, budgetKpis, topSheet, wageRows, budgetCSV, actualsCSV, expensesCSV, gstinLooksValid,

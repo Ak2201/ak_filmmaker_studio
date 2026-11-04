@@ -559,6 +559,7 @@ function applyV2(all, shape, opts) {
     });
   };
 
+  const landed = [];   // [id, updatedAt] of each project created from the file
   const land = (meta, bucket) => {
     const clash = !!meta.id && taken.indexOf(meta.id) >= 0;
     if (clash && restore) {
@@ -601,10 +602,14 @@ function applyV2(all, shape, opts) {
          signed-in studio synced a sample that must never sync.
          createProject() checks the spelling; sampleIdOf() ignores an id
          that names no sample. */
-      sample: meta.sample
+      sample: meta.sample,
+      /* The project's own dates, which the file carries (QA r4 H-1). */
+      createdAt: meta.createdAt,
+      updatedAt: meta.updatedAt
     });
     writeBucket(created.id, bucket);
     taken.push(created.id);
+    if (typeof meta.updatedAt === 'string') landed.push([created.id, created.updatedAt]);
     added++;
   };
 
@@ -633,6 +638,10 @@ function applyV2(all, shape, opts) {
   });
 
   applyGlobalsAndNotes(all);
+  /* The globals and notes go through the proxy, and every proxied write
+     touches the OPEN project's updatedAt — the last one created — so the
+     file's date is put back afterwards, without another touch. */
+  landed.forEach(([id, at]) => Store.upsertProjectMeta({ id, updatedAt: at }));
 
   const parts = [];
   if (added)    parts.push('Imported ' + added + ' project' + (added === 1 ? '' : 's'));

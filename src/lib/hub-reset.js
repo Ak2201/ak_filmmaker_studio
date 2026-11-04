@@ -79,6 +79,12 @@ export function eraseDeviceStorage({ projects, allKeys = [] }) {
     p.cloudSync = 'off';
     Store.rawSet(STUDIO_PREFS_KEY, JSON.stringify(p));
   } catch (e) { /* storage refused */ }
+
+  /* The AI drafts (IndexedDB, ai-drafts.js) of EVERY project, listed or
+     not: unaccepted rewrites and pictures are this studio's work too,
+     and the erase promises everything (QA r4 H-2). Returned so the
+     caller can wait for it before it reports done. */
+  return import('./ai-drafts.js').then((m) => m.forgetDrafts(null)).catch(() => 0);
 }
 
 export default { KEEP_ON_ERASE, projectsToErase, eraseDeviceStorage };

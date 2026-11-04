@@ -61,7 +61,7 @@ async function resetAllImpl({ alsoDrive = false, confirmed = false, allKeys = []
   /* The storage half — every project in every namespace, every `fms_`
      key by base and suffixed name, the pointers, the notes, then
      cloudSync:'off' in the device prefs — is src/lib/hub-reset.js. */
-  eraseDeviceStorage({ projects, allKeys });
+  await eraseDeviceStorage({ projects, allKeys });
   const c = window.StudioCloud;
   if (c && c.setSyncEnabled) { try { await c.setSyncEnabled(false); } catch (e) { /* none */ } }
 
@@ -155,7 +155,13 @@ function handleImportAll(e) {
       }
       if (!res.ok) { if (res.message) await tell(res.message); return; }
       if (res.added || res.replaced) {
+        /* The log is scoped to the OPEN project, and every scoped write
+           bumps its updatedAt — so the line about the import would read
+           as an edit of the last film restored and undo the dates the
+           file carried (QA r4 H-1). Put its date back after the line. */
+        const open = Store.currentProject();
         logActivity('studio', 'Imported ' + res.added + ' project' + (res.added === 1 ? '' : 's'));
+        if (open && open.updatedAt) Store.upsertProjectMeta({ id: open.id, updatedAt: open.updatedAt });
       }
       /* FLUSH BEFORE THE DIALOG, NOT JUST BEFORE THE RELOAD.
 

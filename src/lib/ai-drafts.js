@@ -136,6 +136,26 @@ async function sweepAll(b, maxAgeDays = KEEP_DAYS, now = Date.now()) {
 }
 
 /**
+ * forgetDrafts(projectId) → how many drafts went. Every draft of that
+ * project, whatever its age; forgetDrafts(null) every draft of every
+ * project. The sweep alone was not enough: it runs only when a drafts
+ * view opens, so deleting a film or "Erase everything" left that film's
+ * unaccepted rewrites and pictures in IndexedDB on a device that never
+ * opened the Draft space again (QA r4 H-2). store.js deleteProject() /
+ * purgeProjectEverywhere() and hub-reset.js call it, lazily.
+ */
+export async function forgetDrafts(projectId, { backend: given } = {}) {
+  const b = given || current();
+  const all = projectId == null;
+  const pid = String(projectId || '');
+  let gone = 0;
+  for (const r of await b.all()) {
+    if (all || r.projectId === pid) { await b.del(keyOf(r)); gone++; }
+  }
+  return gone;
+}
+
+/**
  * openDrafts(projectId) → { listRuns, getRun, get, put, update, remove,
  *   clearRun, sweep }. Every call waits for the sweep the open started.
  */
@@ -190,4 +210,4 @@ export function openDrafts(projectId, { backend: given, now } = {}) {
   return api;
 }
 
-export default { openDrafts, memoryBackend, idbBackend, useDraftsBackend, cleanDraft, DB_NAME, STORE, KEEP_DAYS };
+export default { openDrafts, forgetDrafts, memoryBackend, idbBackend, useDraftsBackend, cleanDraft, DB_NAME, STORE, KEEP_DAYS };

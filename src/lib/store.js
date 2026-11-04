@@ -632,8 +632,17 @@ export function listAllProjects() { return allProjectMeta(); }
 export function purgeProjectEverywhere(id) {
   saveAllProjects(allProjectMeta().filter((p) => p.id !== id));
   SCOPED_KEYS.forEach((k) => rawRemove(k + '__' + id));
+  forgetAiDrafts(id);
   _invalidateCurrent();
   return true;
+}
+
+/* A film's unaccepted AI drafts live in IndexedDB (ai-drafts.js), not
+   under a scoped key, so wiping the blobs never reached them (QA r4 H-2).
+   Lazy on purpose: ai-drafts.js is not CORE, and a delete is rare. Fire
+   and forget — a browser without IndexedDB has no drafts to forget. */
+function forgetAiDrafts(id) {
+  return import('./ai-drafts.js').then((m) => m.forgetDrafts(id)).catch(() => 0);
 }
 
 /* Every per-namespace open-project pointer, so a total wipe can clear
@@ -652,6 +661,8 @@ export function getProject(id) {
   if (!id) return null;
   return listProjects().find(p => p.id === id) || null;
 }
+
+const isStamp = (v) => typeof v === 'string' && /^\d{4}-\d\d-\d\dT/.test(v) && !isNaN(Date.parse(v));
 
 export function createProject(meta) {
   meta = meta || {};
@@ -678,8 +689,11 @@ export function createProject(meta) {
     id:         wanted || uuid(),
     title:      (meta.title || 'Untitled Project').trim(),
     format:     FORMATS.indexOf(meta.format) >= 0 ? meta.format : 'feature',
-    createdAt:  now,
-    updatedAt:  now,
+    /* A restored project keeps its own dates (backup.js land()): a
+       backup read back as "edited just now" loses the Recent order and
+       "continue where you left off" (QA r4 H-1). Only a real ISO time. */
+    createdAt:  isStamp(meta.createdAt) ? meta.createdAt : now,
+    updatedAt:  isStamp(meta.updatedAt) ? meta.updatedAt : now,
     ns:         ns
   };
   /* The favourite film rides on the project entry, beside format: an
@@ -915,7 +929,7 @@ export function deleteProject(id) {
     else             { arr.splice(idx, 1); }
     saveAllProjects(arr);
   }
-  if (gone) SCOPED_KEYS.forEach(k => rawRemove(k + '__' + id));
+  if (gone) { SCOPED_KEYS.forEach(k => rawRemove(k + '__' + id)); forgetAiDrafts(id); }
   _invalidateCurrent();
   if (rawGet(currentKeyFor(_ns)) === id) {
     const mine = listProjects();

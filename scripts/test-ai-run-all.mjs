@@ -101,6 +101,19 @@ ok(['blocking-draft:s1', 'blocking-draft:s2', 'blocking-draft:s3'].every((k) => 
 plan = P.planRun({ ticks: ['budget-estimate'], project: full }).nodes;
 eq(by(plan, 'budget-estimate').parents, [], 'plan: shoot-order not ticked → the budget reads the schedule as it is');
 
+/* ================= forgetting a film's drafts (QA r4 H-2) ================= */
+{
+  const b = D.memoryBackend();
+  await b.put(D.cleanDraft({ projectId: 'pD', runId: 'r', key: 'a' }));
+  await b.put(D.cleanDraft({ projectId: 'pD', runId: 'r2', key: 'b' }));
+  await b.put(D.cleanDraft({ projectId: 'pK', runId: 'r', key: 'a' }));
+  eq(await D.forgetDrafts('pD', { backend: b }), 2, 'drafts: deleting a film forgets every draft of it, fresh or not');
+  eq((await b.all()).map((r) => r.projectId), ['pK'], 'drafts: and leaves the other films\' drafts');
+  await b.put(D.cleanDraft({ projectId: 'orphan', runId: 'r', key: 'a' }));
+  eq(await D.forgetDrafts(null, { backend: b }), 2, 'drafts: Erase everything forgets every draft, listed film or not');
+  eq(b.size(), 0, 'drafts: nothing left after the erase');
+}
+
 /* ================= the draft store ================= */
 {
   const b = D.memoryBackend();

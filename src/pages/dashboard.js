@@ -145,7 +145,7 @@ function renderReadiness() {
     return section('readiness', 'Readiness',
       'Could you shoot tomorrow?',
       (Store.currentProject() ? 'Nothing to check yet. Once this film has scenes' : 'Nothing to check yet. Open a project and give it scenes')
-      + ' — written, imported or broken down — and this becomes a list of what would stop a shoot day.');
+      + ' — written, imported or broken down — this becomes a list of what would stop a shoot day.');
   }
 
   const tone = r.blockers ? 'is-bad' : r.gaps ? 'is-warn' : 'is-ok';

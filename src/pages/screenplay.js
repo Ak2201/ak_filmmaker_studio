@@ -1275,6 +1275,11 @@ function refreshStats() {
    when the caret's scene changes or at idle (`deep`). */
 let posScene;
 let posBeat = '';
+let posPaged = -1;   // the printed count the strip's beat was read against
+/* The printed pages for the beats (beats-panel.js deriveBeats `paged`):
+   the last idle pagination, or null before the first one has run. */
+const pagedForBeats = () => (pagedNow && Typeset && pagedCount > 0
+  ? { count: pagedCount, index: pagedNow.index, bodyLines: Typeset.BODY_LINES } : null);
 function putPos(k, text, show = !!text) {
   const n = document.querySelector('[data-sc-pos="' + k + '"]');
   if (!n) return;
@@ -1292,7 +1297,7 @@ function refreshPos(deep) {
     posBeat = '';
     if (p) {
       try {
-        const d = deriveBeats(doc.elements, curId, { targetPages: targetPages(), scenes: Scenes.listScenes() });
+        const d = deriveBeats(doc.elements, curId, { targetPages: targetPages(), scenes: Scenes.listScenes(), paged: pagedForBeats() });
         const cur = d.rows.find((r) => r.current);
         posBeat = cur ? 'Beat: ' + (cur.beat.label || cur.beat.id) : '';
       } catch (e) { posBeat = ''; }
@@ -1517,8 +1522,12 @@ function applyBreaks() {
 
   pagedNow = { index: Typeset.pageIndex(pages), labels };
   page.dataset.pages = String(pages.length);
-  if (pagedCount !== pages.length) { pagedCount = pages.length; refreshStats(); }
-  refreshPos(false);
+  if (pagedCount !== pages.length) {
+    pagedCount = pages.length; refreshStats();
+    if (beats) beats.refresh();   // its basis line quotes the printed count
+  }
+  refreshPos(pagedCount !== Number(posPaged));
+  posPaged = pagedCount;
 }
 
 /* REVISION MODE ON THE PAGE. While the script is held, every line that
@@ -1670,6 +1679,7 @@ function setBeats(open) {
         scrollToEl: (id) => editor.scrollToEl(id),
         onJump: ({ id }) => { if (id) editor.focusEl(id); if (isPhone()) setBeats(false); },
         getTargetPages: () => targetPages(),
+        getPaged: pagedForBeats,
         getTarget: () => ({ minutes: target.minutes, source: target.source, estimate: estimateMin })
       });
       if (curId) beats.setCurrent(curId);
@@ -1794,7 +1804,7 @@ async function exportPDF(opts = {}) {
     ...(numbered || marks ? { setup: 'screenplay-wide', classes: marks ? ['pdf-sn', 'pdf-revmarks'] : ['pdf-sn'] } : {}),
     ...(g.lines ? { cheatMm: g.marginMm } : {}),
     title: Script.projectTitle() + ' — Screenplay',
-    subtitle: pdfSubtitle(doc),
+    subtitle: pdfSubtitle(doc, T.paginateDoc(doc, { autoContd: autoContdOn(), ...(g.lines ? { bodyLines: g.bodyLines } : {}) }).length),
     before: () => {
       node = T.buildDocument(doc, {
         title: Script.projectTitle(), revision: '', subtitle: iso.slice(0, 10), date: iso.slice(0, 10), sceneNumbers: numbered,
@@ -1913,7 +1923,7 @@ function drawImport() {
       button({ label: 'Read the pasted text', action: 'sc-imp-paste' })
     );
   } else {
-    body.append(h('p', { text: importReadText(imp.name, imp.plan) }));
+    body.append(h('p', { text: importReadText(imp.name, imp.plan, imp.printed) }));
     /* The reader's own notes, a page it could not read above all
        (QA r3: a lost PDF page was said nowhere on this preview). */
     const notes = (imp.plan.warnings || []).slice(0, 5);
@@ -1985,7 +1995,10 @@ async function takeScript(text, name) {
   try { plan = Parser.parseScript(text, name); }
   catch (e) { console.warn('[script] import', e); say('That file could not be read as a screenplay.'); return; }
   if (plan.fatal || !plan.elements.length) { say(plan.warnings[0] || 'Nothing in that file looked like a screenplay.'); return; }
-  imp = { plan, name: name || '', replace: false };
+  /* The count it will print at, as the header will say it (QA r5). */
+  let printed = 0;
+  try { const T = Typeset || (Typeset = await typesetter()); printed = T.paginate(plan.elements).length; } catch (e) { printed = 0; }
+  imp = { plan, name: name || '', replace: false, printed };
   drawImport();
 }
 

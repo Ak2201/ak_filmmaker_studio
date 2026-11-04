@@ -18,9 +18,10 @@
    the drafts page). Pure otherwise — no storage, no DOM.
    ============================================================ */
 import {
-  makeRevision, restoreElements, revisionColour, normaliseTitlePage, hasTitlePage, pageCount,
+  makeRevision, restoreElements, revisionColour, normaliseTitlePage, hasTitlePage,
   isNumberingLocked, isHeld
 } from './script.js';
+import { printedPages } from './paginate.js';
 import { isSideCopy, issuedColour } from './script-incoming.js';
 
 /* FNV-1a over the things that make two scripts different. Text, type and
@@ -51,6 +52,7 @@ function describe(rev, index, revs) {
      list; without it (an old caller) the position is all there is. */
   const side = isSideCopy(rev);
   const colour = revs ? issuedColour(revs, index) : revisionColour(index);
+  let pages = null;
   return {
     id: rev.id,
     index,
@@ -61,7 +63,14 @@ function describe(rev, index, revs) {
     savedAt: rev.date || '',
     colour,
     side,
-    pages: pageCount(rev.elements || []),
+    /* The printed count, as the Writer's header, Stats and the PDF say
+       it: the 55-line estimate here gave "106.5 pages" for a draft the
+       toolbar called 115 (QA r5). A getter, so a list paginates only
+       the drafts somebody reads the figure of. */
+    get pages() {
+      if (pages == null) pages = printedPages(rev.elements || []);
+      return pages;
+    },
     lines: (rev.elements || []).length,
     hasTitlePage: !!rev.titlePage,
     rev

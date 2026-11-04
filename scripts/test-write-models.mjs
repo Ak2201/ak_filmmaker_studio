@@ -88,6 +88,10 @@ ok('screenplay model', () => {
   assert.match(S.importReplaceBody(1), /scene goes to its bin, with its shots/);
   assert.match(S.importReplaceBody(3), /with their shots/);
   assert.match(S.importReadText('', { format: 'fountain', elements: [{}], pages: 1, scenes: [] }), /: 1 line, /);
+  // QA r5 B-2: with the printed count it quotes that, and claims no estimate.
+  assert.equal(S.importReadText('a.fdx', { format: 'fdx', formatLabel: 'Final Draft', elements: [{}, {}], pages: 106.5, scenes: [] }, 115),
+    'Read “a.fdx” as Final Draft: 2 lines, 115 pages, 0 scenes.');
+  assert.match(S.pdfSubtitle({ elements: [] }, 115), /115 pages/);
   assert.equal(S.importReplaceBody(0), 'A draft of the current one is saved first, so it can be restored.');
 });
 

@@ -245,5 +245,35 @@ eq(B.firstScenes(oe).map((f) => f.headingId), ['n1_0', 'n3_0', 'n2_0'], 'markers
   eq(shortChosen.fw.id, 'short_five', 'a short film is always the five beats (owner, 23 Oct 2026)');
 }
 
+
+/* QA r5 B-3: a new script's span is one page, so every beat lands on
+   page 1 and the page rule alone made the LAST beat current: line one
+   of a fresh feature read "Beat: Final Image". The caret's place in the
+   span breaks the tie. QA r5 B-2: given the editor's pagination, the
+   panel quotes the printed count, not lines / 55. */
+{
+  const { deriveBeats } = await import('../src/ui/beats-panel.js');
+  const st = { framework: 'three_act', frameworkChosen: false, marks: [], outline: [], tension: {} };
+  const one = [{ id: 'h1', type: 'scene', text: 'INT. ROOM - DAY' }, { id: 'a1', type: 'action', text: '' }];
+  const cur = (d) => (d.rows.find((r) => r.current) || {}).beat;
+  const fresh = deriveBeats(one, 'h1', { story: st, format: 'feature' });
+  eq(cur(fresh).id, S.frameworkById('save_the_cat').beats.slice().sort((a, b) => a.at - b.at)[0].id, 'a fresh feature\'s first line is the opening beat, not the Final Image');
+  const sh = [{ id: 's1', type: 'scene', text: 'INT. A - DAY' }, { id: 'x1', type: 'action', text: 'One.' },
+    { id: 's2', type: 'scene', text: 'EXT. B - NIGHT' }, { id: 'x2', type: 'action', text: 'Two.' }];
+  const short1 = deriveBeats(sh, 's1', { story: st, format: 'short' });
+  ok(cur(short1).id !== 'image', 'a short\'s first scene is not its closing Image');
+  // A long script keeps the page rule: the last page is the last beat.
+  const long = [];
+  for (let i = 0; i < 400; i++) long.push({ id: 'e' + i, type: i % 4 ? 'action' : 'scene', text: i % 4 ? 'Line of action here.' : 'INT. ROOM ' + i + ' - DAY' });
+  const lastBeat = S.frameworkById('save_the_cat').beats.slice().sort((a, b) => a.at - b.at).pop().id;
+  eq(cur(deriveBeats(long, 'e399', { story: st, format: 'feature' })).id, lastBeat, 'the last line of a long script is still the final beat');
+  // The printed pagination, when handed in, is the length quoted.
+  const index = new Map(long.map((e, i) => [e.id, { page: Math.floor(i / 3), line: (i % 3) * 10 }]));
+  const pd = deriveBeats(long, 'e0', { story: st, format: 'feature', paged: { count: 134, index, bodyLines: 52 } });
+  eq(pd.written, 134, 'the printed count is the script as written');
+  ok(/134 pages/.test(pd.basisText), 'the basis line quotes the printed count — ' + pd.basisText);
+  eq(cur(deriveBeats(long, 'e399', { story: st, format: 'feature', paged: { count: 134, index, bodyLines: 52 } })).id, lastBeat, 'the printed last page is the final beat');
+}
+
 console.log(`test:beats — ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

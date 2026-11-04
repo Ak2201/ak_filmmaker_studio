@@ -5,8 +5,9 @@
    (src/lib/story.js — marks and outline steps give each beat a count)
    with each beat's target page, the beat being written highlighted,
    and a click that jumps there. The beat data is beat-guide's: the
-   same framework JSON, the same page estimate (elementLines /
-   LINES_PER_PAGE, a beat's `at` × the script's pages). It stores
+   same framework JSON, a beat's `at` × the script's pages — the
+   PRINTED pages when the editor hands its pagination in (getPaged),
+   else the estimate (elementLines / LINES_PER_PAGE). It stores
    nothing — no storage writes, ever.
 
    mountBeats(host, { getElements, scrollToEl, onJump, getTargetPages, getTarget })
@@ -16,6 +17,8 @@
      getTargetPages() -> optional; the length the script is meant to
                          reach. Without it the beats are spread over
                          what is written, as beat-guide does.
+     getPaged()       -> optional; the editor's last pagination, see
+                         deriveBeats' `paged` (the printed pages).
      getTarget()      -> optional; { minutes, estimate, source } — the
                          film's ONE target running time (Reports', see
                          src/lib/target-runtime.js) and the script's
@@ -41,7 +44,14 @@ const projectFormat = () => {
 };
 
 /** Pure: the rows the panel draws and where each one jumps. */
-export function deriveBeats(els, currentId, { story, targetPages, scenes: sceneRows, format } = {}) {
+/* `paged`, optional: the editor's last pagination — { count, index,
+   bodyLines }, index being paginate.js pageIndex() (id → {page, line}).
+   Given, the script's length and every element's page are the PRINTED
+   ones the header, Stats and the PDF quote; the panel once said "107
+   pages" beside a header saying 115 and put its markers on the wrong
+   pages (QA r5). Without it (the typesetter not loaded yet) it is the
+   55-line estimate, as before. */
+export function deriveBeats(els, currentId, { story, targetPages, scenes: sceneRows, format, paged } = {}) {
   const list = els || [];
   const st = story || loadStory();
   /* The framework IN FORCE — the writer's choice once made, else the
@@ -52,14 +62,27 @@ export function deriveBeats(els, currentId, { story, targetPages, scenes: sceneR
   let total = 0;
   const startLine = [];
   for (const e of list) { startLine.push(total); total += elementLines(e); }
-  const written = total / LINES_PER_PAGE;
+  const usePaged = !!(paged && paged.index && paged.count > 0 && paged.bodyLines > 0);
+  /* Where element i starts, in pages from the top (0-based, fractional). An
+     element the last pagination has not seen yet (typed since) takes the
+     place of the nearest one before it that it has. */
+  const offset = (i) => {
+    if (!usePaged) return startLine[i] / LINES_PER_PAGE;
+    for (let j = i; j >= 0; j--) {
+      const at = list[j] && paged.index.get(list[j].id);
+      if (at) return at.page + Math.min(at.line, paged.bodyLines) / paged.bodyLines;
+    }
+    return 0;
+  };
+  const written = usePaged ? paged.count : total / LINES_PER_PAGE;
   /* ONE rule (beat-basis.js): the target if set, else the script as written. */
   const basis = beatPageBasis({ targetPages, scriptPages: written });
   const span = basis.pages;
   const pageOf = (at) => Math.max(1, Math.round(at * span) || 1);
 
   let idx = currentId ? list.findIndex((e) => e.id === currentId) : -1;
-  const curPage = idx >= 0 ? Math.floor(startLine[idx] / LINES_PER_PAGE) + 1 : 0;
+  const curAt = idx >= 0 ? offset(idx) : 0;
+  const curPage = idx >= 0 ? Math.floor(curAt) + 1 : 0;
 
   /* The tension somebody set in the Story stage, and only that: the
      framework's conventional curve is a default, not a reading. */
@@ -88,15 +111,25 @@ export function deriveBeats(els, currentId, { story, targetPages, scenes: sceneR
     const scenes = (bySceneBeat.get(qualifyBeat(fw.id, b.id)) || []).slice().sort(byNum);
     return { beat: b, page: pageOf(b.at), marks, scenes, linked: marks > 0 || scenes.length > 0, tension: setTension(b) };
   });
-  // The beat being written: the last one whose target page has begun.
+  /* The beat being written: the last one whose target page has begun.
+     When several beats share the caret's page — a new script, whose
+     span is one page, puts all fifteen there — the page cannot tell them
+     apart, so the caret's place in the span does: on the first line of
+     a fresh script that is the opening beat, never the Final Image the
+     page rule alone handed it (QA r5). */
+  const onPage = rows.filter((r) => r.page === curPage).length;
+  /* That place is the caret's page offset over the span, and a span is
+     never under one page: three lines of a new script are the top of
+     page 1, not most of the film. */
+  const frac = curAt / Math.max(1, basis.basis === 'script' ? written : span);
   let cur = -1;
-  if (curPage) rows.forEach((r, i) => { if (r.page <= curPage) cur = i; });
+  if (curPage) rows.forEach((r, i) => { if (r.page < curPage || (r.page === curPage && (onPage < 2 || r.beat.at <= frac))) cur = i; });
   // Before the first beat's page, you are writing toward the first beat.
   if (curPage && cur < 0 && rows.length) cur = 0;
   rows.forEach((r, i) => { r.current = i === cur; });
 
   // First scene at/after the target page; failing that, the end.
-  const scenes = list.map((e, i) => ({ e, p: Math.floor(startLine[i] / LINES_PER_PAGE) + 1 }))
+  const scenes = list.map((e, i) => ({ e, p: Math.floor(offset(i)) + 1 }))
     .filter((x) => x.e.type === 'scene' && String(x.e.text || '').trim());
   for (const r of rows) {
     r.written = r.page <= Math.ceil(written);
@@ -139,7 +172,7 @@ function tensionTrack(v) {
 const FILTERS = [['all', 'All'], ['linked', 'Linked'], ['pending', 'Pending']];
 
 export function mountBeats(host, opts = {}) {
-  const { getElements, scrollToEl, onJump, getTargetPages, getTarget } = opts;
+  const { getElements, scrollToEl, onJump, getTargetPages, getTarget, getPaged } = opts;
   let filter = 'all';
   const mq = typeof matchMedia === 'function' ? matchMedia(PHONE) : null;
   let currentId = null;
@@ -190,7 +223,8 @@ export function mountBeats(host, opts = {}) {
     let sceneRows = [];
     try { sceneRows = Scenes.listScenes(); } catch (e) { /* no scenes: no links */ }
     const d = deriveBeats(getElements ? getElements() : [], currentId, {
-      targetPages: getTargetPages ? getTargetPages() : 0, scenes: sceneRows
+      targetPages: getTargetPages ? getTargetPages() : 0, scenes: sceneRows,
+      paged: getPaged ? getPaged() : null
     });
     rowsNow = d.rows;
     toggle.textContent = '';

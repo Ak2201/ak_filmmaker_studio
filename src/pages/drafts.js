@@ -42,7 +42,6 @@ import { choiceDialog, installLeavePrompt } from '../ui/leave-prompt.js';
 import { mountRevisionTools, renderCompareTool, renderRevisedPagesTool, renderNumberingTool, presetCompare } from '../ui/write-revisions.js';
 import { subscribe, onWriteElsewhere, currentProjectId } from '../lib/store.js';
 import { exportMeta as exportMetaOf } from '../lib/write-model.js';
-import { formatPages, pageCount } from '../lib/script.js';
 /* What this page says about the drafts: src/lib/screenplay-drafts-model.js. */
 import { TITLE_LABELS, titlePlaceholder as titlePlaceholderFor } from '../lib/write-format.js';
 import {
@@ -443,7 +442,7 @@ async function exportRevisedPDF(extra = {}) {
     setup: 'screenplay-wide',
     classes: ['pdf-sn', 'pdf-revmarks'],
     title: Script.projectTitle() + ' — Screenplay',
-    subtitle: [meta.revision, formatPages(pageCount(doc.elements)) + ' pages', extra.note].filter(Boolean).join(' · '),
+    subtitle: [meta.revision, ((n) => n + (n === 1 ? ' page' : ' pages'))(Typeset.paginateDoc(doc).length), extra.note].filter(Boolean).join(' · '),
     before: () => {
       node = Typeset.buildDocument(doc, { ...meta, sceneNumbers: Script.isNumberingLocked(doc.numbering), marks: extra.marks });
       main.append(node);

@@ -15,6 +15,7 @@ Companion files:
 | File | What it holds |
 | --- | --- |
 | `docs/marketing/email-series.md` | Six plain-text e-mails, NOT SENT, for when Resend is configured |
+| `docs/marketing/VIDEO-CREATOR-BRIEF.md` | The one file to hand a video maker: every feature, plans and prices, ten video concepts, English + Tamil hooks, must-not-claim rules |
 | `docs/marketing/ad-copy.md` | Meta, Instagram and YouTube ad variants, true claims only |
 | `docs/marketing/outreach-templates.md` | Creators, affiliates, film schools, festivals, WhatsApp groups |
 | `docs/marketing/content-calendar.md` | Eight weeks of posts, day by day |
